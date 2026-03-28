@@ -54,14 +54,15 @@ Even though the package is installed as `pyfli-lib`, you import it as `pyfli` in
 ```python
 import pyfli
 
-# Load an SDT (TCSPC) file
-fli_data = pyfli.io.read_sdt("experimental_data.sdt")
+loader = DataOperations(    
+    fli_path = "experimental_data.sdt",
+    irf_path = "instrument_data.txt", 
+    bg_path = "background_data.tif",   
+    mask_path="background_data.png",
+    )
+fli_data = loader.load_fli()
+irf_data = loader.load_irf()
 
-# Perform a quick Phasor analysis
-phasor_coords = pyfli.analysis.get_phasor(fli_data)
-
-# Visualize results
-pyfli.visualize.plot_phasor(phasor_coords)
 ```
 
 ## Repository & Issues
