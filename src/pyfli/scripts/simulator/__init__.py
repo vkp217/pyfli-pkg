@@ -5,4 +5,4 @@ from .simulator_engine import FLIEngine
 from .sim_image_generator import FLIImageGenerator
 
 
-# [ParameterSampler, Macro_sim, TCSPC_sim, NoiseEngine, FLIEngine, FLIImageGenerator]
+# [ParameterSampler, NoiseEngine, FLIEngine, Macro_sim, TCSPC_sim, FLIImageGenerator]
