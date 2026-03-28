@@ -3,37 +3,45 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyfli"
-version = "0.1.1"
-description = '''
-Platform for unified Fluorescecne Lifetime Imaging data processing using 
-Analytical method as well as deep learning based methods
-'''
+name = "pyfli-lib"
+version = "0.1.3"
+description = "Unified Fluorescence Lifetime Imaging (FLI) data processing platform using analytical and deep learning methods."
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
     {name = "Vikas Pandey"}
 ]
+# Core dependencies for the analytical methods
 dependencies = [
-    "h5py>=3.15.1",
-    "ipykernel>=7.2.0",
-    "sdtfile>=2026.2.8",
-    "tensorflow>=2.20.0",
-    "tifffile>=2026.3.3",
-    "torch>=2.0.0",
+    "h5py>=3.10.0",
+    "sdtfile>=2025.0.0",
+    "tifffile>=2025.0.0",
     "joblib>=1.3.0",
-    "scikit-image>=0.24.0",
+    "scikit-image>=0.22.0",
     "imagecodecs",
-    "opencv-python>=4.8.0"
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    "matplotlib>=3.7.0"
 ]
 
 [project.optional-dependencies]
+# Deep learning specific tools
+ai = [
+    "tensorflow>=2.15.0",
+    "torch>=2.0.0",
+]
 dev = [
     "pytest",
     "black",
+    "ipykernel>=6.0.0",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["pyfli*"]
 exclude = ["notebooks*", "config*", "data*"]
+
+[project.urls]
+Homepage = "https://github.com/vkp217/pyfli-pkg"
+Repository = "https://github.com/vkp217/pyfli-pkg.git"
+Issues = "https://github.com/vkp217/pyfli-pkg/issues"

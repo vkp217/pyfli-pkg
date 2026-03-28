@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://img.shields.io/pypi/v/pyfli-lib.svg)](https://pypi.org/project/pyfli-lib/)
 
 `pyfli` is a comprehensive library designed for **Fluorescence Lifetime Imaging (FLI)** data processing. It streamlines the workflow for handling diverse file formats from various hardware manufacturers and provides a standardized pipeline for both traditional analytical and deep-learning-based inference.
 
@@ -11,40 +12,60 @@
 
 * **Universal Processing Pipeline:** Simplifies the handling of multiple FLI file types (ICCD, SPAD, TCSPC).
 * **Enhanced FLI Simulator:** A robust simulation engine adaptable to specific camera hardware parameters and noise models.
-* **Standardized Inference:** Unified interface for time-resolved microscopy and macroscopic FLI data.
+* **Standardized Inference:** Unified interface for time-resolved microscopy and macroscopic FLI data (MFLI).
 
 ## Supported Data Acquisition Methods
 
 The platform provides native support for several high-end imaging systems:
 
 1. **ICCD:** Intensified Charge-Coupled Device cameras for fast-gated, wide-field imaging.
-2. **SwissSPAD2:** High-speed SPAD (Single-Photon Avalanche Diode) camera for high-resolution photon counting.
-3. **SwissSPAD3:** Advanced SPAD architecture offering enhanced throughput and performance.
-4. **SPCImage/TCSPC:** Standardized processing for Time-Correlated Single Photon Counting microscopy data.
+2. **SwissSPAD2 & SwissSPAD3:** High-speed SPAD (Single-Photon Avalanche Diode) architectures for high-resolution photon counting.
+3. **SPCImage/TCSPC:** Standardized processing for Time-Correlated Single Photon Counting microscopy data.
 
 ## Data Processing & Analysis
 
-`pyfli` implements a variety of industry-standard analytical methods:
+`pyfli` implements industry-standard analytical methods to extract lifetime information:
 
-### 1. Non-linear Least Squares (NLLS) Fitting
-A robust mathematical approach for fitting exponential decay models by minimizing the sum of squared residuals between observed and theoretical decay curves.
-
-### 2. Phasor Plot Analysis
-A graphical, model-free transformation of fluorescence decay into a 2D polar plot. This simplifies the visualization of multi-exponential components and species separation.
-
-### 3. Maximum Likelihood Estimation (MLE)
-A statistical estimator that finds the lifetime parameters maximizing the likelihood of the observed photon counts, particularly effective for low-photon regimes.
-
-### 4. Rapid Lifetime Determination (RLD)
-A computationally efficient, single-shot method that estimates lifetimes using integrated intensity windows, ideal for real-time applications and high-frame-rate data.
+* **Non-linear Least Squares (NLLS) Fitting:** Robust mathematical approach for exponential decay modeling.
+* **Phasor Plot Analysis:** Graphical, model-free transformation of fluorescence decay into a 2D polar plot for easy species separation.
+* **Maximum Likelihood Estimation (MLE):** Statistical estimator optimized for low-photon regimes.
+* **Rapid Lifetime Determination (RLD):** Computationally efficient method for real-time applications and high-frame-rate data.
 
 ---
 
 ## Installation
 
-Since the project is currently in development, you can install it locally by cloning the repository and using `pip`:
+Install the stable version directly from PyPI:
 
 ```bash
-git clone [https://github.com/your-username/pyfli.git](https://github.com/your-username/pyfli.git)
-cd pyfli
-pip install -e .
+pip install pyfli-lib
+```
+
+For users requiring deep-learning features (TensorFlow/PyTorch), install the optional AI dependencies:
+
+```bash
+pip install "pyfli-lib[ai]"
+```
+
+## Quick Start
+
+Even though the package is installed as `pyfli-lib`, you import it as `pyfli` in your scripts:
+
+```python
+import pyfli
+
+# Load an SDT (TCSPC) file
+fli_data = pyfli.io.read_sdt("experimental_data.sdt")
+
+# Perform a quick Phasor analysis
+phasor_coords = pyfli.analysis.get_phasor(fli_data)
+
+# Visualize results
+pyfli.visualize.plot_phasor(phasor_coords)
+```
+
+## Repository & Issues
+
+The source code is hosted on GitHub. Please report any bugs or feature requests via the issues tracker.
+* **GitHub:** [https://github.com/vkp217/pyfli-pkg](https://github.com/vkp217/pyfli-pkg)
+
