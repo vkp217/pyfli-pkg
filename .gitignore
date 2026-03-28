@@ -1,0 +1,21 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Environments
+.venv/
+env/
+venv/
+.conda/
+
+# Build and Distribution
+dist/
+build/
+*.egg-info/
+
+# Data and Notebooks (Based on your TOML exclude)
+data/
+notebooks/
+*.h5
+*.sdt
+*.tif
