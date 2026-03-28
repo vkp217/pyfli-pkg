@@ -41,10 +41,10 @@ Install the stable version directly from PyPI:
 pip install pyfli-lib
 ```
 
-For users requiring deep-learning features (TensorFlow/PyTorch), install the optional AI dependencies:
+For users requiring GPU-based processing, install the optional tensor/AI dependencies:
 
 ```bash
-pip install "pyfli-lib[ai]"
+pip install "pyfli-lib[gpu]"
 ```
 
 ## Quick Start
@@ -52,7 +52,7 @@ pip install "pyfli-lib[ai]"
 Even though the package is installed as `pyfli-lib`, you import it as `pyfli` in your scripts:
 
 ```python
-import pyfli
+from pyfli import DataOperations
 
 loader = DataOperations(    
     fli_path = "experimental_data.sdt",

@@ -16,13 +16,18 @@ dependencies = [
     "h5py>=3.10.0",
     "sdtfile>=2025.0.0",
     "tifffile>=2025.0.0",
+    "imagecodecs",
     "joblib>=1.3.0",
     "scikit-image>=0.22.0",
-    "imagecodecs",
     "opencv-python>=4.8.0",
     "numpy>=1.24.0",
-    "matplotlib>=3.7.0"
+    "matplotlib>=3.7.0",
+    "scipy",
+    "tqdm",
+    "seaborn",
+    "pillow"
 ]
+
 
 [project.optional-dependencies]
 # Deep learning specific tools
