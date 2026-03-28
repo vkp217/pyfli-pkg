@@ -30,7 +30,6 @@ dependencies = [
 
 
 [project.optional-dependencies]
-# Deep learning specific tools
 gpu = [
     "tensorflow>=2.15.0",
     "torch>=2.0.0",

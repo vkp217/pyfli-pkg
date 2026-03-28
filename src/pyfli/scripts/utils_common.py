@@ -198,7 +198,9 @@ def multimodal_normal(n_samples=10000, mus=None, sigma=None, weights=None, seed=
     return samples, samples_2d
 
 
-def plot_comparative_analysis(gt_dict, est_dict, keys_to_plot=None):
+def recovery_plot(gt_dict, 
+                est_dict, 
+                keys_to_plot=None):
     """
     Plots Ground Truth vs Estimates for specific keys.
     Handles data shapes: (N, X, Y) or (N, Batch, X, Y).
@@ -233,7 +235,7 @@ def plot_comparative_analysis(gt_dict, est_dict, keys_to_plot=None):
         
         # 2. Scatter Plot
         # Using the style from your reference image
-        ax.scatter(x, y, color='#4c5c8d', alpha=0.5, s=15, edgecolors='none')
+        ax.scatter(x, y, color="#2042a8", alpha=0.5, s=15, edgecolors='none')
         
         # 3. Identity Line (y = x) - UPDATED TO RED DASH
         all_vals = np.concatenate([x, y])
