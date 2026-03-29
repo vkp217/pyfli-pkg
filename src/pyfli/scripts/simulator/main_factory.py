@@ -1,41 +1,78 @@
-from .simulator_engine import FLIEngine
-from .distributions import ParameterSampler
-from .noise_models import NoiseEngine
+# simulator/main_factory.py
 import numpy as np
+from .simulator_engine import FLIEngine
+from .noise_models import NoiseEngine
+from .distributions import ParameterSampler
 
 class Macro_sim:
     def __init__(self, irf_data, **cfg):
-        self.engine = FLIEngine(irf_data, cfg)
-        self.bit_depth = cfg.get('bit', 10)
-        self.dcr = cfg.get('dcr', 0.1)
+        self.engine = FLIEngine(irf_data, **cfg)
 
     def __call__(self):
-        p = self.engine.sample_params()
-        # Scale by bit depth (intensity)
-        photon_count = ParameterSampler.beta_sample(5, 5) * (2**self.bit_depth - 1)
+        # 1. Sample Params
+        p = self.engine.sample_all_params()
         
-        decay = self.engine.get_analytical_decay(p)
-        conv = np.convolve(decay, self.engine.irf, mode='same')
+        # 2. Sample Photon Count (Beta(5,5) by default from distributions)
+        alpha_pc, beta_pc = self.engine.params_cfg['pc']
+        A = ParameterSampler.beta_sample(alpha_pc, beta_pc, scale=(2**self.engine.params_cfg['bit'] - 1))
         
-        # Physics: Convolution -> Intensity Scaling -> DCR -> Poisson
-        scaled = conv * photon_count
-        with_dcr = NoiseEngine.apply_dcr(scaled, self.dcr)
+        # 3. Generate Signal
+        clean = self.engine.get_analytical_decay(p)
+        # Analytical convolution
+        fit = np.convolve(clean, self.engine.irf, mode='full')[:len(clean)] * A
+        
+        # 4. Apply Noise
+        jittered = NoiseEngine.apply_jitter(fit)
+        with_dcr = NoiseEngine.apply_dcr(jittered, self.engine.params_cfg['dcr'])
         observed = NoiseEngine.apply_poisson(with_dcr)
         
-        return {"s_t": observed, "irf": self.engine.irf, **p}
-
+        return {
+            "raw_data": {
+                "decay": observed, 
+                "irf": self.engine.irf
+            },
+            "results": {
+                "maps": {
+                    **p, 
+                    "tau_mean": p['tau1']*p['f'] + p['tau2']*(1-p['f'])
+                }
+            },
+            "TR_maps": {
+                "fit_map": fit, 
+                "residuals_map": observed - fit
+            }
+        }
 
 class TCSPC_sim:
     def __init__(self, irf_data, **cfg):
-        self.engine = FLIEngine(irf_data, cfg)
-        self.n_cycles = cfg.get('n_cycles', 800_000)
-        self.dcr = cfg.get('dcr', 0.05)
+        self.engine = FLIEngine(irf_data, **cfg)
 
     def __call__(self):
-        p = self.engine.sample_params()
-        # Full Monte Carlo arrival simulation
-        photon_hist = self.engine.simulate_tcspc(p, self.n_cycles, 0.01)
+        p = self.engine.sample_all_params()
+        n_cycles = np.random.randint(1, self.engine.params_cfg['cycles'] + 1)
+        mu_per_cycle = 0.01 # Standard mu for TCSPC
         
-        # DCR is applied to the histogram bins after photon counting
-        observed = NoiseEngine.apply_dcr(photon_hist, self.dcr)
-        return {"s_t": observed, "irf": self.engine.irf, **p}
+        # 1. Generate noisy histogram using your engine's logic
+        observed = self.engine.simulate_tcspc(p, n_cycles, mu_per_cycle)
+        
+        # 2. Generate noise-free fit for residuals
+        total_photons_expected = mu_per_cycle * n_cycles
+        clean = self.engine.get_analytical_decay(p)
+        fit = np.convolve(clean, self.engine.irf, mode='full')[:len(clean)] * total_photons_expected
+        
+        return {
+            "raw_data": {
+                "decay": observed, 
+                "irf": self.engine.irf
+            },
+            "results": {
+                "maps": {
+                    **p, 
+                    "tau_mean": p['tau1']*p['f'] + p['tau2']*(1-p['f'])
+                }
+            },
+            "TR_maps": {
+                "fit_map": fit, 
+                "residuals_map": observed - fit
+            }
+        }

@@ -1,3 +1,5 @@
+# simulator/noise_models.py
+
 import numpy as np
 
 class NoiseEngine:

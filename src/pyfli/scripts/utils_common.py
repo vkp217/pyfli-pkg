@@ -368,21 +368,12 @@ def save_as_uint16_sequence(data, output_folder, prefix="frame"):
     print(f"Saved {T} files to {output_folder} in uint16 format.")
 
 
-def get_random_true_pixel(bool_array):
-    # 1. Find linear indices of True values without creating coordinate pairs
-    # np.flatnonzero returns a 1D array of indices where the array is True
-    true_indices = np.flatnonzero(bool_array)
-    
+def random_true_pixel(bool_array):
+    true_indices = np.flatnonzero(bool_array)    
     if true_indices.size == 0:
         return None
-    
-    # 2. Pick one linear index randomly
     random_linear_idx = np.random.choice(true_indices)
-    
-    # 3. Convert the linear index back to (x, y) coordinates
-    # np.unravel_index(index, shape) does the modular arithmetic for you
     pix_x, pix_y = np.unravel_index(random_linear_idx, bool_array.shape)
-    
     return int(pix_x), int(pix_y)
 
 def PhasorFreqComputaion(laser_period = 12.5, gate_delay = None, num_gates = None): # all the units in ns
