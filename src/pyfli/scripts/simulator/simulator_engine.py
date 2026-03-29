@@ -16,7 +16,8 @@ class FLIEngine:
                  bit = 10, 
                  n_cycles = 800_000, 
                  dcr = 0.05,
-                 laser_feq = 80 # laser frequency in MHz
+                 laser_feq = 80, # laser frequency in MHz
+                 **kwargs
                  ):
         
         if irf_full.ndim == 3:
@@ -95,9 +96,9 @@ class FLIEngine:
         irf_cdf = np.cumsum(self.irf)
         irf_shifts = np.searchsorted(irf_cdf, np.random.rand(total_photons)) * self.dt
 
-        arrival_times = NoiseEngine.tcspc_pileup_filter(times + irf_shifts, 12.5)
+        arrival_times = NoiseEngine.tcspc_pileup_filter(times + irf_shifts, self.laser_period)
         
         # Binning
         bins = (arrival_times / self.dt).astype(np.int32)
         hist = np.bincount(bins[bins < len(self.t)], minlength=len(self.t))
-        return NoiseEngine.apply_jitter(hist.astype(np.float64))
+        return hist.astype(np.float64)
