@@ -15,6 +15,15 @@ class NoiseEngine:
         """
         dark_noise = np.random.poisson(dcr_level, size=decay.shape)
         return decay + dark_noise
+    
+    @staticmethod
+    def apply_read_noise(decay, sigma_read=1.5):
+        """
+        Simulates electronic read noise (Gaussian).
+        Common in ICCD sensors during CCD readout.
+        """
+        read_noise = np.random.normal(0, sigma_read, size=decay.shape)
+        return decay + read_noise
 
     @staticmethod
     def apply_jitter(decay, max_shift=2):

@@ -5,58 +5,103 @@ from tqdm import tqdm
 from .main_factory import Macro_sim, TCSPC_sim
 
 class FLIImageGenerator:
-    def __init__(self, irf_data, intensity_image_path=None, roi_mask_path=None, 
-                 roi_params=None, image_shape=(32, 32), method='analytical'):
-        self.method = method.lower()
+    def __init__(self, 
+                 irf_data, 
+                 intensity_image_path=None, 
+                 roi_mask_path=None, 
+                 roi_params=None, 
+                 image_shape=(32, 32), 
+                 method='analytical'):
+        """
+        Generates a synthetic FLI image. Supports 1D (uniform) or 3D (pixel-wise) IRFs.
+        """
+        self.method = method.lower()        
+        self.irf_data = irf_data # Store the full IRF data (1D or 3D)
         
-        # Load Masks
+        # 1. Load Intensity Mask
         if intensity_image_path:
-            self.intensity_mask = np.array(Image.open(intensity_image_path).convert('L')).astype(float)
+            img = Image.open(intensity_image_path).convert('L')
+            self.intensity_mask = np.array(img).astype(float) / 255.0
             self.shape = self.intensity_mask.shape
         else:
             self.intensity_mask = np.ones(image_shape)
             self.shape = image_shape
 
+        # 2. Load ROI Mask
         if roi_mask_path:
             mask_img = Image.open(roi_mask_path).convert('L')
-            self.roi_mask = np.array(mask_img.resize((self.shape[1], self.shape[0]), Image.NEAREST)).astype(int)
+            self.roi_mask = np.array(mask_img.resize((self.shape[1], self.shape[0]), 
+                                     Image.NEAREST)).astype(int)
         else:
             self.roi_mask = np.zeros(self.shape, dtype=int)
 
-        # Initialize ROI Simulators
+        # 3. Initialize ROI Simulators
+        # We use a dummy IRF slice for init; we will swap it pixel-wise in generate_image
+        dummy_irf = irf_data[0, 0, :] if irf_data.ndim == 3 else irf_data
+        
         self.roi_sims = {}
         unique_rois = np.unique(self.roi_mask)
         SimClass = TCSPC_sim if self.method == 'tcspc' else Macro_sim
         
-        for idx, roi_val in enumerate(unique_rois):
-            cfg = roi_params[idx] if (roi_params and idx < len(roi_params)) else {}
-            self.roi_sims[roi_val] = SimClass(irf_data, **cfg)
+        for roi_val in unique_rois:
+            cfg = roi_params[roi_val] if (roi_params and roi_val < len(roi_params)) else {}
+            sensor_type = cfg.get('sensor_type', 'ICCD' if self.method == 'analytical' else 'SPAD')
+            self.roi_sims[roi_val] = SimClass(dummy_irf, sensor_type=sensor_type, **cfg)
 
     def generate_image(self):
         h, w = self.shape
-        # Get a sample to determine time-axis length
-        sample = self.roi_sims[next(iter(self.roi_sims))]()
+        
+        # Determine time-axis length
+        first_roi = next(iter(self.roi_sims))
+        sample = self.roi_sims[first_roi]()
         t_len = sample["raw_data"]["decay"].size
         
-        dataset = {
-            "raw_data": {"decay": np.zeros((h, w, t_len)), "irf": np.zeros((h, w, t_len))},
-            "results": {"maps": {k: np.zeros((h, w)) for k in sample["results"]["maps"].keys()}},
-            "TR_maps": {"fit_map": np.zeros((h, w, t_len)), "residuals_map": np.zeros((h, w, t_len))}
-        }
+        # Pre-allocate
+        decay_cube = np.zeros((h, w, t_len), dtype=np.float32)
+        fit_cube = np.zeros((h, w, t_len), dtype=np.float32)
+        irf_cube = np.zeros((h, w, t_len), dtype=np.float32)
+        
+        param_keys = sample["results"]["maps"].keys()
+        param_maps = {k: np.zeros((h, w), dtype=np.float32) for k in param_keys}
 
-        for i in range(h):
+        print(f"Generating {self.method.upper()} FLI Image [{h}x{w}x{t_len}] with Pixel-wise IRF...")
+        
+        for i in tqdm(range(h), desc="Rows"):
             for j in range(w):
                 roi_val = self.roi_mask[i, j]
-                pixel = self.roi_sims[roi_val]()
+                sim = self.roi_sims[roi_val]
+                
+                # --- PIXEL-WISE IRF SWAP ---
+                # If IRF is 3D, extract the specific pixel's IRF
+                if self.irf_data.ndim == 3:
+                    current_irf = self.irf_data[i, j, :]
+                    # Normalize and update the internal engine of the simulator
+                    norm_irf = np.nan_to_num(current_irf / current_irf.sum())
+                    sim.engine.irf = norm_irf
+                else:
+                    norm_irf = sim.engine.irf # Already normalized during init
+                
+                # Run Simulation for this pixel
+                pixel_data = sim()
                 m = self.intensity_mask[i, j]
                 
-                # Assign with intensity weighting
-                dataset["raw_data"]["decay"][i, j] = pixel["raw_data"]["decay"] * m
-                dataset["raw_data"]["irf"][i, j] = pixel["raw_data"]["irf"]
-                dataset["TR_maps"]["fit_map"][i, j] = pixel["TR_maps"]["fit_map"] * m
-                dataset["TR_maps"]["residuals_map"][i, j] = (pixel["raw_data"]["decay"] - pixel["TR_maps"]["fit_map"]) * m
+                decay_cube[i, j, :] = pixel_data["raw_data"]["decay"] * m
+                fit_cube[i, j, :] = pixel_data["TR_maps"]["fit_map"] * m
+                irf_cube[i, j, :] = norm_irf # Store the used IRF for this pixel
                 
-                for k, v in pixel["results"]["maps"].items():
-                    dataset["results"]["maps"][k][i, j] = v
+                for k in param_keys:
+                    param_maps[k][i, j] = pixel_data["results"]["maps"][k]
         
-        return dataset
+        return {
+            "raw_data": {
+                "decay": decay_cube, 
+                "irf": irf_cube 
+            },
+            "results": {
+                "maps": param_maps
+            },
+            "TR_maps": {
+                "fit_map": fit_cube, 
+                "residuals_map": decay_cube - fit_cube
+            }
+        }

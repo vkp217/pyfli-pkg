@@ -81,11 +81,15 @@ class DataViewer:
 
     def plot_fli_fit_summary(self, data, pixel=None, title="FLI Fit Summary"):
         """
-        Dual-mode FLI visualization with clean layout.
+        Dual-mode FLI visualization.
 
-        Fixes:
-        - Summary placed BETWEEN (1,2) and (1,3)
-        - Proper log scaling (no zero/negative issues)
+        Features:
+        - 1D / 3D automatic handling
+        - Pixel-based extraction for 3D
+        - Scatter (*) + line decay visualization
+        - Log + Linear plots
+        - Dynamic parameter summary
+        - Clean layout with adaptive sizing
         """
 
         # -------- Detect mode --------
@@ -101,64 +105,72 @@ class DataViewer:
         # -------- Handle 1D vs 3D --------
         if is_3d:
             x, y = pixel
+
             decay_1d = decay[x, y, :]
             irf_1d = irf[x, y, :]
             fit_1d = fit[x, y, :]
             residuals_1d = residuals[x, y, :]
 
-            def get_param(k):
-                val = maps.get(k, None)
-                return val[x, y] if isinstance(val, np.ndarray) else val
         else:
             decay_1d = decay
             irf_1d = irf
             fit_1d = fit
             residuals_1d = residuals
 
-            def get_param(k):
-                return maps.get(k, None)
-
         # -------- Safe log handling --------
         eps = 1e0
         decay_log = np.clip(decay_1d, eps, None)
         fit_log = np.clip(fit_1d, eps, None)
+
         irf_scaled = (irf_1d / np.max(irf_1d)) * np.max(decay_1d)
         irf_log = np.clip(irf_scaled, eps, None)
 
-        # -------- Format parameters --------
+        # -------- Dynamic parameter summary --------
         def fmt(v):
             try:
                 return f"{float(v):.4f}"
             except:
                 return "NA"
 
-        text_str = (
-            f"mono: {fmt(get_param('mono'))}\n"
-            f"E: {fmt(get_param('E'))}\n"
-            f"f: {fmt(get_param('f'))}\n"
-            f"tau1: {fmt(get_param('tau1'))}\n"
-            f"tau2: {fmt(get_param('tau2'))}\n"
-            f"A1: {fmt(get_param('A1'))}\n"
-            f"A2: {fmt(get_param('A2'))}\n"
-            f"tau_mean: {fmt(get_param('tau_mean'))}"
-        )
+        lines = []
+        for k, v in maps.items():
+            try:
+                if is_3d and isinstance(v, np.ndarray):
+                    val = v[x, y]
+                else:
+                    val = v
+            except:
+                val = v
 
-        # -------- Layout (NOW 4 columns: plot, plot, text, image) --------
-        fig = plt.figure(figsize=(20, 5))
-        gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 0.6, 1], wspace=0.3)
+            lines.append(f"{k}: {fmt(val)}")
 
-        ax1 = fig.add_subplot(gs[0])
-        ax2 = fig.add_subplot(gs[1])
-        ax_text = fig.add_subplot(gs[2])
-        ax3 = fig.add_subplot(gs[3])
+        text_str = "\n".join(lines)
+
+        # -------- Layout --------
+        if is_3d:
+            fig = plt.figure(figsize=(20, 5))
+            gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 0.6, 1], wspace=0.3)
+
+            ax1 = fig.add_subplot(gs[0])
+            ax2 = fig.add_subplot(gs[1])
+            ax_text = fig.add_subplot(gs[2])
+            ax3 = fig.add_subplot(gs[3])
+        else:
+            fig = plt.figure(figsize=(14, 5))
+            gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.8], wspace=0.3)
+
+            ax1 = fig.add_subplot(gs[0])
+            ax2 = fig.add_subplot(gs[1])
+            ax_text = fig.add_subplot(gs[2])
+            ax3 = None
 
         x_axis = np.arange(len(decay_1d))
 
-    # -------- (1,1) LOG --------
-        ax1.scatter(x_axis, decay_log, s=20, color='black', alpha=0.7, marker='*', label='Decay (scatter)')
-        ax1.plot(decay_log, color='blue', alpha=0.6, lw=1.2, label='Decay (line)')
-        ax1.plot(irf_log, linestyle='--', color='orange', lw=1.5, label='IRF')
-        ax1.plot(fit_log, color='green', lw=1.5, label='Fit')
+        # -------- (1,1) LOG --------
+        ax1.scatter(x_axis, decay_log, s=20, color='black', marker='*', alpha=0.7, label='Decay (scatter)')
+        ax1.plot(x_axis, decay_log, color='blue', lw=1.2, alpha=0.6, label='Decay (line)')
+        ax1.plot(x_axis, irf_log, linestyle='--', color='orange', lw=1.5, label='IRF')
+        ax1.plot(x_axis, fit_log, color='green', lw=1.5, label='Fit')
 
         ax1.set_yscale('log')
         ax1.set_ylim(eps, np.max(decay_log) * 1.2)
@@ -170,11 +182,11 @@ class DataViewer:
         ax1.legend(fontsize=8)
 
         # -------- (1,2) LINEAR --------
-        ax2.scatter(x_axis, decay_1d, s=20, color='black', alpha=0.7, marker='*', label='Decay (scatter)')
-        ax2.plot(decay_1d, color='blue', alpha=0.6, lw=1.2, label='Decay (line)')
-        ax2.plot(irf_scaled, linestyle='--', color='orange', lw=1.5, label='IRF')
-        ax2.plot(fit_1d, color='green', lw=1.5, label='Fit')
-        ax2.plot(residuals_1d, color='red', lw=1.5, label='Residuals')
+        ax2.scatter(x_axis, decay_1d, s=20, color='black', marker='*', alpha=0.7, label='Decay (scatter)')
+        ax2.plot(x_axis, decay_1d, color='blue', lw=1.2, alpha=0.6, label='Decay (line)')
+        ax2.plot(x_axis, irf_scaled, linestyle='--', color='orange', lw=1.5, label='IRF')
+        ax2.plot(x_axis, fit_1d, color='green', lw=1.5, label='Fit')
+        ax2.plot(x_axis, residuals_1d, color='red', lw=1.2, label='Residuals')
 
         ax2.set_title('Linear Scale')
         ax2.set_xlabel('Time/Bins')
@@ -182,7 +194,7 @@ class DataViewer:
         ax2.grid(True, alpha=0.3)
         ax2.legend(fontsize=8)
 
-        # -------- (TEXT PANEL - BETWEEN 1,2 and 1,3) --------
+        # -------- TEXT PANEL --------
         ax_text.axis('off')
         ax_text.text(
             0.0, 1.0, text_str,
@@ -192,7 +204,7 @@ class DataViewer:
         )
         ax_text.set_title('Fit Summary')
 
-        # -------- (1,3) IMAGE --------
+        # -------- (1,3) IMAGE (only for 3D) --------
         if is_3d:
             img = np.sum(decay, axis=2)
             im = ax3.imshow(img)
@@ -201,8 +213,6 @@ class DataViewer:
             ax3.set_title(f"Intensity Map\nPixel ({x},{y})")
 
             plt.colorbar(im, ax=ax3, fraction=0.046, pad=0.02)
-        else:
-            ax3.axis('off')
 
         # -------- Final --------
         fig.suptitle(title, fontsize=14)

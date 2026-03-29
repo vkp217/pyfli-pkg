@@ -5,6 +5,22 @@ from scipy.stats import truncnorm
 
 class ParameterSampler:
     @staticmethod
+    def sample_qe(sensor_type='ICCD'):
+        """Samples QE based on sensor type."""
+        if sensor_type.upper() == 'ICCD':
+            return np.random.uniform(0.15, 0.35) # Typical ICCD QE
+        return np.random.uniform(0.70, 0.90)     # Typical SPAD QE
+    
+    @staticmethod
+    def sample_noise_params(bit_depth, sensor_type='ICCD'):
+        """Centralized control for hardware noise levels."""
+        if sensor_type.upper() == 'ICCD':
+            # Linear scaling for read noise and DCR
+            read_sigma = np.random.uniform(1.0, 3.0) * (bit_depth / 8.0)
+            return {"read_sigma": read_sigma}
+        return {"read_sigma": 0.0} # SPADs effectively have zero read noise
+    
+    @staticmethod
     def sample_beta(alpha, beta, scale=1.0, offset=0.0):
         """Standard beta sampling with scale and offset."""
         val = np.random.beta(alpha, beta)
