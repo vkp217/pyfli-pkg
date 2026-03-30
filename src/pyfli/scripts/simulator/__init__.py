@@ -1,8 +1,12 @@
+# scripts/simulator/__init__.py
 from .distributions import ParameterSampler
 from .main_factory import Macro_sim, TCSPC_sim
 from .noise_models import NoiseEngine
 from .simulator_engine import FLIEngine
 from .sim_image_generator import FLIImageGenerator
+from .sim_stat_test import FLIValidator
+from .calibration_engine import FLICalibrator
 
 
-# [ParameterSampler, NoiseEngine, FLIEngine, Macro_sim, TCSPC_sim, FLIImageGenerator]
+# [FLICalibrator, FLIValidator, ParameterSampler, 
+# NoiseEngine, FLIEngine, Macro_sim, TCSPC_sim, FLIImageGenerator]

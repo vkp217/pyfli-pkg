@@ -79,18 +79,22 @@ class DataViewer:
         plt.show()
 
 
-    def plot_fli_fit_summary(self, data, pixel=None, title="FLI Fit Summary"):
+    def plot_fli_fit_summary(self, 
+        data,
+        pixel=None,
+        title="FLI Fit Summary",
+        mode=("decay", "irf", "fit", "residuals")
+    ):
         """
-        Dual-mode FLI visualization.
+        Flexible FLI visualization.
 
-        Features:
-        - 1D / 3D automatic handling
-        - Pixel-based extraction for 3D
-        - Scatter (*) + line decay visualization
-        - Log + Linear plots
-        - Dynamic parameter summary
-        - Clean layout with adaptive sizing
+        Parameters:
+        - mode: list/tuple of any subset of:
+            ["decay", "irf", "fit", "residuals"]
+        Controls what gets plotted in both log & linear panels.
         """
+
+        mode = set(mode)  # faster lookup
 
         # -------- Detect mode --------
         is_3d = pixel is not None
@@ -105,12 +109,10 @@ class DataViewer:
         # -------- Handle 1D vs 3D --------
         if is_3d:
             x, y = pixel
-
             decay_1d = decay[x, y, :]
             irf_1d = irf[x, y, :]
             fit_1d = fit[x, y, :]
             residuals_1d = residuals[x, y, :]
-
         else:
             decay_1d = decay
             irf_1d = irf
@@ -118,7 +120,7 @@ class DataViewer:
             residuals_1d = residuals
 
         # -------- Safe log handling --------
-        eps = 1e0
+        eps = 1e-6
         decay_log = np.clip(decay_1d, eps, None)
         fit_log = np.clip(fit_1d, eps, None)
 
@@ -167,14 +169,21 @@ class DataViewer:
         x_axis = np.arange(len(decay_1d))
 
         # -------- (1,1) LOG --------
-        ax1.scatter(x_axis, decay_log, s=20, color='black', marker='*', alpha=0.7, label='Decay (scatter)')
-        ax1.plot(x_axis, decay_log, color='blue', lw=1.2, alpha=0.6, label='Decay (line)')
-        ax1.plot(x_axis, irf_log, linestyle='--', color='orange', lw=1.5, label='IRF')
-        ax1.plot(x_axis, fit_log, color='green', lw=1.5, label='Fit')
+        if "decay" in mode:
+            ax1.scatter(x_axis, decay_log, s=20, color='black', marker='*', alpha=0.7, label='Decay (scatter)')
+            ax1.plot(x_axis, decay_log, color='blue', lw=1.2, alpha=0.6, label='Decay (line)')
+
+        if "irf" in mode:
+            ax1.plot(x_axis, irf_log, linestyle='--', color='orange', lw=1.5, label='IRF')
+
+        if "fit" in mode:
+            ax1.plot(x_axis, fit_log, color='green', lw=1.5, label='Fit')
+
+        if "residuals" in mode:
+            ax1.plot(x_axis, np.clip(residuals_1d, eps, None), color='red', lw=1.2, label='Residuals')
 
         ax1.set_yscale('log')
         ax1.set_ylim(eps, np.max(decay_log) * 1.2)
-
         ax1.set_title('Log Scale')
         ax1.set_xlabel('Time/Bins')
         ax1.set_ylabel('Intensity')
@@ -182,11 +191,18 @@ class DataViewer:
         ax1.legend(fontsize=8)
 
         # -------- (1,2) LINEAR --------
-        ax2.scatter(x_axis, decay_1d, s=20, color='black', marker='*', alpha=0.7, label='Decay (scatter)')
-        ax2.plot(x_axis, decay_1d, color='blue', lw=1.2, alpha=0.6, label='Decay (line)')
-        ax2.plot(x_axis, irf_scaled, linestyle='--', color='orange', lw=1.5, label='IRF')
-        ax2.plot(x_axis, fit_1d, color='green', lw=1.5, label='Fit')
-        ax2.plot(x_axis, residuals_1d, color='red', lw=1.2, label='Residuals')
+        if "decay" in mode:
+            ax2.scatter(x_axis, decay_1d, s=20, color='black', marker='*', alpha=0.7, label='Decay (scatter)')
+            ax2.plot(x_axis, decay_1d, color='blue', lw=1.2, alpha=0.6, label='Decay (line)')
+
+        if "irf" in mode:
+            ax2.plot(x_axis, irf_scaled, linestyle='--', color='orange', lw=1.5, label='IRF')
+
+        if "fit" in mode:
+            ax2.plot(x_axis, fit_1d, color='green', lw=1.5, label='Fit')
+
+        if "residuals" in mode:
+            ax2.plot(x_axis, residuals_1d, color='red', lw=1.2, label='Residuals')
 
         ax2.set_title('Linear Scale')
         ax2.set_xlabel('Time/Bins')
@@ -204,7 +220,7 @@ class DataViewer:
         )
         ax_text.set_title('Fit Summary')
 
-        # -------- (1,3) IMAGE (only for 3D) --------
+        # -------- (1,3) IMAGE --------
         if is_3d:
             img = np.sum(decay, axis=2)
             im = ax3.imshow(img)

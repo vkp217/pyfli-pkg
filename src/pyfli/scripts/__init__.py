@@ -6,7 +6,7 @@ from .dataCC import IRFAligner, DataPreprocessing
 from .dataVnP import DataViewer, Plotter, DLModelComparator, Colorprocess
 from .roiMaker import ROIMaker
 from .solver import (BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, MLEFLIFitter, GlobalFLIFitter)
-from .simulator import (Macro_sim, TCSPC_sim, FLIImageGenerator)
+from .simulator import (Macro_sim, TCSPC_sim, FLIImageGenerator, FLICalibrator, FLIValidator)
 
 from .simulatorPhysics import HardSimulator, HardestSimulator
 from .utils_common import recovery_plot, random_true_pixel
@@ -18,6 +18,7 @@ __all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport",
     "PhasorAnalyzer", "Plotter", "DLModelComparator", "DataPreprocessing",
     "BaseFLIFitter", "Fli_CPUProcessor", "Fli_GPUProcessor", "MLEFLIFitter", "GlobalFLIFitter",
     "ROIMaker", "AnalyticalHelpers", "DataIO_utils", "Colorprocess",
-    "Macro_sim", "TCSPC_sim", "FLIImageGenerator", "recovery_plot", "random_true_pixel"
+    "Macro_sim", "TCSPC_sim", "FLIImageGenerator", "recovery_plot", "random_true_pixel",
+    "FLICalibrator", "FLIValidator"
 ]
     

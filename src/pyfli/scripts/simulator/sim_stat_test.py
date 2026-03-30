@@ -7,47 +7,30 @@ from scipy.special import rel_entr
 
 class FLIValidator:
     def __init__(self, method='analytical', threshold=10):
-        """
-        Comprehensive Statistical Validator for FLI datasets.
-        
-        Args:
-            method: 'analytical' (Macro) or 'tcspc'.
-            threshold: Minimum integrated photon counts to consider a pixel valid.
-        """
         self.method = method.lower()
         self.threshold = threshold
 
     def _preprocess_cube(self, data_cube):
-        """
-        Reshapes (H, W, T) to (N, T) and filters pixels below the intensity threshold.
-        """
         if data_cube.ndim == 3:
             H, W, T = data_cube.shape
             flat_data = data_cube.reshape(-1, T)
         else:
-            # Handle cases where data might already be (N, T)
             flat_data = data_cube
             T = flat_data.shape[-1]
 
-        # Calculate integrated intensity per pixel (sum over time axis)
         pixel_intensities = np.sum(flat_data, axis=1)
-        
-        # Apply mask based on threshold
         valid_mask = pixel_intensities >= self.threshold
         filtered_data = flat_data[valid_mask]
         filtered_intensities = pixel_intensities[valid_mask]
         
         return filtered_data, filtered_intensities
 
-    def run_comprehensive_test(self, sim_dataset, exp_decay_cube):
+    def run_comprehensive_test(self, sim_dataset, exp_decay_cube, normalize=False):
         """
-        Executes a fair statistical comparison between simulated and experimental data.
-        
         Args:
-            sim_dataset: Dictionary from FLIImageGenerator.generate_image().
-            exp_decay_cube: 3D numpy array of experimental measurements.
+            normalize: If True, scales both intensity distributions to [0, 1] 
+                       to compare noise morphology rather than absolute scale.
         """
-        # 1. Flatten and Threshold
         sim_raw = sim_dataset['raw_data']['decay']
         exp_flat, exp_counts = self._preprocess_cube(exp_decay_cube)
         sim_flat_all, sim_counts_all = self._preprocess_cube(sim_raw)
@@ -56,54 +39,50 @@ class FLIValidator:
         n_sim_total = sim_flat_all.shape[0]
 
         if n_exp == 0:
-            print("Error: No experimental pixels passed the intensity threshold.")
             return None
 
-        # 2. FAIR SUBSAMPLING
-        # To avoid sample-size bias in KS-tests, match simulated N to experimental N
+        # Fair subsampling
         if n_sim_total > n_exp:
             indices = np.random.choice(n_sim_total, size=n_exp, replace=False)
             sim_flat = sim_flat_all[indices]
             sim_counts = sim_counts_all[indices]
         else:
-            sim_flat = sim_flat_all
-            sim_counts = sim_counts_all
-            print(f"Warning: Simulated valid pixels ({n_sim_total}) fewer than experimental ({n_exp}).")
+            sim_flat, sim_counts = sim_flat_all, sim_counts_all
 
-        # --- Method 1: Temporal Decay Profile Analysis ---
-        # Average temporal vector across all valid pixels
+        # --- PRE-NORMALIZATION TOGGLE ---
+        if normalize:
+            # Scale counts to [0, 1] based on their respective max values
+            exp_counts = exp_counts / (np.max(exp_counts) + 1e-12)
+            sim_counts = sim_counts / (np.max(sim_counts) + 1e-12)
+
+        # Method 1: Temporal
         sim_vec = np.mean(sim_flat, axis=0)
         exp_vec = np.mean(exp_flat, axis=0)
-        
-        # Cosine Similarity (Vector alignment in T-space)
         cos_sim = 1 - cosine(sim_vec, exp_vec)
         
-        # KL Divergence (Probabilistic similarity)
         p = sim_vec / (np.sum(sim_vec) + 1e-12)
         q = exp_vec / (np.sum(exp_vec) + 1e-12)
         kl_div = np.sum(rel_entr(p, q))
 
-        # --- Method 2: Integrated Intensity Distribution (Photon Counts) ---
-        # Kolmogorov-Smirnov Test for distribution identity
+        # Method 2: Intensity Distribution
         ks_stat, p_value = stats.ks_2samp(sim_counts, exp_counts)
         
-        # Histogram Intersection Area
         bins = np.linspace(min(sim_counts.min(), exp_counts.min()), 
                            max(sim_counts.max(), exp_counts.max()), 50)
         hist_sim, _ = np.histogram(sim_counts, bins=bins, density=True)
         hist_exp, _ = np.histogram(exp_counts, bins=bins, density=True)
         intersection = np.minimum(hist_sim, hist_exp).sum() * (bins[1] - bins[0])
 
-        # --- Output and Visualization ---
-        self._print_summary(cos_sim, kl_div, ks_stat, p_value, intersection, len(sim_counts))
-        self._plot_results(sim_vec, exp_vec, sim_counts, exp_counts)
-
         return {
             "cosine_similarity": cos_sim,
             "kl_divergence": kl_div,
             "ks_p_value": p_value,
             "hist_intersection": intersection,
-            "sample_size": len(sim_counts)
+            "sample_size": len(sim_counts),
+            "sim_vec": sim_vec,
+            "exp_vec": exp_vec,
+            "sim_counts": sim_counts,
+            "exp_counts": exp_counts
         }
 
     def _print_summary(self, cos_sim, kl_div, ks_stat, p_value, intersection, n):
