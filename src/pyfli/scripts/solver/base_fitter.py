@@ -121,9 +121,8 @@ class BaseFLIFitter:
         margin = 1e-5
         p0_clipped = np.clip(p0, low_vec + margin, high_vec - margin)
 
-        if not np.allclose(p0, p0_clipped, rtol=1e-4):
-            print("Note: Initial guess was clipped to fit within bounds.")
-
+        # if not np.allclose(p0, p0_clipped, rtol=1e-4):
+        #     print("Note: Initial guess was clipped to fit within bounds.")
         return p0_clipped, (low_vec, high_vec)
 
     def fit_with_estimator(self, estimator_type='least_squares', model_type='bi-exponential', p0=None, bounds=None, **kwargs):
