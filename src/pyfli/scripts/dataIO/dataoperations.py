@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 
 # Import the static logic from your utility file
-import dataops_static as ds
+from .dataops_static import Staticdataops as ds
 
 class DataOperations:
     def __init__(self, fli_path=None, irf_path=None, bg_path=None, mask_path=None, hp_path=None):
@@ -17,7 +17,7 @@ class DataOperations:
         """
         self.fli_path = fli_path
         self.irf_path = irf_path
-        self.bg_path = bg_path 
+        self.bg_path = bg_path
         self.mask_path = mask_path
         self.hp_path = hp_path 
 
@@ -35,13 +35,13 @@ class DataOperations:
     # --- PUBLIC API ---
 
     def load_fli(self, sub_bg=True, pile_up=False, hot_pixel=False):
-        print(f"[DEBUG] Initiating FLI load from: {self.fli_path}")
+        print(f"Initiating FLI load from: {self.fli_path}")
         return self._general_loader(self.fli_path, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel, label="FLI")
 
     def load_background(self, pile_up=False, hot_pixel=False):
         """Loads background. If folder, returns the mean average of all files."""
         if self.bg_path and os.path.isdir(self.bg_path):
-            print(f'[DEBUG] Background FOLDER detected: {self.bg_path}')
+            print(f'Background FOLDER detected: {self.bg_path}')
             return self._load_from_folder(self.bg_path, 
                                           sub_bg=False, 
                                           pile_up=pile_up, 
@@ -50,22 +50,22 @@ class DataOperations:
                                           is_background=True, 
                                           label="BG")        
         if self.bg_path:
-            print(f'[DEBUG] Background FILE detected: {self.bg_path}')
+            print(f'Background FILE detected: {self.bg_path}')
             return self._general_loader(self.bg_path, 
                                         sub_bg=False, 
                                         pile_up=pile_up, 
                                         hot_pixel=hot_pixel, 
                                         label="BG")
         
-        print('[DEBUG] No background path provided.')
+        print('No background path provided.')
         return None
 
     def load_irf(self, sub_bg=False, pile_up=False, hot_pixel=False):
-        print(f"[DEBUG] Initiating IRF load from: {self.irf_path}")
+        print(f"Initiating IRF load from: {self.irf_path}")
         return self._general_loader(self.irf_path, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel, label="IRF")
 
     def load_all_parallel(self, sub_bg=True, pile_up=False, hot_pixel=False):
-        print("[DEBUG] Starting synchronized parallel loading for FLI, IRF, and BG...")
+        print("Starting synchronized parallel loading for FLI, IRF, and BG...")
         with ThreadPoolExecutor(max_workers=3) as executor:
             fli_future = executor.submit(self.load_fli, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel)
             irf_future = executor.submit(self.load_irf, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel)
@@ -115,13 +115,11 @@ class DataOperations:
 
     def load_mask(self):
         if not self.mask_path: return None
-        print(f"[DEBUG] Loading mask from: {self.mask_path}")
+        print(f"Loading mask from: {self.mask_path}")
         mask = self._load_single_file(self.mask_path)
         if mask is None: return None
         if mask.ndim == 3: mask = np.mean(mask, axis=-1)
         return (mask > np.min(mask)).astype(bool)
-
-    # --- INTERNAL CORE LOGIC ---
 
     def _general_loader(self, 
                         path, 
@@ -135,10 +133,10 @@ class DataOperations:
             return None
         
         if os.path.isfile(path):
-            print(f"[DEBUG] Loading single file: {os.path.basename(path)}")
+            print(f"Loading single file: {os.path.basename(path)}")
             return self._load_single_file(path, pile_up, hot_pixel, hp_path)
         else:
-            print(f"[DEBUG] Loading folder: {os.path.basename(path)}")
+            print(f"Loading folder: {os.path.basename(path)}")
             return self._load_from_folder(path, sub_bg, pile_up, hot_pixel, hp_path, mode, label=label)
 
     def _load_single_file(self, file_path, pile_up=False, hot_pixel=False, active_hp=None):
@@ -163,7 +161,7 @@ class DataOperations:
                 if pile_up: 
                     data = ds.pileup_correction(data)
                 if hot_pixel: 
-                    print(f"[DEBUG] Applying hot-pixel removal to: {os.path.basename(file_path)}")
+                    # print(f"[DEBUG] Applying hot-pixel removal to: {os.path.basename(file_path)}")
                     data = ds.apply_interpolation_mask(data, hp_path=active_hp)
             return data
         except Exception as e:
@@ -206,7 +204,7 @@ class DataOperations:
             with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
                 results = list(tqdm(executor.map(self._load_single_file_parallel, args), 
                                     total=len(args), 
-                                    desc=f"[DEBUG] Loading {label}", 
+                                    desc=f"Loading {label}", 
                                     leave=False))
                 for idx, data in results:
                     if data is not None and data.shape == first.shape:
@@ -237,7 +235,7 @@ class DataOperations:
 
     def load_mask(self):
         if not self.mask_path: return None
-        print(f"[DEBUG] Loading mask from: {self.mask_path}")
+        print(f"Loading mask from: {self.mask_path}")
         mask = self._load_single_file(self.mask_path)
         if mask is None: return None
         if mask.ndim == 3: mask = np.mean(mask, axis=-1)
