@@ -2,3 +2,4 @@
 
 from .IRF_process import IRFAligner
 from .dataCC_utils import DataPreprocessing
+from .norm import Normalization

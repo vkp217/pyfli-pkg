@@ -129,9 +129,9 @@ class TCSPC_sim:
         if self.use_clipping:
             obs = np.clip(obs, 0, max_adc_val)
         
-        total_photons_captured = np.sum(obs)
-        if np.sum(fit) > 0:
-            fit = fit * (total_photons_captured / np.sum(fit))
+        # total_photons_captured = np.sum(obs)
+        # if np.sum(fit) > 0:
+        #     fit = fit * (total_photons_captured / np.sum(fit))
 
         return {
             "raw_data": {"decay": obs, "irf": self.engine.irf},
