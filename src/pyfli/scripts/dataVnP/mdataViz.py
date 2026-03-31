@@ -15,97 +15,70 @@ class DataViewer:
             ax.scatter(y, x, color='red', s=40, marker='x', edgecolors='white', linewidths=1.5)
 
     def display_data(self, data_list, structure=(1, 1), coord=None, data_names=None, 
-                 cmaps=None, v_ranges=None, figsize=None, normalize=True, yscale='linear'):
+                 cmaps=None, v_ranges=None, figsize=None, normalize=False, yscale='linear'):
         """
         Unified 2D/3D visualization with STRICT equal-sized panels
         (images + plots + colorbars aligned perfectly)
         """
         num_plots = len(data_list)
         r, c = structure
-        names = data_names or [f"Data {i+1}" for i in range(num_plots)]
-        
+        names = data_names or [f"Data {i+1}" for i in range(num_plots)]        
         first_3d_idx = next((i for i, d in enumerate(data_list) if d.ndim == 3), None)
-        show_decay = coord is not None and first_3d_idx is not None
-        
+        show_decay = coord is not None and first_3d_idx is not None        
         n_cols = c + (1 if show_decay else 0)
-
         fig = plt.figure(figsize=figsize or (n_cols * 5, r * 4))
 
         # Main grid
         gs = gridspec.GridSpec(r, n_cols, figure=fig, wspace=0.25, hspace=0.25)
-
         # Reference normalization
         ref_max = None
         if normalize and show_decay:
             x, y = coord
             ref_max = np.max(data_list[first_3d_idx][x, y, :])
-
-        # ----------------------
         # IMAGE PANELS
-        # ----------------------
         for i in range(num_plots):
             row, col = divmod(i, c)
-
             # Subgrid: [main axis | colorbar axis]
             subgs = gs[row, col].subgridspec(1, 2, width_ratios=[20, 1], wspace=0.05)
-
             ax = fig.add_subplot(subgs[0])
             cax = fig.add_subplot(subgs[1])
-
             data = data_list[i]
             img = np.sum(data, axis=2) if data.ndim == 3 else data
-
             if ref_max is not None:
                 img = img / (ref_max + 1e-9)
             elif normalize is True:
                 img = (img - np.nanmin(img)) / (np.nanmax(img) - np.nanmin(img) + 1e-9)
-
             cmap = cmaps[i] if cmaps and i < len(cmaps) else "viridis"
             vr = v_ranges[i] if v_ranges and i < len(v_ranges) else (None, None)
-
             im = ax.imshow(img, cmap=cmap, vmin=vr[0], vmax=vr[1])
             self._apply_marker(ax, coord)
             ax.set_title(names[i])
-
             plt.colorbar(im, cax=cax)
 
-        # ----------------------
-        # DECAY PANEL (FORCE SAME STRUCTURE)
-        # ----------------------
+        # Plot Panel (forcing to same size)
         if show_decay:
             x, y = coord
-
             # Use SAME subgrid structure to keep size identical
             subgs = gs[:, -1].subgridspec(1, 2, width_ratios=[20, 1], wspace=0.05)
-
             ax_decay = fig.add_subplot(subgs[0])
             cax_dummy = fig.add_subplot(subgs[1])  # placeholder
-
             for i, data in enumerate(data_list):
                 if data.ndim == 3:
                     ax_decay.plot(data[x, y, :], label=names[i], lw=1.5)
-
             ax_decay.set(
                 yscale=yscale,
-                title=f"time-series @ ({x},{y})",
-                xlabel="Time Bin",
-                ylabel="Counts"
+                title=f"Plots @ ({x},{y})",
+                # xlabel="Time Bin",
+                # ylabel="Counts"
             )
             ax_decay.legend(fontsize='small', loc='upper right')
             ax_decay.grid(True, which='both', alpha=0.3)
-
-            # Hide dummy colorbar axis but KEEP space
+            # hiding dummy colorbar axis but KEEP space
             cax_dummy.axis('off')
-
-        # ----------------------
-        # FINAL LAYOUT
-        # ----------------------
         plt.tight_layout()
-
         if self.save_path:
             plt.savefig(os.path.join(self.save_path, "combined_viz.png"),
                         dpi=300, bbox_inches='tight')
-
         plt.show()
 
 
