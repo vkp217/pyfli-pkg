@@ -5,7 +5,7 @@ from .analytical_methods import (PhasorAnalyzer, FLIFitter, PoissonLikelihoodFit
 from .dataCC import IRFAligner, DataPreprocessing, Normalization
 from .dataVnP import DataViewer, Plotter, DLModelComparator, Colorprocess
 from .roiMaker import ROIMaker
-from .solver import (BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, MLEFLIFitter, GlobalFLIFitter)
+from .solver import (BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, MLEFLIFitter, GlobalFLIFitter, FittingComparator)
 from .simulator import (Macro_sim, TCSPC_sim, FLIImageGenerator, FLICalibrator, FLIValidator)
 from .data_text import Msg_display
 
@@ -20,6 +20,6 @@ __all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport",
     "BaseFLIFitter", "Fli_CPUProcessor", "Fli_GPUProcessor", "MLEFLIFitter", "GlobalFLIFitter",
     "ROIMaker", "AnalyticalHelpers", "DataIO_utils", "Colorprocess",
     "Macro_sim", "TCSPC_sim", "FLIImageGenerator", "recovery_plot", "random_true_pixel",
-    "FLICalibrator", "FLIValidator", "Normalization", "Msg_display"
+    "FLICalibrator", "FLIValidator", "Normalization", "Msg_display", "FittingComparator"
 ]
     

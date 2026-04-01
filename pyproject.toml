@@ -25,7 +25,8 @@ dependencies = [
     "scipy",
     "tqdm",
     "seaborn",
-    "pillow"
+    "pillow",
+    "tabulate>=0.10.0"
 ]
 
 

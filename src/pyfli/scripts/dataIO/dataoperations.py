@@ -45,7 +45,7 @@ class DataOperations:
             return self._load_from_folder(self.bg_path, 
                                           sub_bg=False, 
                                           pile_up=pile_up, 
-                                          hot_pixel=hot_pixel, 
+                                          hot_pixel=True, 
                                           mode='mean', 
                                           is_background=True, 
                                           label="BG")        

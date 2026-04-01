@@ -1,5 +1,5 @@
 #### inside "pyfli.__init__.py"
-__version__ = "0.1.8"
+__version__ = "0.1.11"
 
 # Pulling everything from the scripts gatekeeper
 from .scripts import (DataOperations, IRFAligner, DataViewer, 
@@ -11,7 +11,7 @@ from .scripts import (DataOperations, IRFAligner, DataViewer,
                         GlobalFLIFitter, ROIMaker, AnalyticalHelpers, DataIO_utils, Colorprocess,
                         Macro_sim, TCSPC_sim, FLIImageGenerator, FLICalibrator, FLIValidator,Normalization,
                         recovery_plot, random_true_pixel,
-                        Msg_display)
+                        Msg_display, FittingComparator)
 
 __all__ = ['DataOperations', 'IRFAligner', 'DataViewer', 
         'AlliGprocessedImport', 'BHprocessedImport', 'PyFliprocessedImport', 
@@ -24,6 +24,6 @@ __all__ = ['DataOperations', 'IRFAligner', 'DataViewer',
         'Colorprocess', 'Macro_sim', 'TCSPC_sim', 'FLIImageGenerator', 
         'recovery_plot', 'random_true_pixel',
         'FLICalibrator', 'FLIValidator', 'Normalization',
-        'Msg_display'
+        'Msg_display', 'FittingComparator'
         ]
 

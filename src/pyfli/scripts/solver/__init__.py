@@ -4,5 +4,6 @@ from .flicpuFitter import Fli_CPUProcessor
 from .fligpuFitter import Fli_GPUProcessor
 from .mleFitter import MLEFLIFitter
 from .globalFitter import GlobalFLIFitter
+from .comparison import FittingComparator
 
-# [BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, MLEFLIFitter, GlobalFLIFitter]
+# [BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, MLEFLIFitter, GlobalFLIFitter, FittingComparator]
