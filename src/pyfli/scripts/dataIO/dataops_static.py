@@ -23,6 +23,8 @@ class Staticdataops:
         if not hp_path:
             raise ValueError('Hotpixel removal mask is not provided')
         hotpixel_mask = plt.imread(hp_path)
+        if data_3d.shape[:2] != hotpixel_mask.shape:
+            raise ValueError(f"Shape mismatch: data {data_3d.shape[:2]} vs mask {hotpixel_mask.shape}")
         hot_pixels = np.where(np.transpose(hotpixel_mask) > 0) 
         y_coords, x_coords = hot_pixels    
         for y, x in zip(y_coords, x_coords):

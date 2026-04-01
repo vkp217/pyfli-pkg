@@ -152,7 +152,6 @@ class DataOperations:
         if not loader_func:
             print(f"[WARN] No loader registered for extension: {ext}")
             return None
-
         try:
             data = loader_func(file_path)
             
@@ -161,7 +160,7 @@ class DataOperations:
                 if pile_up: 
                     data = ds.pileup_correction(data)
                 if hot_pixel: 
-                    # print(f"[DEBUG] Applying hot-pixel removal to: {os.path.basename(file_path)}")
+                    # print(f" Applying hot-pixel removal to: {os.path.basename(file_path)}")
                     data = ds.apply_interpolation_mask(data, hp_path=active_hp)
             return data
         except Exception as e:
