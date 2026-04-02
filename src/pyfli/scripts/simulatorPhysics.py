@@ -13,7 +13,7 @@ from scipy.special import hyp2f1
 from scipy.stats import truncnorm
 from tqdm import tqdm
 from PIL import Image
-from .dataIO.data_operations import DataOperations
+from .dataIO.dataoperations import DataOperations
 
 
 # Maximum IRF gate shift used by _jitter()

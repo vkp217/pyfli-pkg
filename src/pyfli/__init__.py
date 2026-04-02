@@ -10,8 +10,8 @@ from .scripts import (DataOperations, IRFAligner, DataViewer,
                         BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, MLEFLIFitter, 
                         GlobalFLIFitter, ROIMaker, AnalyticalHelpers, DataIO_utils, Colorprocess,
                         Macro_sim, TCSPC_sim, FLIImageGenerator, FLICalibrator, FLIValidator,Normalization,
-                        recovery_plot, random_true_pixel,
-                        Msg_display, FittingComparator)
+                        recovery_plot, random_true_pixel, data_masking,
+                        Msg_display, FittingComparator, Detector)
 
 __all__ = ['DataOperations', 'IRFAligner', 'DataViewer', 
         'AlliGprocessedImport', 'BHprocessedImport', 'PyFliprocessedImport', 
@@ -24,6 +24,7 @@ __all__ = ['DataOperations', 'IRFAligner', 'DataViewer',
         'Colorprocess', 'Macro_sim', 'TCSPC_sim', 'FLIImageGenerator', 
         'recovery_plot', 'random_true_pixel',
         'FLICalibrator', 'FLIValidator', 'Normalization',
-        'Msg_display', 'FittingComparator'
+        'Msg_display', 'FittingComparator',
+        'data_masking', 'Detector'
         ]
 

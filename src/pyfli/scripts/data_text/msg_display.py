@@ -1,5 +1,8 @@
 # scripts/data_text/msg_display.py
 
+import numpy as np
+from tabulate import tabulate
+
 class Msg_display:
     def __init__(self):
         pass
@@ -81,4 +84,30 @@ class Msg_display:
 
         print('-' * 60)
         print(f"{'Session Initialized':^60}")
-        print('-' * 60 + '\n')
+        print('-' * 60 + '\n')   
+
+
+    def get_pixel_summary(self, data_maps, px):
+        x, y = px
+        table_data = []    
+        for key, map_2d in data_maps.items():
+            try:
+                if isinstance(map_2d, np.ndarray) and map_2d.ndim == 2:
+                    value = map_2d[x, y]
+                    if isinstance(value, (float, np.float32, np.float64)):
+                        formatted_val = f"{value:.4f}"
+                    else:
+                        formatted_val = value
+                    table_data.append([key, formatted_val])
+            except IndexError:
+                table_data.append([key, "ERROR: Index Out of Range"])
+            except Exception as e:
+                table_data.append([key, f"ERROR: {str(e)}"])
+                
+        headers = ["Parameters", f"Value at {px}"]
+        print(f"\n{'='*50}")
+        print(f"PIXEL DIAGNOSTIC: {px}")
+        print(f"{'='*50}")
+        print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+        
+        return table_data

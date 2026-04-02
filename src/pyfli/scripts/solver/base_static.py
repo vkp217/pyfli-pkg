@@ -1,21 +1,84 @@
 # solver/base_static.py
 import numpy as np
 
+def resolve_params_and_bounds(user_p0, user_bounds, model_type, t, decay, T_laser, guess_plugin, T_acq):
+    """
+    Static Validation Layer:
+    - Merges computational guesses with user-specific overrides.
+    - Handles both list and dictionary formats for p0 and bounds.
+    - Failsafe: Ensures initial guesses (p0) are strictly inside bounds, 
+      overriding them if they are out of range.
+    """
+    # Start with smart computational guess (calls the provided plugin)
+    smart_dict = guess_plugin(t, decay, T_acq, T_laser, model_type)
+
+    # Merge User p0 (Dictionary or List)
+    # If user_p0 is provided, it overrides the smart guess.
+    if isinstance(user_p0, dict):
+        smart_dict.update(user_p0)
+    elif isinstance(user_p0, (list, np.ndarray)):
+        keys = ['amp', 'tau', 'offset'] if model_type == 'mono-exponential' else \
+                ['amp', 'alpha1', 'tau1', 'tau2', 'offset']
+        for i, val in enumerate(user_p0):
+            if i < len(keys):
+                smart_dict[keys[i]] = val
+
+    # Vectorize for Scipy Optimizers
+    if model_type == 'mono-exponential':
+        p0_vec = np.array([smart_dict['amp'], smart_dict['tau'], smart_dict['offset']])
+    else:
+        p0_vec = np.array([smart_dict['amp'], smart_dict['alpha1'], 
+                            smart_dict['tau1'], smart_dict['tau2'], smart_dict['offset']])
+
+    n_params = len(p0_vec)
+
+    # Handle Bounds (Physical Defaults)
+    low_vec = np.zeros(n_params)
+    high_vec = np.full(n_params, np.inf) 
+    if model_type == 'bi-exponential':
+        low_vec[1], high_vec[1] = 0.0, 1.0           # Alpha1 constraint
+        low_vec[2:4], high_vec[2:4] = 1e-4, T_laser  # Tau limits
+    else:
+        # For mono-exponential, index 1 is Tau
+        low_vec[1], high_vec[1] = 1e-4, T_laser 
+
+    # User Bounds Override (Dictionary or List)
+    if isinstance(user_bounds, dict):
+        key_map = {'amp':0, 'tau':1, 'offset':2} if model_type == 'mono-exponential' else \
+                  {'amp':0, 'alpha1':1, 'tau1':2, 'tau2':3, 'offset':4}
+        for k, v in user_bounds.items():
+            if k in key_map:
+                low_vec[key_map[k]], high_vec[key_map[k]] = v
+    elif isinstance(user_bounds, (list, np.ndarray)):
+        for i, b in enumerate(user_bounds):
+            if b is not None and i < n_params:
+                low_vec[i], high_vec[i] = b
+
+    # FINAL FAILSAFE: Ensuring high_vec is strictly greater than low_vec 
+    high_vec = np.maximum(high_vec, low_vec + 1e-6)
+
+    # Final safety clip: 
+    # This ensures that even if user_p0 was provided as [5000, 10.0, 0] 
+    # but the bounds were [0, 3.0], the p0 returned is 2.9999999.
+    p0_safe = np.clip(p0_vec, low_vec + 1e-7, high_vec - 1e-7)
+
+    return p0_safe, (low_vec, high_vec)
+
 def moment_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
     """
     Robustly estimates parameters using the 0th and 1st moments (Area and Mean Time).
     Returns a dictionary of parameters.
     """
-    # 1. Background (offset): 5th percentile is safer than min() for noise
+    # Background (offset): 5th percentile is safer than min() for noise
     offset_guess = np.percentile(decay, 5)
     clean_d = np.clip(decay - offset_guess, 1e-6, None)
     
-    # 2. Find peak to define the start of the 'actual' decay
+    # Find peak to define the start of the 'actual' decay
     idx_max = np.argmax(clean_d)
     t_decay = t[idx_max:] - t[idx_max]
     d_decay = clean_d[idx_max:]
     
-    # 3. Moment Analysis
+    # Moment Analysis
     m0 = np.trapezoid(d_decay, t_decay) # Total Area
     if m0 > 0:
         # Mean lifetime <t> = Integral(t * I(t)) / Integral(I(t))
@@ -27,7 +90,7 @@ def moment_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
     # Safety clipping to ensure we stay inside physical bounds of the system
     tau_g = np.clip(tau_mean, 0.05, T_laser * 0.8)
     
-    # 4. Intensity S (corrected for window truncation)
+    # Intensity S (corrected for window truncation)
     # Area = S * tau * (1 - exp(-T_acq / tau))
     s_guess = m0 / (tau_g * (1 - np.exp(-T_acq / tau_g))) if tau_g > 0 else m0
 

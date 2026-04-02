@@ -181,10 +181,10 @@ if __name__ == "__main__":
 
     # 1. Load Data
     loader = DataOperations(
-        fli_path = "exp 14 MDT set1 24hrs/24hr/mouse L/mouseL_740BP_03",
+        data_path = "exp 14 MDT set1 24hrs/24hr/mouse L/mouseL_740BP_03",
         irf_path = "exp 14 MDT set1 24hrs/24hr/mouse L/mouseL_IRF_700nm_02"
     )
-    fli_cube = loader.load_fli()
+    fli_cube = loader.load_data()
     irf_cube = loader.load_irf() # Assuming standard loader signature
 
     # 2. Draw Regions

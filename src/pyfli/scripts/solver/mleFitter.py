@@ -3,6 +3,7 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import f, chi2
 from .base_fitter import BaseFLIFitter
+from .base_static import resolve_params_and_bounds 
 
 class MLEFLIFitter(BaseFLIFitter):
     def poisson_log_likelihood(self, params, model_type):
@@ -32,11 +33,13 @@ class MLEFLIFitter(BaseFLIFitter):
         Main interface for MLE/Chi-square fitting. 
         Fully compatible with BaseFLIFitter registry and offset-based parameter resolving.
         """
-        # 1. Use base class logic to merge guesses and bounds (handles offset logic)
-        p0_safe, (l_vec, h_vec) = self._resolve_params_and_bounds(p0, bounds, model_type)
+        # Call the external static logic to merge guesses and bounds
+        p0_safe, (l_vec, h_vec) = resolve_params_and_bounds(
+            p0, bounds, model_type, self.t, self.decay, self.T_laser, self.guess_plugin, self.T_acq
+        )
         bnds = list(zip(l_vec, h_vec))
         
-        # 2. Map objective functions
+        # Mapping objective functions
         funcs = {
             'poisson': self.poisson_log_likelihood, 
             'pearson': self.pearson_chi_square, 
@@ -44,7 +47,7 @@ class MLEFLIFitter(BaseFLIFitter):
         }
         obj_func = funcs.get(estimator_type, self.poisson_log_likelihood)
         
-        # 3. Optimization using L-BFGS-B
+        # Optimization using L-BFGS-B
         res = minimize(
             obj_func, 
             x0=p0_safe, 
@@ -57,7 +60,7 @@ class MLEFLIFitter(BaseFLIFitter):
         popt = res.x
         converged = 1 if res.success else 0
 
-        # 4. Uncertainty calculation via Inverse Hessian
+        # Uncertainty calculation via Inverse Hessian
         try:
             if hasattr(res, 'hess_inv'):
                 # L-BFGS-B returns a linear operator; convert to dense to get diagonal
@@ -71,10 +74,9 @@ class MLEFLIFitter(BaseFLIFitter):
         except:
             perr = np.full(len(popt), np.nan)
 
-        # 5. Post-Processing: Hierarchy, Mono-collapse, and Statistics
-        # We pass manual_stat (the objective function value) and manual_perr
+        # Post-Processing: Hierarchy, Mono-collapse, and Statistics
         return self._post_process(popt, None, converged, model_type, 
-                                 manual_stat=res.fun, manual_perr=perr)
+                                  manual_stat=res.fun, manual_perr=perr)
 
     def _post_process(self, popt, jac, status, model_type, pcov=None, manual_stat=None, manual_perr=None):
         """
@@ -99,7 +101,7 @@ class MLEFLIFitter(BaseFLIFitter):
         final_model = self.model_fit(self.t, popt, model_type=model_type)[self.fit_indices]
         
         ssr = np.sum((final_model - data)**2)
-        # Standard chi_sq (Neyman-style) for reporting consistency even if Poisson was used for fitting
+        # Standard chi_sq (Neyman-style) for reporting consistency
         chi_sq_report = np.sum(((final_model - data)**2) / np.clip(data, 1, None))
         dof = len(data) - len(popt)
         
@@ -125,7 +127,6 @@ class MLEFLIFitter(BaseFLIFitter):
         res_m = self.fit_with_estimator(estimator, model_type='mono-exponential')
         res_b = self.fit_with_estimator(estimator, model_type='bi-exponential')
         
-        # Result indices: [3] is the stat_val (Likelihood or Chi-sq), [5] is SSR
         if estimator == 'poisson':
             # LRT: Difference in Deviance follows a Chi-square distribution
             LRT_stat = res_m[3] - res_b[3]
@@ -138,6 +139,5 @@ class MLEFLIFitter(BaseFLIFitter):
             p_val = 1 - f.cdf(f_stat, p_b - p_m, n - p_b)
         
         winner = res_b if p_val < alpha else res_m
-        # Return format consistent with BaseFLIFitter.compare_models
         return ("bi-exponential" if p_val < alpha else "mono-exponential"), \
                 winner[0], winner[1], winner[2], winner[4], p_val

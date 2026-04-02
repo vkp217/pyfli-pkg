@@ -294,17 +294,25 @@ def threshold_masking(fli, irf, threshold=100):
 
         return masked_fli, masked_irf
 
-def mask2d_3d(fli, irf, mask):
+def data_masking(*arrays, mask, return_list=False):
     mask = mask.astype(bool)
-    if mask.ndim < fli.ndim:
-        mask_expanded = mask[..., np.newaxis]
-        masked_fli = fli * mask_expanded
-        masked_irf = irf * mask_expanded
-    else:
-        masked_fli = fli * mask
-        masked_irf = irf * mask
-
-    return masked_fli, masked_irf
+    results = []
+    for arr in arrays:
+        if not isinstance(arr, np.ndarray):
+            raise TypeError("All inputs must be numpy arrays")
+        if mask.ndim < arr.ndim:
+            expand_dims = arr.ndim - mask.ndim
+            mask_expanded = mask[(...,) + (None,) * expand_dims]
+        else:
+            mask_expanded = mask
+        try:
+            masked = arr * mask_expanded
+        except ValueError:
+            raise ValueError("Mask is not broadcastable to array shape")
+        results.append(masked)
+    if len(results) == 1:
+        return results[0]
+    return results if return_list else tuple(results)
 
 
 
