@@ -15,7 +15,7 @@ class DataViewer:
             ax.scatter(y, x, color='red', s=40, marker='x', edgecolors='white', linewidths=1.5)
 
     def display_data(self, data_list, structure=(1, 1), coord=None, data_names=None, 
-                 cmaps=None, v_ranges=None, figsize=None, normalize=False, yscale='linear'):
+                    cmaps=None, v_ranges=None, figsize=None, normalize=False, yscale='linear'):
         """
         Unified 2D/3D visualization with STRICT equal-sized panels
         (images + plots + colorbars aligned perfectly)
@@ -26,7 +26,9 @@ class DataViewer:
         first_3d_idx = next((i for i, d in enumerate(data_list) if d.ndim == 3), None)
         show_decay = coord is not None and first_3d_idx is not None        
         n_cols = c + (1 if show_decay else 0)
-        fig = plt.figure(figsize=figsize or (n_cols * 5, r * 4))
+        
+        # FIX: Added layout="constrained" to figure initialization
+        fig = plt.figure(figsize=figsize or (n_cols * 5, r * 4), layout="constrained")
 
         # Main grid
         gs = gridspec.GridSpec(r, n_cols, figure=fig, wspace=0.25, hspace=0.25)
@@ -75,7 +77,8 @@ class DataViewer:
             ax_decay.grid(True, which='both', alpha=0.3)
             # hiding dummy colorbar axis but KEEP space
             cax_dummy.axis('off')
-        plt.tight_layout()
+        
+        # FIX: Removed plt.tight_layout() as it is superseded by layout="constrained"
         if self.save_path:
             plt.savefig(os.path.join(self.save_path, "combined_viz.png"),
                         dpi=300, bbox_inches='tight')

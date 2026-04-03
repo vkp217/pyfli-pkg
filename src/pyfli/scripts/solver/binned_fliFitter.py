@@ -3,8 +3,6 @@ import numpy as np
 import h5py
 import os
 from .flicpuFitter import Fli_CPUProcessor
-# Note: We don't strictly need to import GPUProcessor here to check it, 
-# but it's good practice for type hinting if needed.
 
 class BinnedFliFitter:
     def __init__(self, processor_instance, bin_radius=1):
