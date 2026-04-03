@@ -1,4 +1,3 @@
-# new data operations file class
 import os
 import numpy as np
 import tifffile
@@ -34,9 +33,9 @@ class DataOperations:
 
     # --- PUBLIC API ---
 
-    def load_fli(self, sub_bg=True, pile_up=False, hot_pixel=False):
-        print(f"Initiating FLI load from: {self.data_path}")
-        return self._general_loader(self.data_path, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel, label="FLI")
+    def load_data(self, sub_bg=True, pile_up=False, hot_pixel=False):
+        print(f"Initiating DATA load from: {self.data_path}")
+        return self._general_loader(self.data_path, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel, label="DATA")
 
     def load_background(self, pile_up=False, hot_pixel=False):
         """Loads background. If folder, returns the mean average of all files."""
@@ -65,40 +64,40 @@ class DataOperations:
         return self._general_loader(self.irf_path, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel, label="IRF")
 
     def load_all_parallel(self, sub_bg=True, pile_up=False, hot_pixel=False):
-        print("Starting synchronized parallel loading for FLI, IRF, and BG...")
+        print("Starting synchronized parallel loading for DATA, IRF, and BG...")
         with ThreadPoolExecutor(max_workers=3) as executor:
-            fli_future = executor.submit(self.load_fli, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel)
+            data_future = executor.submit(self.load_data, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel)
             irf_future = executor.submit(self.load_irf, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel)
             bg_future  = executor.submit(self.load_background, pile_up=pile_up, hot_pixel=hot_pixel)
             
-            return fli_future.result(), irf_future.result(), bg_future.result()
+            return data_future.result(), irf_future.result(), bg_future.result()
 
     def make_dataset(self, name="Experiment_1", source="ICCD", sub_bg=True, pile_up=False, hot_pixel=False):
         # Fix 2: Check for dimension consistency
         if all([self.data_path, self.irf_path, self.bg_path]):
-            fli, irf, background = self.load_all_parallel(sub_bg=sub_bg, 
+            data, irf, background = self.load_all_parallel(sub_bg=sub_bg, 
                                                           pile_up=pile_up, 
                                                           hot_pixel=hot_pixel)
         else:
             background = self.load_background(pile_up=pile_up, hot_pixel=hot_pixel) if self.bg_path else None
-            fli = self.load_fli(sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel) if self.data_path else None
+            data = self.load_data(sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel) if self.data_path else None
             irf = self.load_irf(sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel) if self.irf_path else None
         
         mask = self.load_mask()
 
-        if fli is not None and irf is not None:
-            if fli.shape[-1] != irf.shape[-1]:
-                print(f"[WARN] Temporal dimension mismatch! FLI: {fli.shape[-1]}, IRF: {irf.shape[-1]}")
+        if data is not None and irf is not None:
+            if data.shape[-1] != irf.shape[-1]:
+                print(f"[WARN] Temporal dimension mismatch! DATA: {data.shape[-1]}, IRF: {irf.shape[-1]}")
 
         return {
             "name": name, 
             "source": source, 
-            "raw_data": {"decay": fli, 
+            "raw_data": {"decay": data, 
                          "irf": irf, 
                          "background": background, 
                          "mask": mask},
             "metadata": {
-                "shape": fli.shape if fli is not None else None, 
+                "shape": data.shape if data is not None else None, 
                 "processing": {"bg_sub": sub_bg, 
                                "pile_up": pile_up, 
                                "hot_pixel": hot_pixel}
@@ -149,15 +148,15 @@ class DataOperations:
         if not loader_func:
             return None
         try:
-            data = loader_func(file_path)
-            if data is not None:
+            data_content = loader_func(file_path)
+            if data_content is not None:
                 # Fix 4: Pre-cast to float32 for processing safety
-                data = data.astype(np.float32)
+                data_content = data_content.astype(np.float32)
                 if pile_up: 
-                    data = ds.pileup_correction(data)
+                    data_content = ds.pileup_correction(data_content)
                 if hot_pixel: 
-                    data = ds.apply_interpolation_mask(data, hp_path=active_hp)
-            return data
+                    data_content = ds.apply_interpolation_mask(data_content, hp_path=active_hp)
+            return data_content
         except Exception as e:
             print(f"[ERROR] Failed to load {file_path}: {e}")
             return None
@@ -193,10 +192,10 @@ class DataOperations:
             with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
                 results = list(tqdm(executor.map(self._load_single_file_parallel, task_args), 
                                     total=len(task_args), desc=f"Loading {label}", leave=False))
-                for idx, data in results:
-                    if data is not None and data.shape == first.shape:
+                for idx, res_data in results:
+                    if res_data is not None and res_data.shape == first.shape:
                         # FIXED: Use ellipsis to target the last axis for 'idx'
-                        stack[..., idx] = data
+                        stack[..., idx] = res_data
 
         # Fix 1: Subtraction with zero-floor
         if bg_avg is not None:
@@ -215,5 +214,5 @@ class DataOperations:
 
     def _load_single_file_parallel(self, args):
         idx, path, pile_up, hot_pixel, active_hp = args
-        data = self._load_single_file(path, pile_up, hot_pixel, active_hp)
-        return idx, data
+        res_data = self._load_single_file(path, pile_up, hot_pixel, active_hp)
+        return idx, res_data
