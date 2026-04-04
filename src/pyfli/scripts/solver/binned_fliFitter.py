@@ -54,28 +54,29 @@ class BinnedFliFitter:
         Unified entry point. 
         Uses the provided processor instance to run the fit on binned data.
         """
-        # 1. Generate the binned cubes
+        # making binned cubes
         b_img, b_irf = self._apply_binning(image_cube, irf_cube)
         
-        # 2. Route to the correct engine based on the processor type
         # Check if it's the CPU Parallel Processor
         if isinstance(self.processor, Fli_CPUProcessor):
-            print("Engine: CPU Parallel Processor (Joblib)")
-            dataset = self.processor.process_image(
-                b_img, b_irf, mask=mask, data_name=data_name, **kwargs
-            )
+            print("Engine: CPU Parallel Processor")
+            if 'mode' in kwargs and 'estimator' not in kwargs:
+                kwargs['estimator'] = kwargs.pop('mode').lower()
+                dataset = self.processor.process_image(
+                    b_img, b_irf, mask=mask, data_name=data_name, **kwargs)
         
-        # Check for GPU Processor (using hasattr to avoid strict dependency on torch if not installed)
         elif hasattr(self.processor, 'fit_image'):
             print("Engine: GPU Vectorized Processor (PyTorch)")
-            dataset = self.processor.fit_image(
-                b_img, b_irf, mask=mask, data_name=data_name, **kwargs
-            )
+            if 'estimator' in kwargs and 'mode' not in kwargs:
+                kwargs['mode'] = kwargs.pop('estimator').upper()
+                kwargs.pop('n_jobs', None)
+                dataset = self.processor.fit_image(
+                    b_img, b_irf, mask=mask, data_name=data_name, **kwargs)
             
         else:
             raise TypeError("The provided processor_instance is not a recognized CPU or GPU FLI Processor.")
 
-        # 3. Inject binning metadata into the result structure
+        # metadata into result structure
         if dataset and 'results' in dataset:
             dataset['name'] = f"{data_name}_Binned_R{self.bin_radius}"
             # Ensure the maps dictionary exists before adding to it

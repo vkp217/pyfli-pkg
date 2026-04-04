@@ -1,207 +1,217 @@
 # solver/globalFitter.py
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import minimize, least_squares
+import torch
+import time
+import re
+from tqdm import tqdm
+from tabulate import tabulate
+from .comparison import FittingComparator
+from .base_static import resolve_params_and_bounds
 
 class GlobalFLIFitter:
-    def __init__(self, freq, fitter_class):
-        """
-        freq: [freq_laser, freq_acquisition]
-        fitter_class: The BaseFLIFitter or MLEFLIFitter class (not an instance)
-        """
+    def __init__(self, freq, base_fitter_class, mle_fitter_class, processor_instance=None):
         self.freq = freq
-        self.fitter_class = fitter_class
-        self.t = None
-        self.model_fit_func = None
+        self.BaseClass = base_fitter_class
+        self.MLEClass = mle_fitter_class
+        self.processor = processor_instance
+        
+        self.comparator = FittingComparator(
+            freq=self.freq, 
+            base_fitter_class=self.BaseClass, 
+            mle_fitter_class=self.MLEClass
+        )
+        
+        self.T_acq = 1000.0 / freq[1]
+        self.cluster_data = {}
 
-    def _fit_super_pixel(self, y_data, irf_p, model_type, estimator, p0, bounds, fit_range=None, **kwargs):
-        """Fits the aggregate cluster decay to extract high-SNR shared parameters."""
-        fitter = self.fitter_class(self.freq, y_data.astype(np.float32), irf_p)
+    def make_clusters(self, image_cube, irf_cube, cluster_mask, min_cluster_size=10):
+        """Extracts cluster-specific data and stores spatial coordinates for reconstruction."""
+        self.cluster_data = {}
+        cluster_ids = np.unique(cluster_mask)[np.unique(cluster_mask) != 0]
         
-        if fit_range is not None:
-            fitter.set_fit_range(*fit_range)
-        
-        # Clean kwargs for Scipy compatibility
-        fit_kwargs = kwargs.copy()
-        for key in ['global_inference', 'cluster_strategy', 'min_cluster_size']:
-            fit_kwargs.pop(key, None)
-        
-        res = list(fitter.fit_with_estimator(
-            estimator_type=estimator, 
-            model_type=model_type, 
-            p0=p0, 
-            bounds=bounds, 
-            **fit_kwargs
-        ))
-        
-        popt, perr = res[0], res[1]
-
-        # Force tau1 < tau2 ordering for bi-exponential consistency
-        if model_type == 'bi-exponential' and popt[2] > popt[3]:
-            popt[2], popt[3] = popt[3], popt[2]
-            popt[1] = 1.0 - popt[1]
-            if perr is not None: 
-                perr[2], perr[3] = perr[3], perr[2]
-            res[0], res[1] = popt, perr
-
-        self.t = fitter.t 
-        self.model_fit_func = fitter.model_fit
-        
-        fit_curve = self.model_fit_func(self.t, popt, model_type=model_type).astype(np.float32)
-        residual = (y_data - fit_curve).astype(np.float32)
-        
-        return res, fit_curve, residual
-
-    def process_clusters(self, image_cube, irf_cube, cluster_mask, estimator='poisson', 
-                         model_type='bi-exponential', cluster_strategy='mean', 
-                         min_cluster_size=5, p0=None, bounds=None, fit_range=None, **kwargs):
-        
-        self.global_inference = kwargs.get('global_inference', False)
-        H, W, T = image_cube.shape
-        param_len = 5 if model_type == 'bi-exponential' else 3
-        
-        p_maps = np.zeros((H, W, param_len), dtype=np.float32)
-        fit_map = np.zeros((H, W, T), dtype=np.float32)
-        res_map = np.zeros((H, W, T), dtype=np.float32)
-        conv_map = np.zeros((H, W), dtype=np.float32)
-        chi2_map = np.zeros((H, W), dtype=np.float32)
-        red_chi2_map = np.zeros((H, W), dtype=np.float32)
-        pixel_health_map = np.zeros((H, W), dtype=np.float32) # 1=GOOD, 0=PROBLEM
-        
-        cluster_ids = np.unique(cluster_mask)
-        cluster_ids = cluster_ids[cluster_ids != 0]
-
         for cid in cluster_ids:
             coords = np.argwhere(cluster_mask == cid)
-            if len(coords) < min_cluster_size: continue
-            
-            pixel_group = image_cube[coords[:, 0], coords[:, 1], :]
-            irf_group = irf_cube[coords[:, 0], coords[:, 1], :]
-            
-            if np.sum(pixel_group) == 0: continue
-
-            try:
-                super_y = np.mean(pixel_group, axis=0) if cluster_strategy == 'mean' else np.sum(pixel_group, axis=0)
-                super_irf = np.mean(irf_group, axis=0) if cluster_strategy == 'mean' else np.sum(irf_group, axis=0)
-                
-                res, f_super, _ = self._fit_super_pixel(super_y, super_irf, model_type, estimator, p0, bounds, fit_range=fit_range, **kwargs)
-                popt_super = res[0]
-                
-                # Shared lifetimes/fractions
-                shared = popt_super[1:4] if model_type == 'bi-exponential' else [popt_super[1]]
-                
-                # Diagnostic reporting
-                p0_sum = p0 if p0 is not None else popt_super
-                bnd_sum = bounds if bounds is not None else ([0]*param_len, [np.inf]*param_len)
-                self._print_fit_summary(p0_sum, bnd_sum, popt_super, model_type)
-
-                # Determine fit indices
-                irf_peak = np.argmax(super_irf)
-                indices = np.arange(fit_range[0], min(fit_range[1], T)) if fit_range else np.arange(irf_peak, T)
-                is_mle = 'mle' in self.fitter_class.__name__.lower()
-                
-                for i, (r, c) in enumerate(coords):
-                    try:
-                        popt, success = self._solve_local(pixel_group[i], super_irf, shared, model_type, 
-                                                         indices, estimator, is_mle, bounds, fit_range=fit_range, **kwargs)
-                        
-                        p_maps[r, c, :] = popt
-                        conv_map[r, c] = 1 if success else 0
-                        pixel_health_map[r, c] = 1 # Mark as GOOD
-                        
-                        f_px = self.model_fit_func(self.t, popt, model_type=model_type).astype(np.float32)
-                        fit_map[r, c, :] = f_px
-                        res_px = (pixel_group[i] - f_px)
-                        res_map[r, c, :] = res_px
-                        
-                        c2 = np.sum((res_px[indices]**2) / np.clip(pixel_group[i, indices], 1, None))
-                        chi2_map[r, c] = c2
-                        red_chi2_map[r, c] = c2 / (len(indices) - param_len)
-                    except Exception:
-                        pixel_health_map[r, c] = 0 # Mark as PROBLEM
-                        continue
-
-            except Exception as e:
-                print(f"Critical error fitting Cluster {cid}: {e}")
-                pixel_health_map[coords[:, 0], coords[:, 1]] = 0
+            if len(coords) < min_cluster_size: 
                 continue
             
+            self.cluster_data[f'cluster_{cid}'] = {
+                'decay': image_cube[coords[:, 0], coords[:, 1], :],
+                'irf': irf_cube[coords[:, 0], coords[:, 1], :],
+                'coords': coords,
+                'id': cid
+            }
+        return self.cluster_data
+    
+    def super_pixel_fitting(self, cluster_strategy='snr_weighted', estimator='least_squares',
+                            model_type='bi-exponential', p0=None, bounds=None):
+        """Performs high-SNR super-pixel fitting and triggers comparison plots."""
+        super_pixel_data = {}
+        super_pixel_params = {}
+        master_table_data = []
+
+        if not self.cluster_data:
+            print("No cluster data found. Run make_clusters first.")
+            return {}, {}
+
+        print(f"\n--- Fitting Super-Pixels (Strategy: {cluster_strategy}) ---")
+        
+        for c_key, data in tqdm(self.cluster_data.items(), desc="Super-Pixel Progress"):
+            decay, irf = data['decay'], data['irf']
+
+            if cluster_strategy == 'sum':
+                sp_y, sp_irf = np.sum(decay, axis=0), np.sum(irf, axis=0)
+            elif cluster_strategy == 'mean':
+                sp_y, sp_irf = np.mean(decay, axis=0), np.mean(irf, axis=0)
+            else: # SNR Weighted
+                w = np.sum(decay, axis=1) + 1e-9
+                w /= np.sum(w)
+                sp_y = np.sum(decay * w[:, np.newaxis], axis=0)
+                sp_irf = np.sum(irf * w[:, np.newaxis], axis=0)
+
+            super_pixel_data[c_key] = [sp_y, sp_irf]
+
+            # Trigger Super-Pixel Visualization
+            self.comparator.compare_selected(
+                methods=[estimator], y_data=sp_y, irf_data=sp_irf, 
+                model_type=model_type, p0=p0, bounds=bounds, 
+                yscale='log', plot=True
+            )
+
+            f_class = self.MLEClass if any(m in estimator.lower() for m in ['poisson', 'mle', 'pearson']) else self.BaseClass
+            fitter_inst = f_class(self.freq, sp_y, sp_irf)
+            
+            start_t = time.time()
+            res = fitter_inst.fit_with_estimator(
+                estimator_type=estimator, model_type=model_type, p0=p0, bounds=bounds
+            )
+            elapsed = (time.time() - start_t) * 1000
+
+            popt, r2, stat, red_stat = res[0], res[2], res[3], res[4]
+            success = "YES" if res[6] == 1 else "NO"
+            super_pixel_params[c_key] = popt
+            
+            p_str = f"A:{popt[0]:.1f}, α:{popt[1]:.2f}, τ1:{popt[2]:.2f}, τ2:{popt[3]:.2f}, B:{popt[4]:.1f}" if model_type == 'bi-exponential' else f"A:{popt[0]:.1f}, τ:{popt[1]:.2f}, B:{popt[2]:.1f}"
+            cat = "MLE" if any(m in estimator.lower() for m in ['poisson', 'pearson', 'neyman']) else "NLSF"
+            master_table_data.append([c_key, estimator.upper(), cat, success, f"{elapsed:.2f} ms", f"{r2:.4f}", f"{stat:.2f}", f"{red_stat:.4f}", p_str])
+
+        self._print_master_table(master_table_data)
+        return super_pixel_data, super_pixel_params
+
+    def process_clusters(self, image_cube, irf_cube, mask=None, gi_tol=0.2, **kwargs):
+        """
+        global_inference=True: Super-pixel values are seeds (p0), bounds are wide.
+        global_inference=False: Super-pixel values are seeds (p0), lifetimes constrained +/- gi_tol.
+        """
+        H, W, T = image_cube.shape
+        results = {}
+        model_type = kwargs.get('model_type', 'bi-exponential')
+        estimator = kwargs.get('estimator', 'least_squares')
+        global_inf = kwargs.get('global_inference', True)
+        data_name = kwargs.get('data_name', 'Global_Cluster')
+
+        passed_p0 = kwargs.pop('p0', None)
+        passed_bounds = kwargs.pop('bounds', None)
+
+        sp_data, sp_params = self.super_pixel_fitting(
+            estimator=estimator, model_type=model_type, 
+            p0=passed_p0, bounds=passed_bounds,
+            cluster_strategy=kwargs.get('cluster_strategy', 'snr_weighted')
+        )
+
+        proc = self.processor() if isinstance(self.processor, type) else self.processor
+
+        for c_key, c_info in self.cluster_data.items():
+            cid, coords = c_info['id'], c_info['coords']
+            popt_sp = sp_params.get(c_key)
+            
+            # Failsafe: check if SP fitting actually returned valid parameters
+            if popt_sp is None or np.any(np.isnan(popt_sp)): 
+                continue
+
+            c_img = np.zeros((H, W, T), dtype=np.float32)
+            c_irf = np.zeros((H, W, T), dtype=np.float32)
+            c_img[coords[:, 0], coords[:, 1], :] = c_info['decay']
+            c_irf[coords[:, 0], coords[:, 1], :] = c_info['irf']
+
+            # Seeding Logic
+            local_p0 = None
+            local_bounds = None 
+
+            if model_type == 'bi-exponential':
+                local_p0 = {'A': popt_sp[0], 'alpha1': popt_sp[1], 'tau1': popt_sp[2], 'tau2': popt_sp[3], 'B': popt_sp[4]}
+                if not global_inf:
+                    # Constrain lifetimes using dynamic gi_tol
+                    local_bounds = {
+                        'tau1': [popt_sp[2] * (1 - gi_tol), popt_sp[2] * (1 + gi_tol)],
+                        'tau2': [popt_sp[3] * (1 - gi_tol), popt_sp[3] * (1 + gi_tol)]
+                    }
+            else:
+                local_p0 = {'A': popt_sp[0], 'tau': popt_sp[1], 'B': popt_sp[2]}
+                if not global_inf:
+                    local_bounds = {'tau': [popt_sp[1] * (1 - gi_tol), popt_sp[1] * (1 + gi_tol)]}
+
+            dataset = None
+            if hasattr(proc, 'process_image'): 
+                kwargs['estimator'] = estimator.lower()
+                dataset = proc.process_image(image_cube=c_img, irf_cube=c_irf, mask=mask, p0=local_p0, bounds=local_bounds, **kwargs)
+            elif hasattr(proc, 'fit_image'): 
+                kwargs['mode'] = estimator.upper()
+                dataset = proc.fit_image(image_cube=c_img, irf_cube=c_irf, mask=mask, p0=local_p0, bounds=local_bounds, **kwargs)
+
+            if dataset and 'results' in dataset:
+                dataset['name'] = f"{data_name}_Cluster_{cid}"
+                results[str(cid)] = dataset
+                
+        return results, sp_data, sp_params
+
+    def stitch_results(self, cluster_results, H, W, T, model_type='bi-exponential'):
+        """Combines cluster-wise datasets into global maps with corrected TR naming."""
+        stitched_maps = {
+            'alpha1_map' if model_type == 'bi-exponential' else 'tau_map': np.zeros((H, W), dtype=np.float32),
+            'tau1_map': np.zeros((H, W), dtype=np.float32) if model_type == 'bi-exponential' else None,
+            'tau2_map': np.zeros((H, W), dtype=np.float32) if model_type == 'bi-exponential' else None,
+            'Area_map': np.zeros((H, W), dtype=np.float32),
+            'offset_map': np.zeros((H, W), dtype=np.float32),
+            'Chi2_map': np.zeros((H, W), dtype=np.float32),
+            'pixel_health_map': np.zeros((H, W), dtype=np.float32)
+        }
+        
+        stitched_tr = {
+            'fit_map': np.zeros((H, W, T), dtype=np.float32),
+            'residual_map': np.zeros((H, W, T), dtype=np.float32)
+        }
+
+        for cid, dataset in cluster_results.items():
+            c_key = f'cluster_{cid}'
+            if c_key not in self.cluster_data: continue
+            
+            coords = self.cluster_data[c_key]['coords']
+            r_idx, c_idx = coords[:, 0], coords[:, 1]
+            
+            res_data = dataset.get('results', {})
+            maps = res_data.get('maps', {})
+            tr_maps = res_data.get('TR_maps', {})
+
+            # Map parameter values
+            for key in stitched_maps.keys():
+                if key in maps and stitched_maps[key] is not None:
+                    stitched_maps[key][r_idx, c_idx] = maps[key][r_idx, c_idx]
+            
+            # Map TR data using corrected naming keys
+            if 'fit_map' in tr_maps:
+                stitched_tr['fit_map'][r_idx, c_idx, :] = tr_maps['fit_map'][r_idx, c_idx, :]
+            if 'residual_map' in tr_maps:
+                stitched_tr['residual_map'][r_idx, c_idx, :] = tr_maps['residual_map'][r_idx, c_idx, :]
+
         return {
+            'name': "Global_Stitched_Result",
             'results': {
-                'maps': self._format_maps(p_maps, model_type, conv_map, chi2_map, red_chi2_map, pixel_health_map), 
-                'TR_maps': {'fit_map': fit_map, 'residual_map': res_map}
+                'maps': {k: v for k, v in stitched_maps.items() if v is not None},
+                'TR_maps': stitched_tr
             }
         }
 
-    def _solve_local(self, pixel_data, irf, shared, model_type, indices, estimator, is_mle, bounds=None, fit_range=None, **kwargs):
-        s_g, b_g = np.max(pixel_data), np.mean(pixel_data[:5])
-        temp_fitter = self.fitter_class(self.freq, pixel_data, irf)
-        
-        if fit_range is not None:
-            temp_fitter.set_fit_range(*fit_range)
-        
-        local_kwargs = kwargs.copy()
-        for key in ['global_inference', 'cluster_strategy', 'min_cluster_size']:
-            local_kwargs.pop(key, None)
-        
-        max_iterations = local_kwargs.pop('maxiter', 500)
-
-        if model_type == 'bi-exponential':
-            def map_params(params): return [params[0], shared[0], shared[1], shared[2], params[1]]
-        else:
-            def map_params(params): return [params[0], shared[0], params[1]]
-
-        if self.global_inference:
-            p0_full = [s_g, shared[0], shared[1], shared[2], b_g] if model_type == 'bi-exponential' else [s_g, shared[0], b_g]
-            res = temp_fitter.fit_with_estimator(estimator_type=estimator, model_type=model_type, p0=p0_full, 
-                                                bounds=bounds, maxiter=max_iterations, **local_kwargs)           
-            return res[0], (res[6] == 1)
-        
-        else:
-            if is_mle:
-                def objective(params): return temp_fitter.poisson_log_likelihood(map_params(params), model_type)
-                res = minimize(objective, x0=[s_g, b_g], bounds=[(0, None), (0, s_g)], 
-                               method='L-BFGS-B', options={'maxiter': max_iterations})
-                popt, success = map_params(res.x), res.success
-            else:              
-                def residuals(params):
-                    full_p = map_params(params)
-                    fit_curve = temp_fitter.model_fit(temp_fitter.t, full_p, model_type=model_type)
-                    return (pixel_data[indices] - fit_curve[indices]).astype(np.float64)
-
-                res = least_squares(residuals, x0=[s_g, b_g], bounds=([0, 0], [np.inf, s_g]), max_nfev=max_iterations)
-                popt, success = map_params(res.x), res.status > 0
-                
-            return popt, success
-
-    def _print_fit_summary(self, p0, bounds, popt, model_type):
-        names = ['Amp', 'alpha1', 'tau1', 'tau2', 'BG'] if model_type == 'bi-exponential' else ['Amp', 'tau', 'BG']
-        print(f"\nCluster shared parameters extracted:")
-        print(f"{'Param':<8} | {'P0 Guess':<10} | {'Lower B':<10} | {'Upper B':<10} | {'Final Fit':<10}")
-        print("-" * 65)
-        for i, name in enumerate(names):
-            if i < len(popt):
-                print(f"{name:<8} | {p0[i]:<10.4f} | {bounds[0][i]:<10.4f} | {bounds[1][i]:<10.4f} | {popt[i]:<10.4f}")
-
-    def _format_maps(self, p_maps, model_type, conv_map, chi2_map, red_chi2_map, health_map):
-        S = p_maps[..., 0]
-        res = {
-            'Area_map': S, 
-            'offset_map': p_maps[..., -1], # Renamed for library compatibility
-            'convergence_map': conv_map, 
-            'pixel_health_map': health_map, # New foolproof health indicator
-            'Chi2_map': chi2_map, 
-            'Red_Chi2_map': red_chi2_map
-        }
-        if model_type == 'bi-exponential':
-            res.update({
-                'alpha1_map': p_maps[..., 1], 
-                'tau1_map': p_maps[..., 2], 
-                'tau2_map': p_maps[..., 3],
-                'alpha2_map': 1.0 - p_maps[..., 1],
-                'Int_A1_map': S * p_maps[..., 1],
-                'Int_A2_map': S * (1.0 - p_maps[..., 1])
-            })
-        else:
-            res.update({'tau_map': p_maps[..., 1]})
-        return res
+    def _print_master_table(self, data):
+        headers = ["Cluster", "Method", "Type", "Conv", "Time", "R2", "Chi2", "Red. Chi2", "Parameters"]
+        print("\n" + "═"*165 + "\nCONSOLIDATED CLUSTER BENCHMARK\n" + "═"*165)
+        print(tabulate(data, headers=headers, tablefmt="fancy_grid", numalign="center", stralign="center"))

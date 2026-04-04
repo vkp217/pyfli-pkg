@@ -55,12 +55,12 @@ Even though the package is installed as `pyfli-lib`, you import it as `pyfli` in
 from pyfli import DataOperations
 
 loader = DataOperations(    
-    fli_path = "experimental_data.sdt",
+    data_path = "experimental_data.sdt",
     irf_path = "instrument_data.txt", 
     bg_path = "background_data.tif",   
     mask_path="background_data.png",
     )
-fli_data = loader.load_fli()
+decay_data = loader.load_data()
 irf_data = loader.load_irf()
 
 ```

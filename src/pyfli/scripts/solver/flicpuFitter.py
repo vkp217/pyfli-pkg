@@ -4,7 +4,7 @@ import h5py
 import os
 from joblib import Parallel, delayed
 from tqdm import tqdm
-from .globalFitter import GlobalFLIFitter
+# from .globalFitter import GlobalFLIFitter
 
 class Fli_CPUProcessor:
     def __init__(self, freq, fitter_class):
@@ -159,39 +159,39 @@ class Fli_CPUProcessor:
             }
         }
 
-    def process_spatial_global(self, image_cube, irf_cube, window_size=3, step=1, model_type='bi-exponential'):
-        """
-        Applies spatial global fitting in NxN neighborhoods.
-        """
-        if not issubclass(self.fitter_class, GlobalFLIFitter):
-            raise TypeError("Spatial Global fitting requires GlobalFLIFitter class.")
+    # def process_spatial_global(self, image_cube, irf_cube, window_size=3, step=1, model_type='bi-exponential'):
+    #     """
+    #     Applies spatial global fitting in NxN neighborhoods.
+    #     """
+    #     if not issubclass(self.fitter_class, GlobalFLIFitter):
+    #         raise TypeError("Spatial Global fitting requires GlobalFLIFitter class.")
             
-        H, W, T = image_cube.shape
-        pad = window_size // 2
+    #     H, W, T = image_cube.shape
+    #     pad = window_size // 2
         
-        tau1_map = np.zeros((H, W))
-        tau2_map = np.zeros((H, W))
-        a1_map = np.zeros((H, W))
+    #     tau1_map = np.zeros((H, W))
+    #     tau2_map = np.zeros((H, W))
+    #     a1_map = np.zeros((H, W))
         
-        # Initialize a global fitter instance
-        g_fitter = self.fitter_class(self.freq, image_cube[0,0,:], irf_cube[0,0,:])
+    #     # Initialize a global fitter instance
+    #     g_fitter = self.fitter_class(self.freq, image_cube[0,0,:], irf_cube[0,0,:])
         
-        for r in tqdm(range(pad, H - pad, step), desc="Spatial Global Fitting"):
-            for c in range(pad, W - pad, step):
-                # Extract neighborhood and flatten
-                pixel_group = image_cube[r-pad:r+pad+1, c-pad:c+pad+1, :].reshape(-1, T)
+    #     for r in tqdm(range(pad, H - pad, step), desc="Spatial Global Fitting"):
+    #         for c in range(pad, W - pad, step):
+    #             # Extract neighborhood and flatten
+    #             pixel_group = image_cube[r-pad:r+pad+1, c-pad:c+pad+1, :].reshape(-1, T)
                 
-                # Fit the neighborhood globally
-                popt, perr, rsq, stat, red_stat, ssr, success = g_fitter.fit_with_estimator(
-                    model_type=model_type, pixel_group=pixel_group
-                )
+    #             # Fit the neighborhood globally
+    #             popt, perr, rsq, stat, red_stat, ssr, success = g_fitter.fit_with_estimator(
+    #                 model_type=model_type, pixel_group=pixel_group
+    #             )
                 
-                if success:
-                    a1_map[r, c] = popt[0]
-                    tau1_map[r, c] = popt[1]
-                    tau2_map[r, c] = popt[2]
+    #             if success:
+    #                 a1_map[r, c] = popt[0]
+    #                 tau1_map[r, c] = popt[1]
+    #                 tau2_map[r, c] = popt[2]
                     
-        return {'tau1_map': tau1_map, 'tau2_map': tau2_map, 'alpha1_map': a1_map}
+    #     return {'tau1_map': tau1_map, 'tau2_map': tau2_map, 'alpha1_map': a1_map}
 
     def save_results(self, dataset, folder="results"):
         """Saves the structured dataset to HDF5 with compression."""

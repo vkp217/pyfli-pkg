@@ -5,6 +5,7 @@ import h5py
 import os
 import time
 from tqdm import tqdm
+from .base_static import resolve_params_and_bounds, moment_based_guess
 
 class Fli_GPUProcessor:
     def __init__(self, freq, fitter_class=None, device=None):
@@ -69,7 +70,8 @@ class Fli_GPUProcessor:
                 return torch.zeros_like(p_phys)
 
     def fit_image(self, image_cube, irf_cube, mask=None, mode='MLE', 
-                  model_type='bi-exponential', max_iter=150, CRLB=False, data_name="Torch_Fit"):
+                  model_type='bi-exponential', max_iter=150, CRLB=False, 
+                  data_name="Torch_Fit", **kwargs):
         start_time = time.time()
         H, W, T = image_cube.shape
         t_axis = torch.linspace(0, self.T_acq, T, device=self.device)
@@ -134,6 +136,7 @@ class Fli_GPUProcessor:
 
         try:
             optimizer.step(closure)
+            pbar.update(max_iter - pbar.n)
         except Exception as e:
             print(f"Optimization interrupted: {e}")
             pixel_health_map[valid_idx] = 0
@@ -214,17 +217,29 @@ class Fli_GPUProcessor:
         }
 
     def _get_sophisticated_guess(self, data, irf, model_type):
-        """Extracts initial guesses using the static logic from base_fitter/base_static."""
         guesses = []
-        cpu_data = data.cpu().numpy()
-        cpu_irf = irf.cpu().numpy()
+        cpu_data = data.detach().cpu().numpy()
+        cpu_irf = irf.detach().cpu().numpy()
+        T = cpu_data.shape[-1]
+        t_axis = np.linspace(0, self.T_acq, T)        
+        # for handling IRF geometry (Global vs Binned)
+        single_irf = cpu_irf.ndim == 1 or cpu_irf.shape[0] != cpu_data.shape[0]
+
         for i in range(cpu_data.shape[0]):
-            f = self.fitter_class(self.freq, cpu_data[i], cpu_irf[i])
-            g_dict = f.initial_guess(model_type)
-            if model_type == 'bi-exponential':
-                guesses.append([g_dict['amp'], g_dict['alpha1'], g_dict['tau1'], g_dict['tau2'], g_dict['offset']])
-            else:
-                guesses.append([g_dict['amp'], g_dict['tau'], g_dict['offset']])
+            current_decay = cpu_data[i]
+        
+            p0_safe, _ = resolve_params_and_bounds(
+                user_p0=None, 
+                user_bounds=None, 
+                model_type=model_type, 
+                t=t_axis, 
+                decay=current_decay, 
+                T_laser=self.T_laser, 
+                guess_plugin=moment_based_guess, 
+                T_acq=self.T_acq
+            )
+            
+            guesses.append(p0_safe)
         return torch.tensor(np.array(guesses), device=self.device, dtype=torch.float32)
 
     def save_results(self, dataset, folder="results"):
