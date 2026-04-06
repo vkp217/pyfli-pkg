@@ -3,7 +3,7 @@ from .dataIO import (DataOperations, AlliGprocessedImport,
                         BHprocessedImport, PyFliprocessedImport, DatasetPlotter, DataIO_utils,
                          Detector )
 from .analytical_methods import (PhasorAnalyzer, FLIFitter, PoissonLikelihoodFitter, FLIAnalysisSuite, AnalyticalHelpers)
-from .dataCC import IRFAligner, DataPreprocessing, Normalization
+from .dataCC import IRFAligner, DataPreprocessing, Normalization, ROIoperations
 from .dataVnP import DataViewer, Plotter, DLModelComparator, Colorprocess
 from .roiMaker import ROIMaker
 from .solver import (BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, 
@@ -24,6 +24,6 @@ __all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport",
     "ROIMaker", "AnalyticalHelpers", "DataIO_utils", "Colorprocess",
     "Macro_sim", "TCSPC_sim", "FLIImageGenerator", "recovery_plot", "random_true_pixel",
     "FLICalibrator", "FLIValidator", "Normalization", "Msg_display", "FittingComparator",
-    "data_masking", "Detector", "BinnedFliFitter"
+    "data_masking", "Detector", "BinnedFliFitter", "ROIoperations"
 ]
     

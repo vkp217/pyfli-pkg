@@ -12,7 +12,7 @@ from .scripts import (DataOperations, IRFAligner, DataViewer,
                         Macro_sim, TCSPC_sim, FLIImageGenerator, FLICalibrator, FLIValidator,Normalization,
                         recovery_plot, random_true_pixel, data_masking,
                         Msg_display, FittingComparator, Detector,
-                        BinnedFliFitter)
+                        BinnedFliFitter, ROIoperations)
 
 __all__ = ['DataOperations', 'IRFAligner', 'DataViewer', 
         'AlliGprocessedImport', 'BHprocessedImport', 'PyFliprocessedImport', 
@@ -26,6 +26,7 @@ __all__ = ['DataOperations', 'IRFAligner', 'DataViewer',
         'recovery_plot', 'random_true_pixel',
         'FLICalibrator', 'FLIValidator', 'Normalization',
         'Msg_display', 'FittingComparator',
-        'data_masking', 'Detector', 'BinnedFliFitter'
+        'data_masking', 'Detector', 'BinnedFliFitter',
+        'ROIoperations'
         ]
 
