@@ -61,11 +61,16 @@ class Staticdataops:
 
     @staticmethod
     def load_mat_file(path):
-        mat_data = loadmat(path, squeeze_me=True)
-        # Filter out metadata keys
-        keys = [k for k in mat_data.keys() if not k.startswith('__')]
-        return np.asarray(mat_data[keys[0]])
-
+        try:
+            data = loadmat(path, squeeze_me=True)
+            keys = [k for k in data.keys() if not k.startswith('__')]
+            return np.asarray(data[keys[0]])
+        
+        except NotImplementedError:
+            with h5py.File(path, 'r') as mat_data:
+                keys = [k for k in mat_data.keys() if k not in ['#refs#', '#subsystem#']]
+                return np.asarray(mat_data[keys[0]])
+        
     @staticmethod
     def load_sdt_file(path):
         return np.asarray(SdtFile(path).data[0])
