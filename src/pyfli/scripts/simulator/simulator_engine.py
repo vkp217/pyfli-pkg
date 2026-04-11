@@ -19,7 +19,7 @@ class FLIEngine:
                  **kwargs
                  ):
         
-        # 1. IRF Selection Logic (Robust for 3D stacks)
+        # IRF Selection Logic
         if irf_full.ndim == 3:
             max_attempts = 1000
             attempts = 0
@@ -45,15 +45,15 @@ class FLIEngine:
         else:
             raise ValueError(f'IRF must be 1-D or 3-D, got shape {irf_full.shape}')
 
-        # 2. Timing and Normalization
+        # Timing and Normalization
         self.irf = np.nan_to_num(irf / irf.sum())
         self.laser_period = 1000/laser_feq
         self.t = np.linspace(0, self.laser_period, len(self.irf))
         
-        # CRITICAL: Compatibility with TCSPC logic
+        # Compatibility with TCSPC logic
         self.dt = self.t[1] - self.t[0]
 
-        # 3. Parameters Storage
+        #  Parameters Storage
         self.params_cfg = {
             'tau2': tau2, 
             'eff': efficiency, 

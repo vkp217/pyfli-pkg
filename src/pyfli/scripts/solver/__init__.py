@@ -5,7 +5,7 @@ from .fligpuFitter import Fli_GPUProcessor
 from .mleFitter import MLEFLIFitter
 from .globalFitter import GlobalFLIFitter
 from .comparison import FittingComparator
-from .binned_fliFitter import BinnedFliFitter
+from .binned_fliFitter import BinnedFliFitter, FliBinner
 
 # [BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, MLEFLIFitter, GlobalFLIFitter, FittingComparator,
-# BinnedFliFitter]
+# BinnedFliFitter, FliBinner]

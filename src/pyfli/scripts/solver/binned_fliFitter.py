@@ -4,23 +4,17 @@ import h5py
 import os
 from .flicpuFitter import Fli_CPUProcessor
 
-class BinnedFliFitter:
-    def __init__(self, processor_instance, bin_radius=1):
+class FliBinner:
+    def __init__(self, bin_radius=1):
         """
-        Wraps an existing CPU or GPU processor to provide spatial binning.
-        
-        processor_instance: An instance of Fli_CPUProcessor or Fli_GPUProcessor.
+        Handles the spatial binning logic for FLIM data cubes.
         bin_radius: n surrounding pixels (bin=1 -> 3x3 window, bin=2 -> 5x5).
         """
-        self.processor = processor_instance
         self.bin_radius = bin_radius
-        self.freq = processor_instance.freq
-        
-        # State storage for extraction after binning
         self.binned_img = None
         self.binned_irf = None
 
-    def _apply_binning(self, image_cube, irf_cube):
+    def apply_binning(self, image_cube, irf_cube):
         """
         Performs spatial binning using constant padding to maintain 
         original image dimensions.
@@ -41,7 +35,6 @@ class BinnedFliFitter:
         print(f"Applying spatial binning: Radius={n} ({window_size}x{window_size} window)")
         
         # 3. Fast vectorized summation using window offsets
-        # This effectively creates a box filter sum
         for dx in range(window_size):
             for dy in range(window_size):
                 self.binned_img += img_pad[dx:dx+H, dy:dy+W, :]
@@ -49,37 +42,65 @@ class BinnedFliFitter:
         
         return self.binned_img, self.binned_irf
 
-    def fit(self, image_cube, irf_cube, mask=None, data_name="Binned_Dataset", **kwargs):
+    def get_binned_data(self):
+        """Returns the binned cubes for manual inspection."""
+        return self.binned_img, self.binned_irf
+
+
+class BinnedFliFitter:
+    def __init__(self, processor_instance, bin_radius=1):
         """
-        Unified entry point. 
-        Uses the provided processor instance to run the fit on binned data.
+        Wraps an existing CPU or GPU processor.
+        
+        processor_instance: An instance of Fli_CPUProcessor or Fli_GPUProcessor.
+        bin_radius: Passed to maintain metadata consistency.
         """
-        # making binned cubes
-        b_img, b_irf = self._apply_binning(image_cube, irf_cube)
+        self.processor = processor_instance
+        self.bin_radius = bin_radius
+        self.freq = processor_instance.freq
+
+    def fit(self, b_img, b_irf, mask=None, data_name="Binned_Dataset", **kwargs):
+        """
+        Unified entry point using Duck-Typing.
+        Accepts PRE-BINNED data cubes.
+        """
+        # 1. Setup variables
+        dataset = None
+        proc = self.processor
         
-        # Check if it's the CPU Parallel Processor
-        if isinstance(self.processor, Fli_CPUProcessor):
-            print("Engine: CPU Parallel Processor")
-            if 'mode' in kwargs and 'estimator' not in kwargs:
-                kwargs['estimator'] = kwargs.pop('mode').lower()
-                dataset = self.processor.process_image(
-                    b_img, b_irf, mask=mask, data_name=data_name, **kwargs)
-        
-        elif hasattr(self.processor, 'fit_image'):
-            print("Engine: GPU Vectorized Processor (PyTorch)")
-            if 'estimator' in kwargs and 'mode' not in kwargs:
-                kwargs['mode'] = kwargs.pop('estimator').upper()
-                kwargs.pop('n_jobs', None)
-                dataset = self.processor.fit_image(
-                    b_img, b_irf, mask=mask, data_name=data_name, **kwargs)
-            
+        # Safely extract estimator, defaulting to 'least_squares' if not provided
+        estimator = kwargs.pop('estimator', 'least_squares')
+
+        # 2. Dynamic Engine Dispatch
+        if hasattr(proc, 'process_image'): 
+            print(f"Engine: CPU Parallel Processor (via {type(proc).__name__})")
+            kwargs['estimator'] = estimator.lower()
+            dataset = proc.process_image(
+                image_cube=b_img, 
+                irf_cube=b_irf, 
+                mask=mask, 
+                data_name=data_name, 
+                **kwargs
+            )
+
+        elif hasattr(proc, 'fit_image'): 
+            print(f"Engine: GPU Vectorized Processor (via {type(proc).__name__})")
+            kwargs['mode'] = estimator.upper()
+            kwargs.pop('n_jobs', None) # Clean up CPU-specific args
+            dataset = proc.fit_image(
+                image_cube=b_img, 
+                irf_cube=b_irf, 
+                mask=mask, 
+                data_name=data_name, 
+                **kwargs
+            )
+
         else:
             raise TypeError("The provided processor_instance is not a recognized CPU or GPU FLI Processor.")
 
-        # metadata into result structure
+        # 3. Metadata Injection
         if dataset and 'results' in dataset:
             dataset['name'] = f"{data_name}_Binned_R{self.bin_radius}"
-            # Ensure the maps dictionary exists before adding to it
             if 'maps' in dataset['results']:
                 dataset['results']['maps']['bin_radius'] = self.bin_radius
                 
@@ -91,7 +112,3 @@ class BinnedFliFitter:
             print("No dataset provided to save.")
             return
         self.processor.save_results(dataset, folder)
-
-    def get_binned_data(self):
-        """Returns the binned cubes for manual inspection or secondary analysis."""
-        return self.binned_img, self.binned_irf

@@ -39,6 +39,8 @@ class Detector:
             '.roiN': ds.load_roiN_file ## I have to adde this format
         }
 
+    
+
     # def SS3(self, bg_sub = True, pile_up = True ):
 
 

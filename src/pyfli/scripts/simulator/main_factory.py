@@ -29,18 +29,18 @@ class Macro_sim:
         # Sample peak intensity (A) from Beta distribution
         A = ParameterSampler.beta_sample(alpha_pc, beta_pc, scale=max_adc_val)
         
-        # 2. Generate Clean Analytical Convolution
+        # Generating Clean Analytical Convolution
         clean_decay = self.engine.get_analytical_decay(p)
         full_conv = fftconvolve(clean_decay, self.engine.irf, mode='full')[:len(clean_decay)]
         
-        # 3. INITIAL SCALING: Scale the convolved signal so its PEAK matches A
+        # INITIAL SCALING: Scale the convolved signal so its PEAK matches A
         if np.max(full_conv) > 0:
             scale_factor = A / np.max(full_conv)
             obs = full_conv * scale_factor
         else:
             obs = full_conv.copy()
 
-        # 4. Apply Modular Noise Pipeline
+        # Applying Modular Noise Pipeline
         if self.use_jitter:
             shift = np.random.randint(-2, 3)
             obs = np.roll(obs, shift)
@@ -61,14 +61,14 @@ class Macro_sim:
             # Poisson must be applied to the intensity-scaled signal
             obs = NoiseEngine.apply_poisson(obs)
 
-        # 5. Final Quantization
+        # Final Quantization
         if self.use_rounding:
             obs = np.round(obs)
             
         if self.use_clipping:
             obs = np.clip(obs, 0, max_adc_val)
 
-        # 6. FINAL FIT SCALING: Scale the "Clean Fit" to match the "Observed Peak"
+        # FINAL FIT SCALING: Scale the "Clean Fit" to match the "Observed Peak"
         # This ensures the residuals (obs - fit) reflect ONLY the noise/stochastics
         obs_peak = np.max(obs)
         if obs_peak > 0:
