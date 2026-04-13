@@ -425,7 +425,7 @@ class PhasorAnalyzer:
         return colors
 
     # Visualization
-    def plot_phasor_diagram(self, G, S, colors=None, hexbin_color = None ,ax=None, figsize=(8, 6)):
+    def plot_phasor_diagram(self, G, S, mask=None, colors=None, hexbin_color=None, ax=None, figsize=(8, 6)):
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
@@ -434,44 +434,51 @@ class PhasorAnalyzer:
         ug, us = _universal_circle_xy()
         ax.plot(ug, us, "k--")
 
-        # Scatter / density
-        g_flat, s_flat = np.ravel(G), np.ravel(S)
+        g_flat = np.ravel(G)
+        s_flat = np.ravel(S)
+        if mask is not None:
+            mask_flat = np.ravel(mask)
+            g_plot = g_flat[mask_flat]
+            s_plot = s_flat[mask_flat]
+        else:
+            g_plot = g_flat
+            s_plot = s_flat
+
+        # 3. Scatter / density
         if colors is None:
-            if hexbin_color is None:
-                hb = ax.hexbin(g_flat, s_flat, gridsize=200, cmap='autumn', mincnt=1)
-            else:
-                hb = ax.hexbin(g_flat, s_flat, gridsize=200, cmap=hexbin_color, mincnt=1)
+            cmap_to_use = hexbin_color if hexbin_color is not None else 'autumn'
+            # hexbin counts
+            hb = ax.hexbin(g_plot, s_plot, gridsize=200, cmap=cmap_to_use, mincnt=1)           
             if created_fig:
+                # Colorbar reflects the range of pixel counts in g_plot/s_plot
                 fig.colorbar(hb, ax=ax).set_label("Pixel Count")
         else:
-            # If colors is a string, treat it as a colormap name
             if isinstance(colors, str):
-                ax.scatter(g_flat, s_flat, cmap=colors, c=g_flat, s=8, marker="o") 
+                # If using a colormap name, 'c' values must also be masked
+                c_vals = g_plot 
+                path = ax.scatter(g_plot, s_plot, cmap=colors, c=c_vals, s=8, marker="o")
+                if created_fig:
+                    fig.colorbar(path, ax=ax).set_label("Phasor G Value")
             else:
-                # If it's an array of RGB values, keep your reshape logic
-                ax.scatter(g_flat, s_flat, c=np.reshape(colors, (-1, 3)), s=8, marker="o")
+                # If colors is an RGB array (H, W, 3), mask it to match g_plot
+                c_flat = np.reshape(colors, (-1, 3))
+                if mask is not None:
+                    c_plot = c_flat[mask_flat]
+                else:
+                    c_plot = c_flat
+                ax.scatter(g_plot, s_plot, c=c_plot, s=8, marker="o")
 
-        # Lifetime ticks
         G_mark, S_mark = self.lifetime_to_phasor(_TAU_MARKS_NS, self.frequency)
-        _draw_lifetime_ticks(ax, G_mark, S_mark,
-                             color="black", lw=4, fontsize=10, show_units=True)
+        _draw_lifetime_ticks(ax, G_mark, S_mark, color="black", lw=4, fontsize=10, show_units=True)
 
         _style_phasor_ax(ax, title="IRF-Calibrated Phasor Diagram",
-                         xlim=(-0.1, 1.1), ylim=(-0.6, 0.6))
+                        xlim=(-0.1, 1.1), ylim=(-0.6, 0.6))
 
         if created_fig:
             plt.tight_layout()
             plt.show()
 
-    def plot_map(self, image, scales = [0, 5], title=""):
-        """
-        Display a lifetime map clipped to [0, 5] ns.
-
-        Parameters
-        ----------
-        image : ndarray, shape (H, W)
-        title : str
-        """
+    def plot_map(self, image, scales = [0, 2], title=""):
         plt.figure(figsize=(8, 6))
         plt.imshow(np.clip(image, scales[0], scales[1]), origin="lower", cmap="viridis")
         plt.colorbar().set_label("Lifetime (ns)")
@@ -482,16 +489,6 @@ class PhasorAnalyzer:
         plt.show()
 
     def plot_phasor_overlay(self, decay, G, S, colormap="viridis", figsize=(8, 8)):
-        # """
-        # Display phasor-coloured intensity overlay.
-
-        # Parameters
-        # ----------
-        # decay : ndarray, shape (H, W, T)
-        # G, S : ndarray
-        # colormap : str
-        # figsize : tuple
-        # """
         intensity_img = self.generate_intensity_image(decay)
         phasor_colors = self.phasor_colormap(G, S, colormap=colormap)
         int_norm = (intensity_img - intensity_img.min()) / \
@@ -586,7 +583,7 @@ class PhasorAnalyzer:
         im2 = ax2.imshow(pure_phasor, origin="lower")
         ax2.set_title("Pure Phasor Map (Categorical)")
         ax2.axis("off")
-        plt.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
+        # plt.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
 
         # (2,1) Phasor Lifetime
         ax3 = fig.add_subplot(gs[1, 0])
@@ -600,7 +597,7 @@ class PhasorAnalyzer:
         im4 = ax4.imshow(overlay_weighted, origin="lower")
         ax4.set_title("Intensity-weighted Phasor Overlay")
         ax4.axis("off")
-        plt.colorbar(im4, ax=ax4, fraction=0.046, pad=0.04).set_label("ns")
+        # plt.colorbar(im4, ax=ax4, fraction=0.046, pad=0.04).set_label("ns")
 
         # (1,3) and (2,3) Combined: Nice Phasor Plot
         ax5 = fig.add_subplot(gs[:, 2]) # Spans all rows in col 2
