@@ -3,6 +3,8 @@ import torch
 import matplotlib.pyplot as plt
 import h5py
 import matplotlib.gridspec as gridspec
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 
 
 # Constants
@@ -60,25 +62,7 @@ def _style_phasor_ax(ax, title: str = "Phasor Diagram",
     ax.axvline(0, color="black", lw=1)
     ax.tick_params(direction="in", length=6, width=1)
 
-
-# ---------------------------------------------------------------------------
-# PhasorAnalyzer
-# ---------------------------------------------------------------------------
 class PhasorAnalyzer:
-    """
-    Phasor-based FLIM analysis tool.
-
-    Parameters
-    ----------
-    frequency_hz : float
-        Laser repetition frequency in Hz (e.g. 80e6).
-    time_axis_ns : array-like
-        Time axis of the TCSPC histogram in nanoseconds.
-    n_harmonics : int, optional
-        Number of harmonics to compute (default 1).
-    device : str or None, optional
-        Torch device ("cuda", "cpu", or None for auto-detect).
-    """
 
     def __init__(self, frequency_hz, time_axis_ns, n_harmonics=1, device=None):
         self.frequency = float(frequency_hz)
@@ -90,7 +74,6 @@ class PhasorAnalyzer:
         self.t_s_torch = torch.tensor(self.t_s_np, dtype=torch.float32,
                                       device=self.device)
         self.eps = 1e-12
-
 
     # Core phasor computation
     def _phasor_numpy(self, decay):
@@ -139,10 +122,8 @@ class PhasorAnalyzer:
     def create_phasor_gpu(self, decay):
         # decay : ndarray, shape (..., T)
         # G, S : ndarray, shape (n_harmonics, ...)
-
         G, S = self._phasor_torch(decay)
         return G.cpu().numpy(), S.cpu().numpy()
-
 
     # IRF calibration
     def calibrate(self, G, S, irf):
@@ -213,16 +194,6 @@ class PhasorAnalyzer:
             G_meas = torch.tensor(G[k - 1], device=self.device)          # (H, W)
             S_meas = torch.tensor(S[k - 1], device=self.device)          # (H, W)
 
-            # ---- Complex division  P_true = P_meas / P_irf ---------------
-            #
-            #   Re(P_true)  =  (G_meas·G_irf + S_meas·S_irf) / |P_irf|²
-            #   Im(P_true)  =  (S_meas·G_irf − G_meas·S_irf) / |P_irf|²
-            #
-            # This is equivalent to multiplying P_meas by the conjugate of
-            # P_irf and dividing by |P_irf|², which is the standard formula
-            # for complex division expressed in real arithmetic — no complex
-            # dtype needed, avoids potential CUDA complex precision issues.
-
             denom = (G_irf ** 2 + S_irf ** 2).clamp(min=self.eps)        # |P_irf|²
 
             Gc_k = (G_meas * G_irf + S_meas * S_irf) / denom            # (H, W)
@@ -242,21 +213,21 @@ class PhasorAnalyzer:
         denom = 1 + (omega * tau_s) ** 2
         return 1 / denom, (omega * tau_s) / denom
 
-    def compute_lifetime(self, S, G):
+    def compute_lifetime(self, G, S):
         # per-pixel phase lifetime from phasor coordinates.
         # S, G : ndarray to tau_map_ns (in ns)  
         return (1 / self.omega) * (S / (G + self.eps)) * 1e9
 
     # Fraction decomposition 
-    def compute_fractions(self, G, S, tau1_ns, tau2_ns, plot_graph=True):
+    def compute_fractions(self, G, S, tau1_ns, tau2_ns, mask=None, hexbin_color=None, plot_graph=True):
         g1, s1 = self.lifetime_to_phasor(tau1_ns, self.frequency)
         g2, s2 = self.lifetime_to_phasor(tau2_ns, self.frequency)
         if plot_graph:
-            fig, ax = plt.subplots(figsize=(8, 8))
-            self.plot_phasor_diagram(G, S, colors=None, ax=ax)
-            ax.plot([g1, g2], [s1, s2], color="red", linestyle="--", lw=2, zorder=10)
-            ax.plot(g1, s1, "ro", markersize=12, label=f"tau1: {tau1_ns} ns", zorder=11)
-            ax.plot(g2, s2, "go", markersize=12, label=f"tau2: {tau2_ns} ns", zorder=11)
+            fig, ax = plt.subplots(figsize=(8, 6))
+            self.plot_phasor_diagram(G, S, colors=None, mask=None, hexbin_color="jet_r", ax=ax)
+            ax.plot([g1, g2], [s1, s2], color="#2C0F02", linestyle="--", lw=2, zorder=10)
+            ax.plot(g1, s1, "o", color="#E5D16E", markersize=8, label="...", zorder=11)
+            ax.plot(g2, s2, "o", color="#363D45", markersize=8, label="...", zorder=11)
             ax.legend(loc="upper right")
             plt.show()
 
@@ -272,37 +243,8 @@ class PhasorAnalyzer:
         )
         return A1, 1 - A1
 
-    # ------------------------------------------------------------------
-    # GPU-parallel convolution engine + biexponential reconstruction
-    # ------------------------------------------------------------------
     def _convolve_batch(self, signal, kernel):
-        """
-        Batch 1-D convolution via FFT — numerically identical to::
 
-            scipy.signal.convolve(signal[i], kernel[i], mode='full')[:T]
-
-        for every pixel i simultaneously.
-
-        Uses ``torch.fft.rfft`` which runs on GPU when available and falls
-        back to multi-threaded CPU automatically — no code change needed.
-        Complexity is O(N · T · log T) vs O(N · T²) for direct convolution.
-
-        Parameters
-        ----------
-        signal : Tensor, shape (N, T)  on self.device
-        kernel : Tensor, shape (N, T)  on self.device
-
-        Returns
-        -------
-        out : Tensor, shape (N, T)  on self.device
-
-        Why not ``F.conv1d`` with groups?
-        ----------------------------------
-        ``torch.nn.functional.conv1d`` computes *cross-correlation*, not
-        convolution.  Without explicitly flipping the kernel it produces
-        wrong results, and even with flipping the 'full'-mode index
-        alignment is non-trivial.  FFT avoids both issues entirely.
-        """
         N, T  = signal.shape
         L     = 2 * T - 1
         nfft  = 1 << (L - 1).bit_length()          # next power-of-2 ≥ L
@@ -313,18 +255,7 @@ class PhasorAnalyzer:
         return out[:, :T]                              # truncate → (N, T)
 
     def _build_model_decay(self, A1, A2, tau1_ns, tau2_ns):
-        """
-        Build biexponential model decay on the compute device.
 
-        Parameters
-        ----------
-        A1, A2 : ndarray, shape (H, W)
-        tau1_ns, tau2_ns : float
-
-        Returns
-        -------
-        model : Tensor, shape (N, T)  on self.device
-        """
         t_ns = torch.tensor(self.t_s_np * 1e9, dtype=torch.float32,
                             device=self.device)              # (T,)
         a1   = torch.tensor(A1.ravel(), dtype=torch.float32,
@@ -334,17 +265,6 @@ class PhasorAnalyzer:
         return a1 * torch.exp(-t_ns / tau1_ns) + a2 * torch.exp(-t_ns / tau2_ns)
 
     def _normalize_irf(self, irf):
-        """
-        Flatten and L1-normalise the per-pixel IRF on the compute device.
-
-        Parameters
-        ----------
-        irf : ndarray, shape (H, W, T)
-
-        Returns
-        -------
-        Tensor, shape (N, T)  on self.device
-        """
         irf_flat = np.asarray(irf, dtype=np.float32).reshape(-1, irf.shape[2])
         irf_t    = torch.tensor(irf_flat, dtype=torch.float32, device=self.device)
         norms    = irf_t.sum(dim=1, keepdim=True).clamp(min=self.eps)
@@ -353,41 +273,23 @@ class PhasorAnalyzer:
     def analyze_biexponential_and_reconstruct(self, G, S, irf,
                                                tau1_ns=None, tau2_ns=None,
                                                plot=True):
-        """
-        Reconstruct per-pixel decays from a biexponential model convolved with the IRF.
-        The convolution is fully vectorised and runs on GPU when available,
-        falling back to multi-threaded CPU automatically.
-        Parameters
-        ----------
-        G, S : ndarray, shape (H, W)
-            Calibrated phasor coordinates (first harmonic).
-        irf : ndarray, shape (H, W, T)
-        tau1_ns, tau2_ns : float
-            Biexponential lifetime components in nanoseconds.
-        plot : bool, optional
-            If True, display A1, A2, and lifetime maps.
-        Returns
-        -------
-        reconstructed_decay : ndarray, shape (H, W, T), or None
-            IRF-convolved model decay.  Returns None if tau1_ns or tau2_ns
-            is not provided.
-        """
+
         if tau1_ns is None or tau2_ns is None:
             return None
         A1, A2 = self.compute_fractions(G, S, tau1_ns, tau2_ns, plot_graph=False)
-        tau_map_ns = self.compute_lifetime(S, G)
+        tau_map_ns = self.compute_lifetime(G, S)
 
         if plot:
             fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-            im1 = axes[0].imshow(A1, origin="lower", cmap="viridis")
+            im1 = axes[0].imshow(A1, origin="upper", cmap="viridis")
             axes[0].set_title(f"A1 Map (Fraction of {tau1_ns} ns)")
             plt.colorbar(im1, ax=axes[0])
 
-            im2 = axes[1].imshow(A2, origin="lower", cmap="plasma")
+            im2 = axes[1].imshow(A2, origin="upper", cmap="plasma")
             axes[1].set_title(f"A2 Map (Fraction of {tau2_ns} ns)")
             plt.colorbar(im2, ax=axes[1])
 
-            im3 = axes[2].imshow(np.clip(tau_map_ns, 0, 5), origin="lower", cmap="magma")
+            im3 = axes[2].imshow(np.clip(tau_map_ns, 0, 5), origin="upper", cmap="magma")
             axes[2].set_title("Phase Lifetime Map (ns)")
             plt.colorbar(im3, ax=axes[2])
 
@@ -429,11 +331,9 @@ class PhasorAnalyzer:
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
-
         # Universal circle
         ug, us = _universal_circle_xy()
         ax.plot(ug, us, "k--")
-
         g_flat = np.ravel(G)
         s_flat = np.ravel(S)
         if mask is not None:
@@ -443,8 +343,7 @@ class PhasorAnalyzer:
         else:
             g_plot = g_flat
             s_plot = s_flat
-
-        # 3. Scatter / density
+        # Scatter / density
         if colors is None:
             cmap_to_use = hexbin_color if hexbin_color is not None else 'autumn'
             # hexbin counts
@@ -480,7 +379,7 @@ class PhasorAnalyzer:
 
     def plot_map(self, image, scales = [0, 2], title=""):
         plt.figure(figsize=(8, 6))
-        plt.imshow(np.clip(image, scales[0], scales[1]), origin="lower", cmap="viridis")
+        plt.imshow(np.clip(image, scales[0], scales[1]), origin="upper", cmap="viridis")
         plt.colorbar().set_label("Lifetime (ns)")
         plt.title(title)
         plt.xlabel("X")
@@ -496,7 +395,7 @@ class PhasorAnalyzer:
         overlay = np.stack([int_norm] * 3, axis=2) * phasor_colors
 
         plt.figure(figsize=figsize)
-        plt.imshow(overlay, origin="lower")
+        plt.imshow(overlay, origin="upper")
         plt.title("Intensity + Phasor Color Overlay")
         plt.axis("off")
         plt.show()
@@ -526,14 +425,14 @@ class PhasorAnalyzer:
             # 10% threshold
             final_mask = int_norm > 0.1
 
-        # 3. Apply mask to the colors
+        # applying mask to the colors
         # Pixels failing the mask are set to black (background)
         pure_overlay = np.zeros_like(phasor_colors)
         pure_overlay[final_mask] = phasor_colors[final_mask]
 
         # 4. Plotting
         plt.figure(figsize=figsize)
-        plt.imshow(pure_overlay, origin="lower")
+        plt.imshow(pure_overlay, origin="upper")
         plt.title(f"Pure Phasor Map (Noise Removed: {noise_removed})")
         plt.axis("off")
         plt.show()
@@ -550,7 +449,7 @@ class PhasorAnalyzer:
         # 1. Prepare Data
         intensity_img = self.generate_intensity_image(decay)
         phasor_colors = self.phasor_colormap(G, S, colormap=colormap)
-        tau_map_ns = self.compute_lifetime(S, G)
+        tau_map_ns = self.compute_lifetime(G, S)
         
         # Normalize intensity for overlays
         i_min, i_max = intensity_img.min(), intensity_img.max()
@@ -573,28 +472,28 @@ class PhasorAnalyzer:
 
         # (1,1) Intensity
         ax1 = fig.add_subplot(gs[0, 0])
-        im1 = ax1.imshow(intensity_img, origin="lower", cmap="jet")
+        im1 = ax1.imshow(intensity_img, origin="upper", cmap="jet")
         ax1.set_title("Intensity")
         ax1.axis("off")
         plt.colorbar(im1, ax=ax1, fraction=0.046, pad=0.04)
 
         # (1,2) Pure Phasor Map
         ax2 = fig.add_subplot(gs[0, 1])
-        im2 = ax2.imshow(pure_phasor, origin="lower")
+        im2 = ax2.imshow(pure_phasor, origin="upper")
         ax2.set_title("Pure Phasor Map (Categorical)")
         ax2.axis("off")
         # plt.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
 
         # (2,1) Phasor Lifetime
         ax3 = fig.add_subplot(gs[1, 0])
-        im3 = ax3.imshow(tau_map_ns, origin="lower", cmap="jet")
+        im3 = ax3.imshow(tau_map_ns, origin="upper", cmap="jet")
         ax3.set_title("Lifetime Map (ns)")
         ax3.axis("off")
         plt.colorbar(im3, ax=ax3, fraction=0.046, pad=0.04).set_label("ns")
 
         # (2,2) Intensity Overlay
         ax4 = fig.add_subplot(gs[1, 1])
-        im4 = ax4.imshow(overlay_weighted, origin="lower")
+        im4 = ax4.imshow(overlay_weighted, origin="upper")
         ax4.set_title("Intensity-weighted Phasor Overlay")
         ax4.axis("off")
         # plt.colorbar(im4, ax=ax4, fraction=0.046, pad=0.04).set_label("ns")
@@ -621,23 +520,7 @@ class PhasorAnalyzer:
 
     def plot_pixel_fit(self, irf, decay, reconstructed_decay, x, y,
                        log_scale=True):
-        """
-        Plot raw decay, IRF, and reconstructed fit for a single pixel.
 
-        Trace extraction and normalisation run on GPU when available,
-        falling back to CPU automatically (self.device is respected).
-
-        Parameters
-        ----------
-        irf : ndarray, shape (H, W, T) or (T,)
-        decay : ndarray, shape (H, W, T)
-        reconstructed_decay : ndarray, shape (H, W, T)
-        x, y : int
-            Pixel coordinates (column, row).
-        log_scale : bool, optional
-            If True, use a logarithmic y-axis (default True).
-        """
-        # ---- stack all three traces and normalise in one GPU kernel -------
         irf_trace = irf[y, x, :] if irf.ndim == 3 else np.asarray(irf)
         raw_trace  = decay[y, x, :]
         fit_trace  = reconstructed_decay[y, x, :]
@@ -674,41 +557,7 @@ class PhasorAnalyzer:
 
     def plot_pixel_fit_single_exp(self, irf, decay, tau_ns, x, y,
                                   log_scale=True):
-        """
-        Plot raw decay, IRF, and a single-exponential model fit for one pixel.
 
-        The model is I(t) = exp(-t / tau_ns), convolved with the pixel's
-        IRF via GPU/CPU-vectorised FFT (same engine as the biexponential
-        path).  The amplitude is set to 1.0 because both curves are
-        peak-normalised before plotting, so only the shape matters.
-
-        All three traces are peak-normalised in a single GPU kernel,
-        identical to the approach used in ``plot_pixel_fit``.
-
-        Parameters
-        ----------
-        irf : ndarray, shape (H, W, T) or (T,)
-            Instrument response function.  If 3-D, the trace at (y, x)
-            is used; if 1-D, the same IRF is applied to all pixels.
-        decay : ndarray, shape (H, W, T)
-            Measured TCSPC decay data.
-        tau_ns : float
-            User-supplied fluorescence lifetime in nanoseconds.
-            This is the *fixed* decay constant for the single-exponential
-            model:  I(t) = exp(-t / tau_ns).
-        x, y : int
-            Pixel coordinates (column x, row y).
-        log_scale : bool, optional
-            If True, use a logarithmic y-axis (default True).
-
-        Notes
-        -----
-        * The model decay is built on ``self.device`` (GPU if available).
-        * Convolution length is T samples (``mode='full'`` truncated),
-          matching the time axis exactly — no resampling needed.
-        * Peak-normalisation is performed as a single batched GPU op
-          on all three traces simultaneously.
-        """
         T = decay.shape[2]
 
         # ---- Build single-exponential model on device --------------------
@@ -768,62 +617,9 @@ class PhasorAnalyzer:
         plt.grid(True, which="both", linestyle="--", alpha=0.5)
         plt.show()
 
-    # ------------------------------------------------------------------
     # Multi-harmonic phasor visualization
-    # ------------------------------------------------------------------
-    def plot_phasor_harmonics(self, G, S, harmonics=(1, 2, 3, 4),
-                              colors=None, figsize=(22, 5)):
-        """
-        Display one phasor diagram per harmonic in a side-by-side grid.
-
-        Each panel is a fully independent phasor plot drawn at harmonic k,
-        complete with its own universal semicircle and lifetime ticks
-        re-evaluated at  ω_k = k · ω_eff.
-
-        Mathematical background
-        -----------------------
-        For a single-exponential fluorophore with lifetime τ the k-th
-        harmonic phasor coordinates are:
-
-            G_k(τ) =        1        /  (1 + (k·ω·τ)²)
-            S_k(τ) = (k·ω·τ)        /  (1 + (k·ω·τ)²)
-
-        These still satisfy  G_k² + S_k² = G_k  (the universal semicircle),
-        but the lifetime ticks are *compressed* toward (0, 0) at higher k
-        because the denominator grows as (k·ω·τ)².  Concretely:
-
-          • Harmonic 1 : good lifetime contrast for τ ≈ 1–10 ns
-          • Harmonic 2 : good contrast for τ ≈ 0.5–5 ns
-          • Harmonic 3 : good contrast for τ ≈ 0.3–3 ns
-          • Harmonic 4 : good contrast for τ ≈ 0.25–2 ns
-
-        Inspecting all harmonics simultaneously reveals multi-component
-        mixtures and serves as an internal consistency check.
-
-        Parameters
-        ----------
-        G : ndarray, shape (n_harmonics, H, W)  or  (H, W)
-            Phasor G (cosine) stack.  If 2-D, the same map is displayed in
-            every panel (tick positions still change per harmonic).
-        S : ndarray, shape (n_harmonics, H, W)  or  (H, W)
-            Phasor S (sine) stack, same convention as G.
-        harmonics : tuple of int, optional
-            Harmonic indices to display.  Default (1, 2, 3, 4).
-            Each k must satisfy  1 ≤ k ≤ n_harmonics  when G/S are 3-D.
-        colors : ndarray or None, optional
-            RGB array, shape (H, W, 3).  When provided a coloured scatter
-            is drawn instead of the default hexbin density map.
-        figsize : tuple, optional
-            Total figure size.  Default (22, 5) suits 4 side-by-side panels.
-
-        Notes
-        -----
-        * The method visualises whatever G/S arrays are passed in; it does
-          not recompute phasors.  Ensure the arrays were computed with
-          ``n_harmonics ≥ max(harmonics)``.
-        * Lifetime ticks at harmonic k use  ω_k = k · ω_eff  so their
-          positions are consistent with the phasor data at that harmonic.
-        """
+    def plot_phasor_harmonics(self, G, S, harmonics=(1, 2, 3, 4), mask=None, 
+                          colors=None, hexbin_color=None, figsize=(22, 5)):
         G = np.asarray(G)
         S = np.asarray(S)
         n_panels = len(harmonics)
@@ -832,13 +628,15 @@ class PhasorAnalyzer:
         if n_panels == 1:
             axes = [axes]
 
+        # Pre-process mask if provided
+        mask_flat = np.ravel(mask) if mask is not None else None
+
         for ax, k in zip(axes, harmonics):
             # ---- Select the correct harmonic slice ----------------------
             if G.ndim == 3 and k <= G.shape[0]:
-                g_panel = G[k - 1]          # (H, W)
+                g_panel = G[k - 1]
                 s_panel = S[k - 1]
             else:
-                # Fallback: use first (or only) available slice
                 g_panel = G[0] if G.ndim == 3 else G
                 s_panel = S[0] if S.ndim == 3 else S
 
@@ -846,40 +644,52 @@ class PhasorAnalyzer:
             ug, us = _universal_circle_xy()
             ax.plot(ug, us, "k--", lw=1.2)
 
-            # ---- Scatter / density -------------------------------------
+            # ---- Masking Logic ------------------------------------------
             g_flat = np.ravel(g_panel)
             s_flat = np.ravel(s_panel)
-
-            if colors is None:
-                hb = ax.hexbin(g_flat, s_flat, gridsize=150,
-                               cmap="jet", mincnt=1)
+            
+            if mask_flat is not None:
+                g_plot = g_flat[mask_flat]
+                s_plot = s_flat[mask_flat]
             else:
-                hb = ax.hexbin(g_flat, s_flat, gridsize=150,
-                               cmap=colors, mincnt=1)
-                fig.colorbar(hb, ax=ax, fraction=0.046,
-                             pad=0.04).set_label("Pixel count")
-                
+                g_plot = g_flat
+                s_plot = s_flat
 
+            # ---- Scatter / Density Logic (Synced with plot_phasor_diagram)
+            if colors is None:
+                cmap_to_use = hexbin_color if hexbin_color is not None else 'jet'
+                hb = ax.hexbin(g_plot, s_plot, gridsize=150, cmap=cmap_to_use, mincnt=1)
+                # Add colorbar for hexbin pixel counts
+                fig.colorbar(hb, ax=ax, fraction=0.046, pad=0.04).set_label("Pixel Count")
+            
+            else:
+                if isinstance(colors, str):
+                    # Using a colormap name (e.g., 'viridis')
+                    c_vals = g_plot 
+                    path = ax.scatter(g_plot, s_plot, cmap=colors, c=c_vals, s=8, marker="o")
+                    fig.colorbar(path, ax=ax, fraction=0.046, pad=0.04).set_label("Phasor G Value")
+                else:
+                    # Using an RGB array (H, W, 3)
+                    c_flat = np.reshape(colors, (-1, 3))
+                    c_plot = c_flat[mask_flat] if mask_flat is not None else c_flat
+                    ax.scatter(g_plot, s_plot, c=c_plot, s=8, marker="o")
 
-            # ---- Lifetime ticks at harmonic k --------------------------
-            # At harmonic k the angular frequency seen by the phasor is
-            # k·ω, so we pass  k·frequency  as the frequency
-            # argument to lifetime_to_phasor — that function internally
-            # computes  ω = 2π·f, yielding  ω_k = k·2π·f_eff  as needed.
-            G_mark, S_mark = self.lifetime_to_phasor(
-                _TAU_MARKS_NS, k * self.frequency
-            )
+            # ---- Lifetime Ticks -----------------------------------------
+            # Note: Frequency scales with harmonic k
+            G_mark, S_mark = self.lifetime_to_phasor(_TAU_MARKS_NS, k * self.frequency)
             _draw_lifetime_ticks(ax, G_mark, S_mark,
-                                 color="black", lw=2, fontsize=7,
-                                 show_units=(k == harmonics[0]),
-                                 tick_length=0.03, text_offset=0.08)
+                                color="black", lw=2, fontsize=7,
+                                show_units=(k == harmonics[0]),
+                                tick_length=0.03, text_offset=0.05)
+
+            # ---- Styling ------------------------------------------------
             _style_phasor_ax(ax,
-                             title=f"Harmonic {k} ($\omega_{{{k}}}$ = {k} $\cdot$ {self.omega:.4f})",
-                             xlim=(-0.1, 1.1), 
-                             ylim=(-0.65, 0.65))
-                               
+                            title=f"Harmonic {k} ($\omega_{{{k}}}$)",
+                            xlim=(-0.3, 1.3), 
+                            ylim=(-0.85, 0.85))
+                                
         fig.suptitle("Phasor Diagram — Multiple Harmonics",
-                     fontsize=12, fontweight="bold", y=1.01)
+                    fontsize=12, fontweight="bold", y=1.01)
         plt.tight_layout()
         plt.show()
 
@@ -899,3 +709,75 @@ class PhasorAnalyzer:
             
         except Exception as e:
             print(f"An error occurred while saving: {e}")
+
+    def phasor_radial_color(self, G, S, intensity=None, colormap="viridis"):
+        G_col = G[0] if G.ndim == 3 else G
+        S_col = S[0] if S.ndim == 3 else S        
+        # calculating the phase angle (phi) in radians np.arctan2(y, x) -> np.arctan2(S, G)
+        phi = np.arctan2(S_col, G_col)        
+        phi_min = 0.0 
+        phi_max = phi.max() if phi.max() > 0 else 1.0 
+        phi_norm = (phi - phi_min) / (phi_max - phi_min + self.eps)
+        phi_norm = np.clip(phi_norm, 0, 1) # Ensuring to stay within [0, 1]
+        colors = plt.get_cmap(colormap)(phi_norm)[:, :, :3]
+        return colors
+
+
+    def plot_traceable_analysis(self, G, S, decay, mask=None, colormap="viridis", figsize=(14, 6)):
+        # 1. Setup Data & Colors
+        G_2d = G[0] if G.ndim == 3 else G
+        S_2d = S[0] if S.ndim == 3 else S
+        
+        phasor_colors_raw = self.phasor_radial_color(G_2d, S_2d, colormap=colormap)
+        
+        if phasor_colors_raw.shape[-1] == 4:
+            phasor_colors_raw = phasor_colors_raw[..., :3]
+
+        # masking
+        if mask is None:
+            active_mask = np.ones(G_2d.shape, dtype=bool)
+        else:
+            active_mask = mask.astype(bool)
+
+        fig, axes = plt.subplots(1, 2, figsize=figsize)
+        pure_overlay = np.zeros_like(phasor_colors_raw)
+        pure_overlay[active_mask] = phasor_colors_raw[active_mask]        
+        im_map = axes[0].imshow(pure_overlay, origin="upper")
+        axes[0].set_title("Phasor Color Projections")
+        axes[0].axis("off")
+        phi = np.arctan2(S_2d, G_2d)
+        phi_max = phi.max() if phi.max() > 0 else 1.0
+        
+        # converting phase angle max to lifetime (ns)
+        # omega = 2 * pi * frequency
+        omega = 2 * np.pi * self.frequency
+        tau_max = np.tan(phi_max) / omega
+
+        # Create the colorbar scale using tau_max instead of phi_max
+        sm = ScalarMappable(cmap=plt.get_cmap(colormap), norm=Normalize(vmin=0, vmax=tau_max))
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=axes[0], fraction=0.046, pad=0.04)
+        cbar.set_label("Phasor Lifetime (ns)")
+
+        # subplot (1,2) Phasor Diagram
+        ug, us = _universal_circle_xy()
+        axes[1].plot(ug, us, "k--", alpha=0.8, zorder=1)
+        mask_flat = np.ravel(active_mask)
+        g_plot = np.ravel(G_2d)[mask_flat]
+        s_plot = np.ravel(S_2d)[mask_flat]
+        c_plot = np.reshape(phasor_colors_raw, (-1, 3))[mask_flat]
+        valid_data = ~np.isnan(g_plot) & ~np.isnan(s_plot)
+        g_plot, s_plot, c_plot = g_plot[valid_data], s_plot[valid_data], c_plot[valid_data]
+        if len(g_plot) > 0:
+            axes[1].scatter(g_plot, s_plot, c=c_plot, s=10, alpha=0.8, edgecolors='none', zorder=2)
+        else:
+            axes[1].text(0.5, 0.25, "No valid data points", ha='center', color='red')
+        try:
+            G_mark, S_mark = self.lifetime_to_phasor(_TAU_MARKS_NS, self.frequency)
+            _draw_lifetime_ticks(axes[1], G_mark, S_mark, color="black", lw=2, fontsize=9)
+        except:
+            pass
+        _style_phasor_ax(axes[1], title="Phasor Distribution", 
+                            xlim=(-0.1, 1.1), ylim=(-0.6, 0.6))
+        plt.tight_layout()
+        plt.show()
