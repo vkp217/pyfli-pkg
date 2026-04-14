@@ -438,82 +438,106 @@ class PhasorAnalyzer:
         plt.show()
 
 
-    def plot_overlay_subplots(self, decay, G, S, 
-                              colormap="viridis", 
-                              noise_removed=True, figsize=(10, 8)):
+    def plot_overlay_subplots(self, decay, G, S, mask=None, 
+                          colormaps=["jet", "jet"], 
+                          hexbin_color='jet',
+                          noise_removed=True, figsize=(15, 10)):
         """
-        2x3 Grid Layout:
-        [Intensity]      [Pure Phasor]    [Phasor Scatter (Large)]
-        [Lifetime Map]   [Intensity Ov]   [Phasor Scatter (Large)]
+        2x3 Grid Layout with Radial Color Projections and specific colorbar scaling.
+        [1,1: Intensity]      [1,2: Pure Phasor Map]     [1,3: Phasor Scatter]
+        [2,1: Lifetime Map]   [2,2: Weighted Overlay]    [2,3: Phasor Scatter]
         """
         # 1. Prepare Data
+        G_2d = G[0] if G.ndim == 3 else G
+        S_2d = S[0] if S.ndim == 3 else S
         intensity_img = self.generate_intensity_image(decay)
-        phasor_colors = self.phasor_colormap(G, S, colormap=colormap)
-        tau_map_ns = self.compute_lifetime(G, S)
         
-        # Normalize intensity for overlays
-        i_min, i_max = intensity_img.min(), intensity_img.max()
-        int_norm = (intensity_img - i_min) / (i_max - i_min + self.eps)
-        
-        # -- Intensity Weighted Overlay --
-        overlay_weighted = np.stack([int_norm] * 3, axis=2) * phasor_colors[..., :3]
+        # Use phasor_radial_color as requested
+        phasor_colors_raw = self.phasor_radial_color(G_2d, S_2d, colormap=colormaps[0])
+        if phasor_colors_raw.shape[-1] == 4:
+            phasor_colors_raw = phasor_colors_raw[..., :3]
 
-        # -- Pure Phasor Map (with noise thresholding logic) --
-        pure_phasor = np.zeros_like(phasor_colors[..., :3])
-        if noise_removed:
-            mask = np.ones(G.shape, dtype=bool)
+        # Handle Masking
+        if mask is None:
+            if noise_removed:
+                # Automatic threshold if no mask provided
+                int_norm = (intensity_img - intensity_img.min()) / (intensity_img.max() - intensity_img.min() + self.eps)
+                active_mask = int_norm > 0.1
+            else:
+                active_mask = np.ones(G_2d.shape, dtype=bool)
         else:
-            mask = int_norm > 0.1 # 10% threshold
-        pure_phasor[mask] = phasor_colors[..., :3][mask]
+            active_mask = mask.astype(bool)
 
-        # 2. Setup Figure with GridSpec
+        # 2. Setup Figure
         fig = plt.figure(figsize=figsize)
         gs = gridspec.GridSpec(2, 3, figure=fig)
 
-        # (1,1) Intensity
+        # --- (1,1) Intensity ---
         ax1 = fig.add_subplot(gs[0, 0])
-        im1 = ax1.imshow(intensity_img, origin="upper", cmap="jet")
+        im1 = ax1.imshow(intensity_img, origin="upper", cmap=colormaps[0])
         ax1.set_title("Intensity")
         ax1.axis("off")
-        plt.colorbar(im1, ax=ax1, fraction=0.046, pad=0.04)
+        fig.colorbar(im1, ax=ax1, fraction=0.046, pad=0.04)
 
-        # (1,2) Pure Phasor Map
+        # --- (1,2) Pure Phasor Map (Radial Color) ---
         ax2 = fig.add_subplot(gs[0, 1])
-        im2 = ax2.imshow(pure_phasor, origin="upper")
-        ax2.set_title("Pure Phasor Map (Categorical)")
+        pure_overlay = np.zeros_like(phasor_colors_raw)
+        pure_overlay[active_mask] = phasor_colors_raw[active_mask]
+        ax2.imshow(pure_overlay, origin="upper")
+        ax2.set_title("Phasor Color Projections")
         ax2.axis("off")
-        # plt.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
 
-        # (2,1) Phasor Lifetime
+        # Colorbar Scaling Logic from plot_traceable_analysis
+        phi = np.arctan2(S_2d, G_2d)
+        phi_max = phi[active_mask].max() if np.any(active_mask) else 1.0
+        omega = 2 * np.pi * self.frequency
+        tau_max = np.tan(phi_max) / omega
+        
+        sm = ScalarMappable(cmap=plt.get_cmap(colormaps[0]), norm=Normalize(vmin=0, vmax=tau_max))
+        fig.colorbar(sm, ax=ax2, fraction=0.046, pad=0.04).set_label("Phasor Lifetime (ns)")
+
+        # --- (2,1) Lifetime Map ---
         ax3 = fig.add_subplot(gs[1, 0])
-        im3 = ax3.imshow(tau_map_ns, origin="upper", cmap="jet")
+        tau_map_ns = self.compute_lifetime(G, S)
+        im3 = ax3.imshow(tau_map_ns, origin="upper", cmap=colormaps[1])
         ax3.set_title("Lifetime Map (ns)")
         ax3.axis("off")
-        plt.colorbar(im3, ax=ax3, fraction=0.046, pad=0.04).set_label("ns")
+        fig.colorbar(im3, ax=ax3, fraction=0.046, pad=0.04).set_label("ns")
 
-        # (2,2) Intensity Overlay
+        # --- (2,2) Intensity-Weighted Overlay ---
         ax4 = fig.add_subplot(gs[1, 1])
-        im4 = ax4.imshow(overlay_weighted, origin="upper")
-        ax4.set_title("Intensity-weighted Phasor Overlay")
+        int_norm_3d = (intensity_img - intensity_img.min()) / (intensity_img.max() - intensity_img.min() + self.eps)
+        weighted_overlay = np.stack([int_norm_3d] * 3, axis=2) * phasor_colors_raw
+        ax4.imshow(weighted_overlay, origin="upper")
+        ax4.set_title("Intensity-weighted Overlay")
         ax4.axis("off")
-        # plt.colorbar(im4, ax=ax4, fraction=0.046, pad=0.04).set_label("ns")
+        # Use the same radial scale for consistency
+        sm_w = ScalarMappable(cmap=plt.get_cmap(colormaps[0]), norm=Normalize(vmin=0, vmax=tau_max))
+        fig.colorbar(sm_w, ax=ax4, fraction=0.046, pad=0.04).set_label("Phasor Lifetime (ns)")
 
-        # (1,3) and (2,3) Combined: Nice Phasor Plot
-        ax5 = fig.add_subplot(gs[:, 2]) # Spans all rows in col 2
-        G_flat = np.ravel(G[mask])
-        S_flat = np.ravel(S[mask])
-        colors_flat = phasor_colors[mask].reshape(-1, phasor_colors.shape[-1])
-        ax5.scatter(G_flat, S_flat, c=colors_flat[..., :3], s=1, alpha=0.5)
+        # --- (1,3 & 2,3) Combined Phasor Plot ---
+        ax5 = fig.add_subplot(gs[:, 2])
         ug, us = _universal_circle_xy()
-        ax5.plot(ug, us, "k--", alpha=0.7)
+        ax5.plot(ug, us, "k--", alpha=0.8, zorder=1)
+        
+        mask_flat = np.ravel(active_mask)
+        g_plot = np.ravel(G_2d)[mask_flat]
+        s_plot = np.ravel(S_2d)[mask_flat]
+        c_plot = np.reshape(phasor_colors_raw, (-1, 3))[mask_flat]
+        
+        # Remove NaNs
+        valid = ~np.isnan(g_plot) & ~np.isnan(s_plot)
+        if np.any(valid):
+            ax5.scatter(g_plot[valid], s_plot[valid], c=c_plot[valid], s=2, alpha=0.6, edgecolors='none', zorder=2)
+        
         try:
             G_mark, S_mark = self.lifetime_to_phasor(_TAU_MARKS_NS, self.frequency)
-            _draw_lifetime_ticks(ax5, G_mark, S_mark, color="blue", lw=2, fontsize=8)
+            _draw_lifetime_ticks(ax5, G_mark, S_mark, color="black", lw=2, fontsize=9)
         except:
-            pass 
+            pass
 
-        _style_phasor_ax(ax5, title="Phasor Scatter Distribution", 
-                        xlim=(-0.1, 1.1), ylim=(-0.6, 0.6))
+        _style_phasor_ax(ax5, title="Phasor Distribution", xlim=(-0.1, 1.1), ylim=(-0.6, 0.6))
+        
         plt.tight_layout()
         plt.show()
 
@@ -557,6 +581,17 @@ class PhasorAnalyzer:
 
     def plot_pixel_fit_single_exp(self, irf, decay, tau_ns, x, y,
                                   log_scale=True):
+        if isinstance(tau_ns, (torch.Tensor, np.ndarray)):
+            if tau_ns.ndim >= 2:
+                tau_val = tau_ns[y, x]
+            else:
+                tau_val = tau_ns
+            
+            # Ensure we have a standard float for the math below
+            if torch.is_tensor(tau_val):
+                tau_val = tau_val.item() 
+        else:
+            tau_val = tau_ns
 
         T = decay.shape[2]
 
@@ -564,7 +599,7 @@ class PhasorAnalyzer:
         # I(t) = exp(-t / tau_ns),  shape (1, T) for _convolve_batch
         t_ns_t = torch.tensor(self.t_s_np * 1e9, dtype=torch.float32,
                                device=self.device)                      # (T,)
-        model_t = torch.exp(-t_ns_t / tau_ns).unsqueeze(0)             # (1, T)
+        model_t = torch.exp(-t_ns_t / tau_val).unsqueeze(0)             # (1, T)
 
         # ---- Normalise and convolve with pixel IRF -----------------------
         irf_trace_np = irf[y, x, :] if irf.ndim == 3 else np.asarray(irf)
@@ -599,7 +634,7 @@ class PhasorAnalyzer:
         plt.plot(self.time_axis_ns, raw_norm,
                  "ro", markersize=4, alpha=0.6, label=f"Raw Decay (Pixel {x},{y})")
         plt.plot(self.time_axis_ns, fit_norm,
-                 "b-", lw=2, label=f"Single-Exp Fit  τ = {tau_ns} ns")
+                 "b-", lw=2, label=f"Single-Exp Fit  τ = {tau_val} ns")
 
         if log_scale:
             plt.yscale("log")
@@ -611,7 +646,7 @@ class PhasorAnalyzer:
         plt.xlabel("Time (ns)")
         plt.title(
             f"Single-Exponential Decay at Pixel (X: {x}, Y: {y})  "
-            f"τ = {tau_ns} ns  [device: {self.device}]"
+            f"τ = {tau_val} ns  [device: {self.device}]"
         )
         plt.legend()
         plt.grid(True, which="both", linestyle="--", alpha=0.5)
