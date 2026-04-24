@@ -314,8 +314,6 @@ def data_masking(*arrays, mask, return_list=False):
         return results[0]
     return results if return_list else tuple(results)
 
-
-
 def save_3d_array_as_tiff_sequence(array_3d, output_folder, prefix="frame"):
     """
     Saves a 3D numpy array (H, W, T) as a series of 2D TIFF files.
@@ -391,3 +389,14 @@ def PhasorFreqComputaion(laser_period = 12.5, gate_delay = None, num_gates = Non
     else:
         effective_freq = 1000.0/(num_gates*gate_delay) # frequency is computed in the MHz if the gate delays are in ns
     return effective_freq
+
+def save_plot(save_dir, name, fig=None, dpi=300, close=True):
+    # Saves a plot. Handles subplots (pass fig) or direct plots (uses current)
+    path = os.path.join(save_dir, f"{name}.png")
+    target = fig if fig is not None else plt    
+    try:
+        target.savefig(path, bbox_inches='tight', dpi=dpi)
+    except Exception as e:
+        print(f"ERROR saving {name}: {str(e)}")    
+    if close:
+        plt.close(fig) if fig else plt.close()

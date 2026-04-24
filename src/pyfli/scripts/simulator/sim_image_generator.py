@@ -2,8 +2,9 @@
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-import itertools  # Added for efficient pixel iteration
+import itertools  
 from .main_factory import Macro_sim, TCSPC_sim
+from .sim_helper import irf_picker
 
 class FLIImageGenerator:
     def __init__(self, 
@@ -12,14 +13,14 @@ class FLIImageGenerator:
                  roi_mask_path=None, 
                  roi_params=None, 
                  image_shape=(32, 32), 
-                 method='analytical',
+                 method='ICCD',
                  verbose = True
                  ):
         self.method = method.lower()        
         self.irf_data = irf_data
         self.verbose = verbose
         
-        # 1. Load Intensity Mask
+        # Loading the intensity Mask
         if intensity_image_path:
             img = Image.open(intensity_image_path).convert('L')
             self.intensity_mask = np.array(img).astype(float) / 255.0
@@ -28,7 +29,7 @@ class FLIImageGenerator:
             self.intensity_mask = np.ones(image_shape)
             self.shape = image_shape
 
-        # 2. Load ROI Mask
+        # loading the ROI Mask (multi-color mask)
         if roi_mask_path:
             mask_img = Image.open(roi_mask_path).convert('L')
             self.roi_mask = np.array(mask_img.resize((self.shape[1], self.shape[0]), 
@@ -36,15 +37,17 @@ class FLIImageGenerator:
         else:
             self.roi_mask = np.zeros(self.shape, dtype=int)
 
-        # 3. Initialize ROI Simulators
-        dummy_irf = irf_data[0, 0, :] if irf_data.ndim == 3 else irf_data
+        # Initialize ROI Simulators
+        dummy_irf = irf_picker(irf_data)
+        # dummy_irf = irf_data[0, 0, :] if irf_data.ndim == 3 else irf_data
         self.roi_sims = {}
         unique_rois = np.unique(self.roi_mask)
-        SimClass = TCSPC_sim if self.method == 'tcspc' else Macro_sim
+        SimClass = Macro_sim if self.method == 'ICCD' else TCSPC_sim
+        # SimClass = TCSPC_sim if self.method == 'tcspc' else Macro_sim
         
         for roi_val in unique_rois:
             cfg = roi_params[roi_val].copy() if (roi_params and roi_val < len(roi_params)) else {}
-            default_sensor = 'ICCD' if self.method == 'analytical' else 'SPAD'
+            default_sensor = 'ICCD' if self.method == 'ICCD' else 'SPAD'
             sensor_type = cfg.pop('sensor_type', default_sensor)
             cfg.pop('method', None) 
             self.roi_sims[roi_val] = SimClass(dummy_irf, sensor_type=sensor_type, **cfg)
@@ -53,7 +56,7 @@ class FLIImageGenerator:
         h, w = self.shape
         total_pixels = h * w
         
-        # Determine time-axis length
+        # determining time-axis length
         first_roi = next(iter(self.roi_sims))
         sample = self.roi_sims[first_roi]()
         t_len = sample["raw_data"]["decay"].size

@@ -3,6 +3,7 @@ import numpy as np
 from scipy.signal import fftconvolve
 from .distributions import ParameterSampler
 from .noise_models import NoiseEngine
+from .sim_helper import irf_picker
 
 class FLIEngine:
     def __init__(self, 
@@ -19,32 +20,7 @@ class FLIEngine:
                  **kwargs
                  ):
         
-        # IRF Selection Logic
-        if irf_full.ndim == 3:
-            max_attempts = 1000
-            attempts = 0
-            while True:
-                x = np.random.randint(irf_full.shape[0])
-                y = np.random.randint(irf_full.shape[1])
-                pixel_data = irf_full[x, y, :]
-                
-                max_val = np.max(pixel_data)
-                min_val = np.min(pixel_data)
-                ratio = max_val / min_val if min_val > 0 else 0
-                
-                if max_val > 700 or ratio > 20: # Ensure a clear peak
-                    irf = pixel_data
-                    break
-                
-                attempts += 1
-                if attempts >= max_attempts:
-                    raise RuntimeError(f"Could not find a valid pixel after {max_attempts} attempts.")
-                    
-        elif irf_full.ndim == 1:
-            irf = irf_full
-        else:
-            raise ValueError(f'IRF must be 1-D or 3-D, got shape {irf_full.shape}')
-
+        irf = irf_picker(irf_full)
         # Timing and Normalization
         self.irf = np.nan_to_num(irf / irf.sum())
         self.laser_period = 1000/laser_feq
