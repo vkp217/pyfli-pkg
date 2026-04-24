@@ -390,7 +390,7 @@ def PhasorFreqComputaion(laser_period = 12.5, gate_delay = None, num_gates = Non
         effective_freq = 1000.0/(num_gates*gate_delay) # frequency is computed in the MHz if the gate delays are in ns
     return effective_freq
 
-def save_plot(save_dir, name, fig=None, dpi=300, close=True):
+def save_plot(save_dir, name, fig=None, dpi=300, close=False):
     # Saves a plot. Handles subplots (pass fig) or direct plots (uses current)
     path = os.path.join(save_dir, f"{name}.png")
     target = fig if fig is not None else plt    

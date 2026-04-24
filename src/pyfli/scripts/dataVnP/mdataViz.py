@@ -4,7 +4,8 @@ import os
 from matplotlib import gridspec
 
 class DataViewer:
-    def __init__(self, save_path=None):
+    def __init__(self, save_path=None, fig_name = None):
+        self.fig_name = fig_name
         self.save_path = save_path
         if save_path and not os.path.exists(save_path):
             os.makedirs(save_path)
@@ -16,10 +17,7 @@ class DataViewer:
 
     def display_data(self, data_list, structure=(1, 1), coord=None, data_names=None, 
                     cmaps=None, v_ranges=None, figsize=None, normalize=False, yscale='linear'):
-        """
-        Unified 2D/3D visualization with STRICT equal-sized panels
-        (images + plots + colorbars aligned perfectly)
-        """
+
         num_plots = len(data_list)
         r, c = structure
         names = data_names or [f"Data {i+1}" for i in range(num_plots)]        
@@ -60,7 +58,6 @@ class DataViewer:
         # Plot Panel (forcing to same size)
         if show_decay:
             x, y = coord
-            # Use SAME subgrid structure to keep size identical
             subgs = gs[:, -1].subgridspec(1, 2, width_ratios=[20, 1], wspace=0.05)
             ax_decay = fig.add_subplot(subgs[0])
             cax_dummy = fig.add_subplot(subgs[1])  # placeholder
@@ -75,13 +72,15 @@ class DataViewer:
             )
             ax_decay.legend(fontsize='small', loc='upper right')
             ax_decay.grid(True, which='both', alpha=0.3)
-            # hiding dummy colorbar axis but KEEP space
             cax_dummy.axis('off')
-        
-        # FIX: Removed plt.tight_layout() as it is superseded by layout="constrained"
+    
         if self.save_path:
-            plt.savefig(os.path.join(self.save_path, "combined_viz.png"),
-                        dpi=300, bbox_inches='tight')
+            if self.fig_name:
+                plt.savefig(os.path.join(self.save_path, self.fig_name +".png"),
+                            dpi=300, bbox_inches='tight')
+            else:
+                plt.savefig(os.path.join(self.save_path, "combined_display.png"),
+                            dpi=300, bbox_inches='tight')
         plt.show()
 
 
