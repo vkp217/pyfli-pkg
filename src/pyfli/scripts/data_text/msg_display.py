@@ -1,66 +1,53 @@
-# scripts/data_text/msg_display.py
-
+import os
 import numpy as np
 from tabulate import tabulate
 
 class Msg_display:
-    def __init__(self):
-        pass
+    def __init__(self, saver=None):
+        """
+        :param saver: An instance of the DataSaver class.
+        """
+        self.saver = saver
+
+    def _internal_log(self, message):
+        """Helper to print and optionally log via DataSaver."""
+        print(message)
+        if self.saver:
+            # We strip any fancy print characters if logging to file
+            self.saver.log(message)
 
     def disp_params(self, res_px, model_type='bi-exponential'):
         if not res_px:
             raise ValueError('Data was not provided (res_px is empty or None)')
 
-        # Unpack for readability: assumes [params, errors, r2, chi2, red_chi2, _, convergence]
         try:
             p, err = res_px[0], res_px[1]
             r2, chi2, red_chi2 = res_px[2], res_px[3], res_px[4]
             conv = res_px[6]
         except IndexError:
-            raise IndexError("res_px does not have the expected number of elements (min 7).")
+            raise IndexError("res_px does not have the expected number of elements.")
 
-        print('\n' + '='*30)
-        print(f'FIT PARAMETERS ({model_type.upper()})')
-        print('-'*30)
+        # Build output string
+        output = []
+        output.append('\n' + '='*30)
+        output.append(f'FIT PARAMETERS ({model_type.upper()})')
+        output.append('-'*30)
 
-        if model_type == 'bi-exponential':
-            # Ar, alpha1, tau1, tau2, Offset
-            labels = ['Ar', 'alpha1', 'tau1', 'tau2', 'Offset']
-            for i, label in enumerate(labels):
-                print(f'{label:8}: {p[i]:.4f} \u00B1 {err[i]:.4f}')
-
-        elif model_type == 'mono-exponential':
-            # Ar, tau, Offset
-            labels = ['Ar', 'tau', 'Offset']
-            for i, label in enumerate(labels):
-                print(f'{label:8}: {p[i]:.4f} \u00B1 {err[i]:.4f}')
+        labels = ['Ar', 'alpha1', 'tau1', 'tau2', 'Offset'] if model_type == 'bi-exponential' else ['Ar', 'tau', 'Offset']
         
-        else:
-            raise ValueError(f'Unsupported model type: {model_type}')
+        for i, label in enumerate(labels):
+            output.append(f'{label:8}: {p[i]:.4f} \u00B1 {err[i]:.4f}')
 
-        print('-'*30)
-        print(f'R2           : {r2:.4f}')
-        print(f'chi2         : {chi2:.4f}')
-        print(f'Reduced chi2 : {red_chi2:.4f}')
-        print(f'Convergence  : {conv}')
-        print('='*30 + '\n')
+        output.append('-'*30)
+        output.append(f'R2           : {r2:.4f}')
+        output.append(f'chi2         : {chi2:.4f}')
+        output.append(f'Reduced chi2 : {red_chi2:.4f}')
+        output.append(f'Convergence  : {conv}')
+        output.append('='*30 + '\n')
 
-    def fit_session(self, model_type=None, processor_name=None, fitter_name=None, 
-                    estimator=None, data_name=None, use_initial_guess=None, 
-                    p0=None, use_bounds=None, bounds=None):
-        
-        print('\n' + '-'*60)
-        print('FITTING SESSION INITIALIZED')
-        print('-'*60)
-        print(f'Decay Model       : {model_type}')
-        print(f'Processor         : {processor_name}')
-        print(f'Method            : {fitter_name} ({estimator})')
-        print(f'Data Source       : {data_name}')
-        print(f'Use Initial Guess : {use_initial_guess}')
-        print(f'Initial P0        : {p0}')
-        print(f'Use Bounds        : {use_bounds}')
-        print(f'Bounds            : {bounds}')
-        print('-'*60 + '\n')
+        # Display and Log
+        full_msg = "\n".join(output)
+        self._internal_log(full_msg)
 
     def fit_session(self, **kwargs):
         pretty_labels = {
@@ -72,20 +59,19 @@ class Msg_display:
             'use_bounds': 'Using Bounds'
         }
 
-        print('\n' + '-' * 60)
-        print(f"{'SESSION CONFIGURATION':^60}") # Centered title
-        print('-' * 60)
+        header = '\n' + '-' * 60 + f"\n{'SESSION CONFIGURATION':^60}\n" + '-' * 60
+        self._internal_log(header)
 
-        # Loop through whatever arguments were passed
+        # Log parameters via save_params if saver exists for structured logging
+        if self.saver:
+            self.saver.save_params(**kwargs)
+
         for key, value in kwargs.items():
-            # Get the pretty label or capitalize the raw key
             label = pretty_labels.get(key, key.replace('_', ' ').capitalize())
-            print(f"{label:25}: {value}")
+            self._internal_log(f"{label:25}: {value}")
 
-        print('-' * 60)
-        print(f"{'Session Initialized':^60}")
-        print('-' * 60 + '\n')   
-
+        footer = '-' * 60 + f"\n{'Session Initialized':^60}\n" + '-' * 60 + '\n'
+        self._internal_log(footer)
 
     def get_pixel_summary(self, data_maps, px):
         x, y = px
@@ -94,20 +80,23 @@ class Msg_display:
             try:
                 if isinstance(map_2d, np.ndarray) and map_2d.ndim == 2:
                     value = map_2d[x, y]
-                    if isinstance(value, (float, np.float32, np.float64)):
-                        formatted_val = f"{value:.4f}"
-                    else:
-                        formatted_val = value
+                    formatted_val = f"{value:.4f}" if isinstance(value, (float, np.float32, np.float64)) else value
                     table_data.append([key, formatted_val])
-            except IndexError:
-                table_data.append([key, "ERROR: Index Out of Range"])
             except Exception as e:
                 table_data.append([key, f"ERROR: {str(e)}"])
                 
         headers = ["Parameters", f"Value at {px}"]
-        print(f"\n{'='*50}")
-        print(f"PIXEL DIAGNOSTIC: {px}")
-        print(f"{'='*50}")
-        print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+        
+        # Create Table
+        table_output = tabulate(table_data, headers=headers, tablefmt="fancy_grid")
+        
+        # Display logic
+        print(f"\n{'='*50}\nPIXEL DIAGNOSTIC: {px}\n{'='*50}")
+        print(table_output)
+
+        # Log logic (using a simpler table format for the .txt file to keep it readable)
+        if self.saver:
+            clean_table = tabulate(table_data, headers=headers, tablefmt="plain")
+            self.saver.log(f"\nPIXEL DIAGNOSTIC: {px}\n{clean_table}")
         
         return table_data
