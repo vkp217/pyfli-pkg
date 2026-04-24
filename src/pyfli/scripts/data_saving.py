@@ -5,7 +5,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 class DataSaver:
-    def __init__(self, path, folder_name="pyfli_Analysis_Results", new_session=True):
+    def __init__(self, path, folder_name="pyfli_Analysis_Results", new_session=False):
         #  base directory
         if os.path.isdir(path):
             base_dir = path
