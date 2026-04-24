@@ -10,9 +10,9 @@ from .scripts import (DataOperations, IRFAligner, DataViewer,
                         BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, MLEFLIFitter, 
                         GlobalFLIFitter, ROIMaker, AnalyticalHelpers, DataIO_utils, Colorprocess,
                         Macro_sim, TCSPC_sim, FLIImageGenerator, FLICalibrator, FLIValidator,Normalization,
-                        recovery_plot, random_true_pixel, data_masking,
+                        recovery_plot, random_true_pixel, data_masking, save_plot,
                         Msg_display, FittingComparator, Detector,
-                        BinnedFliFitter, FliBinner, ROIoperations, Batch_sim)
+                        BinnedFliFitter, FliBinner, ROIoperations, Batch_sim, DataSaver)
 
 __all__ = ['DataOperations', 'IRFAligner', 'DataViewer', 
         'AlliGprocessedImport', 'BHprocessedImport', 'PyFliprocessedImport', 
@@ -23,10 +23,10 @@ __all__ = ['DataOperations', 'IRFAligner', 'DataViewer',
         'MLEFLIFitter', 'GlobalFLIFitter', 'ROIMaker', 
         'AnalyticalHelpers', 'DataIO_utils',
         'Colorprocess', 'Macro_sim', 'TCSPC_sim', 'FLIImageGenerator', 
-        'recovery_plot', 'random_true_pixel',
+        'recovery_plot', 'random_true_pixel', 'save_plot',
         'FLICalibrator', 'FLIValidator', 'Normalization',
         'Msg_display', 'FittingComparator',
         'data_masking', 'Detector', 'BinnedFliFitter', 'FliBinner',
-        'ROIoperations', 'Batch_sim'
+        'ROIoperations', 'Batch_sim', 'DataSaver'
         ]
 
