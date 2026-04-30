@@ -4,17 +4,13 @@ from tabulate import tabulate
 
 class Msg_display:
     def __init__(self, saver=None):
-        """
-        :param saver: An instance of the DataSaver class.
-        """
         self.saver = saver
 
     def _internal_log(self, message):
-        """Helper to print and optionally log via DataSaver."""
-        print(message)
         if self.saver:
-            # We strip any fancy print characters if logging to file
             self.saver.log(message)
+        else:
+            print(message)
 
     def disp_params(self, res_px, model_type='bi-exponential'):
         if not res_px:
