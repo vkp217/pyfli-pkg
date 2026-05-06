@@ -3,28 +3,32 @@
 import numpy as np
 
 class MeasurementSimulator:
-    def __init__(self, noise_level=0.0):
+    def __init__(self, noise_level=0.0, shot_noise=False):
         """
         Simulates a Single Pixel Detector (Photodiode).
-        noise_level: Standard deviation of Gaussian noise added to the signal.
+        noise_level: Standard deviation of Gaussian noise.
+        shot_noise: If True, adds intensity-dependent noise.
         """
         self.noise_level = noise_level
+        self.shot_noise = shot_noise
 
     def capture(self, scene, patterns):
         """
-        Simulates the physical projection of patterns onto a scene.
-        scene: 2D numpy array (the object being imaged).
-        patterns: 2D numpy array (the sensing matrix from BasisPatterns).
+        Simulates the physical projection: y = A * x
         """
-        # Flatten scene for matrix multiplication: y = A * x
-        x = scene.flatten().astype(float)
+        x = scene.flatten(order='C').astype(float)
         
-        # Simulate light intensity hitting the photodiode
-        # patterns shape: (M, N_pixels), x shape: (N_pixels,)
+        # Linear light integration
         measurements = np.dot(patterns, x)
         
-        # Add sensor noise (Shot noise / Electronic noise simulation)
-        if self.noise_level > 0:
+        # Add Shot Noise (Poisson-like simulation)
+        if self.shot_noise:
+            # Scaled to keep it realistic; noise increases with intensity
+            noise_scale = np.sqrt(np.abs(measurements)) * self.noise_level
+            measurements += np.random.normal(0, 1, measurements.shape) * noise_scale
+        
+        # Add Electronic/Thermal Noise (Gaussian)
+        elif self.noise_level > 0:
             noise = np.random.normal(0, self.noise_level, measurements.shape)
             measurements += noise
             
@@ -32,30 +36,39 @@ class MeasurementSimulator:
 
     def process_differential(self, measurements):
         """
-        Implements Differential Subtraction for Hadamard/Binary patterns.
-        Assuming patterns were stacked as [P_pos_1, ..., P_pos_n, P_neg_1, ..., P_neg_n]
-        or interleaved. Here we assume the first half are Pos and second half are Neg.
+        Implements y_diff = y_pos - y_neg.
+        Matches the stacked output of BasisPatterns.generate_hadamard(differential=True).
         """
+        # Ensure we have an even number of measurements for pairing
         n_pairs = len(measurements) // 2
         y_pos = measurements[:n_pairs]
         y_neg = measurements[n_pairs:]
         
-        # The differential signal: y = (H+1)/2 * x - (1-H)/2 * x = H * x
         return y_pos - y_neg
 
     def simulate_fourier_acquisition(self, scene, fourier_patterns):
         """
-        Specific logic for Fourier. Since Fourier patterns are normalized [0, 1],
-        we usually subtract the mean (DC component) to center the signal.
+        For grayscale fringes, we simulate the 'DC-centered' signal.
+        In the lab, you often measure the average brightness of the room 
+        first and subtract it.
         """
         measurements = self.capture(scene, fourier_patterns)
         
-        # Subtract the mean to remove the common DC bias from the grayscale fringes
+        # Subtracting mean removes the global offset caused by the [0, 1] 
+        # normalization in pattern_gen.
         return measurements - np.mean(measurements)
 
     @staticmethod
-    def get_snr(signal, noisy_signal):
-        """Calculates Signal-to-Noise Ratio."""
-        signal_power = np.mean(signal**2)
-        noise_power = np.mean((signal - noisy_signal)**2)
+    def get_snr(clean_signal, noisy_signal):
+        """
+        Calculates SNR in decibels. 
+        Higher is better.
+        """
+        # Use clean signal for power calculation to avoid bias
+        signal_power = np.mean(clean_signal**2)
+        noise_power = np.mean((clean_signal - noisy_signal)**2)
+        
+        if noise_power == 0:
+            return float('inf')
+            
         return 10 * np.log10(signal_power / noise_power)

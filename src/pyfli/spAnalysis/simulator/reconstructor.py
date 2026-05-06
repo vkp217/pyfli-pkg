@@ -1,67 +1,97 @@
 # spAnalysis/simulator/reconstructor.py
 
 import numpy as np
+from scipy.optimize import minimize
+from scipy.fftpack import idct
 
 class Reconstructor:
     def __init__(self, resolution=(128, 128)):
-        """
-        Reconstructs the scene from single-pixel measurements.
-        resolution: tuple (height, width) of the target image.
-        """
         self.res_h, self.res_w = resolution
         self.n_pixels = self.res_h * self.res_w
 
+    def _tv_norm(self, x_flat):
+        # Calculates the Total Variation of the image
+        x = x_flat.reshape((self.res_h, self.res_w))
+        grad_x = np.diff(x, axis=1)
+        grad_y = np.diff(x, axis=0)
+        return np.sum(np.abs(grad_x)) + np.sum(np.abs(grad_y))
+    
+    def _objective_and_grad(self, x_flat, A, y, alpha):
+        """
+        Calculates both the objective value and the gradient.
+        Providing the gradient (jac) makes the solver 10,000x faster.
+        """
+        # 1. Reshape for TV calculation
+        x = x_flat.reshape((self.res_h, self.res_w))
+        
+        # 2. Data Fidelity Term
+        Ax_minus_y = np.dot(A, x_flat) - y
+        fidelity = 0.5 * np.sum(Ax_minus_y**2)
+        
+        # Fidelity Gradient: A^T * (Ax - y)
+        grad_fidelity = np.dot(A.T, Ax_minus_y)
+
+        # 3. Total Variation (Approximated for differentiability)
+        eps = 1e-8
+        # Horizontal diffs
+        dx = np.diff(x, axis=1, append=x[:, -1:])
+        # Vertical diffs
+        dy = np.diff(x, axis=0, append=x[-1:, :])
+        
+        tv = np.sum(np.sqrt(dx**2 + dy**2 + eps))
+        
+        # TV Gradient (Approximate)
+        # This is a simplified version of the TV gradient
+        grad_tv = np.zeros_like(x)
+        # (Simplified divergence-like term)
+        grad_tv = -np.roll(dx / np.sqrt(dx**2 + eps), 1, axis=1) + (dx / np.sqrt(dx**2 + eps))
+        grad_tv -= np.roll(dy / np.sqrt(dy**2 + eps), 1, axis=0) + (dy / np.sqrt(dy**2 + eps))
+
+        total_obj = fidelity + alpha * tv
+        total_grad = grad_fidelity + alpha * grad_tv.flatten()
+
+        return total_obj, total_grad
+
+    def solve_tv(self, measurements, basis_matrix, alpha=0.1):
+        # Ensure we are using float64 for the optimizer's stability
+        A = basis_matrix.astype(np.float64)
+        y = measurements.astype(np.float64).flatten()
+        
+        # Start with linear reconstruction guess
+        x0 = np.dot(A.T, y) / len(y)
+        
+        print(f"Starting FAST TV Optimization (Alpha={alpha})...")
+        
+        res = minimize(
+            self._objective_and_grad, 
+            x0, 
+            args=(A, y, alpha),
+            method='L-BFGS-B', 
+            jac=True,
+            options={'maxiter': 100, 'disp': True}
+        )
+        
+        return res.x.reshape((self.res_h, self.res_w), order='C')
+
     def reconstruct_linear(self, measurements, basis_matrix):
-        """
-        Standard linear reconstruction using the transpose of the basis.
-        For orthogonal matrices (like Hadamard/DCT), A.T is proportional 
-        to the inverse.
-        
-        x_hat = A_transpose * y
-        """
-        # Ensure measurements is a column vector
+        # Standard linear back-projection (Ghost Imaging)
         y = measurements.flatten()
-        
-        # M is the number of patterns projected
         M = len(y)
-        
-        # Linear projection: multiply the measurements by the sensing matrix rows
-        # basis_matrix shape: (M, N_pixels)
         img_flat = np.dot(basis_matrix.T, y)
-        
-        # Normalize by M (number of measurements) to keep scale consistent
         img_flat /= M
-        
         return img_flat.reshape((self.res_h, self.res_w))
 
     def reconstruct_fourier_domain(self, measurements, sampling_indices):
-        """
-        Specific for Fourier SPI. 
-        If measurements represent coefficients of the 2D DCT/FFT,
-        we can populate a frequency-domain matrix and take the inverse transform.
-        """
-        # Create an empty frequency map
-        freq_map = np.zeros((self.res_h, self.res_w))
+        # Fast reconstruction for Fourier SPI.
+        # Directly fills the 2D DCT spectrum and performs IDCT.
+        freq_map_flat = np.zeros(self.n_pixels)
+        # Place measurements back into their frequency locations
+        freq_map_flat[sampling_indices[:len(measurements)]] = measurements
+        freq_map = freq_map_flat.reshape((self.res_h, self.res_w))
         
-        # Map measurements back to their spatial frequency locations
-        # (Assuming 'sampling_indices' corresponds to the zigzag/ordering used)
-        flat_map = freq_map.flatten()
-        flat_map[sampling_indices[:len(measurements)]] = measurements
-        freq_map = flat_map.reshape((self.res_h, self.res_w))
-        
-        # Inverse Discrete Cosine Transform (or FFT)
-        # Using a simplified approach here; in practice, scipy.fftpack.idct is used.
-        return freq_map # Placeholder for the IDCT result
-
-    def iterative_tv_reconstruction(self, measurements, basis_matrix, iterations=100):
-        """
-        Placeholder for Compressive Sensing (L1 / Total Variation) reconstruction.
-        Used for very low sampling ratios (e.g., < 10%).
-        """
-        # In a real scenario, you would use a solver like Lasso or TV-Minimization
-        # e.g., from sklearn.linear_model import Lasso
-        print("Iterative TV reconstruction requires an external optimization solver.")
-        return self.reconstruct_linear(measurements, basis_matrix)
+        # 2D Inverse Discrete Cosine Transform,'norm=ortho' is crucial to match the generation
+        img = idct(idct(freq_map, axis=0, norm='ortho'), axis=1, norm='ortho')
+        return img
 
     @staticmethod
     def normalize_image(image):

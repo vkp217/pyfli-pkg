@@ -1,7 +1,7 @@
 #### inside "scripts.__init__.py"
 from .dataIO import (DataOperations, AlliGprocessedImport, 
                         BHprocessedImport, PyFliprocessedImport, DatasetPlotter, DataIO_utils,
-                         Detector )
+                         Detector, load_flim_data, collapse_to_xyt, plot_xyt )
 from .analytical_methods import (PhasorAnalyzer, FLIFitter, PoissonLikelihoodFitter, FLIAnalysisSuite, AnalyticalHelpers)
 from .dataCC import IRFAligner, DataPreprocessing, Normalization, ROIoperations
 from .dataVnP import DataViewer, Plotter, DLModelComparator, Colorprocess
@@ -26,6 +26,6 @@ __all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport",
     "Macro_sim", "TCSPC_sim", "FLIImageGenerator", "recovery_plot", "random_true_pixel", "save_plot"
     "FLICalibrator", "FLIValidator", "Normalization", "Msg_display", "FittingComparator",
     "data_masking", "Detector", "BinnedFliFitter", "FliBinner", "ROIoperations",
-    "Batch_sim", "DataSaver"
+    "Batch_sim", "DataSaver", "load_flim_data", "collapse_to_xyt", "plot_xyt"
 ]
     
