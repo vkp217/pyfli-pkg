@@ -37,15 +37,14 @@ class Reconstructor:
         dx = np.diff(x, axis=1, append=x[:, -1:])
         # Vertical diffs
         dy = np.diff(x, axis=0, append=x[-1:, :])
-        
-        tv = np.sum(np.sqrt(dx**2 + dy**2 + eps))
-        
-        # TV Gradient (Approximate)
-        # This is a simplified version of the TV gradient
-        grad_tv = np.zeros_like(x)
-        # (Simplified divergence-like term)
-        grad_tv = -np.roll(dx / np.sqrt(dx**2 + eps), 1, axis=1) + (dx / np.sqrt(dx**2 + eps))
-        grad_tv -= np.roll(dy / np.sqrt(dy**2 + eps), 1, axis=0) + (dy / np.sqrt(dy**2 + eps))
+
+        norm = np.sqrt(dx**2 + dy**2 + eps)
+        tv = np.sum(norm)
+
+        # Isotropic TV gradient: ∂TV/∂x[k,l] = px[k,l-1] - px[k,l] + py[k-1,l] - py[k,l]
+        px = dx / norm
+        py = dy / norm
+        grad_tv = np.roll(px, 1, axis=1) - px + np.roll(py, 1, axis=0) - py
 
         total_obj = fidelity + alpha * tv
         total_grad = grad_fidelity + alpha * grad_tv.flatten()
