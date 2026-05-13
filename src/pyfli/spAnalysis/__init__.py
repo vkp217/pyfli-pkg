@@ -1,6 +1,12 @@
-#### inside "spAnalysis.__init__.py"
 from .simulator import BasisPatterns, MeasurementSimulator, Reconstructor
+from .solvers import LinearReconstructor, TVReconstructor
+from .spad_solvers import SPADPoissonReconstructor
+from .basis import HadamardBasis, DCTBasis
+from .main import run_reconstruction
 
-# This allows: from pyfli.scripts import DataViewer
-__all__ = ["BasisPatterns", "MeasurementSimulator", "Reconstructor"]
-    
+__all__ = [
+    "BasisPatterns", "MeasurementSimulator", "Reconstructor",
+    "LinearReconstructor", "TVReconstructor", "SPADPoissonReconstructor",
+    "HadamardBasis", "DCTBasis",
+    "run_reconstruction",
+]

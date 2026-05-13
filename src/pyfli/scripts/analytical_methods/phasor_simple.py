@@ -219,17 +219,22 @@ class PhasorAnalyzer:
         return (1 / self.omega) * (S / (G + self.eps)) * 1e9
 
     # Fraction decomposition 
-    def compute_fractions(self, G, S, tau1_ns, tau2_ns, mask=None, hexbin_color=None, plot_graph=True):
+    def compute_fractions(self, G, S, tau1_ns, tau2_ns, mask=None, hexbin_color=None, plot_graph=True, ax=None):
         g1, s1 = self.lifetime_to_phasor(tau1_ns, self.frequency)
         g2, s2 = self.lifetime_to_phasor(tau2_ns, self.frequency)
         if plot_graph:
-            fig, ax = plt.subplots(figsize=(8, 6))
+            created_fig = ax is None
+            if created_fig:
+                fig, ax = plt.subplots(figsize=(8, 6))
+            else:
+                fig = ax.get_figure()
             self.plot_phasor_diagram(G, S, colors=None, mask=None, hexbin_color="jet_r", ax=ax)
             ax.plot([g1, g2], [s1, s2], color="#2C0F02", linestyle="--", lw=2, zorder=10)
             ax.plot(g1, s1, "o", color="#E5D16E", markersize=8, label="...", zorder=11)
             ax.plot(g2, s2, "o", color="#363D45", markersize=8, label="...", zorder=11)
             ax.legend(loc="upper right")
-            plt.show()
+            if created_fig:
+                plt.tight_layout()
 
         # Vector along the mixing line from tau2 endpoint toward tau1 endpoint
         line_vec_g = g1 - g2
@@ -272,7 +277,7 @@ class PhasorAnalyzer:
 
     def analyze_biexponential_and_reconstruct(self, G, S, irf,
                                                tau1_ns=None, tau2_ns=None,
-                                               plot=True):
+                                               plot=True, axes=None):
 
         if tau1_ns is None or tau2_ns is None:
             return None
@@ -280,23 +285,27 @@ class PhasorAnalyzer:
         tau_map_ns = self.compute_lifetime(G, S)
 
         if plot:
-            fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+            created_fig = axes is None
+            if created_fig:
+                fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+            else:
+                fig = axes[0].get_figure()
             im1 = axes[0].imshow(A1, origin="upper", cmap="viridis")
             axes[0].set_title(f"A1 Map (Fraction of {tau1_ns} ns)")
-            plt.colorbar(im1, ax=axes[0])
+            fig.colorbar(im1, ax=axes[0])
 
             im2 = axes[1].imshow(A2, origin="upper", cmap="plasma")
             axes[1].set_title(f"A2 Map (Fraction of {tau2_ns} ns)")
-            plt.colorbar(im2, ax=axes[1])
+            fig.colorbar(im2, ax=axes[1])
 
             im3 = axes[2].imshow(np.clip(tau_map_ns, 0, 5), origin="upper", cmap="magma")
             axes[2].set_title("Phase Lifetime Map (ns)")
-            plt.colorbar(im3, ax=axes[2])
+            fig.colorbar(im3, ax=axes[2])
 
             for ax in axes:
                 ax.axis("off")
-            plt.tight_layout()
-            plt.show()
+            if created_fig:
+                plt.tight_layout()
 
         H, W = A1.shape
         T = irf.shape[2]
@@ -331,6 +340,8 @@ class PhasorAnalyzer:
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
         # Universal circle
         ug, us = _universal_circle_xy()
         ax.plot(ug, us, "k--")
@@ -375,34 +386,46 @@ class PhasorAnalyzer:
 
         if created_fig:
             plt.tight_layout()
-            plt.show()
+        return fig
 
-    def plot_map(self, image, scales = [0, 2], title=""):
-        plt.figure(figsize=(8, 6))
-        plt.imshow(np.clip(image, scales[0], scales[1]), origin="upper", cmap="viridis")
-        plt.colorbar().set_label("Lifetime (ns)")
-        plt.title(title)
-        plt.xlabel("X")
-        plt.ylabel("Y")
-        plt.grid(False)
-        plt.show()
+    def plot_map(self, image, scales=[0, 2], title="", ax=None, figsize=(8, 6)):
+        created_fig = ax is None
+        if created_fig:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
+        im = ax.imshow(np.clip(image, scales[0], scales[1]), origin="upper", cmap="viridis")
+        fig.colorbar(im, ax=ax).set_label("Lifetime (ns)")
+        ax.set_title(title)
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.grid(False)
+        if created_fig:
+            plt.tight_layout()
+        return fig
 
-    def plot_phasor_overlay(self, decay, G, S, colormap="viridis", figsize=(8, 8)):
+    def plot_phasor_overlay(self, decay, G, S, colormap="viridis", ax=None, figsize=(8, 8)):
+        created_fig = ax is None
+        if created_fig:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
         intensity_img = self.generate_intensity_image(decay)
         phasor_colors = self.phasor_colormap(G, S, colormap=colormap)
         int_norm = (intensity_img - intensity_img.min()) / \
                    (intensity_img.max() - intensity_img.min() + self.eps)
         overlay = np.stack([int_norm] * 3, axis=2) * phasor_colors
+        ax.imshow(overlay, origin="upper")
+        ax.set_title("Intensity + Phasor Color Overlay")
+        ax.axis("off")
+        if created_fig:
+            plt.tight_layout()
+        return fig
 
-        plt.figure(figsize=figsize)
-        plt.imshow(overlay, origin="upper")
-        plt.title("Intensity + Phasor Color Overlay")
-        plt.axis("off")
-        plt.show()
-
-    def plot_pure_phasor_map(self, G, S, decay, 
-                             noise_removed=True, 
-                             colormap="viridis", 
+    def plot_pure_phasor_map(self, G, S, decay,
+                             noise_removed=True,
+                             colormap="viridis",
+                             ax=None,
                              figsize=(4, 4)):
         # Map G and S to colors (H, W, 3)
         phasor_colors = self.phasor_colormap(G, S, colormap=colormap)
@@ -431,11 +454,17 @@ class PhasorAnalyzer:
         pure_overlay[final_mask] = phasor_colors[final_mask]
 
         # 4. Plotting
-        plt.figure(figsize=figsize)
-        plt.imshow(pure_overlay, origin="upper")
-        plt.title(f"Pure Phasor Map (Noise Removed: {noise_removed})")
-        plt.axis("off")
-        plt.show()
+        created_fig = ax is None
+        if created_fig:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
+        ax.imshow(pure_overlay, origin="upper")
+        ax.set_title(f"Pure Phasor Map (Noise Removed: {noise_removed})")
+        ax.axis("off")
+        if created_fig:
+            plt.tight_layout()
+        return fig
 
 
     def plot_overlay_subplots(self, decay, G, S, mask=None, 
@@ -539,11 +568,11 @@ class PhasorAnalyzer:
         _style_phasor_ax(ax5, title="Phasor Distribution", xlim=(-0.1, 1.1), ylim=(-0.6, 0.6))
         
         plt.tight_layout()
-        plt.show()
+        return fig
 
 
     def plot_pixel_fit(self, irf, decay, reconstructed_decay, x, y,
-                       log_scale=True):
+                       log_scale=True, ax=None, figsize=(10, 6)):
 
         irf_trace = irf[y, x, :] if irf.ndim == 3 else np.asarray(irf)
         raw_trace  = decay[y, x, :]
@@ -557,30 +586,36 @@ class PhasorAnalyzer:
         irf_norm, raw_norm, fit_norm = norm_t[0], norm_t[1], norm_t[2]
         # -------------------------------------------------------------------
 
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.time_axis_ns, irf_norm,
-                 "k--", alpha=0.5, label="IRF (Normalized)")
-        plt.plot(self.time_axis_ns, raw_norm,
-                 "ro", markersize=4, alpha=0.6, label=f"Raw Decay (Pixel {x},{y})")
-        plt.plot(self.time_axis_ns, fit_norm,
-                 "b-", lw=2, label="Reconstructed Fit")
+        created_fig = ax is None
+        if created_fig:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
+        ax.plot(self.time_axis_ns, irf_norm,
+                "k--", alpha=0.5, label="IRF (Normalized)")
+        ax.plot(self.time_axis_ns, raw_norm,
+                "ro", markersize=4, alpha=0.6, label=f"Raw Decay (Pixel {x},{y})")
+        ax.plot(self.time_axis_ns, fit_norm,
+                "b-", lw=2, label="Reconstructed Fit")
 
         if log_scale:
-            plt.yscale("log")
-            plt.ylim(1e-3, 1.2)
-            plt.ylabel("Normalized Intensity (Log Scale)")
+            ax.set_yscale("log")
+            ax.set_ylim(1e-3, 1.2)
+            ax.set_ylabel("Normalized Intensity (Log Scale)")
         else:
-            plt.ylabel("Normalized Intensity (Linear Scale)")
+            ax.set_ylabel("Normalized Intensity (Linear Scale)")
 
-        plt.xlabel("Time (ns)")
-        plt.title(f"Decay Analysis at Pixel (X: {x}, Y: {y})  "
-                  f"[device: {self.device}]")
-        plt.legend()
-        plt.grid(True, which="both", linestyle="--", alpha=0.5)
-        plt.show()
+        ax.set_xlabel("Time (ns)")
+        ax.set_title(f"Decay Analysis at Pixel (X: {x}, Y: {y})  "
+                     f"[device: {self.device}]")
+        ax.legend()
+        ax.grid(True, which="both", linestyle="--", alpha=0.5)
+        if created_fig:
+            plt.tight_layout()
+        return fig
 
     def plot_pixel_fit_single_exp(self, irf, decay, tau_ns, x, y,
-                                  log_scale=True):
+                                  log_scale=True, ax=None, figsize=(10, 6)):
         if isinstance(tau_ns, (torch.Tensor, np.ndarray)):
             if tau_ns.ndim >= 2:
                 tau_val = tau_ns[y, x]
@@ -628,40 +663,50 @@ class PhasorAnalyzer:
         irf_norm, raw_norm, fit_norm = norm_t[0], norm_t[1], norm_t[2]
         # -------------------------------------------------------------------
 
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.time_axis_ns, irf_norm,
-                 "k--", alpha=0.5, label="IRF (Normalized)")
-        plt.plot(self.time_axis_ns, raw_norm,
-                 "ro", markersize=4, alpha=0.6, label=f"Raw Decay (Pixel {x},{y})")
-        plt.plot(self.time_axis_ns, fit_norm,
-                 "b-", lw=2, label=f"Single-Exp Fit  τ = {tau_val} ns")
+        created_fig = ax is None
+        if created_fig:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
+        ax.plot(self.time_axis_ns, irf_norm,
+                "k--", alpha=0.5, label="IRF (Normalized)")
+        ax.plot(self.time_axis_ns, raw_norm,
+                "ro", markersize=4, alpha=0.6, label=f"Raw Decay (Pixel {x},{y})")
+        ax.plot(self.time_axis_ns, fit_norm,
+                "b-", lw=2, label=f"Single-Exp Fit  τ = {tau_val} ns")
 
         if log_scale:
-            plt.yscale("log")
-            plt.ylim(1e-3, 1.2)
-            plt.ylabel("Normalized Intensity (Log Scale)")
+            ax.set_yscale("log")
+            ax.set_ylim(1e-3, 1.2)
+            ax.set_ylabel("Normalized Intensity (Log Scale)")
         else:
-            plt.ylabel("Normalized Intensity (Linear Scale)")
+            ax.set_ylabel("Normalized Intensity (Linear Scale)")
 
-        plt.xlabel("Time (ns)")
-        plt.title(
+        ax.set_xlabel("Time (ns)")
+        ax.set_title(
             f"Single-Exponential Decay at Pixel (X: {x}, Y: {y})  "
             f"τ = {tau_val} ns  [device: {self.device}]"
         )
-        plt.legend()
-        plt.grid(True, which="both", linestyle="--", alpha=0.5)
-        plt.show()
+        ax.legend()
+        ax.grid(True, which="both", linestyle="--", alpha=0.5)
+        if created_fig:
+            plt.tight_layout()
+        return fig
 
     # Multi-harmonic phasor visualization
-    def plot_phasor_harmonics(self, G, S, harmonics=(1, 2, 3, 4), mask=None, 
-                          colors=None, hexbin_color=None, figsize=(22, 5)):
+    def plot_phasor_harmonics(self, G, S, harmonics=(1, 2, 3, 4), mask=None,
+                          colors=None, hexbin_color=None, figsize=(22, 5), axes=None):
         G = np.asarray(G)
         S = np.asarray(S)
         n_panels = len(harmonics)
 
-        fig, axes = plt.subplots(1, n_panels, figsize=figsize)
-        if n_panels == 1:
-            axes = [axes]
+        created_fig = axes is None
+        if created_fig:
+            fig, axes = plt.subplots(1, n_panels, figsize=figsize)
+            if n_panels == 1:
+                axes = [axes]
+        else:
+            fig = axes[0].get_figure()
 
         # Pre-process mask if provided
         mask_flat = np.ravel(mask) if mask is not None else None
@@ -723,10 +768,11 @@ class PhasorAnalyzer:
                             xlim=(-0.3, 1.3), 
                             ylim=(-0.85, 0.85))
                                 
-        fig.suptitle("Phasor Diagram — Multiple Harmonics",
-                    fontsize=12, fontweight="bold", y=1.01)
-        plt.tight_layout()
-        plt.show()
+        if created_fig:
+            fig.suptitle("Phasor Diagram — Multiple Harmonics",
+                         fontsize=12, fontweight="bold", y=1.01)
+            plt.tight_layout()
+        return fig
 
     def save_phasors_hdf5(self, Gc, Sc, tau_phasor, save_file):
         try:
@@ -758,7 +804,7 @@ class PhasorAnalyzer:
         return colors
 
 
-    def plot_traceable_analysis(self, G, S, decay, mask=None, colormap="viridis", figsize=(14, 6)):
+    def plot_traceable_analysis(self, G, S, decay, mask=None, colormap="viridis", figsize=(14, 6), axes=None):
         # 1. Setup Data & Colors
         G_2d = G[0] if G.ndim == 3 else G
         S_2d = S[0] if S.ndim == 3 else S
@@ -774,7 +820,11 @@ class PhasorAnalyzer:
         else:
             active_mask = mask.astype(bool)
 
-        fig, axes = plt.subplots(1, 2, figsize=figsize)
+        created_fig = axes is None
+        if created_fig:
+            fig, axes = plt.subplots(1, 2, figsize=figsize)
+        else:
+            fig = axes[0].get_figure()
         pure_overlay = np.zeros_like(phasor_colors_raw)
         pure_overlay[active_mask] = phasor_colors_raw[active_mask]        
         im_map = axes[0].imshow(pure_overlay, origin="upper")
@@ -812,7 +862,8 @@ class PhasorAnalyzer:
             _draw_lifetime_ticks(axes[1], G_mark, S_mark, color="black", lw=2, fontsize=9)
         except:
             pass
-        _style_phasor_ax(axes[1], title="Phasor Distribution", 
-                            xlim=(-0.1, 1.1), ylim=(-0.6, 0.6))
-        plt.tight_layout()
-        plt.show()
+        _style_phasor_ax(axes[1], title="Phasor Distribution",
+                         xlim=(-0.1, 1.1), ylim=(-0.6, 0.6))
+        if created_fig:
+            plt.tight_layout()
+        return fig

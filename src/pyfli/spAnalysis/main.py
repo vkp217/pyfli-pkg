@@ -1,20 +1,43 @@
 import numpy as np
-from .solvers import NyquistHadamard, TVMinimization
+from .solvers import LinearReconstructor, TVReconstructor
+from .spad_solvers import SPADPoissonReconstructor
 
-def run_reconstruction(data, mode='nyquist'):
-    res = 64
-    bins = data.shape[1]
-    
-    if mode == 'nyquist':
-        engine = NyquistHadamard(res, bins)
+
+def run_reconstruction(measurements, dmd_patterns, h, w, t, lam,
+                       mode='linear', differential=True, alpha=1.0, maxiter=500):
+    """
+    Reconstruct a 4D (x, y, T, Lambda) cube from DMD single-pixel measurements.
+
+    Parameters
+    ----------
+    measurements  : ndarray
+        (2M, T, Lambda) if differential else (M, T, Lambda) — raw SPAD counts.
+    dmd_patterns  : ndarray
+        (2M, H*W) if differential else (M, H*W) — DMD {0,1} patterns from
+        BasisPatterns.generate_hadamard() or BasisPatterns.generate_fourier_dct().
+    h, w          : int — spatial resolution
+    t, lam        : int — TCSPC time bins and wavelength channels
+    mode          : 'linear' | 'tv' | 'poisson'
+        'linear'  — fast back-projection (Gaussian noise)
+        'tv'      — L-BFGS-B TV minimization (Gaussian noise)
+        'poisson' — L-BFGS-B Poisson + TV (integer photon counts, SPAD)
+    differential  : bool — True for Hadamard differential DMD patterns (default)
+    alpha         : float — TV regularization weight (tv/poisson modes)
+    maxiter       : int   — solver iterations per (t, lambda) slice
+
+    Returns
+    -------
+    cube : ndarray (H, W, T, Lambda)
+    """
+    if mode == 'linear':
+        engine = LinearReconstructor(h, w, t, lam, differential=differential)
     elif mode == 'tv':
-        engine = TVMinimization(res, bins, reg_param=0.01)
+        engine = TVReconstructor(h, w, t, lam, differential=differential,
+                                 alpha=alpha, maxiter=maxiter)
+    elif mode == 'poisson':
+        engine = SPADPoissonReconstructor(h, w, t, lam, differential=differential,
+                                          alpha=alpha, maxiter=maxiter)
     else:
-        raise ValueError("Unknown mode")
+        raise ValueError(f"Unknown mode '{mode}'. Choose: 'linear', 'tv', 'poisson'")
 
-    cube = engine.reconstruct(data)
-    return engine.post_process(cube)
-
-# Example usage:
-# raw_data = np.load("tcspc_counts.npy")
-# final_cube = run_reconstruction(raw_data, mode='nyquist')
+    return engine.reconstruct_4d(measurements, dmd_patterns)

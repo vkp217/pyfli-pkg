@@ -26,14 +26,14 @@ dependencies = [
     "tqdm",
     "seaborn",
     "pillow",
-    "tabulate>=0.10.0"
+    "tabulate>=0.10.0",
+    "torch>=2.0.0"
 ]
 
 
 [project.optional-dependencies]
 gpu = [
     "tensorflow>=2.15.0",
-    "torch>=2.0.0",
 ]
 dev = [
     "pytest",

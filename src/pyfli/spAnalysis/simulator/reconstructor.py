@@ -21,55 +21,57 @@ class Reconstructor:
         Calculates both the objective value and the gradient.
         Providing the gradient (jac) makes the solver 10,000x faster.
         """
-        # 1. Reshape for TV calculation
         x = x_flat.reshape((self.res_h, self.res_w))
-        
-        # 2. Data Fidelity Term
+
+        # Data fidelity: 0.5 * ||Ax - y||^2
         Ax_minus_y = np.dot(A, x_flat) - y
         fidelity = 0.5 * np.sum(Ax_minus_y**2)
-        
-        # Fidelity Gradient: A^T * (Ax - y)
         grad_fidelity = np.dot(A.T, Ax_minus_y)
 
-        # 3. Total Variation (Approximated for differentiability)
+        # Isotropic TV with Neumann (zero-flux) boundary conditions
         eps = 1e-8
-        # Horizontal diffs
-        dx = np.diff(x, axis=1, append=x[:, -1:])
-        # Vertical diffs
-        dy = np.diff(x, axis=0, append=x[-1:, :])
+        # Forward differences, zero-padded at boundaries (Neumann BC)
+        dx = np.zeros_like(x)
+        dy = np.zeros_like(x)
+        dx[:, :-1] = np.diff(x, axis=1)
+        dy[:-1, :] = np.diff(x, axis=0)
 
         norm = np.sqrt(dx**2 + dy**2 + eps)
         tv = np.sum(norm)
 
-        # Isotropic TV gradient: ∂TV/∂x[k,l] = px[k,l-1] - px[k,l] + py[k-1,l] - py[k,l]
+        # Divergence with Neumann BC (correct adjoint of forward-diff gradient)
         px = dx / norm
         py = dy / norm
-        grad_tv = np.roll(px, 1, axis=1) - px + np.roll(py, 1, axis=0) - py
+        grad_tv = np.zeros_like(x)
+        grad_tv[:, :-1] -= px[:, :-1]
+        grad_tv[:, 1:]  += px[:, :-1]
+        grad_tv[:-1, :] -= py[:-1, :]
+        grad_tv[1:, :]  += py[:-1, :]
 
         total_obj = fidelity + alpha * tv
         total_grad = grad_fidelity + alpha * grad_tv.flatten()
 
         return total_obj, total_grad
 
-    def solve_tv(self, measurements, basis_matrix, alpha=0.1):
-        # Ensure we are using float64 for the optimizer's stability
+    def solve_tv(self, measurements, basis_matrix, alpha=1.0, maxiter=500):
         A = basis_matrix.astype(np.float64)
         y = measurements.astype(np.float64).flatten()
-        
-        # Start with linear reconstruction guess
-        x0 = np.dot(A.T, y) / len(y)
-        
-        print(f"Starting FAST TV Optimization (Alpha={alpha})...")
-        
+        M, N = A.shape
+
+        # Scaled initial guess: pinv-like using A^T normalization
+        x0 = np.dot(A.T, y) / M
+
+        print(f"Starting TV Optimization (Alpha={alpha}, maxiter={maxiter})...")
+
         res = minimize(
-            self._objective_and_grad, 
-            x0, 
+            self._objective_and_grad,
+            x0,
             args=(A, y, alpha),
-            method='L-BFGS-B', 
+            method='L-BFGS-B',
             jac=True,
-            options={'maxiter': 100, 'disp': True}
+            options={'maxiter': maxiter, 'ftol': 1e-10, 'gtol': 1e-7, 'disp': True}
         )
-        
+
         return res.x.reshape((self.res_h, self.res_w), order='C')
 
     def reconstruct_linear(self, measurements, basis_matrix):
