@@ -1,6 +1,6 @@
 # pyfli: A Unified Platform for FLI Data Processing
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://img.shields.io/pypi/v/pyfli-lib.svg)](https://pypi.org/project/pyfli-lib/)
 
@@ -26,10 +26,11 @@ The platform provides native support for several high-end imaging systems:
 
 `pyfli` implements industry-standard analytical methods to extract lifetime information:
 
-* **Non-linear Least Squares (NLLS) Fitting:** Robust mathematical approach for exponential decay modeling.
+* **Non-linear Least Squares Fitting (NLSF):** Robust mathematical approach for exponential decay modeling.
 * **Phasor Plot Analysis:** Graphical, model-free transformation of fluorescence decay into a 2D polar plot for easy species separation.
 * **Maximum Likelihood Estimation (MLE):** Statistical estimator optimized for low-photon regimes.
 * **Rapid Lifetime Determination (RLD):** Computationally efficient method for real-time applications and high-frame-rate data.
+* **Laguerre Method (LET):** Laguerre Expansion Technique for model-free IRF deconvolution followed by multi-exponential lifetime extraction on a per-pixel basis.
 
 ---
 

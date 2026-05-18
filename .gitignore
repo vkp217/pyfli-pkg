@@ -19,3 +19,15 @@ notebooks/
 *.h5
 *.sdt
 *.tif
+
+# IDE settings
+.vscode/
+.idea/
+
+# Pytest / coverage cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Stray files
+pip
