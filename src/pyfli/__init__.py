@@ -13,14 +13,15 @@ from .scripts import (DataOperations, IRFAligner, DataViewer,
                         recovery_plot, random_true_pixel, data_masking, save_plot,
                         Msg_display, FittingComparator, Detector,
                         BinnedFliFitter, FliBinner, ROIoperations, Batch_sim, DataSaver,
-                        load_flim_data, collapse_to_xyt, plot_xyt)
+                        load_flim_data, collapse_to_xyt, plot_xyt,
+                        LaguerreFLI)
 
 from .spAnalysis import (BasisPatterns, MeasurementSimulator, Reconstructor)
 
 __all__ = ['DataOperations', 'IRFAligner', 'DataViewer', 
         'AlliGprocessedImport', 'BHprocessedImport', 'PyFliprocessedImport', 
         'HardSimulator', 'HardestSimulator', 'DatasetPlotter',
-        'PhasorAnalyzer', 'FLIFitter', 'PoissonLikelihoodFitter', 'FLIAnalysisSuite'
+        'PhasorAnalyzer', 'FLIFitter', 'PoissonLikelihoodFitter', 'FLIAnalysisSuite',
         'Plotter', 'DLModelComparator', 'DataPreprocessing', 
         'BaseFLIFitter', 'Fli_CPUProcessor', 'Fli_GPUProcessor', 
         'MLEFLIFitter', 'GlobalFLIFitter', 'ROIMaker', 
@@ -30,7 +31,7 @@ __all__ = ['DataOperations', 'IRFAligner', 'DataViewer',
         'FLICalibrator', 'FLIValidator', 'Normalization',
         'Msg_display', 'FittingComparator',
         'data_masking', 'Detector', 'BinnedFliFitter', 'FliBinner',
-        'ROIoperations', 'Batch_sim', 'DataSaver',
+        'ROIoperations', 'Batch_sim', 'DataSaver', 'LaguerreFLI',
         # this is for SPAnalysis
         'BasisPatterns', 'MeasurementSimulator', 'Reconstructor',
         'load_flim_data', 'collapse_to_xyt', 'plot_xyt'
