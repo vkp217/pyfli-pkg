@@ -50,3 +50,11 @@ exclude = ["notebooks*", "config*", "data*"]
 Homepage = "https://github.com/vkp217/pyfli-pkg"
 Repository = "https://github.com/vkp217/pyfli-pkg.git"
 Issues = "https://github.com/vkp217/pyfli-pkg/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::RuntimeWarning",
+]
