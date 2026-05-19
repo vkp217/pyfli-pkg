@@ -516,18 +516,9 @@ class PhasorAnalyzer:
         ax2.set_title("Phasor Color Projections")
         ax2.axis("off")
 
-        # Colorbar Scaling Logic from plot_traceable_analysis
-        phi = np.arctan2(S_2d, G_2d)
-        phi_max = phi[active_mask].max() if np.any(active_mask) else 1.0
-        omega = 2 * np.pi * self.frequency
-        tau_max = np.tan(phi_max) / omega
-        
-        sm = ScalarMappable(cmap=plt.get_cmap(colormaps[0]), norm=Normalize(vmin=0, vmax=tau_max))
-        fig.colorbar(sm, ax=ax2, fraction=0.046, pad=0.04).set_label("Phasor Lifetime (ns)")
-
         # --- (2,1) Lifetime Map ---
         ax3 = fig.add_subplot(gs[1, 0])
-        tau_map_ns = self.compute_lifetime(G, S)
+        tau_map_ns = np.clip(self.compute_lifetime(G, S), 0, None)
         im3 = ax3.imshow(tau_map_ns, origin="upper", cmap=colormaps[1])
         ax3.set_title("Lifetime Map (ns)")
         ax3.axis("off")
@@ -540,9 +531,6 @@ class PhasorAnalyzer:
         ax4.imshow(weighted_overlay, origin="upper")
         ax4.set_title("Intensity-weighted Overlay")
         ax4.axis("off")
-        # Use the same radial scale for consistency
-        sm_w = ScalarMappable(cmap=plt.get_cmap(colormaps[0]), norm=Normalize(vmin=0, vmax=tau_max))
-        fig.colorbar(sm_w, ax=ax4, fraction=0.046, pad=0.04).set_label("Phasor Lifetime (ns)")
 
         # --- (1,3 & 2,3) Combined Phasor Plot ---
         ax5 = fig.add_subplot(gs[:, 2])
@@ -831,18 +819,16 @@ class PhasorAnalyzer:
         axes[0].set_title("Phasor Color Projections")
         axes[0].axis("off")
         phi = np.arctan2(S_2d, G_2d)
-        phi_max = phi.max() if phi.max() > 0 else 1.0
-        
-        # converting phase angle max to lifetime (ns)
-        # omega = 2 * pi * frequency
+        first_q = phi[(G_2d > 0) & (S_2d > 0)]
+        phi_max = float(first_q.max()) if first_q.size > 0 else 0.5
+        phi_max = np.clip(phi_max, 1e-6, np.pi / 2 - 0.05)
         omega = 2 * np.pi * self.frequency
-        tau_max = np.tan(phi_max) / omega
+        tau_max = np.tan(phi_max) / omega * 1e9  # convert s → ns
 
-        # Create the colorbar scale using tau_max instead of phi_max
         sm = ScalarMappable(cmap=plt.get_cmap(colormap), norm=Normalize(vmin=0, vmax=tau_max))
         sm.set_array([])
         cbar = fig.colorbar(sm, ax=axes[0], fraction=0.046, pad=0.04)
-        cbar.set_label("Phasor Lifetime (ns)")
+        cbar.set_label("Lifetime (ns)")
 
         # subplot (1,2) Phasor Diagram
         ug, us = _universal_circle_xy()
