@@ -6,7 +6,9 @@ from .analytical_methods import (PhasorAnalyzer, FLIFitter, PoissonLikelihoodFit
                                  FLIAnalysisSuite, AnalyticalHelpers,
                                  LaguerreFLI)
 from .dataCC import IRFAligner, DataPreprocessing, Normalization, ROIoperations
-from .dataVnP import DataViewer, Plotter, DLModelComparator, Colorprocess
+from .dataVnP import (DataViewer, Plotter, DLModelComparator, Colorprocess,
+                               PlotConfig, DataProcessor, SourceLoader,
+                               PlotKit, SubplotVisualizer, plot_2d_subplots)
 from .roiMaker import ROIMaker
 from .solver import (BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, 
                      MLEFLIFitter, GlobalFLIFitter, FittingComparator,
@@ -23,6 +25,7 @@ __all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport",
     "BHprocessedImport", "PyFliprocessedImport", "DatasetPlotter", "HardSimulator",
     "HardestSimulator", "FLIFitter", "PoissonLikelihoodFitter", "FLIAnalysisSuite", 
     "PhasorAnalyzer", "Plotter", "DLModelComparator", "DataPreprocessing",
+    "PlotConfig", "DataProcessor", "SourceLoader", "PlotKit", "SubplotVisualizer", "plot_2d_subplots",
     "BaseFLIFitter", "Fli_CPUProcessor", "Fli_GPUProcessor", "MLEFLIFitter", "GlobalFLIFitter",
     "ROIMaker", "AnalyticalHelpers", "DataIO_utils", "Colorprocess",
     "Macro_sim", "TCSPC_sim", "FLIImageGenerator", "recovery_plot", "random_true_pixel", "save_plot",
