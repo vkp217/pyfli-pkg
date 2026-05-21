@@ -102,7 +102,7 @@ def gate_j(m: int, T: float):
     return buckets
 
 def Pj_continuous_mono(f, m: int, T: float, epsabs=1e-8, epsrel=1e-8):
-    gates = gate_j(m, T)
+    gates = np.array(gate_j(m, T))          # list-of-tuples → 2D array for slicing
     a_vals, b_vals = gates[:, 0], gates[:, 1]
 
     # Vectorized numerical integration using np.vectorize wrapper
@@ -137,13 +137,17 @@ def Pj_from_samples_mono(t_samples: np.ndarray, y_samples: np.ndarray, m: int, T
             t_sub = t_samples[mask]
             y_sub = y_samples[..., mask]
 
-            # Include exact gate edges via interpolation
+            # Include exact gate edges via vectorised linear interpolation (H,W pixels)
             if t_sub[0] > a:
-                y_a = np.interp(a, t_samples, y_samples, left=0, right=0)
+                idx = int(np.clip(np.searchsorted(t_samples, a, side='right'), 1, Tn - 1))
+                w   = (a - t_samples[idx - 1]) / (t_samples[idx] - t_samples[idx - 1] + 1e-300)
+                y_a = y_samples[..., idx - 1] * (1.0 - w) + y_samples[..., idx] * w  # (H, W)
                 y_sub = np.concatenate((y_a[..., np.newaxis], y_sub), axis=-1)
                 t_sub = np.concatenate(([a], t_sub))
             if t_sub[-1] < b:
-                y_b = np.interp(b, t_samples, y_samples, left=0, right=0)
+                idx = int(np.clip(np.searchsorted(t_samples, b, side='left'), 0, Tn - 2))
+                w   = (b - t_samples[idx]) / (t_samples[idx + 1] - t_samples[idx] + 1e-300)
+                y_b = y_samples[..., idx] * (1.0 - w) + y_samples[..., idx + 1] * w  # (H, W)
                 y_sub = np.concatenate((y_sub, y_b[..., np.newaxis]), axis=-1)
                 t_sub = np.concatenate((t_sub, [b]))
 
@@ -185,10 +189,11 @@ def multimodal_normal(n_samples=10000, mus=None, sigma=None, weights=None, seed=
     
     # Generate samples for each mode
     samples = []
-    samples_2d = np.zeros((n_modes, samples_per_mode))
-    for m, s, n in zip(mus, sigma, samples_per_mode):
-        samples.append(np.random.normal(loc=m, scale=s, size=n))
-        samples_2d[mus == m, :n] = samples[-1]
+    samples_2d = np.zeros((n_modes, n_samples), dtype=float)   # n_samples cols = max possible
+    for i, (mu_val, s, n) in enumerate(zip(mus, sigma, samples_per_mode)):
+        samp = np.random.normal(loc=mu_val, scale=s, size=n)
+        samples.append(samp)
+        samples_2d[i, :n] = samp
     
     samples = np.concatenate(samples)
     
@@ -400,3 +405,206 @@ def save_plot(save_dir, name, fig=None, dpi=300, close=False):
         print(f"ERROR saving {name}: {str(e)}")    
     if close:
         plt.close(fig) if fig else plt.close()
+
+
+from .dataVnP.colorProcess import Colorprocess
+
+def plot_pixel_diagnostic(binned_decay, all_fitset, names,
+                          pixel=None, mask=None, t=None,
+                          yscale="log", model_type="BI-EXPONENTIAL",
+                          colors=None, figsize=(12, 6),
+                          raw_style="bar", map_aspect="equal",
+                          show_colorbar=True, show=True):
+    jet_m = Colorprocess().lowest_zero('jet')
+    if pixel is None:
+        if mask is None:
+            raise ValueError("Provide either pixel=(row, col) or mask.")
+        x, y = random_true_pixel(mask)
+    else:
+        x, y = pixel
+
+    raw  = np.asarray(binned_decay[x, y, :], dtype=float)
+    bins = raw.shape[-1]
+    if t is not None:
+        xs = np.asarray(t, dtype=float).ravel()[:bins]
+        xlabel = "Time (ns)"
+    else:
+        xs = np.arange(bins)
+        xlabel = "Gate #"
+    if colors is None:
+        cmap = plt.get_cmap("tab10")
+        colors = [cmap(i % 10) for i in range(len(all_fitset))]
+    fig = plt.figure(figsize=figsize)
+    gs  = fig.add_gridspec(2, 2, width_ratios=[1.1, 2], height_ratios=[3, 1])
+    ax_map = fig.add_subplot(gs[:, 0])               # full-height left panel
+    ax_top = fig.add_subplot(gs[0, 1])
+    ax_bot = fig.add_subplot(gs[1, 1], sharex=ax_top)
+    axd = {"map": ax_map, "decay": ax_top, "residual": ax_bot}
+    intensity = np.sum(binned_decay, axis=-1)        # (H, W)
+    im = ax_map.imshow(intensity*mask, cmap=jet_m, aspect=map_aspect)
+    # imshow's x-axis = columns, y-axis = rows -> mark pixel at (col, row)=(y, x)
+    ax_map.scatter(y, x, marker="x", c="red", s=80, linewidths=2)
+    ax_map.set_title("Intensity (Summed)")
+    # ax_map.set_xlabel("Column"); ax_map.set_ylabel("Row")
+    if show_colorbar:
+        fig.colorbar(im, ax=ax_map, fraction=0.046, pad=0.04)
+
+    if raw_style == "bar":
+        width = (xs[1] - xs[0]) if len(xs) > 1 else 1.0
+        ax_top.bar(xs, raw, width=width, color="0.8", edgecolor="none",
+                   zorder=1, label="Raw Data")
+    elif raw_style == "step":
+        ax_top.plot(xs, raw, color="0.7", lw=0.9, drawstyle="steps-mid",
+                    zorder=1, label="Raw Data")
+    else:  # "line"
+        ax_top.plot(xs, raw, color="0.7", lw=0.9, zorder=1, label="Raw Data")
+
+    for i, fs in enumerate(all_fitset):
+        label = names[i] if i < len(names) else f"Fit {i + 1}"
+        fit = np.asarray(fs["fit_map"][x, y, :], dtype=float)
+        ax_top.plot(xs, fit, color=colors[i], lw=1.3, zorder=2 + i,
+                    label=f"Fit: {label}")
+
+    ax_top.set_yscale(yscale)                        # log / linear switch
+    ax_top.set_ylabel("Photon Counts")
+    ax_top.set_title(f"Fit Diagnostics ({model_type})  [pixel {x}, {y}]")
+    ax_top.legend(ncol=2, fontsize=8, framealpha=0.9)
+    if yscale == "log":
+        pos = raw[raw > 0]
+        if pos.size:
+            ax_top.set_ylim(bottom=max(pos.min() * 0.1, 1e-3))
+
+    ax_bot.axhline(0, color="black", lw=0.8, zorder=1)
+    for i, fs in enumerate(all_fitset):
+        label = names[i] if i < len(names) else f"Fit {i + 1}"
+        res = np.asarray(fs["residual_map"][x, y, :], dtype=float)
+        ax_bot.plot(xs, res, color=colors[i], lw=1.0, label=f"{label} residuals")
+    ax_bot.set_ylabel("Residuals")
+    ax_bot.set_xlabel(xlabel)
+
+    fig.tight_layout()
+    if show:
+        plt.show()
+    return fig, axd, (x, y)
+
+
+import numpy as np
+from scipy.signal import fftconvolve
+
+
+def compute_detailed_results(tau1, tau2, f, freq_acq, binned_irf, binned_decay,
+                        data_name="F-BI", model_type="bi-exponential",
+                        params=3, eps=1e-8):
+    """
+    Reconstruct fit curves + goodness-of-fit maps from pre-estimated
+    bi-exponential parameter maps (e.g. F-BI output), packaged in the same
+    structure as Fli_CPUProcessor.process_image so it drops straight into
+    Plotter / DataViewer.
+
+    Parameters
+    ----------
+    tau1, tau2 : np.ndarray (H, W)   lifetime maps (ns, matching 1000/freq_acq)
+    f          : np.ndarray (H, W)   fraction of component 1; component 2 = (1 - f)
+    freq_acq   : float               acquisition frequency freq[1] (MHz)
+    binned_irf : np.ndarray          IRF, shape (bins,) or (H, W, bins).
+                                     A 1-D IRF is broadcast across all pixels.
+    binned_decay : np.ndarray (H, W, bins)   measured decay histogram per pixel
+    params     : int                 free-parameter count for the reduced-chi2 dof
+    eps        : float               numerical floor for clip / safe division
+
+    Returns
+    -------
+    {'name', 'results': {'maps', 'error_maps', 'TR_maps'}}
+    """
+    tau1 = np.asarray(tau1, dtype=np.float32)
+    tau2 = np.asarray(tau2, dtype=np.float32)
+    f    = np.asarray(f,    dtype=np.float32)
+    binned_decay = np.asarray(binned_decay, dtype=np.float32)
+
+    H, W = tau1.shape
+    bins = binned_irf.shape[-1]
+
+    # --- IRF shape handling: make it broadcastable with sdf (H, W, bins) ------
+    irf = np.asarray(binned_irf, dtype=np.float32)
+    if irf.ndim == 1:
+        irf = irf[np.newaxis, np.newaxis, :]          # (1, 1, bins) -> broadcasts
+    elif irf.ndim != 3:
+        raise ValueError("binned_irf must be 1-D (bins,) or 3-D (H,W,bins); "
+                         f"got shape {irf.shape}")
+
+    # --- Model decay (sdf) ----------------------------------------------------
+    tau1_b = np.clip(tau1[..., np.newaxis], eps, None)
+    tau2_b = np.clip(tau2[..., np.newaxis], eps, None)
+    f_b    = f[..., np.newaxis]
+    t = np.linspace(0, 1000.0 / freq_acq, bins, dtype=np.float32)
+    sdf = f_b * np.exp(-t / tau1_b) + (1.0 - f_b) * np.exp(-t / tau2_b)
+
+    # --- Convolve with IRF, crop back to bins -------------------------------
+    convolved_fit = fftconvolve(sdf, irf, mode="full", axes=-1)[..., :bins]
+
+    # --- Scale model PDF to measured photon counts ----------------------------
+    photon_count = np.sum(binned_decay, axis=-1)                      # (H, W)
+    fit_sum = np.sum(convolved_fit, axis=-1, keepdims=True)
+    fit_pdf = np.zeros_like(convolved_fit)
+    np.divide(convolved_fit, fit_sum, out=fit_pdf, where=fit_sum > eps)
+    scaled_fit = photon_count[..., np.newaxis] * fit_pdf             # (H, W, bins)
+
+    # --- Goodness of fit ------------------------------------------------------
+    variance = scaled_fit.copy()
+    variance[variance <= 0] = 1.0          # Poisson variance can't be 0 for chi-sq
+    dof = max(bins - params - 1, 1)
+    residuals  = binned_decay - scaled_fit
+    sq_err     = (residuals ** 2) / variance
+    chi_sq_raw = np.sum(sq_err, axis=-1)               # raw chi-square
+    chi_sq_map = chi_sq_raw / dof                      # reduced chi-square
+
+    # R^2 per pixel (safe division)
+    ss_res = np.sum(residuals ** 2, axis=-1)
+    ss_tot = np.sum((binned_decay - np.mean(binned_decay, axis=-1, keepdims=True)) ** 2,
+                    axis=-1)
+    r2_map = np.ones((H, W), dtype=np.float32)
+    np.divide(ss_res, ss_tot, out=r2_map, where=ss_tot > eps)
+    r2_map = 1.0 - r2_map
+
+    # params are given -> treat every valid pixel as "converged / healthy"
+    health = (photon_count > 0).astype(np.float32)
+
+    # --- Package-compatible 2-D maps ------------------------------------------
+    param_maps = {
+        "Area_map":             photon_count.astype(np.float32),   # scale = total counts
+        "alpha1_map":           f.astype(np.float32),
+        "tau1_map":             tau1.astype(np.float32),
+        "tau2_map":             tau2.astype(np.float32),
+        "offset_map":           np.zeros((H, W), dtype=np.float32),  # no offset in model
+        "R2_map":               r2_map.astype(np.float32),
+        "chi2_or_deviance_map": chi_sq_raw.astype(np.float32),
+        "reduced_stat_map":     chi_sq_map.astype(np.float32),
+        "convergence_map":      health.copy(),
+        "pixel_health_map":     health,
+        "photon_count_map":     photon_count.astype(np.float32),
+    }
+
+    # No per-parameter uncertainties here -> zeros, shaped like the package e_maps
+    internal_popt_len = 5 if model_type == "bi-exponential" else 3
+    error_maps = np.zeros((H, W, internal_popt_len), dtype=np.float32)
+
+    tr_maps = {
+        "fit_map":       scaled_fit.astype(np.float32),
+        "residual_map":  residuals.astype(np.float32),
+        "sdf_map":       sdf.astype(np.float32),          # model before scaling
+        "convolved_map": convolved_fit.astype(np.float32),
+    }
+
+    mask = photon_count > 0
+    mean_chi_sq = float(np.mean(chi_sq_map[mask])) if np.any(mask) else np.nan
+    print(f"Mean Chi-Squared (Active Pixels): {mean_chi_sq:.4f}")
+
+    return {
+        "name": data_name,
+        "results": {
+            "maps":       param_maps,
+            "error_maps": error_maps,
+            "TR_maps":    tr_maps,
+        },
+    }
+
