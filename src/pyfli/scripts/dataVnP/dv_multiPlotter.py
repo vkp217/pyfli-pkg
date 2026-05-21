@@ -94,7 +94,14 @@ class DataProcessor:
         dm   = data.copy()
 
         if "mask" in ops:
-            dm = np.where(np.asarray(ops["mask"], dtype=bool), dm, np.nan)
+            mask = np.asarray(ops["mask"], dtype=bool)
+            if mask.shape != dm.shape:
+                if mask.size == dm.size:
+                    mask = mask.reshape(dm.shape)
+                else:
+                    raise ValueError(
+                        f"mask has {mask.size} elements but data has {dm.size}")
+            dm = np.where(mask, dm, np.nan)
         if ops.get("remove_nan", False):
             dm[~np.isfinite(dm)] = np.nan
         if ops.get("remove_zero", False):
@@ -602,9 +609,13 @@ class Plotter:
         ] if v is not None}
         config_overrides = {**legacy, **config_overrides}
 
-        cfg = (dc_replace(self.config, **{
-                   k: v for k, v in config_overrides.items()
-                   if k in PlotConfig.__dataclass_fields__})
+        unknown = {k for k in config_overrides
+                   if k not in PlotConfig.__dataclass_fields__}
+        if unknown:
+            raise TypeError(
+                f"make_plot() got unexpected keyword arguments: {sorted(unknown)}")
+
+        cfg = (dc_replace(self.config, **config_overrides)
                if config_overrides else self.config)
 
         self.stats_results = []
