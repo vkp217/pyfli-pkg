@@ -15,7 +15,7 @@ from .scripts import (DataOperations, IRFAligner, DataViewer,
                         Msg_display, FittingComparator, Detector,
                         BinnedFliFitter, FliBinner, ROIoperations, Batch_sim, DataSaver,
                         load_flim_data, collapse_to_xyt, plot_xyt,
-                        LaguerreFLI)
+                        LaguerreFLI, plot_pixel_diagnostic, compute_detailed_results)
 
 from .spAnalysis import (BasisPatterns, MeasurementSimulator, Reconstructor)
 
@@ -33,7 +33,8 @@ __all__ = ['DataOperations', 'IRFAligner', 'DataViewer',
         'Msg_display', 'FittingComparator',
         'data_masking', 'Detector', 'BinnedFliFitter', 'FliBinner',
         'ROIoperations', 'Batch_sim', 'DataSaver', 'LaguerreFLI',
-        'PlotConfig', 'DataProcessor', 'SourceLoader', 'PlotKit', 'SubplotVisualizer', 'plot_2d_subplots',
+        'PlotConfig', 'DataProcessor', 'SourceLoader', 'PlotKit', 'SubplotVisualizer', 
+        'plot_2d_subplots', 'plot_pixel_diagnostic', 'compute_detailed_results',
         # this is for SPAnalysis
         'BasisPatterns', 'MeasurementSimulator', 'Reconstructor',
         'load_flim_data', 'collapse_to_xyt', 'plot_xyt'

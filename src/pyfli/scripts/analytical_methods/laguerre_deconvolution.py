@@ -53,6 +53,7 @@ class LaguerreFLI:
         self.residuals_:      Optional[np.ndarray] = None
         self.fit_curve_:      Optional[np.ndarray] = None
         self.residual_curve_: Optional[np.ndarray] = None
+        self.decay_:          Optional[np.ndarray] = None
 
     @staticmethod
     def _discrete_laguerre_basis(T: int, alpha: float, L: int) -> np.ndarray:
@@ -208,6 +209,7 @@ class LaguerreFLI:
         if decay.ndim != 3:
             raise ValueError("decay must have shape (X, Y, T) or (T,).")
         X, Y, T = decay.shape
+        self.decay_ = decay.astype(np.float32)
 
         per_pixel_irf = (irf.ndim == 3)
         if per_pixel_irf:
@@ -232,8 +234,9 @@ class LaguerreFLI:
             self.V_ = self._convolve_with_irf(self.basis_, avg_irf)
             C = self._solve_coefficients(self.V_, Y2d)  # (L, P)
         else:
-            P   = Y2d.shape[1]
-            C   = np.zeros((self.n_laguerre, P), dtype=np.float64)
+            P      = Y2d.shape[1]
+            C      = np.zeros((self.n_laguerre, P), dtype=np.float64)
+            fit_2d = np.zeros((P, T), dtype=np.float64)
             irf_2d = irf.reshape(-1, T)
             for p in range(P):
                 Vp = self._convolve_with_irf(self.basis_, irf_2d[p])
@@ -241,6 +244,11 @@ class LaguerreFLI:
                     C[:, p] = self._nnls_safe(Vp, Y2d[:, p], 50 * self.n_laguerre)
                 else:
                     C[:, p], *_ = np.linalg.lstsq(Vp, Y2d[:, p], rcond=None)
+                fit_2d[p] = Vp @ C[:, p]
+            model_y              = fit_2d.reshape(X, Y, T)
+            self.fit_curve_      = model_y
+            self.residual_curve_ = decay - model_y
+            self.residuals_      = (self.residual_curve_ ** 2).sum(axis=-1)
 
         self.coeffs_ = C.T.reshape(X, Y, self.n_laguerre)
 
@@ -273,37 +281,80 @@ class LaguerreFLI:
         if self.coeffs_ is None:
             raise RuntimeError("Call .fit(decay, irf) first.")
 
-        N = self.n_components
+        N   = self.n_components
         X, Y = self.tau_mean_.shape
+        T   = self.reconstructed_.shape[-1]
+        eps = 1e-8
 
-        tau_maps   = {f'tau{i+1}_map':   self.taus_[..., i].astype(np.float32)      for i in range(N)}
-        alpha_maps = {f'alpha{i+1}_map': self.fractions_[..., i].astype(np.float32) for i in range(N)}
-
-        pixel_health = (self.amplitudes_.sum(axis=-1) > 0).astype(np.float32)
-        ssr = (self.residuals_ if self.residuals_ is not None
-               else np.zeros((X, Y), dtype=np.float32))
-
-        maps = {
-            **tau_maps,
-            **alpha_maps,
-            'Area_map':             self.amplitudes_.sum(axis=-1).astype(np.float32),
-            'tau_mean_map':         self.tau_mean_.astype(np.float32),
-            'chi2_or_deviance_map': ssr.astype(np.float32),
-            'pixel_health_map':     pixel_health,
-        }
-
+        # fit_curve_ is always IRF-convolved (fixed for per-pixel IRF case too);
+        # reconstructed_ is the IRF-free Laguerre signal -> sdf_map
         fit_map = (self.fit_curve_ if self.fit_curve_ is not None
                    else self.reconstructed_).astype(np.float32)
         res_map = (self.residual_curve_ if self.residual_curve_ is not None
                    else np.zeros_like(fit_map)).astype(np.float32)
+        sdf_map = self.reconstructed_.astype(np.float32)
+
+        # Photon counts from stored measured decay
+        if self.decay_ is not None:
+            photon_count = self.decay_.sum(axis=-1).astype(np.float32)
+        else:
+            photon_count = self.amplitudes_.sum(axis=-1).astype(np.float32)
+
+        # Poisson chi-square against the IRF-convolved fit
+        scaled_fit = fit_map.astype(np.float64)
+        decay_d    = self.decay_.astype(np.float64) if self.decay_ is not None else scaled_fit
+        variance   = scaled_fit.copy()
+        variance[variance <= 0] = 1.0
+        dof        = max(T - (2 * N + 1) - 1, 1)   # T bins – free params – 1
+        residuals_d = decay_d - scaled_fit
+        chi_sq_raw     = np.sum((residuals_d ** 2) / variance, axis=-1).astype(np.float32)
+        chi_sq_reduced = (chi_sq_raw / dof).astype(np.float32)
+
+        # R² per pixel
+        ss_res = np.sum(residuals_d ** 2, axis=-1)
+        ss_tot = np.sum((decay_d - decay_d.mean(axis=-1, keepdims=True)) ** 2, axis=-1)
+        r2_map = (1.0 - np.where(ss_tot > eps, ss_res / ss_tot, 1.0)).astype(np.float32)
+
+        pixel_health = (photon_count > 0).astype(np.float32)
+
+        tau_maps   = {f'tau{i+1}_map':   self.taus_[..., i].astype(np.float32)      for i in range(N)}
+        alpha_maps = {f'alpha{i+1}_map': self.fractions_[..., i].astype(np.float32) for i in range(N)}
+
+        maps = {
+            **tau_maps,
+            **alpha_maps,
+            'Area_map':             photon_count,
+            'tau_mean_map':         self.tau_mean_.astype(np.float32),
+            'offset_map':           np.zeros((X, Y), dtype=np.float32),
+            'R2_map':               r2_map,
+            'chi2_or_deviance_map': chi_sq_raw,
+            'reduced_stat_map':     chi_sq_reduced,
+            'convergence_map':      pixel_health.copy(),
+            'pixel_health_map':     pixel_health,
+            'photon_count_map':     photon_count,
+        }
+
+        # popt length mirrors base_static convention: [A, tau1..tauN, f1..f(N-1), offset]
+        internal_popt_len = 2 * N + 1
+        error_maps = np.zeros((X, Y, internal_popt_len), dtype=np.float32)
+
+        tr_maps = {
+            'fit_map':      fit_map,
+            'residual_map': res_map,
+            'sdf_map':      sdf_map,
+        }
+
+        mask = photon_count > 0
+        mean_chi_sq = float(chi_sq_reduced[mask].mean()) if mask.any() else float('nan')
+        print(f"Mean Reduced Chi-Squared (Active Pixels): {mean_chi_sq:.4f}")
 
         return {
             'name':   data_name,
             'method': f'LaguerreFLI_{N}exp',
             'results': {
                 'maps':       maps,
-                'error_maps': np.zeros((X, Y, 2 * N), dtype=np.float32),
-                'TR_maps':    {'fit_map': fit_map, 'residual_map': res_map},
+                'error_maps': error_maps,
+                'TR_maps':    tr_maps,
             },
         }
 
