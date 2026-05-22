@@ -36,12 +36,14 @@ class DataViewer:
             x, y = coord
             ref_max = np.max(data_list[first_3d_idx][x, y, :])
         # IMAGE PANELS
+        img_axes = []
         for i in range(num_plots):
             row, col = divmod(i, c)
             # Subgrid: [main axis | colorbar axis]
             subgs = gs[row, col].subgridspec(1, 2, width_ratios=[20, 1], wspace=0.05)
             ax = fig.add_subplot(subgs[0])
             cax = fig.add_subplot(subgs[1])
+            img_axes.append(ax)
             data = data_list[i]
             img = np.sum(data, axis=2) if data.ndim == 3 else data
             if ref_max is not None:
@@ -56,6 +58,7 @@ class DataViewer:
             plt.colorbar(im, cax=cax)
 
         # Plot Panel (forcing to same size)
+        ax_decay = None
         if show_decay:
             x, y = coord
             subgs = gs[:, -1].subgridspec(1, 2, width_ratios=[20, 1], wspace=0.05)
@@ -73,7 +76,7 @@ class DataViewer:
             ax_decay.legend(fontsize='small', loc='upper right')
             ax_decay.grid(True, which='both', alpha=0.3)
             cax_dummy.axis('off')
-    
+
         if self.save_path:
             if self.fig_name:
                 plt.savefig(os.path.join(self.save_path, self.fig_name +".png"),
@@ -82,6 +85,7 @@ class DataViewer:
                 plt.savefig(os.path.join(self.save_path, "combined_display.png"),
                             dpi=300, bbox_inches='tight')
         plt.show()
+        return fig, img_axes, ax_decay
 
 
     def plot_pyfli_fit_summary(self, 
@@ -200,6 +204,7 @@ class DataViewer:
 
         fig.suptitle(title, fontsize=14)
         plt.show()
+        return fig, (ax1, ax2, ax_text, ax3)
 
     def plot_fli_px(self,
                     data_list,
@@ -273,3 +278,6 @@ class DataViewer:
         fig.suptitle(title, fontsize=14)
         plt.tight_layout()
         plt.show()
+        if is_pixel:
+            return fig, (ax_log, ax_lin, img_axes)
+        return fig, img_axes

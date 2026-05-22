@@ -66,6 +66,16 @@ irf_data = loader.load_irf()
 
 ```
 
+## Citation
+
+If you use `pyfli` in your research, please cite this package. If you use the **phasor SEPL analysis** functionality specifically, please also cite the following paper on which the phasor module is based:
+
+> Michalet X. "Continuous and discrete phasor analysis of binned or time-gated periodic decays."
+> *AIP Advances* **11**, 035331 (2021).
+> https://doi.org/10.1063/5.0027834
+
+---
+
 ## Repository & Issues
 
 The source code is hosted on GitHub. Please report any bugs or feature requests via the issues tracker.

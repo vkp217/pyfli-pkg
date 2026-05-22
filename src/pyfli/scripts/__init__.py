@@ -8,7 +8,8 @@ from .analytical_methods import (PhasorAnalyzer, FLIFitter, PoissonLikelihoodFit
 from .dataCC import IRFAligner, DataPreprocessing, Normalization, ROIoperations
 from .dataVnP import (DataViewer, Plotter, DLModelComparator, Colorprocess,
                                PlotConfig, DataProcessor, SourceLoader,
-                               PlotKit, SubplotVisualizer, plot_2d_subplots)
+                               PlotKit, SubplotVisualizer, plot_2d_subplots,
+                               MonoBiClassifier)
 from .roiMaker import ROIMaker
 from .solver import (BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, 
                      MLEFLIFitter, GlobalFLIFitter, FittingComparator,
@@ -21,9 +22,18 @@ from .utils_common import (recovery_plot, random_true_pixel,
                            data_masking, save_plot, plot_pixel_diagnostic,
                            compute_detailed_results)
 from .data_saving import DataSaver
+from .phasor import (
+    AcquisitionConfig, AcquisitionMode,
+    phasor_continuous, phasor_discrete, phasor_gated_single, phasor_gated_N,
+    phasor_truncated, phasor_offset, phasor_from_config,
+    build_locus, build_loci, tau_grid, universal_semicircle, sepl_center_radius_discrete,
+    phase_lifetime, modulus_lifetime, lifetime_from_phasor,
+    phase_lifetime_gated, fractional_components,
+    plot_phasor, plot_locus_comparison, plot_discrete_N_sweep,
+)
 
 # This allows: from pyfli.scripts import DataViewer
-__all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport", 
+__all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport",
     "BHprocessedImport", "PyFliprocessedImport", "DatasetPlotter", "HardSimulator",
     "HardestSimulator", "FLIFitter", "PoissonLikelihoodFitter", "FLIAnalysisSuite", 
     "PhasorAnalyzer", "Plotter", "DLModelComparator", "DataPreprocessing",
@@ -34,6 +44,13 @@ __all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport",
     "FLICalibrator", "FLIValidator", "Normalization", "Msg_display", "FittingComparator",
     "data_masking", "Detector", "BinnedFliFitter", "FliBinner", "ROIoperations",
     "Batch_sim", "DataSaver", "load_flim_data", "collapse_to_xyt", "plot_xyt",
-    "LaguerreFLI", "plot_pixel_diagnostic","compute_detailed_results"
+    "LaguerreFLI", "plot_pixel_diagnostic", "compute_detailed_results", "MonoBiClassifier",
+    "AcquisitionConfig", "AcquisitionMode",
+    "phasor_continuous", "phasor_discrete", "phasor_gated_single", "phasor_gated_N",
+    "phasor_truncated", "phasor_offset", "phasor_from_config",
+    "build_locus", "build_loci", "tau_grid", "universal_semicircle", "sepl_center_radius_discrete",
+    "phase_lifetime", "modulus_lifetime", "lifetime_from_phasor",
+    "phase_lifetime_gated", "fractional_components",
+    "plot_phasor", "plot_locus_comparison", "plot_discrete_N_sweep",
 ]
     
