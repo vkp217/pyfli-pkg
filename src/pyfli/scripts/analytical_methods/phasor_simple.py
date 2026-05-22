@@ -15,8 +15,8 @@ _UNIVERSAL_CIRCLE_RADIUS = 0.5
 
 
 # Helper – universal semicircle geometry
-def _universal_circle_xy(n_points: int = 500):
-    theta = np.linspace(0, 2 * np.pi, n_points)
+def _universal_circle_xy(n_points: int = 500, half_circle: bool = False):
+    theta = np.linspace(0, np.pi if half_circle else 2 * np.pi, n_points)
     cx, cy = _UNIVERSAL_CIRCLE_CENTER
     r = _UNIVERSAL_CIRCLE_RADIUS
     return cx + r * np.cos(theta), cy + r * np.sin(theta)
@@ -50,7 +50,9 @@ def _draw_lifetime_ticks(ax, G_mark, S_mark,
 
 
 def _style_phasor_ax(ax, title: str = "Phasor Diagram",
-                     xlim=(-0.1, 1.1), ylim=(-0.6, 0.6)):
+                     xlim=(-0.1, 1.1), ylim=(-0.6, 0.6), half_circle: bool = False):
+    if half_circle:
+        ylim = (0, ylim[1])
     ax.set_xlabel("G")
     ax.set_ylabel("S")
     ax.set_title(title)
@@ -219,7 +221,7 @@ class PhasorAnalyzer:
         return (1 / self.omega) * (S / (G + self.eps)) * 1e9
 
     # Fraction decomposition 
-    def compute_fractions(self, G, S, tau1_ns, tau2_ns, mask=None, hexbin_color=None, plot_graph=True, ax=None):
+    def compute_fractions(self, G, S, tau1_ns, tau2_ns, mask=None, hexbin_color=None, plot_graph=True, ax=None, half_circle=False):
         g1, s1 = self.lifetime_to_phasor(tau1_ns, self.frequency)
         g2, s2 = self.lifetime_to_phasor(tau2_ns, self.frequency)
         if plot_graph:
@@ -228,7 +230,7 @@ class PhasorAnalyzer:
                 fig, ax = plt.subplots(figsize=(8, 6))
             else:
                 fig = ax.get_figure()
-            self.plot_phasor_diagram(G, S, colors=None, mask=None, hexbin_color="jet_r", ax=ax)
+            self.plot_phasor_diagram(G, S, colors=None, mask=None, hexbin_color="jet_r", ax=ax, half_circle=half_circle)
             ax.plot([g1, g2], [s1, s2], color="#2C0F02", linestyle="--", lw=2, zorder=10)
             ax.plot(g1, s1, "o", color="#E5D16E", markersize=8, label="...", zorder=11)
             ax.plot(g2, s2, "o", color="#363D45", markersize=8, label="...", zorder=11)
@@ -336,14 +338,14 @@ class PhasorAnalyzer:
         return colors
 
     # Visualization
-    def plot_phasor_diagram(self, G, S, mask=None, colors=None, hexbin_color=None, ax=None, figsize=(8, 6)):
+    def plot_phasor_diagram(self, G, S, mask=None, colors=None, hexbin_color=None, ax=None, figsize=(8, 6), half_circle=False):
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
         else:
             fig = ax.get_figure()
         # Universal circle
-        ug, us = _universal_circle_xy()
+        ug, us = _universal_circle_xy(half_circle=half_circle)
         ax.plot(ug, us, "k--")
         g_flat = np.ravel(G)
         s_flat = np.ravel(S)
@@ -382,7 +384,7 @@ class PhasorAnalyzer:
         _draw_lifetime_ticks(ax, G_mark, S_mark, color="black", lw=4, fontsize=10, show_units=True)
 
         _style_phasor_ax(ax, title="IRF-Calibrated Phasor Diagram",
-                        xlim=(-0.1, 1.1), ylim=(-0.6, 0.6))
+                        xlim=(-0.1, 1.1), ylim=(-0.6, 0.6), half_circle=half_circle)
 
         if created_fig:
             plt.tight_layout()
@@ -467,10 +469,10 @@ class PhasorAnalyzer:
         return fig
 
 
-    def plot_overlay_subplots(self, decay, G, S, mask=None, 
-                          colormaps=["jet", "jet"], 
+    def plot_overlay_subplots(self, decay, G, S, mask=None,
+                          colormaps=["jet", "jet"],
                           hexbin_color='jet',
-                          noise_removed=True, figsize=(15, 10)):
+                          noise_removed=True, figsize=(15, 10), half_circle=False):
         """
         2x3 Grid Layout with Radial Color Projections and specific colorbar scaling.
         [1,1: Intensity]      [1,2: Pure Phasor Map]     [1,3: Phasor Scatter]
@@ -534,7 +536,7 @@ class PhasorAnalyzer:
 
         # --- (1,3 & 2,3) Combined Phasor Plot ---
         ax5 = fig.add_subplot(gs[:, 2])
-        ug, us = _universal_circle_xy()
+        ug, us = _universal_circle_xy(half_circle=half_circle)
         ax5.plot(ug, us, "k--", alpha=0.8, zorder=1)
         
         mask_flat = np.ravel(active_mask)
@@ -553,7 +555,7 @@ class PhasorAnalyzer:
         except:
             pass
 
-        _style_phasor_ax(ax5, title="Phasor Distribution", xlim=(-0.1, 1.1), ylim=(-0.6, 0.6))
+        _style_phasor_ax(ax5, title="Phasor Distribution", xlim=(-0.1, 1.1), ylim=(-0.6, 0.6), half_circle=half_circle)
         
         plt.tight_layout()
         return fig
@@ -683,7 +685,7 @@ class PhasorAnalyzer:
 
     # Multi-harmonic phasor visualization
     def plot_phasor_harmonics(self, G, S, harmonics=(1, 2, 3, 4), mask=None,
-                          colors=None, hexbin_color=None, figsize=(22, 5), axes=None):
+                          colors=None, hexbin_color=None, figsize=(22, 5), axes=None, half_circle=False):
         G = np.asarray(G)
         S = np.asarray(S)
         n_panels = len(harmonics)
@@ -709,7 +711,7 @@ class PhasorAnalyzer:
                 s_panel = S[0] if S.ndim == 3 else S
 
             # ---- Universal semicircle -----------------------------------
-            ug, us = _universal_circle_xy()
+            ug, us = _universal_circle_xy(half_circle=half_circle)
             ax.plot(ug, us, "k--", lw=1.2)
 
             # ---- Masking Logic ------------------------------------------
@@ -753,8 +755,8 @@ class PhasorAnalyzer:
             # ---- Styling ------------------------------------------------
             _style_phasor_ax(ax,
                             title=f"Harmonic {k} ($\omega_{{{k}}}$)",
-                            xlim=(-0.3, 1.3), 
-                            ylim=(-0.85, 0.85))
+                            xlim=(-0.3, 1.3),
+                            ylim=(-0.85, 0.85), half_circle=half_circle)
                                 
         if created_fig:
             fig.suptitle("Phasor Diagram — Multiple Harmonics",
@@ -792,7 +794,7 @@ class PhasorAnalyzer:
         return colors
 
 
-    def plot_traceable_analysis(self, G, S, decay, mask=None, colormap="viridis", figsize=(14, 6), axes=None):
+    def plot_traceable_analysis(self, G, S, decay, mask=None, colormap="viridis", figsize=(14, 6), axes=None, half_circle=False):
         # 1. Setup Data & Colors
         G_2d = G[0] if G.ndim == 3 else G
         S_2d = S[0] if S.ndim == 3 else S
@@ -831,7 +833,7 @@ class PhasorAnalyzer:
         cbar.set_label("Lifetime (ns)")
 
         # subplot (1,2) Phasor Diagram
-        ug, us = _universal_circle_xy()
+        ug, us = _universal_circle_xy(half_circle=half_circle)
         axes[1].plot(ug, us, "k--", alpha=0.8, zorder=1)
         mask_flat = np.ravel(active_mask)
         g_plot = np.ravel(G_2d)[mask_flat]
@@ -849,7 +851,7 @@ class PhasorAnalyzer:
         except:
             pass
         _style_phasor_ax(axes[1], title="Phasor Distribution",
-                         xlim=(-0.1, 1.1), ylim=(-0.6, 0.6))
+                         xlim=(-0.1, 1.1), ylim=(-0.6, 0.6), half_circle=half_circle)
         if created_fig:
             plt.tight_layout()
         return fig
