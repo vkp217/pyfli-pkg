@@ -15,6 +15,7 @@ build/
 
 # Data and Notebooks (Based on your TOML exclude)
 data/
+examples/
 notebooks/
 *.h5
 *.sdt
