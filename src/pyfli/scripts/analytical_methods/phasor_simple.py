@@ -216,9 +216,19 @@ class PhasorAnalyzer:
         return 1 / denom, (omega * tau_s) / denom
 
     def compute_lifetime(self, G, S):
-        # per-pixel phase lifetime from phasor coordinates.
-        # S, G : ndarray to tau_map_ns (in ns)  
-        return (1 / self.omega) * (S / (G + self.eps)) * 1e9
+        # Phase lifetime τ_φ = S / (ω·G). Returns NaN for pixels where G ≤ 1e-4
+        # (unphysically small — corresponds to τ > ~12 µs at 80 MHz).
+        G = np.asarray(G, dtype=np.float64)
+        S = np.asarray(S, dtype=np.float64)
+        return np.where(np.abs(G) > 1e-4, S / (G * self.omega) * 1e9, np.nan)
+
+    def compute_modulation_lifetime(self, G, S):
+        # Modulation lifetime τ_M = √(1/M² − 1) / ω, where M = √(G² + S²).
+        # For a single exponential τ_φ == τ_M; divergence indicates multi-exponential mixture.
+        G = np.asarray(G, dtype=np.float64)
+        S = np.asarray(S, dtype=np.float64)
+        M_sq = np.clip(G ** 2 + S ** 2, self.eps, 1.0 - self.eps)
+        return np.sqrt(1.0 / M_sq - 1.0) / self.omega * 1e9
 
     # Fraction decomposition 
     def compute_fractions(self, G, S, tau1_ns, tau2_ns, mask=None, hexbin_color=None, plot_graph=True, ax=None, half_circle=False):
@@ -230,7 +240,7 @@ class PhasorAnalyzer:
                 fig, ax = plt.subplots(figsize=(8, 6))
             else:
                 fig = ax.get_figure()
-            self.plot_phasor_diagram(G, S, colors=None, mask=None, hexbin_color="jet_r", ax=ax, half_circle=half_circle)
+            self.plot_phasor_diagram(G, S, colors=None, mask=mask, hexbin_color="jet_r", ax=ax, half_circle=half_circle)
             ax.plot([g1, g2], [s1, s2], color="#2C0F02", linestyle="--", lw=2, zorder=10)
             ax.plot(g1, s1, "o", color="#E5D16E", markersize=8, label="...", zorder=11)
             ax.plot(g2, s2, "o", color="#363D45", markersize=8, label="...", zorder=11)
@@ -520,7 +530,7 @@ class PhasorAnalyzer:
 
         # --- (2,1) Lifetime Map ---
         ax3 = fig.add_subplot(gs[1, 0])
-        tau_map_ns = np.clip(self.compute_lifetime(G, S), 0, None)
+        tau_map_ns = np.clip(self.compute_lifetime(G_2d, S_2d), 0, None)
         im3 = ax3.imshow(tau_map_ns, origin="upper", cmap=colormaps[1])
         ax3.set_title("Lifetime Map (ns)")
         ax3.axis("off")
@@ -822,12 +832,13 @@ class PhasorAnalyzer:
         axes[0].axis("off")
         phi = np.arctan2(S_2d, G_2d)
         first_q = phi[(G_2d > 0) & (S_2d > 0)]
-        phi_max = float(first_q.max()) if first_q.size > 0 else 0.5
-        phi_max = np.clip(phi_max, 1e-6, np.pi / 2 - 0.05)
+        phi_min_val = float(first_q.min()) if first_q.size > 0 else 0.0
+        phi_max_val = float(first_q.max()) if first_q.size > 0 else 0.5
         omega = 2 * np.pi * self.frequency
-        tau_max = np.tan(phi_max) / omega * 1e9  # convert s → ns
+        tau_min = np.tan(np.clip(phi_min_val, 1e-6, np.pi / 2 - 0.05)) / omega * 1e9
+        tau_max = np.tan(np.clip(phi_max_val, 1e-6, np.pi / 2 - 0.05)) / omega * 1e9
 
-        sm = ScalarMappable(cmap=plt.get_cmap(colormap), norm=Normalize(vmin=0, vmax=tau_max))
+        sm = ScalarMappable(cmap=plt.get_cmap(colormap), norm=Normalize(vmin=tau_min, vmax=tau_max))
         sm.set_array([])
         cbar = fig.colorbar(sm, ax=axes[0], fraction=0.046, pad=0.04)
         cbar.set_label("Lifetime (ns)")
