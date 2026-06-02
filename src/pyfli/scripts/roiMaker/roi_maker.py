@@ -1,6 +1,6 @@
 # scripts/roiMaker/roi_maker.py
 """
-ROI Maker — PyQt5-based interactive region-of-interest editor.
+ROI Maker — PySide6-based interactive region-of-interest editor.
 
 Public API (unchanged):
     maker = ROIMaker(intensity_2d, save_path="mask.npy")
@@ -11,38 +11,19 @@ Public API (unchanged):
 """
 
 import numpy as np
-import cv2          # importing cv2 overwrites QT_QPA_PLATFORM_PLUGIN_PATH
+import cv2
 import os
 import sys
 
-# ── Fix Qt plugin path immediately after cv2 sets it ─────────────────────────
-# cv2 ships its own Qt and overwrites QT_QPA_PLATFORM_PLUGIN_PATH to point at
-# cv2/qt/plugins, which contains an xcb plugin compiled against a different
-# Qt version.  We correct the path here — after cv2 is loaded, before any
-# QApplication is created — so PyQt5 loads the right xcb plugin.
-try:
-    import importlib.util as _ilu
-    _spec = _ilu.find_spec("PyQt5")
-    if _spec and _spec.submodule_search_locations:
-        _root = list(_spec.submodule_search_locations)[0]
-        for _sub in ("Qt5/plugins", "Qt/plugins"):
-            _p = os.path.join(_root, _sub)
-            if os.path.isdir(_p):
-                os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = _p
-                break
-except Exception:
-    pass
-# ─────────────────────────────────────────────────────────────────────────────
-
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QFrame, QSizePolicy, QStatusBar, QSpacerItem,
     QDialog, QDialogButtonBox, QSlider, QButtonGroup, QColorDialog,
     QScrollArea, QSpinBox, QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView,
 )
-from PyQt5.QtCore import Qt, QPointF, QRectF, pyqtSignal, QSize
-from PyQt5.QtGui import (
+from PySide6.QtCore import Qt, QPointF, QRectF, Signal, QSize
+from PySide6.QtGui import (
     QPainter, QColor, QPen, QBrush, QPolygonF,
     QPixmap, QImage, QFont, QCursor,
 )
@@ -118,13 +99,13 @@ class IDAssignDialog(QDialog):
 
         self._table = QTableWidget(len(rois), 3)
         self._table.setHorizontalHeaderLabels(["Color", "Auto ID", "New ID"])
-        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
-        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self._table.setColumnWidth(0, 28)
         self._table.verticalHeader().setVisible(False)
-        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._table.setSelectionMode(QAbstractItemView.NoSelection)
+        self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self._table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
 
         # Next sequential number for unassigned ROIs
         _next = max((r.roi_id for r in rois if r.assigned), default=0) + 1
@@ -143,8 +124,8 @@ class IDAssignDialog(QDialog):
             # status column: shows current ID or "unassigned"
             status_text = str(roi.roi_id) if roi.assigned else "unassigned"
             id_item = QTableWidgetItem(status_text)
-            id_item.setTextAlignment(Qt.AlignCenter)
-            id_item.setForeground(QColor("#585b70") if roi.assigned else QColor("#f38ba8"))
+            id_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            id_item.setForeground(QBrush(QColor("#585b70") if roi.assigned else QColor("#f38ba8")))
             self._table.setItem(row, 1, id_item)
 
             # editable new ID — pre-fill with assigned ID or next sequential
@@ -155,13 +136,15 @@ class IDAssignDialog(QDialog):
             spin = QSpinBox()
             spin.setRange(1, 9999)
             spin.setValue(default_id)
-            spin.setAlignment(Qt.AlignCenter)
+            spin.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._table.setCellWidget(row, 2, spin)
             self._spinboxes.append(spin)
 
         layout.addWidget(self._table)
 
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
@@ -180,7 +163,7 @@ _MIN_BOX  = 6
 
 
 class ImageCanvas(QWidget):
-    roi_changed = pyqtSignal()
+    roi_changed = Signal()
 
     def __init__(self, rm, parent=None):
         super().__init__(parent)
@@ -216,7 +199,7 @@ class ImageCanvas(QWidget):
         arr = np.asarray(rm.display_base, dtype=np.uint8)
         h, w = arr.shape
         self._pixmap = QPixmap.fromImage(
-            QImage(arr.tobytes(), w, h, w, QImage.Format_Grayscale8)
+            QImage(arr.tobytes(), w, h, w, QImage.Format.Format_Grayscale8)
         )
 
         # intensity overlay: stored as a numpy RGBA array so paintEvent can
@@ -224,8 +207,8 @@ class ImageCanvas(QWidget):
         self._int_overlay = None   # np.ndarray (H, W, 4) uint8 or None
 
         self.setMouseTracking(True)
-        self.setFocusPolicy(Qt.StrongFocus)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setMinimumSize(200, 200)
 
     # ── transform ─────────────────────────────────────────────────────────────
@@ -310,8 +293,8 @@ class ImageCanvas(QWidget):
     def paintEvent(self, _):
         self._recompute_transform()
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setRenderHint(QPainter.SmoothPixmapTransform)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
         p.fillRect(self.rect(), QColor(18, 18, 30))
 
@@ -327,7 +310,7 @@ class ImageCanvas(QWidget):
         if self.rm.intensity_active and self._int_overlay is not None:
             h, w = self._int_overlay.shape[:2]
             _img = QImage(self._int_overlay.data, w, h, 4 * w,
-                          QImage.Format_RGBA8888)
+                          QImage.Format.Format_RGBA8888)
             self._int_img_ref = _img   # prevent GC while QPainter holds it
             p.drawImage(target, _img)
 
@@ -342,24 +325,24 @@ class ImageCanvas(QWidget):
     def _paint_roi(self, p, roi, selected):
         if not roi.assigned:
             color      = QColor(0, 220, 100) if selected else QColor(140, 140, 155)
-            line_style = Qt.DashLine
+            line_style = Qt.PenStyle.DashLine
             label_text = "?"
         else:
             color      = QColor(0, 220, 100) if selected else _roi_color(roi.roi_id)
-            line_style = Qt.SolidLine
+            line_style = Qt.PenStyle.SolidLine
             label_text = f"ID:{roi.roi_id}"
 
         poly = self._pts_to_poly_w(roi.pts)
         fill = QColor(color.red(), color.green(), color.blue(), 40 if not roi.assigned else 55)
         p.setBrush(QBrush(fill))
         pen = QPen(color, 2.5 if selected else 1.5, line_style)
-        pen.setJoinStyle(Qt.RoundJoin)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         p.setPen(pen)
         p.drawPolygon(poly)
         if roi.pts.shape[0]:
             wx, wy = self._i2w(float(roi.pts[0, 0]), float(roi.pts[0, 1]))
-            p.setPen(QPen(Qt.white))
-            p.setFont(QFont("Segoe UI", 9, QFont.Bold))
+            p.setPen(QPen(Qt.GlobalColor.white))
+            p.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
             p.drawText(int(wx) + 4, int(wy) + 13, label_text)
         if selected:
             self._paint_handles(p, roi)
@@ -378,7 +361,7 @@ class ImageCanvas(QWidget):
             return
         poly = QPolygonF([QPointF(*self._i2w(float(pt[0]), float(pt[1]))) for pt in pts])
         p.setBrush(QBrush(QColor(255, 255, 255, 25)))
-        p.setPen(QPen(QColor(255, 255, 255, 160), 1.2, Qt.DashLine))
+        p.setPen(QPen(QColor(255, 255, 255, 160), 1.2, Qt.PenStyle.DashLine))
         p.drawPolygon(poly)
 
     def _preview_pts(self):
@@ -396,9 +379,9 @@ class ImageCanvas(QWidget):
     # ── mouse ──────────────────────────────────────────────────────────────────
 
     def mousePressEvent(self, e):
-        if e.button() != Qt.LeftButton:
+        if e.button() != Qt.MouseButton.LeftButton:
             return
-        wpt = QPointF(e.pos())
+        wpt = e.position()
 
         # ── Assign mode: click a ROI to give it the next sequential ID ──────
         if self.mode == 'assign':
@@ -448,7 +431,7 @@ class ImageCanvas(QWidget):
         self.update(); self.roi_changed.emit()
 
     def mouseMoveEvent(self, e):
-        wpt = QPointF(e.pos())
+        wpt = e.position()
         self._cur_mw = wpt
 
         if self._resizing and self.selected_idx != -1:
@@ -468,23 +451,31 @@ class ImageCanvas(QWidget):
         # adaptive cursor
         if self.selected_idx != -1 and not self._drawing:
             hi = self._hit_handle(wpt, self.rm.rois[self.selected_idx])
-            cursors = {0: Qt.SizeFDiagCursor, 4: Qt.SizeFDiagCursor,
-                       2: Qt.SizeBDiagCursor, 6: Qt.SizeBDiagCursor,
-                       1: Qt.SizeVerCursor,   5: Qt.SizeVerCursor,
-                       3: Qt.SizeHorCursor,   7: Qt.SizeHorCursor}
+            cursors = {
+                0: Qt.CursorShape.SizeFDiagCursor, 4: Qt.CursorShape.SizeFDiagCursor,
+                2: Qt.CursorShape.SizeBDiagCursor, 6: Qt.CursorShape.SizeBDiagCursor,
+                1: Qt.CursorShape.SizeVerCursor,   5: Qt.CursorShape.SizeVerCursor,
+                3: Qt.CursorShape.SizeHorCursor,   7: Qt.CursorShape.SizeHorCursor,
+            }
             if hi in cursors:
                 self.setCursor(cursors[hi])
             elif self._hit_roi(wpt) != -1:
-                self.setCursor(Qt.SizeAllCursor)
+                self.setCursor(Qt.CursorShape.SizeAllCursor)
             else:
-                self.setCursor(Qt.CrossCursor if self.mode != 'select' else Qt.ArrowCursor)
+                self.setCursor(
+                    Qt.CursorShape.CrossCursor if self.mode != 'select'
+                    else Qt.CursorShape.ArrowCursor
+                )
         else:
-            self.setCursor(Qt.CrossCursor if self.mode not in ('select', None) else Qt.ArrowCursor)
+            self.setCursor(
+                Qt.CursorShape.CrossCursor if self.mode not in ('select', None)
+                else Qt.CursorShape.ArrowCursor
+            )
 
         self.update()
 
     def mouseReleaseEvent(self, e):
-        if e.button() != Qt.LeftButton:
+        if e.button() != Qt.MouseButton.LeftButton:
             return
         if self._resizing:
             self._resizing = False; self.roi_changed.emit()
@@ -492,7 +483,7 @@ class ImageCanvas(QWidget):
             self._moving = False; self.roi_changed.emit()
         if self._drawing:
             self._drawing = False
-            wpt = QPointF(e.pos())
+            wpt = e.position()
             ix, iy = self._w2i(wpt.x(), wpt.y())
             pts = self._finalise_pts(ix, iy)
             if len(pts) >= 3:
@@ -536,7 +527,7 @@ class ImageCanvas(QWidget):
         roi.center = np.mean(roi.pts, axis=0)
 
     def keyPressEvent(self, e):
-        if e.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+        if e.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
             self._delete_selected()
 
     def _delete_selected(self):
@@ -583,7 +574,7 @@ class ROIApp(QMainWindow):
     def _build_sidebar(self):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setStyleSheet("QScrollArea { border: none; background: #181825; }"
                              "QScrollBar:vertical { width: 6px; background: #181825; }"
                              "QScrollBar::handle:vertical { background: #313244; border-radius: 3px; }")
@@ -599,7 +590,7 @@ class ROIApp(QMainWindow):
         # Title
         title = QLabel("⬡  ROI Maker")
         title.setObjectName("title_lbl")
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         layout.addWidget(self._divider())
 
@@ -637,7 +628,7 @@ class ROIApp(QMainWindow):
             btn = QPushButton(f"{icon}  {label}")
             btn.setObjectName("tool_btn")
             btn.setCheckable(True)
-            btn.setCursor(QCursor(Qt.PointingHandCursor))
+            btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
             btn.setToolTip(f"Save as: {label}")
             self._mask_type_group.addButton(btn)
             layout.addWidget(btn)
@@ -671,7 +662,7 @@ class ROIApp(QMainWindow):
         self._int_btn.setObjectName("action_btn")
         self._int_btn.setCheckable(True)
         self._int_btn.setChecked(self.rm.intensity_active)
-        self._int_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        self._int_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self._int_btn.toggled.connect(self._on_intensity_toggled)
         layout.addWidget(self._int_btn)
 
@@ -679,7 +670,7 @@ class ROIApp(QMainWindow):
         self._lo_lbl = QLabel(f"Low   {self.rm.intensity_low}")
         self._lo_lbl.setStyleSheet("color: #a6adc8; font-size: 11px;")
         layout.addWidget(self._lo_lbl)
-        self._lo_slider = QSlider(Qt.Horizontal)
+        self._lo_slider = QSlider(Qt.Orientation.Horizontal)
         self._lo_slider.setRange(self.rm.img_min, self.rm.img_max)
         self._lo_slider.setValue(self.rm.intensity_low)
         self._lo_slider.valueChanged.connect(self._on_lo_changed)
@@ -689,7 +680,7 @@ class ROIApp(QMainWindow):
         self._hi_lbl = QLabel(f"High  {self.rm.intensity_high}")
         self._hi_lbl.setStyleSheet("color: #a6adc8; font-size: 11px;")
         layout.addWidget(self._hi_lbl)
-        self._hi_slider = QSlider(Qt.Horizontal)
+        self._hi_slider = QSlider(Qt.Orientation.Horizontal)
         self._hi_slider.setRange(self.rm.img_min, self.rm.img_max)
         self._hi_slider.setValue(self.rm.intensity_high)
         self._hi_slider.valueChanged.connect(self._on_hi_changed)
@@ -698,7 +689,7 @@ class ROIApp(QMainWindow):
         # Mask-color picker
         self._color_btn = QPushButton("■  Mask color")
         self._color_btn.setObjectName("action_btn")
-        self._color_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        self._color_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self._color_btn.clicked.connect(self._pick_mask_color)
         self._refresh_color_btn()
         layout.addWidget(self._color_btn)
@@ -718,13 +709,13 @@ class ROIApp(QMainWindow):
 
         save_btn = QPushButton("✓  Save && Close  ↵")
         save_btn.setObjectName("save_btn")
-        save_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        save_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         save_btn.clicked.connect(self._save_close)
         layout.addWidget(save_btn)
 
         cancel_btn = QPushButton("✗  Cancel  Esc")
         cancel_btn.setObjectName("cancel_btn")
-        cancel_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        cancel_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         cancel_btn.clicked.connect(self._cancel)
         layout.addWidget(cancel_btn)
 
@@ -732,11 +723,13 @@ class ROIApp(QMainWindow):
 
         # Status
         self._status_lbl = QLabel()
-        self._status_lbl.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self._status_lbl.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
+        )
         self._status_lbl.setWordWrap(True)
         self._status_lbl.setStyleSheet("color: #585b70; font-size: 11px; padding: 4px 2px;")
         layout.addWidget(self._status_lbl)
-        layout.addItem(QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding))
+        layout.addItem(QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
 
         # Activate default tool
         self._tool_btns['rect'].setChecked(True)
@@ -746,7 +739,7 @@ class ROIApp(QMainWindow):
 
     def _divider(self):
         line = QFrame(); line.setObjectName("divider")
-        line.setFrameShape(QFrame.HLine); return line
+        line.setFrameShape(QFrame.Shape.HLine); return line
 
     def _section_label(self, text):
         lbl = QLabel(text); lbl.setObjectName("section_lbl")
@@ -755,12 +748,14 @@ class ROIApp(QMainWindow):
     def _tool_button(self, icon, label, shortcut):
         btn = QPushButton(f"{icon}  {label}")
         btn.setObjectName("tool_btn"); btn.setCheckable(True)
-        btn.setAutoExclusive(True); btn.setCursor(QCursor(Qt.PointingHandCursor))
+        btn.setAutoExclusive(True)
+        btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         btn.setToolTip(f"{label}  [{shortcut}]"); return btn
 
     def _action_button(self, icon, label, shortcut):
         btn = QPushButton(f"{icon}  {label}")
-        btn.setObjectName("action_btn"); btn.setCursor(QCursor(Qt.PointingHandCursor))
+        btn.setObjectName("action_btn")
+        btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         btn.setToolTip(f"{label}  [{shortcut}]"); return btn
 
     def _refresh_color_btn(self):
@@ -866,7 +861,7 @@ class ROIApp(QMainWindow):
     def _show_id_dialog(self) -> bool:
         """Show ID-assignment dialog for remaining unassigned ROIs before save."""
         dlg = IDAssignDialog(self.rm.rois, self)
-        if dlg.exec_() == QDialog.Accepted:
+        if dlg.exec() == QDialog.DialogCode.Accepted:
             for i, new_id in dlg.get_assignments().items():
                 self.rm.rois[i].roi_id   = new_id
                 self.rm.rois[i].assigned = True
@@ -921,17 +916,20 @@ class ROIApp(QMainWindow):
     # ── keyboard ──────────────────────────────────────────────────────────────
 
     def keyPressEvent(self, e):
-        key_map = {Qt.Key_S:'select', Qt.Key_R:'rect',
-                   Qt.Key_C:'circle', Qt.Key_F:'freehand', Qt.Key_A:'assign'}
+        key_map = {
+            Qt.Key.Key_S: 'select', Qt.Key.Key_R: 'rect',
+            Qt.Key.Key_C: 'circle', Qt.Key.Key_F: 'freehand',
+            Qt.Key.Key_A: 'assign',
+        }
         if e.key() in key_map:
             self._tool_btns[key_map[e.key()]].setChecked(True)
-        elif e.key() == Qt.Key_B:
+        elif e.key() == Qt.Key.Key_B:
             self._toggle_bg()
-        elif e.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+        elif e.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
             self._delete_selected()
-        elif e.key() in (Qt.Key_Return, Qt.Key_Enter):
+        elif e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self._save_close()
-        elif e.key() == Qt.Key_Escape:
+        elif e.key() == Qt.Key.Key_Escape:
             self._cancel()
         else:
             super().keyPressEvent(e)
@@ -1058,30 +1056,13 @@ class ROIMaker:
 
     # ── draw ──────────────────────────────────────────────────────────────────
 
-    @staticmethod
-    def _fix_qt_plugins():
-        """Override QT_QPA_PLATFORM_PLUGIN_PATH after cv2 has overwritten it."""
-        try:
-            import importlib.util
-            spec = importlib.util.find_spec("PyQt5")
-            if spec and spec.submodule_search_locations:
-                root = list(spec.submodule_search_locations)[0]
-                for sub in ("Qt5/plugins", "Qt/plugins"):
-                    p = os.path.join(root, sub)
-                    if os.path.isdir(p):
-                        os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = p
-                        return
-        except Exception:
-            pass
-
     def draw(self):
         """Open the editor window (blocks). Returns the chosen mask type."""
-        self._fix_qt_plugins()
         app = QApplication.instance() or QApplication(sys.argv)
         win = ROIApp(self)
         win.resize(min(self.W + 210, 1440), min(self.H + 60, 920))
         win.show()
-        app.exec_()
+        app.exec()
         return self.get_multi_cluster_mask()
 
 

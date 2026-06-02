@@ -1,17 +1,3 @@
-"""
-demo_flim.py
-============
-End-to-end verification of the FLIM solver on synthetic data for all three
-detectors, at the 80 MHz period with a pixel-variant Gaussian IRF and a
-bi-exponential decay (tau1=0.4 ns, tau2=2.2 ns).
-
-Mode 1 (reference-calibrated): IRF known from a scatter measurement; fit decay.
-        This is the workhorse FLIM mode and verifies the detector-specific
-        weights + gate/convolution forward model + VARPRO decay fit.
-Mode 2 (blind): jointly estimate IRF and decay. Shown for ICCD with the honest
-        caveat that fully-blind nonparametric per-pixel IRF recovery is
-        ill-posed and needs strong priors or a reference.
-"""
 import numpy as np
 from detector_weights import ICCDParams, SPADParams, TCSPCParams, make_observation
 from flim_solver import (SolverConfig, solve_flim, build_gate_matrix,
@@ -30,7 +16,6 @@ tau_true = np.array([0.4, 2.2])
 amp_true = np.array([0.7, 0.3])
 f_true = amp_true @ decay_basis(tau_true, t, T)
 
-# pixel-variant IRF (centre drifts sub-bin across the array)
 H_true = np.zeros((P, N))
 for k in range(P):
     iy, ix = divmod(k, nx)
@@ -38,7 +23,8 @@ for k in range(P):
     g = np.exp(-0.5 * ((np.arange(N) - c) / 3.0) ** 2)
     H_true[k] = g / g.sum()
 
-lam_clean = cyclic_conv(H_true, np.tile(f_true, (P, 1))) @ G.T   # (P, n_gate)
+lam_clean = cyclic_conv(H_true, np.tile(f_true, (P, 1))) @ G.T
+
 
 def make_counts(detector, params, budget):
     lam = lam_clean * budget / lam_clean.sum(1, keepdims=True)
@@ -52,12 +38,14 @@ def make_counts(detector, params, budget):
     if detector == "tcspc":
         return rng.poisson(lam).astype(float)
 
+
 def report(name, res):
     te = res["taus"].mean(0)
     err = 100 * np.abs(te - tau_true) / tau_true
     am = (res["amps"] / res["amps"].sum(1, keepdims=True)).mean(0)
     print(f"  {name:6s}  tau={te.round(3)}  amp={am.round(3)}  "
           f"|  err% = {err.round(1)}")
+
 
 gate_spec = dict(N=N, n_gates=n_gates, width=width, edge=0.4 * dt)
 print("ground truth: tau =", tau_true, " amp =", amp_true)
@@ -86,5 +74,3 @@ cen_t = (H_true * np.arange(N)).sum(1)
 cen_e = (res["irf"] * np.arange(N)).sum(1)
 print(f"  IRF centroid RMSE = {np.sqrt(np.mean((cen_t-cen_e)**2)):.2f} bins"
       f"  (auto mu1={res['mu1']:.3g}, mu2={res['mu2']:.3g})")
-print("  note: blind nonparametric IRF is ill-posed; a reference scatter or a")
-print("        low-rank IRF basis is needed for tight per-pixel recovery.")
