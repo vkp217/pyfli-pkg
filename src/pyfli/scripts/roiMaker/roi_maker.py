@@ -1040,7 +1040,7 @@ _MIN_BOX  = 6
 
 
 class ImageCanvas(QWidget):
-    roi_changed = pyqtSignal()
+    roi_changed = Signal()
 
     def __init__(self, rm, parent=None):
         super().__init__(parent)
