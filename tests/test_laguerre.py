@@ -235,7 +235,7 @@ class TestGetParameters:
         maps = params["results"]["maps"]
         assert "Area_map" in maps
         assert "tau_mean_map" in maps
-        assert "chi2_or_deviance_map" in maps
+        assert "chi2_map" in maps
         assert "pixel_health_map" in maps
 
     def test_tr_maps_keys(self, params):
