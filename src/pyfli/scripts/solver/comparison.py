@@ -119,4 +119,3 @@ class FittingComparator:
         
         plt.tight_layout()
         plt.show()
-        return fig

@@ -374,7 +374,7 @@ def plot_decay_cube(
     frame: int = 0,
     pixel_yx: tuple[int, int] | None = None,
     save_path: str | None = None,
-):
+) -> None:
     """
     Visualise the decay cube with four panels:
       1. Intensity image  (sum over H axis)
@@ -465,7 +465,6 @@ def plot_decay_cube(
         print(f"Figure saved to {save_path}")
     else:
         plt.show()
-    return fig
 
 
 def plot_derived_images(
@@ -473,7 +472,7 @@ def plot_derived_images(
     series_name: str = "",
     frame: int = 0,
     save_path: str | None = None,
-):
+) -> None:
     """
     Display a grid of all pre-computed FLIM parameter maps.
 
@@ -520,7 +519,6 @@ def plot_derived_images(
         print(f"Figure saved to {save_path}")
     else:
         plt.show()
-    return fig
 
 
 # ---------------------------------------------------------------------------
@@ -640,7 +638,7 @@ def plot_xyt(
     cmap_intensity: str = "hot",
     cmap_lifetime:  str = "RdYlGn_r",
     save_path: str | None = None,
-):
+) -> None:
     """
     Interactive four-panel figure for a (Y, X, H) decay cube.
 
@@ -747,7 +745,6 @@ def plot_xyt(
         print(f"Saved to {save_path}")
     else:
         plt.show()
-    return fig
 
 
 # ---------------------------------------------------------------------------
@@ -777,7 +774,7 @@ def plot_xyt(
     cmap_intensity: str = "hot",
     cmap_lifetime:  str = "RdYlGn_r",
     save_path: str | None = None,
-):
+) -> None:
     """
     Interactive four-panel figure for a (Y, X, H) decay cube.
 

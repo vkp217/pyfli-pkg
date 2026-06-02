@@ -39,7 +39,6 @@ class DatasetPlotter:
                 plt.colorbar(im, ax=axes[i], fraction=0.046, pad=0.04)
         plt.tight_layout()
         plt.show()
-        return fig
 
 class AlliGprocessedImport(DatasetPlotter):
     def __init__(self, folder_path):
