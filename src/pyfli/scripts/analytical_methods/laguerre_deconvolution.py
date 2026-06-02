@@ -385,7 +385,7 @@ class LaguerreFLI:
             'tau_mean_map':         self.tau_mean_.astype(np.float32),
             'offset_map':           np.zeros((X, Y), dtype=np.float32),
             'R2_map':               r2_map,
-            'chi2_map': chi_sq_raw,
+            'chi2_or_deviance_map': chi_sq_raw,
             'reduced_stat_map':     chi_sq_reduced,
             'convergence_map':      pixel_health.copy(),
             'pixel_health_map':     pixel_health,

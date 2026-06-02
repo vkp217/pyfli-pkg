@@ -105,29 +105,20 @@ class Fli_GPUProcessor:
 
         raw_p.requires_grad_(True)
         pixel_health_map = np.ones(H * W, dtype=np.float32)
-
-        # Per-pixel photon count used to equalize gradient magnitudes across
-        # pixels with very different brightness levels (bright pixels otherwise
-        # dominate the shared LBFGS history and give poor fits to dim pixels).
-        n_photons = flat_data.sum(dim=1, keepdim=True).clamp(min=1.0)
-
+        
         # Objective Functions
         if mode == 'LSE':
             weights = 1.0 / torch.sqrt(torch.clamp(flat_data, min=1.0))
             def objective_fn(p_raw):
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
-                per_px = torch.sum(((pred - flat_data) * weights)**2, dim=1, keepdim=True)
-                return (per_px / n_photons).sum()
+                return torch.sum(((pred - flat_data) * weights)**2)
         else:
             def objective_fn(p_raw):
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
                 pred = torch.clamp(pred, min=1e-9)
-                per_px = 2 * torch.sum(
-                    pred - flat_data + flat_data * torch.log(torch.clamp(flat_data, 1e-9) / pred),
-                    dim=1, keepdim=True)
-                return (per_px / n_photons).sum()
+                return 2 * torch.sum(pred - flat_data + flat_data * torch.log(torch.clamp(flat_data, 1e-9) / pred))
 
         optimizer = torch.optim.LBFGS([raw_p], lr=1, max_iter=max_iter, history_size=10, line_search_fn="strong_wolfe")
 
@@ -156,17 +147,9 @@ class Fli_GPUProcessor:
             p_final = self._transform_params(raw_p, model_type)
             fit_flat = self._model_kernel(p_final, t_axis, flat_irf, model_type)
             res_flat = flat_data - fit_flat
-            dof = max(T - p_final.shape[1], 1)
-
-            # Raw chi2 (consistent with CPU fitter's stat_map)
-            chi2_raw_flat = torch.sum((res_flat**2) / torch.clamp(flat_data, 1.0), dim=1)
-            chi2_red_flat = chi2_raw_flat / dof
-
-            # R² per pixel
-            ss_tot = torch.sum((flat_data - flat_data.mean(dim=1, keepdim=True))**2, dim=1)
-            ss_res = torch.sum(res_flat**2, dim=1)
-            r2_flat = 1.0 - ss_res / torch.clamp(ss_tot, min=1e-9)
-
+            dof = T - p_final.shape[1]
+            chi2_flat = torch.sum((res_flat**2) / torch.clamp(flat_data, 1.0), dim=1) / dof
+            
             perr_flat = torch.zeros_like(p_final)
             if CRLB:
                 perr_flat = self._compute_crlb_errors(p_final, t_axis, flat_irf, model_type)
@@ -174,79 +157,61 @@ class Fli_GPUProcessor:
         # Mapping back to image dimensions
         full_popt = np.zeros((H * W, p_final.shape[1]))
         full_perr = np.zeros((H * W, p_final.shape[1]))
-        full_fit  = np.zeros((H * W, T))
-        full_res  = np.zeros((H * W, T))
-        full_chi2_raw = np.zeros(H * W)
-        full_chi2_red = np.zeros(H * W)
-        full_r2       = np.zeros(H * W)
+        full_fit = np.zeros((H * W, T))
+        full_res = np.zeros((H * W, T))
+        full_chi2 = np.zeros(H * W)
 
-        full_popt[valid_idx]     = p_final.detach().cpu().numpy()
-        full_perr[valid_idx]     = perr_flat.detach().cpu().numpy()
-        full_fit[valid_idx]      = fit_flat.detach().cpu().numpy()
-        full_res[valid_idx]      = res_flat.detach().cpu().numpy()
-        full_chi2_raw[valid_idx] = chi2_raw_flat.detach().cpu().numpy()
-        full_chi2_red[valid_idx] = chi2_red_flat.detach().cpu().numpy()
-        full_r2[valid_idx]       = r2_flat.detach().cpu().numpy()
+        full_popt[valid_idx] = p_final.detach().cpu().numpy()
+        full_perr[valid_idx] = perr_flat.detach().cpu().numpy()
+        full_fit[valid_idx] = fit_flat.detach().cpu().numpy()
+        full_res[valid_idx] = res_flat.detach().cpu().numpy()
+        full_chi2[valid_idx] = chi2_flat.detach().cpu().numpy()
 
         print(f"Fit Finished in {time.time() - start_time:.2f}s")
-
-        # Per-pixel health: flag pixels where reduced chi2 > 5 or a lifetime
-        # parameter has converged to a bound (both indicate a poor fit).
+        
+        # Build health map (0 for masked or failed, 1 for success)
         health_mask = np.zeros(H * W)
         health_mask[valid_idx] = 1.0
-        tau_lo, tau_hi = 1e-4, self.T_laser
-        p_np = p_final.detach().cpu().numpy()
-        chi2_red_np = full_chi2_red[valid_idx]
-        if model_type == 'bi-exponential':
-            at_bound = (
-                (p_np[:, 2] <= tau_lo * 1.01) | (p_np[:, 2] >= tau_hi * 0.99) |
-                (p_np[:, 3] <= tau_lo * 1.01) | (p_np[:, 3] >= tau_hi * 0.99)
-            )
-        else:
-            at_bound = (p_np[:, 1] <= tau_lo * 1.01) | (p_np[:, 1] >= tau_hi * 0.99)
-        health_mask[valid_idx] = np.where(at_bound | (chi2_red_np > 5.0), 0.0, 1.0)
-
+        
         return self._reconstruct_dataset(
-            full_popt.reshape(H, W, -1), full_perr.reshape(H, W, -1),
+            full_popt.reshape(H, W, -1), full_perr.reshape(H, W, -1), 
             full_fit.reshape(H, W, T), full_res.reshape(H, W, T),
-            full_chi2_raw.reshape(H, W), full_chi2_red.reshape(H, W),
-            full_r2.reshape(H, W), health_mask.reshape(H, W),
+            full_chi2.reshape(H, W), health_mask.reshape(H, W),
             model_type, mode, data_name
         )
 
-    def _reconstruct_dataset(self, p_maps, e_maps, fit_map, res_map,
-                             chi2_raw, chi2_reduced, r2_map, health_map,
-                             model_type, mode, name):
+    def _reconstruct_dataset(self, p_maps, e_maps, fit_map, res_map, chi2_map, health_map, model_type, mode, name):
         """Standardized Dictionary Reconstruction compatible with Fli_CPUProcessor."""
         S = p_maps[..., 0]
-        common = {
-            'chi2_map':        chi2_raw,
-            'reduced_stat_map': chi2_reduced,
-            'R2_map':          r2_map,
-            'pixel_health_map': health_map,
-        }
         if model_type == 'bi-exponential':
+            a1 = p_maps[..., 1]
             maps = {
-                'Area_map': S, 'alpha1_map': p_maps[..., 1],
+                'Area_map': S, 'alpha1_map': a1,
                 'tau1_map': p_maps[..., 2], 'tau2_map': p_maps[..., 3],
-                'offset_map': p_maps[..., 4],
-                **common,
+                'offset_map': p_maps[..., 4], # Unified name
+                'R2_map': np.zeros_like(chi2_map), # Placeholder for LSE compatibility
+                'chi2_or_deviance_map': chi2_map,
+                'pixel_health_map': health_map
             }
+            error_maps = e_maps
         else:
             maps = {
                 'Area_map': S, 'tau_map': p_maps[..., 1],
                 'offset_map': p_maps[..., 2],
-                **common,
+                'chi2_or_deviance_map': chi2_map,
+                'pixel_health_map': health_map
             }
+            error_maps = e_maps
+        
         return {
             'name': name,
-            'method': f"GPU_{mode}",
+            'method': f"GPU_{mode}", 
             'results': {
                 'maps': maps,
-                'error_maps': e_maps,
+                'error_maps': error_maps,
                 'TR_maps': {
-                    'fit_map':      fit_map.astype(np.float32),
-                    'residual_map': res_map.astype(np.float32),
+                    'fit_map': fit_map.astype(np.float32),
+                    'residual_map': res_map.astype(np.float32)
                 }
             }
         }
@@ -254,8 +219,11 @@ class Fli_GPUProcessor:
     def _get_sophisticated_guess(self, data, irf, model_type):
         guesses = []
         cpu_data = data.detach().cpu().numpy()
+        cpu_irf = irf.detach().cpu().numpy()
         T = cpu_data.shape[-1]
-        t_axis = np.linspace(0, self.T_acq, T)
+        t_axis = np.linspace(0, self.T_acq, T)        
+        # for handling IRF geometry (Global vs Binned)
+        single_irf = cpu_irf.ndim == 1 or cpu_irf.shape[0] != cpu_data.shape[0]
 
         for i in range(cpu_data.shape[0]):
             current_decay = cpu_data[i]

@@ -1377,7 +1377,6 @@ class FLIAnalysisSuite:
                                  f"{meth.upper()}: {m_type}", m_type)
         fig.tight_layout()
         plt.show()
-        return fig
 
     def check_random_pixel(self, px=(0, 0)):
         """
@@ -1474,4 +1473,4 @@ class FLIAnalysisSuite:
 
         fig.tight_layout()
         plt.show()
-        return fig
+    

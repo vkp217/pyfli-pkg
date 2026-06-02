@@ -280,7 +280,6 @@ def recovery_plot(gt_dict,
 
     plt.tight_layout()
     plt.show()
-    return fig
 
 def threshold_masking(fli, irf, threshold=100):
         if threshold is None:
@@ -578,7 +577,7 @@ def compute_detailed_results(tau1, tau2, f, freq_acq, binned_irf, binned_decay,
         "tau2_map":             tau2.astype(np.float32),
         "offset_map":           np.zeros((H, W), dtype=np.float32),  # no offset in model
         "R2_map":               r2_map.astype(np.float32),
-        "chi2_map": chi_sq_raw.astype(np.float32),
+        "chi2_or_deviance_map": chi_sq_raw.astype(np.float32),
         "reduced_stat_map":     chi_sq_map.astype(np.float32),
         "convergence_map":      health.copy(),
         "pixel_health_map":     health,

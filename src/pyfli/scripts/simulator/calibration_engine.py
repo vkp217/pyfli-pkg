@@ -166,14 +166,14 @@ class FLICalibrator:
                 _, p_val = stats.ks_2samp(sim_counts, target_counts)
                 p_matrix[i, j] = p_val
 
-        fig, ax = plt.subplots(figsize=(9, 7))
-        im = ax.imshow(p_matrix, extent=[sigma_vals[0], sigma_vals[-1], dcr_vals[0], dcr_vals[-1]],
-                       origin='lower', aspect='auto', cmap='magma')
-        fig.colorbar(im, ax=ax, label='KS P-Value')
-        ax.set_xlabel('Read Noise Sigma')
-        ax.set_ylabel('DCR')
+        plt.figure(figsize=(9, 7))
+        im = plt.imshow(p_matrix, extent=[sigma_vals[0], sigma_vals[-1], dcr_vals[0], dcr_vals[-1]],
+                        origin='lower', aspect='auto', cmap='magma')
+        plt.colorbar(im, label='KS P-Value')
+        plt.xlabel('Read Noise Sigma')
+        plt.ylabel('DCR')
         if self.opt_params:
-            ax.scatter(self.opt_params['read_sigma'], self.opt_params['dcr'], color='cyan', marker='x', s=100, label='Optimal Point')
-            ax.legend()
+            plt.scatter(self.opt_params['read_sigma'], self.opt_params['dcr'], color='cyan', marker='x', s=100, label='Optimal Point')
+            plt.legend()
         plt.show()
-        return fig, p_matrix
+        return p_matrix

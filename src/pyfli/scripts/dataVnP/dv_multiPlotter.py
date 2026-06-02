@@ -594,7 +594,7 @@ class Plotter:
                   # legacy positional-style kwargs kept for backward compatibility
                   point_type=None, show_mean=None, show_median=None,
                   test_type=None, correction=None,
-                  **config_overrides):
+                  **config_overrides) -> None:
         """Render a multi-source comparison plot.
 
         Legacy parameters (point_type, show_mean, show_median, test_type,
@@ -624,11 +624,11 @@ class Plotter:
 
         # ── dispatch graph types handled with per-key subplots ────────────────
         if graph_type == "kde":
-            return self._plot_kde(groups, n_sources, title, cfg)
+            self._plot_kde(groups, n_sources, title, cfg);  return
         if graph_type == "cdf":
-            return self._plot_cdf(groups, n_sources, title, cfg)
+            self._plot_cdf(groups, n_sources, title, cfg);  return
         if graph_type == "qq":
-            return self._plot_qq(groups, n_sources, title, cfg)
+            self._plot_qq(groups, n_sources, title, cfg);   return
 
         # ── single-axes graph types ───────────────────────────────────────────
         fig, ax = plt.subplots(figsize=cfg.figsize)
@@ -652,7 +652,6 @@ class Plotter:
         ax.set_title(title)
         plt.tight_layout()
         self.current_fig = fig
-        return fig
 
     # ── per-type rendering helpers ────────────────────────────────────────────
     def _plot_kde(self, groups, n_sources, title, cfg):
@@ -674,7 +673,6 @@ class Plotter:
         plt.suptitle(title)
         plt.tight_layout(); plt.subplots_adjust(right=0.82)
         self.current_fig = fig
-        return fig
 
     def _plot_cdf(self, groups, n_sources, title, cfg):
         n_keys = len(self.labels)
@@ -691,7 +689,6 @@ class Plotter:
         plt.suptitle(title)
         plt.tight_layout()
         self.current_fig = fig
-        return fig
 
     def _plot_qq(self, groups, n_sources, title, cfg):
         n_keys = len(self.labels)
@@ -706,7 +703,6 @@ class Plotter:
         plt.suptitle(title)
         plt.tight_layout()
         self.current_fig = fig
-        return fig
 
     def _plot_box_family(self, ax, groups, n_sources, width, x_centers,
                          graph_type, cfg):
@@ -901,15 +897,14 @@ class DLModelComparator(Plotter):
                   graph_type="box",
                   show_significance=True,
                   show_metrics=True,
-                  **config_overrides):
+                  **config_overrides) -> None:
         """Override: adds optional distribution-metrics annotation block."""
-        fig = super().make_plot(title=title, graph_type=graph_type,
-                                show_significance=show_significance,
-                                **config_overrides)
+        super().make_plot(title=title, graph_type=graph_type,
+                          show_significance=show_significance,
+                          **config_overrides)
         if (show_metrics and self.current_fig is not None
                 and graph_type not in ("kde", "cdf", "qq")):
             self.annotate_distribution_metrics(self.current_fig.axes[0])
-        return fig
 
 
 # ─────────────────────────────────────────────────────────────────────────────

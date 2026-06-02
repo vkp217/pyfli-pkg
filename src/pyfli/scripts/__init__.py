@@ -22,12 +22,6 @@ from .utils_common import (recovery_plot, random_true_pixel,
                            data_masking, save_plot, plot_pixel_diagnostic,
                            compute_detailed_results)
 from .data_saving import DataSaver
-from .irfDeconvolution import (
-    TCSPCParams, SPADParams, ICCDParams,
-    make_observation, generalized_anscombe,
-    SolverConfig, solve_flim,
-    build_gate_matrix, decay_basis, cyclic_conv,
-)
 from .phasor import (
     AcquisitionConfig, AcquisitionMode,
     phasor_continuous, phasor_discrete, phasor_gated_single, phasor_gated_N,
@@ -58,9 +52,5 @@ __all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport",
     "phase_lifetime", "modulus_lifetime", "lifetime_from_phasor",
     "phase_lifetime_gated", "fractional_components",
     "plot_phasor", "plot_locus_comparison", "plot_discrete_N_sweep",
-    "TCSPCParams", "SPADParams", "ICCDParams",
-    "make_observation", "generalized_anscombe",
-    "SolverConfig", "solve_flim",
-    "build_gate_matrix", "decay_basis", "cyclic_conv",
 ]
     
