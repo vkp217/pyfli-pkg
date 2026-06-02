@@ -15,7 +15,7 @@ build/
 
 # Data and Notebooks (Based on your TOML exclude)
 data/
-examples/
+examples/microscopy_all_methods.ipynb
 notebooks/
 *.h5
 *.sdt
