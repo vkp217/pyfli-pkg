@@ -150,7 +150,8 @@ class PhasorAnalyzer:
 
         P = G + 1j * S
         P_irf = G_irf[:, None, None] + 1j * S_irf[:, None, None]
-        P_true = P / (P_irf + self.eps)
+        P_irf_abs_sq = np.clip(G_irf[:, None, None] ** 2 + S_irf[:, None, None] ** 2, self.eps, None)
+        P_true = P * np.conj(P_irf) / P_irf_abs_sq
 
         return np.real(P_true), np.imag(P_true)
 
@@ -348,7 +349,7 @@ class PhasorAnalyzer:
         return colors
 
     # Visualization
-    def plot_phasor_diagram(self, G, S, mask=None, colors=None, hexbin_color=None, ax=None, figsize=(8, 6), half_circle=False):
+    def plot_phasor_diagram(self, G, S, mask=None, colors=None, hexbin_color=None, ax=None, figsize=(8, 6), half_circle=False, title="Phasor Diagram"):
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
@@ -357,8 +358,10 @@ class PhasorAnalyzer:
         # Universal circle
         ug, us = _universal_circle_xy(half_circle=half_circle)
         ax.plot(ug, us, "k--")
-        g_flat = np.ravel(G)
-        s_flat = np.ravel(S)
+        G_2d = G[0] if (np.ndim(G) == 3) else np.asarray(G)
+        S_2d = S[0] if (np.ndim(S) == 3) else np.asarray(S)
+        g_flat = np.ravel(G_2d)
+        s_flat = np.ravel(S_2d)
         if mask is not None:
             mask_flat = np.ravel(mask)
             g_plot = g_flat[mask_flat]
@@ -369,18 +372,13 @@ class PhasorAnalyzer:
         # Scatter / density
         if colors is None:
             cmap_to_use = hexbin_color if hexbin_color is not None else 'autumn'
-            # hexbin counts
-            hb = ax.hexbin(g_plot, s_plot, gridsize=200, cmap=cmap_to_use, mincnt=1)           
-            if created_fig:
-                # Colorbar reflects the range of pixel counts in g_plot/s_plot
-                fig.colorbar(hb, ax=ax).set_label("Pixel Count")
+            hb = ax.hexbin(g_plot, s_plot, gridsize=200, cmap=cmap_to_use, mincnt=1)
+            fig.colorbar(hb, ax=ax).set_label("Pixel Count")
         else:
             if isinstance(colors, str):
-                # If using a colormap name, 'c' values must also be masked
-                c_vals = g_plot 
+                c_vals = g_plot
                 path = ax.scatter(g_plot, s_plot, cmap=colors, c=c_vals, s=8, marker="o")
-                if created_fig:
-                    fig.colorbar(path, ax=ax).set_label("Phasor G Value")
+                fig.colorbar(path, ax=ax).set_label("Phasor G Value")
             else:
                 # If colors is an RGB array (H, W, 3), mask it to match g_plot
                 c_flat = np.reshape(colors, (-1, 3))
@@ -393,7 +391,7 @@ class PhasorAnalyzer:
         G_mark, S_mark = self.lifetime_to_phasor(_TAU_MARKS_NS, self.frequency)
         _draw_lifetime_ticks(ax, G_mark, S_mark, color="black", lw=4, fontsize=10, show_units=True)
 
-        _style_phasor_ax(ax, title="IRF-Calibrated Phasor Diagram",
+        _style_phasor_ax(ax, title=title,
                         xlim=(-0.1, 1.1), ylim=(-0.6, 0.6), half_circle=half_circle)
 
         if created_fig:
@@ -796,10 +794,12 @@ class PhasorAnalyzer:
         S_col = S[0] if S.ndim == 3 else S        
         # calculating the phase angle (phi) in radians np.arctan2(y, x) -> np.arctan2(S, G)
         phi = np.arctan2(S_col, G_col)        
-        phi_min = 0.0 
-        phi_max = phi.max() if phi.max() > 0 else 1.0 
+        phi_min = phi.min()
+        phi_max = phi.max()
+        if phi_max <= phi_min:
+            phi_max = phi_min + 1.0
         phi_norm = (phi - phi_min) / (phi_max - phi_min + self.eps)
-        phi_norm = np.clip(phi_norm, 0, 1) # Ensuring to stay within [0, 1]
+        phi_norm = np.clip(phi_norm, 0, 1)
         colors = plt.get_cmap(colormap)(phi_norm)[:, :, :3]
         return colors
 

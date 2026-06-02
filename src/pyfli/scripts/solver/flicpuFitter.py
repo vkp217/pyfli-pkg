@@ -144,7 +144,7 @@ class Fli_CPUProcessor:
         # Add statistical and health maps
         param_maps.update({
             'R2_map': r2_map, 
-            'chi2_or_deviance_map': stat_map,
+            'chi2_map': stat_map,
             'reduced_stat_map': red_stat_map, 
             'convergence_map': conv_map,
             'pixel_health_map': pixel_health_map # The requested "Problem" vs "Good" map

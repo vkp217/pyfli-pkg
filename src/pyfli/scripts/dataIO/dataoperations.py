@@ -125,6 +125,8 @@ class DataOperations:
 
     def _general_loader(self, path, sub_bg=True, pile_up=False, hot_pixel=False, label="Data"):
         if not path or not os.path.exists(path):
+            abs_path = os.path.abspath(path) if path else "(None)"
+            print(f"[ERROR] {label} path not found: {abs_path}")
             return None
         
         if os.path.isfile(path):
