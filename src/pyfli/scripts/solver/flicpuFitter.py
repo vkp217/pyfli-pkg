@@ -4,7 +4,11 @@ import h5py
 import os
 from joblib import Parallel, delayed
 from tqdm import tqdm
-# from .globalFitter import GlobalFLIFitter
+
+try:
+    from .globalFitter import GlobalFLIFitter as _GlobalFLIFitter
+except ImportError:
+    _GlobalFLIFitter = None
 
 class Fli_CPUProcessor:
     def __init__(self, freq, fitter_class):
@@ -73,7 +77,7 @@ class Fli_CPUProcessor:
         H, W, T = image_cube.shape
         
         # 1. Detect Multi-label Clustering for Global Fitting
-        if mask is not None and np.max(mask) > 1 and issubclass(self.fitter_class, GlobalFLIFitter):
+        if mask is not None and np.max(mask) > 1 and _GlobalFLIFitter is not None and issubclass(self.fitter_class, _GlobalFLIFitter):
             print(f"Multi-label mask detected. Switching to Global Cluster Fitting...")
             g_fitter = self.fitter_class(self.freq, image_cube[0,0,:], irf_cube[0,0,:])
             return g_fitter.process_clusters(image_cube, irf_cube, mask, estimator=estimator, 

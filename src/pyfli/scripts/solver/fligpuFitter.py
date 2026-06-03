@@ -75,9 +75,10 @@ class Fli_GPUProcessor:
             W = 1.0 / torch.clamp(pred, min=1.0)
             jt_w = jac.transpose(1, 2) * W.unsqueeze(1)
             fim = torch.bmm(jt_w, jac)
-            eps = 1e-10 * torch.eye(fim.shape[-1], device=self.device)
+            trace = torch.diagonal(fim, dim1=1, dim2=2).sum(dim=1, keepdim=True).unsqueeze(-1)
+            eps_mat = (1e-6 * trace / fim.shape[-1]) * torch.eye(fim.shape[-1], device=self.device)
             try:
-                cov = torch.inverse(fim + eps)
+                cov = torch.inverse(fim + eps_mat)
                 return torch.sqrt(torch.abs(torch.diagonal(cov, dim1=1, dim2=2)))
             except RuntimeError:
                 return torch.zeros_like(p_phys)
@@ -178,7 +179,7 @@ class Fli_GPUProcessor:
             # R² per pixel
             ss_tot = torch.sum((flat_data - flat_data.mean(dim=1, keepdim=True))**2, dim=1)
             ss_res = torch.sum(res_flat**2, dim=1)
-            r2_flat = 1.0 - ss_res / torch.clamp(ss_tot, min=1e-9)
+            r2_flat = torch.where(ss_tot > 0, 1.0 - ss_res / ss_tot, torch.zeros_like(ss_tot))
 
             perr_flat = torch.zeros_like(p_final)
             if CRLB:
