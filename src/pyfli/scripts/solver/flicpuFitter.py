@@ -127,12 +127,14 @@ class Fli_CPUProcessor:
         # Build final parameter dictionary
         S_map = p_maps[..., 0]
         if model_type == 'bi-exponential':
+            tau1_m, tau2_m = p_maps[..., 2], p_maps[..., 3]
             param_maps = {
-                'Area_map': S_map, 
-                'alpha1_map': p_maps[..., 1], 
-                'tau1_map': p_maps[..., 2], 
-                'tau2_map': p_maps[..., 3], 
-                'offset_map': p_maps[..., 4] # Corrected 'B_map' to 'offset_map'
+                'Area_map': S_map,
+                'alpha1_map': p_maps[..., 1],
+                'tau1_map': tau1_m,
+                'tau2_map': tau2_m,
+                'offset_map': p_maps[..., 4],
+                'fret_efficiency_map': np.where(tau2_m > 0, 1.0 - tau1_m / tau2_m, 0.0).astype(np.float32),
             }
         else:
             param_maps = {

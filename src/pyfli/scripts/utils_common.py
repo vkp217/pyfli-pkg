@@ -486,7 +486,7 @@ def plot_pixel_diagnostic(binned_decay, all_fitset, names,
     fig.tight_layout()
     if show:
         plt.show()
-    return fig, axd, (x, y)
+    return fig
 
 
 import numpy as np
