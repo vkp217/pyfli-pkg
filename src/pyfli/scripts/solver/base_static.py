@@ -91,8 +91,8 @@ def moment_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
     tau_g = np.clip(tau_mean, 0.05, T_laser * 0.8)
     
     # Intensity S (corrected for window truncation)
-    # Area = S * tau * (1 - exp(-T_acq / tau))
-    s_guess = m0 / (tau_g * (1 - np.exp(-T_acq / tau_g))) if tau_g > 0 else m0
+    # Area = S * (1 - exp(-T_acq / tau))
+    s_guess = m0 / (1 - np.exp(-T_acq / tau_g)) if tau_g > 0 else m0
 
     if model_type == 'mono-exponential':
         return {

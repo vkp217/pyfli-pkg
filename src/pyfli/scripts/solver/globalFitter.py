@@ -170,6 +170,7 @@ class GlobalFLIFitter:
             'alpha1_map' if model_type == 'bi-exponential' else 'tau_map': np.zeros((H, W), dtype=np.float32),
             'tau1_map': np.zeros((H, W), dtype=np.float32) if model_type == 'bi-exponential' else None,
             'tau2_map': np.zeros((H, W), dtype=np.float32) if model_type == 'bi-exponential' else None,
+            'fret_efficiency_map': np.zeros((H, W), dtype=np.float32) if model_type == 'bi-exponential' else None,
             'Area_map': np.zeros((H, W), dtype=np.float32),
             'offset_map': np.zeros((H, W), dtype=np.float32),
             'Chi2_map': np.zeros((H, W), dtype=np.float32),

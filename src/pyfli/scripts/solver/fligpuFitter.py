@@ -32,7 +32,20 @@ class Fli_GPUProcessor:
             return torch.cat([S, tau, b], dim=1)
 
     def _model_kernel(self, params, t, irf, model_type):
-        """Vectorized Decay Model with FFT Convolution."""
+        """
+        Batched PyTorch forward model: decay ⊛ irf + offset.
+
+        Implements the same physics as ``forward_model.decay_kernel`` /
+        ``forward_model.model_numpy`` but operates on batched tensors of
+        shape (P, T) using FFT convolution for GPU throughput.
+
+        The IRF must be pre-normalised (sum=1) by the caller; this is done
+        in ``fit_image`` before this method is ever called.
+
+        Parameter layout follows the convention in ``forward_model.py``:
+            mono : [S, tau,       offset]
+            bi   : [S, a1, tau1, tau2, offset]
+        """
         if model_type == 'mono-exponential':
             S, tau, b = params[:, 0:1], params[:, 1:2], params[:, 2:3]
             decay = (S / tau) * torch.exp(-t / tau)
@@ -74,7 +87,7 @@ class Fli_GPUProcessor:
                   data_name="Torch_Fit", **kwargs):
         start_time = time.time()
         H, W, T = image_cube.shape
-        t_axis = torch.linspace(0, self.T_acq, T, device=self.device)
+        t_axis = torch.arange(T, device=self.device) * (self.T_acq / T)
         
         irf_tensor = torch.tensor(irf_cube, device=self.device, dtype=torch.float32).reshape(-1, T)
         irf_norm = irf_tensor / torch.clamp(irf_tensor.sum(dim=1, keepdim=True), 1e-9)
@@ -158,8 +171,8 @@ class Fli_GPUProcessor:
             res_flat = flat_data - fit_flat
             dof = max(T - p_final.shape[1], 1)
 
-            # Raw chi2 (consistent with CPU fitter's stat_map)
-            chi2_raw_flat = torch.sum((res_flat**2) / torch.clamp(flat_data, 1.0), dim=1)
+            # Pearson chi2 (denominator = model, consistent with CPU compute_fli_stats)
+            chi2_raw_flat = torch.sum((res_flat**2) / torch.clamp(fit_flat, 1.0), dim=1)
             chi2_red_flat = chi2_raw_flat / dof
 
             # R² per pixel
@@ -226,10 +239,12 @@ class Fli_GPUProcessor:
             'pixel_health_map': health_map,
         }
         if model_type == 'bi-exponential':
+            tau1_m, tau2_m = p_maps[..., 2], p_maps[..., 3]
             maps = {
                 'Area_map': S, 'alpha1_map': p_maps[..., 1],
-                'tau1_map': p_maps[..., 2], 'tau2_map': p_maps[..., 3],
+                'tau1_map': tau1_m, 'tau2_map': tau2_m,
                 'offset_map': p_maps[..., 4],
+                'fret_efficiency_map': np.where(tau2_m > 0, 1.0 - tau1_m / tau2_m, 0.0).astype(np.float32),
                 **common,
             }
         else:
@@ -255,7 +270,7 @@ class Fli_GPUProcessor:
         guesses = []
         cpu_data = data.detach().cpu().numpy()
         T = cpu_data.shape[-1]
-        t_axis = np.linspace(0, self.T_acq, T)
+        t_axis = np.linspace(0, self.T_acq, T, endpoint=False)
 
         for i in range(cpu_data.shape[0]):
             current_decay = cpu_data[i]

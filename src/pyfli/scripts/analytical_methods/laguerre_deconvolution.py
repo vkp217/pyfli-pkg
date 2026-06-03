@@ -37,6 +37,7 @@ class LaguerreFLI:
         laser_period_ns: Optional[float] = None,
         reg_strength: float = 0.0,
         reg_power: float = 2.0,
+        nonneg: bool = True,
     ):
         if n_components < 1:
             raise ValueError("n_components must be >= 1.")
@@ -59,6 +60,7 @@ class LaguerreFLI:
         self.taus_init       = np.asarray(taus_init, float) if taus_init is not None else None
         self.reg_strength = float(reg_strength)   # 0 => pure OLS (mathematically exact)
         self.reg_power    = float(reg_power)       # >0 => penalise high Laguerre orders more
+        self.nonneg       = bool(nonneg)
 
         self.basis_:          Optional[np.ndarray] = None
         self.V_:              Optional[np.ndarray] = None
@@ -180,6 +182,12 @@ class LaguerreFLI:
             a, *_ = np.linalg.lstsq(E, h, rcond=None)
             return np.clip(a, 0.0, None)
 
+    def _solve_amps(self, E: np.ndarray, h: np.ndarray, maxiter: int) -> np.ndarray:
+        if self.nonneg:
+            return self._nnls_safe(E, h, maxiter)
+        a, *_ = np.linalg.lstsq(E, h, rcond=None)
+        return a
+
     def _tau_bounds(self, T: int):
         tau_lo = self.dt
         tau_hi = self.laser_period_ns if self.laser_period_ns is not None else T * self.dt
@@ -207,7 +215,7 @@ class LaguerreFLI:
         def residual(params):
             taus = np.clip(params, tau_lo, tau_hi)
             E = np.exp(-n[:, None] * self.dt / taus[None, :])
-            a = self._nnls_safe(E, h_avg, 200 * N)
+            a = self._solve_amps(E, h_avg, 200 * N)
             return E @ a - h_avg
 
         res = least_squares(residual, tau0, method="trf",
@@ -237,7 +245,7 @@ class LaguerreFLI:
                 def residual(params, h=h):
                     taus = np.clip(params, tau_lo, tau_hi)
                     E = np.exp(-n[:, None] * self.dt / taus[None, :])
-                    a = self._nnls_safe(E, h, 200 * N)
+                    a = self._solve_amps(E, h, 200 * N)
                     return E @ a - h
 
                 try:
@@ -249,7 +257,7 @@ class LaguerreFLI:
 
                 E_px = np.exp(-n[:, None] * self.dt / taus_px[None, :])
                 taus_map[x, y, :] = taus_px
-                amps_map[x, y, :] = self._nnls_safe(E_px, h, 200 * N)
+                amps_map[x, y, :] = self._solve_amps(E_px, h, 200 * N)
 
         return taus_map, amps_map
 
@@ -330,11 +338,26 @@ class LaguerreFLI:
         with np.errstate(invalid="ignore", divide="ignore"):
             self.fractions_ = np.where(total > 0, A / total, 0.0)
 
+        h_nonneg = np.clip(h_stack, 0.0, None)
         n_idx = np.arange(T)
-        num   = (h_stack * (n_idx * self.dt)).sum(axis=-1)
-        den   = h_stack.sum(axis=-1)
+        num   = (h_nonneg * (n_idx * self.dt)).sum(axis=-1)
+        den   = h_nonneg.sum(axis=-1)
         with np.errstate(invalid="ignore", divide="ignore"):
-            self.tau_mean_ = np.where(den > 0, num / den, 0.0)
+            tau_raw = np.where(den > 0, num / den, 0.0)
+
+        # Correct first-moment truncation bias: <t>_raw < tau because the
+        # exponential tail beyond T_win is missing.
+        # For h(t)=exp(-t/tau), <t>_raw = tau - (T+tau)*exp(-T/tau)/(1-exp(-T/tau))
+        # so tau = <t>_raw + (T+tau)*exp(-T/tau)/(1-exp(-T/tau))  [implicit; iterate].
+        T_win = T * self.dt
+        tau_est = tau_raw.copy()
+        for _ in range(8):
+            safe = np.maximum(tau_est, 1e-10)
+            u = np.exp(-T_win / safe)
+            one_minus_u = np.maximum(1.0 - u, 1e-10)
+            correction = np.minimum((T_win + safe) * u / one_minus_u, 10.0 * T_win)
+            tau_est = tau_raw + correction
+        self.tau_mean_ = np.where(den > 0, tau_est, 0.0)
 
         return self
 
@@ -378,12 +401,20 @@ class LaguerreFLI:
         tau_maps   = {f'tau{i+1}_map':   self.taus_[..., i].astype(np.float32)      for i in range(N)}
         alpha_maps = {f'alpha{i+1}_map': self.fractions_[..., i].astype(np.float32) for i in range(N)}
 
+        if N >= 2:
+            tau1_m = self.taus_[..., 0]
+            tau2_m = self.taus_[..., 1]
+            fret_eff = np.where(tau2_m > 0, 1.0 - tau1_m / tau2_m, 0.0).astype(np.float32)
+        else:
+            fret_eff = np.zeros((X, Y), dtype=np.float32)
+
         maps = {
             **tau_maps,
             **alpha_maps,
             'Area_map':             photon_count,
             'tau_mean_map':         self.tau_mean_.astype(np.float32),
             'offset_map':           np.zeros((X, Y), dtype=np.float32),
+            'fret_efficiency_map':  fret_eff,
             'R2_map':               r2_map,
             'chi2_map': chi_sq_raw,
             'reduced_stat_map':     chi_sq_reduced,

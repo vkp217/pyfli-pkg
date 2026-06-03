@@ -230,14 +230,14 @@ class DataViewer:
         is_pixel = pixel is not None
         n_imgs = len(selected_img)
         if is_pixel:
-            fig = plt.figure(figsize=(5 * (n_imgs + 2), 4))
-            gs = gridspec.GridSpec(1, n_imgs + 2, wspace=0.3)
+            fig = plt.figure(figsize=(5 * (n_imgs + 2), 4), layout='constrained')
+            gs = gridspec.GridSpec(1, n_imgs + 2, figure=fig)
             ax_log = fig.add_subplot(gs[0])
             ax_lin = fig.add_subplot(gs[1])
             img_axes = [fig.add_subplot(gs[i+2]) for i in range(n_imgs)]
         else:
-            fig = plt.figure(figsize=(5 * n_imgs, 4))
-            gs = gridspec.GridSpec(1, n_imgs, wspace=0.3)
+            fig = plt.figure(figsize=(5 * n_imgs, 4), layout='constrained')
+            gs = gridspec.GridSpec(1, n_imgs, figure=fig)
             img_axes = [fig.add_subplot(gs[i]) for i in range(n_imgs)]
 
         eps = esp
@@ -276,7 +276,6 @@ class DataViewer:
                 img_axes[i].plot(data)
             img_axes[i].set_title(label)
         fig.suptitle(title, fontsize=14)
-        plt.tight_layout()
         plt.show()
         if is_pixel:
             return fig, (ax_log, ax_lin, img_axes)
