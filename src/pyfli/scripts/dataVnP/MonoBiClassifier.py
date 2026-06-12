@@ -10,10 +10,23 @@ class MonoBiClassifier:
     Per-dataset mono- vs bi-exponential pixel classification, plus cross-method
     agreement and parameter-correlation analysis.
 
-    A pixel is 'mono' when its first-component fraction is saturated
-    (alpha1 > alpha_upper or alpha1 < alpha_lower) or the two lifetimes coincide
-    (tau1 == tau2); otherwise it is 'bi'. All maps are restricted to the ROI
+    A pixel is classified 'mono' when one component overwhelmingly dominates:
+      - alpha1 > alpha_upper  (component 1 carries most of the signal)
+      - alpha1 < alpha_lower  (component 2 carries most of the signal)
+      - |tau1 - tau2| <= tau_tol  (both lifetimes are indistinguishable)
+    Otherwise the pixel is 'bi'.  All maps are restricted to the ROI
     given by `b_bool_mask`.
+
+    Parameters
+    ----------
+    alpha_upper : float   upper saturation threshold (default 0.95)
+    alpha_lower : float   lower saturation threshold (default 0.05).
+                          Use a small value (e.g. 0.05) so that only pixels
+                          where component 2 is truly dominant are called mono.
+                          Using 0.5 would label 55 % of the alpha space mono.
+    tau_tol     : float   lifetime coincidence tolerance in ns (default 0.01).
+                          Replaces exact float equality (tau1 == tau2 is almost
+                          never True for fitted values).
 
     Workflow
     --------
@@ -33,13 +46,15 @@ class MonoBiClassifier:
                "#BB8FCE", "#7FB3D5", "#76D7C4"]
 
     def __init__(self, b_bool_mask, names=None,
-                 alpha_upper=0.95, alpha_lower=0.5,
+                 alpha_upper=0.95, alpha_lower=0.05,
+                 tau_tol=0.01,
                  coord=None, figsize=None):
         self.roi         = np.asarray(b_bool_mask).astype(int)
         self.n_roi       = int(self.roi.sum())
         self.names       = names
         self.alpha_upper = alpha_upper
         self.alpha_lower = alpha_lower
+        self.tau_tol     = tau_tol
         self.coord       = coord
         self.figsize     = figsize
 
@@ -49,19 +64,31 @@ class MonoBiClassifier:
 
     # ════════════════════════════ classification ═══════════════════════════
     def classify_one(self, res, name="Dataset"):
+        # Lifetime coincidence: use tolerance instead of exact float equality.
+        # tau1 == tau2 almost never holds for fitted floats even when both
+        # optimisers converge to the same value (e.g. 1.2000000001 != 1.2).
+        tau_coincide = np.abs(
+            np.asarray(res['tau1_map'], dtype=float) -
+            np.asarray(res['tau2_map'], dtype=float)
+        ) <= self.tau_tol
+
         mono_mask = ((res['alpha1_map'] > self.alpha_upper) |
                      (res['alpha1_map'] < self.alpha_lower) |
-                     (res['tau1_map'] == res['tau2_map']))
+                     tau_coincide)
 
-        mono = np.where(mono_mask, 1, 0) * self.roi
-        bi   = np.where(~mono_mask, 1, 0) * self.roi
-        combined = mono * 1 + bi * 2
+        # Apply ROI — mono_mask is kept ROI-restricted for consistency
+        roi_bool  = self.roi.astype(bool)
+        mono_mask = mono_mask & roi_bool
+
+        mono = mono_mask.astype(int)
+        bi   = (~mono_mask & roi_bool).astype(int)
+        combined = mono * 1 + bi * 2   # 0=outside, 1=mono, 2=bi
 
         mono_frac = float(mono.sum() / self.n_roi) if self.n_roi else np.nan
         bi_frac   = float(bi.sum()   / self.n_roi) if self.n_roi else np.nan
 
         return {'name': name, 'mono': mono, 'bi': bi, 'combined': combined,
-                'mono_mask': mono_mask,
+                'mono_mask': mono_mask,          # ROI-restricted boolean
                 'mono_frac': mono_frac, 'bi_frac': bi_frac}
 
     def display_one(self, result):
@@ -224,29 +251,39 @@ class MonoBiClassifier:
         """
         Long-form table of parameter values at pixels where ALL methods agree on
         `cls`. One row per (pixel, method) -> groupby('method').describe().
+
+        Parameters missing from a dataset (e.g. Phasor has only 'tau_map',
+        mono-exp datasets lack 'alpha1_map'/'tau2_map') are filled with NaN
+        instead of raising KeyError.
         """
         self._require_classified()
         classes, all_datasets, names = self.results, self.all_datasets, self.names
         N = len(all_datasets)
         common = np.logical_and.reduce(
             [np.asarray(classes[i][cls]).astype(bool) for i in range(N)])
+        n_common = int(common.sum())
         rows, cols = np.nonzero(common)
         frames = []
         for i in range(N):
             rec = {"method": names[i], "row": rows, "col": cols}
             for p in params:
-                rec[p] = np.asarray(all_datasets[i][p], dtype=float)[common]
+                if p in all_datasets[i]:
+                    rec[p] = np.asarray(all_datasets[i][p], dtype=float)[common]
+                else:
+                    rec[p] = np.full(n_common, np.nan)
             frames.append(pd.DataFrame(rec))
         return pd.concat(frames, ignore_index=True)
 
 
 # ── backward-compatible functional wrapper ──────────────────────────────────
 def classify_mono_bi(all_datasets, b_bool_mask, names=None,
-                     alpha_upper=0.95, alpha_lower=0.5,
+                     alpha_upper=0.95, alpha_lower=0.05,
+                     tau_tol=0.01,
                      coord=None, display=True, figsize=None):
     """Drop-in replacement for the original function (delegates to the class)."""
     clf = MonoBiClassifier(b_bool_mask, names=names,
                            alpha_upper=alpha_upper, alpha_lower=alpha_lower,
+                           tau_tol=tau_tol,
                            coord=coord, figsize=figsize)
     clf.classify(all_datasets, display=display)
     return clf.results

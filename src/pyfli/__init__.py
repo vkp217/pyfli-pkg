@@ -22,7 +22,14 @@ from .scripts import (DataOperations, IRFAligner, DataViewer,
                         build_locus, build_loci, tau_grid, universal_semicircle, sepl_center_radius_discrete,
                         phase_lifetime, modulus_lifetime, lifetime_from_phasor,
                         phase_lifetime_gated, fractional_components,
-                        plot_phasor, plot_locus_comparison, plot_discrete_N_sweep)
+                        plot_phasor, plot_locus_comparison, plot_discrete_N_sweep,
+                        load_session_arrays, scan_session_results, load_fitting_results,
+                        inject_phasor_result, add_mean_lifetime,
+                        compute_freq_axis, compute_phasor, plot_phasor_figures, save_phasor_result,
+                        plot_fitting_maps, plot_diagnostics, plot_pixel_evidence,
+                        plot_statistical_comparison, plot_2d_analysis,
+                        run_mono_bi_classifier,
+                        FBI_RESULT_FILENAME, FBI_RAW_FILENAME)
 
 from .spAnalysis import (BasisPatterns, MeasurementSimulator, Reconstructor)
 
@@ -54,5 +61,13 @@ __all__ = ['DataOperations', 'IRFAligner', 'DataViewer',
         # this is for SPAnalysis
         'BasisPatterns', 'MeasurementSimulator', 'Reconstructor',
         'load_flim_data', 'collapse_to_xyt', 'plot_xyt',
+        # analysis convenience functions
+        'load_session_arrays', 'scan_session_results', 'load_fitting_results',
+        'inject_phasor_result', 'add_mean_lifetime',
+        'compute_freq_axis', 'compute_phasor', 'plot_phasor_figures', 'save_phasor_result',
+        'plot_fitting_maps', 'plot_diagnostics', 'plot_pixel_evidence',
+        'plot_statistical_comparison', 'plot_2d_analysis',
+        'run_mono_bi_classifier',
+        'FBI_RESULT_FILENAME', 'FBI_RAW_FILENAME',
         ]
 

@@ -3,28 +3,10 @@ from typing import Optional
 import numpy as np
 from scipy.optimize import least_squares, minimize_scalar, nnls
 from scipy.signal import lfilter, fftconvolve
+from tqdm.auto import tqdm
 
 
 class LaguerreFLI:
-    """
-    Laguerre-expansion FLIM deconvolution.
-
-    Pipeline:
-      1. Expand the IRF-free fluorescence decay h(n) on an orthonormal discrete
-         Laguerre basis {b_j}. The measured decay is h convolved with the IRF, so
-         the design matrix is V = IRF * B and we solve  V c = y  (linear).
-      2. Reconstruct h(n) = sum_j c_j b_j(n).
-      3. Fit N exponentials to the reconstructed (deconvolved) decay to read off
-         lifetimes and amplitudes.
-
-    Notes on the math (vs. the previous version):
-      * Laguerre coefficients c_j are NOT sign-constrained. The basis functions
-        themselves oscillate, and the expansion of a positive decay generically
-        has alternating-sign coefficients. They are solved by ordinary least
-        squares. (Forcing c_j >= 0 is incorrect and destroys the fit.)
-      * Non-negativity is enforced only where it is physically meaningful: the
-        exponential AMPLITUDES in step 3 (NNLS), which must be >= 0.
-    """
 
     def __init__(
         self,
@@ -38,6 +20,7 @@ class LaguerreFLI:
         reg_strength: float = 0.0,
         reg_power: float = 2.0,
         nonneg: bool = True,
+        verbose: bool = True,
     ):
         if n_components < 1:
             raise ValueError("n_components must be >= 1.")
@@ -58,9 +41,10 @@ class LaguerreFLI:
         self.auto_alpha      = bool(auto_alpha)
         self.laser_period_ns = float(laser_period_ns) if laser_period_ns is not None else None
         self.taus_init       = np.asarray(taus_init, float) if taus_init is not None else None
-        self.reg_strength = float(reg_strength)   # 0 => pure OLS (mathematically exact)
-        self.reg_power    = float(reg_power)       # >0 => penalise high Laguerre orders more
-        self.nonneg       = bool(nonneg)
+        self.reg_strength    = float(reg_strength)
+        self.reg_power       = float(reg_power)
+        self.nonneg          = bool(nonneg)
+        self.verbose         = bool(verbose)
 
         self.basis_:          Optional[np.ndarray] = None
         self.V_:              Optional[np.ndarray] = None
@@ -70,22 +54,15 @@ class LaguerreFLI:
         self.amplitudes_:     Optional[np.ndarray] = None
         self.fractions_:      Optional[np.ndarray] = None
         self.tau_mean_:       Optional[np.ndarray] = None
+        self.converged_:      Optional[np.ndarray] = None
         self.reconstructed_:  Optional[np.ndarray] = None
         self.residuals_:      Optional[np.ndarray] = None
         self.fit_curve_:      Optional[np.ndarray] = None
         self.residual_curve_: Optional[np.ndarray] = None
         self.decay_:          Optional[np.ndarray] = None
 
-    # ---- basis -------------------------------------------------------------
     @staticmethod
     def _discrete_laguerre_basis(T: int, alpha: float, L: int) -> np.ndarray:
-        """
-        Orthonormal discrete Laguerre functions, (L, T).
-        Recurrence (pole = sqrt(alpha)):
-            b_0(n) = sqrt(1-a) a^{n/2}
-            b_j(n) = sqrt(a) b_j(n-1) + sqrt(a) b_{j-1}(n) - b_{j-1}(n-1)
-        Inner time recurrence vectorised with an IIR filter (lfilter).
-        """
         b = np.zeros((L, T), dtype=np.float64)
         n = np.arange(T)
         b[0] = np.sqrt(1.0 - alpha) * alpha ** (n / 2.0)
@@ -93,17 +70,16 @@ class LaguerreFLI:
         a_coef = [1.0, -sa]
         for j in range(1, L):
             prev = b[j - 1]
-            shifted = np.empty_like(prev)      # b_{j-1}(n-1)
+            shifted = np.empty_like(prev)
             shifted[0] = 0.0
             shifted[1:] = prev[:-1]
-            u = sa * prev - shifted            # sqrt(a) b_{j-1}(n) - b_{j-1}(n-1)
-            b[j] = lfilter([1.0], a_coef, u)   # apply 1/(1 - sqrt(a) z^-1)
+            u = sa * prev - shifted
+            b[j] = lfilter([1.0], a_coef, u)
         return b
 
     @staticmethod
     def _convolve_with_irf(basis: np.ndarray, irf: np.ndarray) -> np.ndarray:
-        """(T, L) IRF-convolved basis, causally truncated. Vectorised over order."""
-        L, T = basis.shape
+        _, T = basis.shape
         irf = np.asarray(irf, float).ravel()
         s = irf.sum()
         if s > 0:
@@ -113,21 +89,7 @@ class LaguerreFLI:
 
     @staticmethod
     def _unique_irf_groups(irf_2d: np.ndarray, decimals: int = 6):
-        """
-        Group pixels by their IRF *shape* so a design matrix can be built once
-        per distinct IRF and reused across the group.
-
-        IRFs are compared after sum-normalisation (the convolution normalises
-        anyway, so two IRFs that differ only by a scale factor are equivalent),
-        and quantised to `decimals` places to absorb floating-point noise.
-        Empty/all-zero IRF pixels (e.g. masked) are pooled into one group.
-
-        Returns
-        -------
-        labels   : (P,) int array, group id per pixel.
-        rep_idx  : list of pixel indices, one representative per group.
-        """
-        P, T = irf_2d.shape
+        _, _ = irf_2d.shape
         s = irf_2d.sum(axis=1, keepdims=True)
         norm = np.divide(irf_2d, s, out=np.zeros_like(irf_2d), where=s > 0)
         keys = np.round(norm, decimals)
@@ -135,18 +97,13 @@ class LaguerreFLI:
             keys, axis=0, return_index=True, return_inverse=True
         )
         inverse = inverse.ravel()
-        rep_idx = [int(np.flatnonzero(inverse == g)[0]) for g in range(len(first_idx))]
+        rep_idx = first_idx.tolist()
         return inverse, rep_idx
 
-    # ---- coefficient solve (ordinary least squares; sign-unconstrained) ----
     def _penalty(self, L: int) -> np.ndarray:
-        """Diagonal Tikhonov weights, graded by Laguerre order (0,1,..,L-1).
-        Higher orders oscillate fastest and absorb tail noise, so they are
-        penalised more strongly."""
         return (np.arange(L, dtype=float) + 1.0) ** self.reg_power
 
     def _solve_coefficients(self, V: np.ndarray, Y2d: np.ndarray) -> np.ndarray:
-        """Solve V C = Y2d for all pixels at once (sign-unconstrained). (L, P)."""
         if self.reg_strength > 0.0:
             L = V.shape[1]
             lam = self.reg_strength * float(np.mean(np.diag(V.T @ V)))
@@ -156,10 +113,6 @@ class LaguerreFLI:
         return C
 
     def _optimize_alpha(self, avg_decay: np.ndarray, avg_irf: np.ndarray, T: int) -> float:
-        """
-        Choose the Laguerre pole alpha on the spatially averaged decay by
-        minimising the reconstruction residual of the IRF-convolved model.
-        """
         def obj(a):
             if not (1e-3 < a < 0.999):
                 return 1e30
@@ -172,7 +125,6 @@ class LaguerreFLI:
                               options={"xatol": 1e-3})
         return float(res.x)
 
-    # ---- exponential stage (amplitudes ARE non-negative -> NNLS) -----------
     @staticmethod
     def _nnls_safe(E: np.ndarray, h: np.ndarray, maxiter: int) -> np.ndarray:
         try:
@@ -213,8 +165,7 @@ class LaguerreFLI:
             )
 
         def residual(params):
-            taus = np.clip(params, tau_lo, tau_hi)
-            E = np.exp(-n[:, None] * self.dt / taus[None, :])
+            E = np.exp(-n[:, None] * self.dt / params[None, :])
             a = self._solve_amps(E, h_avg, 200 * N)
             return E @ a - h_avg
 
@@ -224,7 +175,7 @@ class LaguerreFLI:
 
     def _fit_pixel_exponentials(
         self, h_stack: np.ndarray, tau_init: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         X, Y, T = h_stack.shape
         N = self.n_components
         n = np.arange(T)
@@ -233,35 +184,38 @@ class LaguerreFLI:
         tau_init_safe = self._safe_tau0(tau_init, tau_lo, tau_hi)
         bounds = ([tau_lo] * N, [tau_hi] * N)
 
-        taus_map = np.zeros((X, Y, N), dtype=np.float64)
-        amps_map = np.zeros((X, Y, N), dtype=np.float64)
+        taus_map     = np.zeros((X, Y, N), dtype=np.float64)
+        amps_map     = np.zeros((X, Y, N), dtype=np.float64)
+        converged_map = np.zeros((X, Y),   dtype=np.float32)
 
-        for x in range(X):
-            for y in range(Y):
-                h = h_stack[x, y, :]
-                if h.sum() < 1e-10:
-                    continue
+        with tqdm(total=X * Y, desc="  Pixels", unit="px",
+                  leave=False, disable=not self.verbose) as pbar:
+            for x in range(X):
+                for y in range(Y):
+                    h = h_stack[x, y, :]
+                    if h.sum() >= 1e-10:
+                        def residual(params, h=h):
+                            E = np.exp(-n[:, None] * self.dt / params[None, :])
+                            a = self._solve_amps(E, h, 200 * N)
+                            return E @ a - h
 
-                def residual(params, h=h):
-                    taus = np.clip(params, tau_lo, tau_hi)
-                    E = np.exp(-n[:, None] * self.dt / taus[None, :])
-                    a = self._solve_amps(E, h, 200 * N)
-                    return E @ a - h
+                        try:
+                            res = least_squares(residual, tau_init_safe.copy(),
+                                                method="trf", bounds=bounds,
+                                                max_nfev=1000)
+                            taus_px = np.sort(np.clip(np.abs(res.x), tau_lo, tau_hi))
+                            converged_map[x, y] = float(res.success)
+                        except Exception:
+                            taus_px = tau_init_safe.copy()
+                            converged_map[x, y] = 0.0
 
-                try:
-                    res = least_squares(residual, tau_init_safe.copy(), method="trf",
-                                        bounds=bounds, max_nfev=1000)
-                    taus_px = np.sort(np.clip(np.abs(res.x), tau_lo, tau_hi))
-                except Exception:
-                    taus_px = tau_init_safe.copy()
+                        E_px = np.exp(-n[:, None] * self.dt / taus_px[None, :])
+                        taus_map[x, y, :] = taus_px
+                        amps_map[x, y, :] = self._solve_amps(E_px, h, 200 * N)
+                    pbar.update(1)
 
-                E_px = np.exp(-n[:, None] * self.dt / taus_px[None, :])
-                taus_map[x, y, :] = taus_px
-                amps_map[x, y, :] = self._solve_amps(E_px, h, 200 * N)
+        return taus_map, amps_map, converged_map
 
-        return taus_map, amps_map
-
-    # ---- driver ------------------------------------------------------------
     def fit(self, decay: np.ndarray, irf: np.ndarray) -> "LaguerreFLI":
         decay = np.asarray(decay, dtype=np.float64)
         irf   = np.asarray(irf,   dtype=np.float64)
@@ -281,8 +235,6 @@ class LaguerreFLI:
 
         avg_decay = decay.reshape(-1, T).mean(0)
 
-        # Determine distinct IRF count up-front so the spatially invariant case
-        # (1 distinct IRF) is handled identically to a 1-D IRF.
         if ppirf:
             irf_2d = irf.reshape(-1, T)
             labels, rep_idx = self._unique_irf_groups(irf_2d)
@@ -298,70 +250,66 @@ class LaguerreFLI:
         else:
             alpha_irf = irf_2d.mean(0)
 
-        if self.auto_alpha:
-            self.alpha = self._optimize_alpha(avg_decay, alpha_irf, T)
+        with tqdm(total=5, desc="LaguerreFLI", unit="stage",
+                  disable=not self.verbose) as pbar:
 
-        self.basis_ = self._discrete_laguerre_basis(T, self.alpha, self.n_laguerre)
-        Y2d = decay.reshape(-1, T).T   # (T, P)
+            pbar.set_description("Building Laguerre basis")
+            if self.auto_alpha:
+                self.alpha = self._optimize_alpha(avg_decay, alpha_irf, T)
+            self.basis_ = self._discrete_laguerre_basis(T, self.alpha, self.n_laguerre)
+            pbar.update(1)
 
-        if single_irf:
-            self.V_ = self._convolve_with_irf(self.basis_, alpha_irf)
-            C = self._solve_coefficients(self.V_, Y2d)
-            model_y = (self.V_ @ C).T.reshape(X, Y, T)
-        else:
-            # Per-pixel IRF: build one design matrix per unique IRF group.
-            P = Y2d.shape[1]
-            self.V_ = None
-            C = np.zeros((self.n_laguerre, P), dtype=np.float64)
-            fit_2d = np.zeros((P, T), dtype=np.float64)
-            for g, rep in enumerate(rep_idx):
-                cols = np.flatnonzero(labels == g)
-                Vg = self._convolve_with_irf(self.basis_, irf_2d[rep])
-                Cg = self._solve_coefficients(Vg, Y2d[:, cols])
-                C[:, cols] = Cg
-                fit_2d[cols] = (Vg @ Cg).T
-            model_y = fit_2d.reshape(X, Y, T)
+            pbar.set_description("Solving Laguerre coefficients")
+            Y2d = decay.reshape(-1, T).T
+            if single_irf:
+                self.V_ = self._convolve_with_irf(self.basis_, alpha_irf)
+                C = self._solve_coefficients(self.V_, Y2d)
+                model_y = (self.V_ @ C).T.reshape(X, Y, T)
+            else:
+                P = Y2d.shape[1]
+                self.V_ = None
+                C = np.zeros((self.n_laguerre, P), dtype=np.float64)
+                fit_2d = np.zeros((P, T), dtype=np.float64)
+                for g, rep in enumerate(rep_idx):
+                    cols = np.flatnonzero(labels == g)
+                    Vg = self._convolve_with_irf(self.basis_, irf_2d[rep])
+                    Cg = self._solve_coefficients(Vg, Y2d[:, cols])
+                    C[:, cols] = Cg
+                    fit_2d[cols] = (Vg @ Cg).T
+                model_y = fit_2d.reshape(X, Y, T)
+            self.coeffs_         = C.T.reshape(X, Y, self.n_laguerre)
+            self.fit_curve_      = model_y
+            self.residual_curve_ = decay - model_y
+            self.residuals_      = (self.residual_curve_ ** 2).sum(-1)
+            h_stack = (self.basis_.T @ C).T.reshape(X, Y, T)
+            self.reconstructed_ = h_stack
+            pbar.update(1)
 
-        self.coeffs_         = C.T.reshape(X, Y, self.n_laguerre)
-        self.fit_curve_      = model_y
-        self.residual_curve_ = decay - model_y
-        self.residuals_      = (self.residual_curve_ ** 2).sum(-1)
+            pbar.set_description("Estimating global lifetimes")
+            h_avg     = h_stack.reshape(-1, T).mean(0)
+            taus_init = self._estimate_global_taus(h_avg)
+            pbar.update(1)
 
-        h_stack = (self.basis_.T @ C).T.reshape(X, Y, T)   # IRF-free decay
-        self.reconstructed_ = h_stack
+            pbar.set_description("Fitting per-pixel exponentials")
+            self.taus_, A, self.converged_ = self._fit_pixel_exponentials(h_stack, taus_init)
+            self.amplitudes_ = A
+            total_amp = A.sum(axis=-1, keepdims=True)
+            with np.errstate(invalid="ignore", divide="ignore"):
+                self.fractions_ = np.where(total_amp > 0, A / total_amp, 0.0)
+            pbar.update(1)
 
-        h_avg           = h_stack.reshape(-1, T).mean(0)
-        taus_init       = self._estimate_global_taus(h_avg)
-        self.taus_, A   = self._fit_pixel_exponentials(h_stack, taus_init)
-        self.amplitudes_ = A
-        total = A.sum(axis=-1, keepdims=True)
-        with np.errstate(invalid="ignore", divide="ignore"):
-            self.fractions_ = np.where(total > 0, A / total, 0.0)
-
-        h_nonneg = np.clip(h_stack, 0.0, None)
-        n_idx = np.arange(T)
-        num   = (h_nonneg * (n_idx * self.dt)).sum(axis=-1)
-        den   = h_nonneg.sum(axis=-1)
-        with np.errstate(invalid="ignore", divide="ignore"):
-            tau_raw = np.where(den > 0, num / den, 0.0)
-
-        # Correct first-moment truncation bias: <t>_raw < tau because the
-        # exponential tail beyond T_win is missing.
-        # For h(t)=exp(-t/tau), <t>_raw = tau - (T+tau)*exp(-T/tau)/(1-exp(-T/tau))
-        # so tau = <t>_raw + (T+tau)*exp(-T/tau)/(1-exp(-T/tau))  [implicit; iterate].
-        T_win = T * self.dt
-        tau_est = tau_raw.copy()
-        for _ in range(8):
-            safe = np.maximum(tau_est, 1e-10)
-            u = np.exp(-T_win / safe)
-            one_minus_u = np.maximum(1.0 - u, 1e-10)
-            correction = np.minimum((T_win + safe) * u / one_minus_u, 10.0 * T_win)
-            tau_est = tau_raw + correction
-        self.tau_mean_ = np.where(den > 0, tau_est, 0.0)
+            pbar.set_description("Computing lifetime maps")
+            # Intensity-weighted mean: <τ> = Σ αᵢτᵢ² / Σ αᵢτᵢ
+            # (fractions_ are amplitude fractions; αᵢτᵢ is proportional to photon count of component i)
+            num = (self.fractions_ * self.taus_ ** 2).sum(axis=-1)
+            den = (self.fractions_ * self.taus_).sum(axis=-1)
+            has_signal = total_amp.squeeze(-1) > 0
+            with np.errstate(invalid="ignore", divide="ignore"):
+                self.tau_mean_ = np.where(has_signal, num / np.maximum(den, 1e-10), 0.0)
+            pbar.update(1)
 
         return self
 
-    # ---- outputs -----------------------------------------------------------
     def get_parameters(self, data_name: str = "LaguerreFLI_Dataset") -> dict:
         if self.coeffs_ is None:
             raise RuntimeError("Call .fit(decay, irf) first.")
@@ -386,7 +334,6 @@ class LaguerreFLI:
         decay_d     = self.decay_.astype(np.float64) if self.decay_ is not None else scaled_fit
         variance    = scaled_fit.copy()
         variance[variance <= 0] = 1.0
-        # DOF uses n_laguerre free parameters (the Laguerre model, not the exponential fit)
         dof         = max(T - self.n_laguerre, 1)
         residuals_d = decay_d - scaled_fit
         chi_sq_raw     = np.sum((residuals_d ** 2) / variance, axis=-1).astype(np.float32)
@@ -394,7 +341,7 @@ class LaguerreFLI:
 
         ss_res = np.sum(residuals_d ** 2, axis=-1)
         ss_tot = np.sum((decay_d - decay_d.mean(axis=-1, keepdims=True)) ** 2, axis=-1)
-        r2_map = (1.0 - np.where(ss_tot > eps, ss_res / ss_tot, 1.0)).astype(np.float32)
+        r2_map = np.where(ss_tot > eps, 1.0 - ss_res / ss_tot, 0.0).astype(np.float32)
 
         pixel_health = (photon_count > 0).astype(np.float32)
 
@@ -408,6 +355,12 @@ class LaguerreFLI:
         else:
             fret_eff = np.zeros((X, Y), dtype=np.float32)
 
+        convergence = (
+            self.converged_.astype(np.float32)
+            if self.converged_ is not None
+            else pixel_health.copy()
+        )
+
         maps = {
             **tau_maps,
             **alpha_maps,
@@ -416,9 +369,9 @@ class LaguerreFLI:
             'offset_map':           np.zeros((X, Y), dtype=np.float32),
             'fret_efficiency_map':  fret_eff,
             'R2_map':               r2_map,
-            'chi2_map': chi_sq_raw,
+            'chi2_map':             chi_sq_raw,
             'reduced_stat_map':     chi_sq_reduced,
-            'convergence_map':      pixel_health.copy(),
+            'convergence_map':      convergence,
             'pixel_health_map':     pixel_health,
             'photon_count_map':     photon_count,
         }
@@ -447,7 +400,6 @@ class LaguerreFLI:
         }
 
     def save_results(self, dataset: dict, folder: str = "results") -> None:
-        """Save structured dataset to HDF5 with compression."""
         import h5py, os
         if dataset is None:
             return
