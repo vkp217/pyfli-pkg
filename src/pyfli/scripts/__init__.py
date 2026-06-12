@@ -28,6 +28,15 @@ from .irfDeconvolution import (
     SolverConfig, solve_flim,
     build_gate_matrix, decay_basis, cyclic_conv,
 )
+from .analysis import (
+    RESULT_FILENAMES, FBI_RESULT_FILENAME, FBI_RAW_FILENAME,
+    load_session_arrays, scan_session_results, load_fitting_results,
+    save_laguerre_result, inject_phasor_result, add_mean_lifetime,
+    compute_freq_axis, compute_phasor, plot_phasor_figures, save_phasor_result,
+    plot_fitting_maps, plot_diagnostics, plot_pixel_evidence,
+    plot_statistical_comparison, plot_2d_analysis,
+    run_mono_bi_classifier,
+)
 from .phasor import (
     AcquisitionConfig, AcquisitionMode,
     phasor_continuous, phasor_discrete, phasor_gated_single, phasor_gated_N,
@@ -62,5 +71,13 @@ __all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport",
     "make_observation", "generalized_anscombe",
     "SolverConfig", "solve_flim",
     "build_gate_matrix", "decay_basis", "cyclic_conv",
+    # analysis convenience functions
+    "RESULT_FILENAMES", "FBI_RESULT_FILENAME", "FBI_RAW_FILENAME",
+    "load_session_arrays", "scan_session_results", "load_fitting_results",
+    "save_laguerre_result", "inject_phasor_result", "add_mean_lifetime",
+    "compute_freq_axis", "compute_phasor", "plot_phasor_figures", "save_phasor_result",
+    "plot_fitting_maps", "plot_diagnostics", "plot_pixel_evidence",
+    "plot_statistical_comparison", "plot_2d_analysis",
+    "run_mono_bi_classifier",
 ]
     

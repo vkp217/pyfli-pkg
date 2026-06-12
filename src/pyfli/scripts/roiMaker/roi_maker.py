@@ -251,13 +251,13 @@ class ImageCanvas(QWidget):
             return
         lo, hi  = self.rm.intensity_low, self.rm.intensity_high
         arr     = self.rm._raw_img            # (H, W) float64 — original values
-        outside = (arr < lo) | (arr > hi)
-        r, g, b = self.rm.mask_outside_color
+        below   = arr < lo
+        above   = arr > hi
         rgba = np.zeros((self.rm.H, self.rm.W, 4), dtype=np.uint8)
-        rgba[outside, 0] = r
-        rgba[outside, 1] = g
-        rgba[outside, 2] = b
-        rgba[outside, 3] = 190
+        rb, gb, bb = self.rm.mask_below_color
+        rgba[below, 0] = rb; rgba[below, 1] = gb; rgba[below, 2] = bb; rgba[below, 3] = 190
+        ra, ga, ba = self.rm.mask_above_color
+        rgba[above, 0] = ra; rgba[above, 1] = ga; rgba[above, 2] = ba; rgba[above, 3] = 190
         self._int_overlay = rgba              # keep array alive for QImage wrapping
 
     # ── bounding-box handles ───────────────────────────────────────────────────
@@ -614,6 +614,11 @@ class ROIApp(QMainWindow):
         reset_btn.clicked.connect(self._reset_ids)
         layout.addWidget(reset_btn)
 
+        auto_btn = self._action_button('⟳', 'Auto-assign IDs', '')
+        auto_btn.setToolTip("Assign sequential IDs to all unassigned ROIs automatically")
+        auto_btn.clicked.connect(self._auto_assign_ids)
+        layout.addWidget(auto_btn)
+
         layout.addSpacing(4); layout.addWidget(self._divider())
 
         # ── OUTPUT TYPE ──
@@ -653,6 +658,11 @@ class ROIApp(QMainWindow):
         del_btn.clicked.connect(self._delete_selected)
         layout.addWidget(del_btn)
 
+        del_all_btn = self._action_button('⊘', 'Delete All ROIs', '')
+        del_all_btn.setToolTip("Remove every ROI and start fresh")
+        del_all_btn.clicked.connect(self._delete_all)
+        layout.addWidget(del_all_btn)
+
         layout.addSpacing(4); layout.addWidget(self._divider())
 
         # ── INTENSITY FILTER ──
@@ -666,33 +676,60 @@ class ROIApp(QMainWindow):
         self._int_btn.toggled.connect(self._on_intensity_toggled)
         layout.addWidget(self._int_btn)
 
-        # Low slider
-        self._lo_lbl = QLabel(f"Low   {self.rm.intensity_low}")
+        # Low threshold
+        self._lo_lbl = QLabel("Low threshold")
         self._lo_lbl.setStyleSheet("color: #a6adc8; font-size: 11px;")
         layout.addWidget(self._lo_lbl)
+        _lo_row = QWidget(); _lo_rl = QHBoxLayout(_lo_row)
+        _lo_rl.setContentsMargins(0, 0, 0, 0); _lo_rl.setSpacing(4)
         self._lo_slider = QSlider(Qt.Orientation.Horizontal)
         self._lo_slider.setRange(self.rm.img_min, self.rm.img_max)
         self._lo_slider.setValue(self.rm.intensity_low)
         self._lo_slider.valueChanged.connect(self._on_lo_changed)
-        layout.addWidget(self._lo_slider)
+        _lo_rl.addWidget(self._lo_slider)
+        self._lo_spin = QSpinBox()
+        self._lo_spin.setRange(self.rm.img_min, self.rm.img_max)
+        self._lo_spin.setValue(self.rm.intensity_low)
+        self._lo_spin.setFixedWidth(58)
+        self._lo_spin.valueChanged.connect(self._on_lo_spin_changed)
+        _lo_rl.addWidget(self._lo_spin)
+        layout.addWidget(_lo_row)
 
-        # High slider
-        self._hi_lbl = QLabel(f"High  {self.rm.intensity_high}")
+        # High threshold
+        self._hi_lbl = QLabel("High threshold")
         self._hi_lbl.setStyleSheet("color: #a6adc8; font-size: 11px;")
         layout.addWidget(self._hi_lbl)
+        _hi_row = QWidget(); _hi_rl = QHBoxLayout(_hi_row)
+        _hi_rl.setContentsMargins(0, 0, 0, 0); _hi_rl.setSpacing(4)
         self._hi_slider = QSlider(Qt.Orientation.Horizontal)
         self._hi_slider.setRange(self.rm.img_min, self.rm.img_max)
         self._hi_slider.setValue(self.rm.intensity_high)
         self._hi_slider.valueChanged.connect(self._on_hi_changed)
-        layout.addWidget(self._hi_slider)
+        _hi_rl.addWidget(self._hi_slider)
+        self._hi_spin = QSpinBox()
+        self._hi_spin.setRange(self.rm.img_min, self.rm.img_max)
+        self._hi_spin.setValue(self.rm.intensity_high)
+        self._hi_spin.setFixedWidth(58)
+        self._hi_spin.valueChanged.connect(self._on_hi_spin_changed)
+        _hi_rl.addWidget(self._hi_spin)
+        layout.addWidget(_hi_row)
 
-        # Mask-color picker
-        self._color_btn = QPushButton("■  Mask color")
-        self._color_btn.setObjectName("action_btn")
-        self._color_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self._color_btn.clicked.connect(self._pick_mask_color)
-        self._refresh_color_btn()
-        layout.addWidget(self._color_btn)
+        # Mask-color pickers (separate for below/above)
+        self._below_color_btn = QPushButton("▼  Below color")
+        self._below_color_btn.setObjectName("action_btn")
+        self._below_color_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self._below_color_btn.setToolTip("Color for pixels below low threshold")
+        self._below_color_btn.clicked.connect(self._pick_below_color)
+        self._refresh_below_color_btn()
+        layout.addWidget(self._below_color_btn)
+
+        self._above_color_btn = QPushButton("▲  Above color")
+        self._above_color_btn.setObjectName("action_btn")
+        self._above_color_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self._above_color_btn.setToolTip("Color for pixels above high threshold")
+        self._above_color_btn.clicked.connect(self._pick_above_color)
+        self._refresh_above_color_btn()
+        layout.addWidget(self._above_color_btn)
 
         thresh_btn = self._action_button('⊞', 'Create Threshold ROI', '')
         thresh_btn.setToolTip(
@@ -758,11 +795,22 @@ class ROIApp(QMainWindow):
         btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         btn.setToolTip(f"{label}  [{shortcut}]"); return btn
 
-    def _refresh_color_btn(self):
-        r, g, b = self.rm.mask_outside_color
+    def _refresh_below_color_btn(self):
+        r, g, b = self.rm.mask_below_color
         luma = 0.299*r + 0.587*g + 0.114*b
         fg   = "#000" if luma > 128 else "#fff"
-        self._color_btn.setStyleSheet(
+        self._below_color_btn.setStyleSheet(
+            f"QPushButton#action_btn {{ background-color: rgb({r},{g},{b}); "
+            f"color: {fg}; border: 1px solid #313244; border-radius: 8px; "
+            "padding: 8px 10px; text-align: left; }"
+            f"QPushButton#action_btn:hover {{ background-color: rgb({min(r+20,255)},{min(g+20,255)},{min(b+20,255)}); }}"
+        )
+
+    def _refresh_above_color_btn(self):
+        r, g, b = self.rm.mask_above_color
+        luma = 0.299*r + 0.587*g + 0.114*b
+        fg   = "#000" if luma > 128 else "#fff"
+        self._above_color_btn.setStyleSheet(
             f"QPushButton#action_btn {{ background-color: rgb({r},{g},{b}); "
             f"color: {fg}; border: 1px solid #313244; border-radius: 8px; "
             "padding: 8px 10px; text-align: left; }"
@@ -806,27 +854,46 @@ class ROIApp(QMainWindow):
         self._lo_slider.blockSignals(True)
         self._lo_slider.setValue(val)
         self._lo_slider.blockSignals(False)
+        self._lo_spin.blockSignals(True)
+        self._lo_spin.setValue(val)
+        self._lo_spin.blockSignals(False)
         self.rm.intensity_low = val
-        self._lo_lbl.setText(f"Low   {val}")
         self.canvas.update_intensity_overlay()
         self.canvas.update()
+
+    def _on_lo_spin_changed(self, val):
+        self._lo_slider.setValue(val)
 
     def _on_hi_changed(self, val):
         val = max(val, self.rm.intensity_low)
         self._hi_slider.blockSignals(True)
         self._hi_slider.setValue(val)
         self._hi_slider.blockSignals(False)
+        self._hi_spin.blockSignals(True)
+        self._hi_spin.setValue(val)
+        self._hi_spin.blockSignals(False)
         self.rm.intensity_high = val
-        self._hi_lbl.setText(f"High  {val}")
         self.canvas.update_intensity_overlay()
         self.canvas.update()
 
-    def _pick_mask_color(self):
-        r, g, b = self.rm.mask_outside_color
-        chosen = QColorDialog.getColor(QColor(r, g, b), self, "Pick mask colour")
+    def _on_hi_spin_changed(self, val):
+        self._hi_slider.setValue(val)
+
+    def _pick_below_color(self):
+        r, g, b = self.rm.mask_below_color
+        chosen = QColorDialog.getColor(QColor(r, g, b), self, "Pick color for below-threshold pixels")
         if chosen.isValid():
-            self.rm.mask_outside_color = (chosen.red(), chosen.green(), chosen.blue())
-            self._refresh_color_btn()
+            self.rm.mask_below_color = (chosen.red(), chosen.green(), chosen.blue())
+            self._refresh_below_color_btn()
+            self.canvas.update_intensity_overlay()
+            self.canvas.update()
+
+    def _pick_above_color(self):
+        r, g, b = self.rm.mask_above_color
+        chosen = QColorDialog.getColor(QColor(r, g, b), self, "Pick color for above-threshold pixels")
+        if chosen.isValid():
+            self.rm.mask_above_color = (chosen.red(), chosen.green(), chosen.blue())
+            self._refresh_above_color_btn()
             self.canvas.update_intensity_overlay()
             self.canvas.update()
 
@@ -857,6 +924,33 @@ class ROIApp(QMainWindow):
         self.rm.assign_counter = 1
         self.canvas.update()
         self._refresh_status()
+
+    def _delete_all(self):
+        """Remove every ROI and reset the assign counter."""
+        if not self.rm.rois:
+            self.statusBar().showMessage("  No ROIs to delete.", 2000)
+            return
+        n = len(self.rm.rois)
+        self.rm.rois.clear()
+        self.rm.assign_counter = 1
+        self.canvas.selected_idx = -1
+        self.canvas.update()
+        self._refresh_status()
+        self.statusBar().showMessage(f"  Deleted {n} ROI(s).", 2000)
+
+    def _auto_assign_ids(self):
+        """Assign sequential IDs to all unassigned ROIs without showing a dialog."""
+        pending = [r for r in self.rm.rois if not r.assigned]
+        if not pending:
+            self.statusBar().showMessage("  All ROIs already have IDs.", 2000)
+            return
+        for roi in pending:
+            roi.roi_id   = self.rm.assign_counter
+            roi.assigned = True
+            self.rm.assign_counter += 1
+        self.canvas.update()
+        self._refresh_status()
+        self.statusBar().showMessage(f"  Auto-assigned IDs to {len(pending)} ROI(s).", 2000)
 
     def _show_id_dialog(self) -> bool:
         """Show ID-assignment dialog for remaining unassigned ROIs before save."""
@@ -1128,13 +1222,13 @@ class ImageCanvas(QWidget):
             return
         lo, hi  = self.rm.intensity_low, self.rm.intensity_high
         arr     = self.rm._raw_img            # (H, W) float64 — original values
-        outside = (arr < lo) | (arr > hi)
-        r, g, b = self.rm.mask_outside_color
+        below   = arr < lo
+        above   = arr > hi
         rgba = np.zeros((self.rm.H, self.rm.W, 4), dtype=np.uint8)
-        rgba[outside, 0] = r
-        rgba[outside, 1] = g
-        rgba[outside, 2] = b
-        rgba[outside, 3] = 190
+        rb, gb, bb = self.rm.mask_below_color
+        rgba[below, 0] = rb; rgba[below, 1] = gb; rgba[below, 2] = bb; rgba[below, 3] = 190
+        ra, ga, ba = self.rm.mask_above_color
+        rgba[above, 0] = ra; rgba[above, 1] = ga; rgba[above, 2] = ba; rgba[above, 3] = 190
         self._int_overlay = rgba              # keep array alive for QImage wrapping
 
     # ── bounding-box handles ───────────────────────────────────────────────────
@@ -1483,6 +1577,11 @@ class ROIApp(QMainWindow):
         reset_btn.clicked.connect(self._reset_ids)
         layout.addWidget(reset_btn)
 
+        auto_btn = self._action_button('⟳', 'Auto-assign IDs', '')
+        auto_btn.setToolTip("Assign sequential IDs to all unassigned ROIs automatically")
+        auto_btn.clicked.connect(self._auto_assign_ids)
+        layout.addWidget(auto_btn)
+
         layout.addSpacing(4); layout.addWidget(self._divider())
 
         # ── OUTPUT TYPE ──
@@ -1522,6 +1621,11 @@ class ROIApp(QMainWindow):
         del_btn.clicked.connect(self._delete_selected)
         layout.addWidget(del_btn)
 
+        del_all_btn = self._action_button('⊘', 'Delete All ROIs', '')
+        del_all_btn.setToolTip("Remove every ROI and start fresh")
+        del_all_btn.clicked.connect(self._delete_all)
+        layout.addWidget(del_all_btn)
+
         layout.addSpacing(4); layout.addWidget(self._divider())
 
         # ── INTENSITY FILTER ──
@@ -1535,33 +1639,60 @@ class ROIApp(QMainWindow):
         self._int_btn.toggled.connect(self._on_intensity_toggled)
         layout.addWidget(self._int_btn)
 
-        # Low slider
-        self._lo_lbl = QLabel(f"Low   {self.rm.intensity_low}")
+        # Low threshold
+        self._lo_lbl = QLabel("Low threshold")
         self._lo_lbl.setStyleSheet("color: #a6adc8; font-size: 11px;")
         layout.addWidget(self._lo_lbl)
+        _lo_row = QWidget(); _lo_rl = QHBoxLayout(_lo_row)
+        _lo_rl.setContentsMargins(0, 0, 0, 0); _lo_rl.setSpacing(4)
         self._lo_slider = QSlider(Qt.Horizontal)
         self._lo_slider.setRange(self.rm.img_min, self.rm.img_max)
         self._lo_slider.setValue(self.rm.intensity_low)
         self._lo_slider.valueChanged.connect(self._on_lo_changed)
-        layout.addWidget(self._lo_slider)
+        _lo_rl.addWidget(self._lo_slider)
+        self._lo_spin = QSpinBox()
+        self._lo_spin.setRange(self.rm.img_min, self.rm.img_max)
+        self._lo_spin.setValue(self.rm.intensity_low)
+        self._lo_spin.setFixedWidth(58)
+        self._lo_spin.valueChanged.connect(self._on_lo_spin_changed)
+        _lo_rl.addWidget(self._lo_spin)
+        layout.addWidget(_lo_row)
 
-        # High slider
-        self._hi_lbl = QLabel(f"High  {self.rm.intensity_high}")
+        # High threshold
+        self._hi_lbl = QLabel("High threshold")
         self._hi_lbl.setStyleSheet("color: #a6adc8; font-size: 11px;")
         layout.addWidget(self._hi_lbl)
+        _hi_row = QWidget(); _hi_rl = QHBoxLayout(_hi_row)
+        _hi_rl.setContentsMargins(0, 0, 0, 0); _hi_rl.setSpacing(4)
         self._hi_slider = QSlider(Qt.Horizontal)
         self._hi_slider.setRange(self.rm.img_min, self.rm.img_max)
         self._hi_slider.setValue(self.rm.intensity_high)
         self._hi_slider.valueChanged.connect(self._on_hi_changed)
-        layout.addWidget(self._hi_slider)
+        _hi_rl.addWidget(self._hi_slider)
+        self._hi_spin = QSpinBox()
+        self._hi_spin.setRange(self.rm.img_min, self.rm.img_max)
+        self._hi_spin.setValue(self.rm.intensity_high)
+        self._hi_spin.setFixedWidth(58)
+        self._hi_spin.valueChanged.connect(self._on_hi_spin_changed)
+        _hi_rl.addWidget(self._hi_spin)
+        layout.addWidget(_hi_row)
 
-        # Mask-color picker
-        self._color_btn = QPushButton("■  Mask color")
-        self._color_btn.setObjectName("action_btn")
-        self._color_btn.setCursor(QCursor(Qt.PointingHandCursor))
-        self._color_btn.clicked.connect(self._pick_mask_color)
-        self._refresh_color_btn()
-        layout.addWidget(self._color_btn)
+        # Mask-color pickers (separate for below/above)
+        self._below_color_btn = QPushButton("▼  Below color")
+        self._below_color_btn.setObjectName("action_btn")
+        self._below_color_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        self._below_color_btn.setToolTip("Color for pixels below low threshold")
+        self._below_color_btn.clicked.connect(self._pick_below_color)
+        self._refresh_below_color_btn()
+        layout.addWidget(self._below_color_btn)
+
+        self._above_color_btn = QPushButton("▲  Above color")
+        self._above_color_btn.setObjectName("action_btn")
+        self._above_color_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        self._above_color_btn.setToolTip("Color for pixels above high threshold")
+        self._above_color_btn.clicked.connect(self._pick_above_color)
+        self._refresh_above_color_btn()
+        layout.addWidget(self._above_color_btn)
 
         thresh_btn = self._action_button('⊞', 'Create Threshold ROI', '')
         thresh_btn.setToolTip(
@@ -1623,11 +1754,22 @@ class ROIApp(QMainWindow):
         btn.setObjectName("action_btn"); btn.setCursor(QCursor(Qt.PointingHandCursor))
         btn.setToolTip(f"{label}  [{shortcut}]"); return btn
 
-    def _refresh_color_btn(self):
-        r, g, b = self.rm.mask_outside_color
+    def _refresh_below_color_btn(self):
+        r, g, b = self.rm.mask_below_color
         luma = 0.299*r + 0.587*g + 0.114*b
         fg   = "#000" if luma > 128 else "#fff"
-        self._color_btn.setStyleSheet(
+        self._below_color_btn.setStyleSheet(
+            f"QPushButton#action_btn {{ background-color: rgb({r},{g},{b}); "
+            f"color: {fg}; border: 1px solid #313244; border-radius: 8px; "
+            "padding: 8px 10px; text-align: left; }"
+            f"QPushButton#action_btn:hover {{ background-color: rgb({min(r+20,255)},{min(g+20,255)},{min(b+20,255)}); }}"
+        )
+
+    def _refresh_above_color_btn(self):
+        r, g, b = self.rm.mask_above_color
+        luma = 0.299*r + 0.587*g + 0.114*b
+        fg   = "#000" if luma > 128 else "#fff"
+        self._above_color_btn.setStyleSheet(
             f"QPushButton#action_btn {{ background-color: rgb({r},{g},{b}); "
             f"color: {fg}; border: 1px solid #313244; border-radius: 8px; "
             "padding: 8px 10px; text-align: left; }"
@@ -1671,27 +1813,46 @@ class ROIApp(QMainWindow):
         self._lo_slider.blockSignals(True)
         self._lo_slider.setValue(val)
         self._lo_slider.blockSignals(False)
+        self._lo_spin.blockSignals(True)
+        self._lo_spin.setValue(val)
+        self._lo_spin.blockSignals(False)
         self.rm.intensity_low = val
-        self._lo_lbl.setText(f"Low   {val}")
         self.canvas.update_intensity_overlay()
         self.canvas.update()
+
+    def _on_lo_spin_changed(self, val):
+        self._lo_slider.setValue(val)
 
     def _on_hi_changed(self, val):
         val = max(val, self.rm.intensity_low)
         self._hi_slider.blockSignals(True)
         self._hi_slider.setValue(val)
         self._hi_slider.blockSignals(False)
+        self._hi_spin.blockSignals(True)
+        self._hi_spin.setValue(val)
+        self._hi_spin.blockSignals(False)
         self.rm.intensity_high = val
-        self._hi_lbl.setText(f"High  {val}")
         self.canvas.update_intensity_overlay()
         self.canvas.update()
 
-    def _pick_mask_color(self):
-        r, g, b = self.rm.mask_outside_color
-        chosen = QColorDialog.getColor(QColor(r, g, b), self, "Pick mask colour")
+    def _on_hi_spin_changed(self, val):
+        self._hi_slider.setValue(val)
+
+    def _pick_below_color(self):
+        r, g, b = self.rm.mask_below_color
+        chosen = QColorDialog.getColor(QColor(r, g, b), self, "Pick color for below-threshold pixels")
         if chosen.isValid():
-            self.rm.mask_outside_color = (chosen.red(), chosen.green(), chosen.blue())
-            self._refresh_color_btn()
+            self.rm.mask_below_color = (chosen.red(), chosen.green(), chosen.blue())
+            self._refresh_below_color_btn()
+            self.canvas.update_intensity_overlay()
+            self.canvas.update()
+
+    def _pick_above_color(self):
+        r, g, b = self.rm.mask_above_color
+        chosen = QColorDialog.getColor(QColor(r, g, b), self, "Pick color for above-threshold pixels")
+        if chosen.isValid():
+            self.rm.mask_above_color = (chosen.red(), chosen.green(), chosen.blue())
+            self._refresh_above_color_btn()
             self.canvas.update_intensity_overlay()
             self.canvas.update()
 
@@ -1722,6 +1883,33 @@ class ROIApp(QMainWindow):
         self.rm.assign_counter = 1
         self.canvas.update()
         self._refresh_status()
+
+    def _delete_all(self):
+        """Remove every ROI and reset the assign counter."""
+        if not self.rm.rois:
+            self.statusBar().showMessage("  No ROIs to delete.", 2000)
+            return
+        n = len(self.rm.rois)
+        self.rm.rois.clear()
+        self.rm.assign_counter = 1
+        self.canvas.selected_idx = -1
+        self.canvas.update()
+        self._refresh_status()
+        self.statusBar().showMessage(f"  Deleted {n} ROI(s).", 2000)
+
+    def _auto_assign_ids(self):
+        """Assign sequential IDs to all unassigned ROIs without showing a dialog."""
+        pending = [r for r in self.rm.rois if not r.assigned]
+        if not pending:
+            self.statusBar().showMessage("  All ROIs already have IDs.", 2000)
+            return
+        for roi in pending:
+            roi.roi_id   = self.rm.assign_counter
+            roi.assigned = True
+            self.rm.assign_counter += 1
+        self.canvas.update()
+        self._refresh_status()
+        self.statusBar().showMessage(f"  Auto-assigned IDs to {len(pending)} ROI(s).", 2000)
 
     def _show_id_dialog(self) -> bool:
         """Show ID-assignment dialog for remaining unassigned ROIs before save."""
@@ -1822,7 +2010,8 @@ class ROIMaker:
         self.intensity_active    = False
         self.intensity_low       = self.img_min
         self.intensity_high      = self.img_max
-        self.mask_outside_color  = (0, 0, 0)    # RGB tuple
+        self.mask_below_color    = (0, 0, 139)  # RGB — pixels below low threshold
+        self.mask_above_color    = (139, 0, 0)  # RGB — pixels above high threshold
 
         if os.path.exists(self.save_path):
             self.load_mask(self.save_path)
@@ -1899,16 +2088,23 @@ class ROIMaker:
         stem, _ = os.path.splitext(os.path.abspath(self.save_path))
         os.makedirs(os.path.dirname(stem) or ".", exist_ok=True)
 
-        if self.mask_type in ('binary', 'both'):
-            path = f"{stem}_binary.npy"
-            np.save(path, self.get_binary_mask())
-            print(f"Saved binary mask       → {path}")
+        if self.mask_type == 'binary':
+            np.save(self.save_path, self.get_binary_mask())
+            print(f"Saved binary mask → {self.save_path}")
 
-        if self.mask_type in ('multi', 'both'):
-            path = self.save_path if self.mask_type == 'multi' else f"{stem}_multi.npy"
+        elif self.mask_type == 'multi':
             m = self.get_multi_cluster_mask()
-            np.save(path, m)
-            print(f"Saved multi-ID mask ({len(np.unique(m))-1} region(s)) → {path}")
+            np.save(self.save_path, m)
+            print(f"Saved multi-ID mask ({len(np.unique(m))-1} region(s)) → {self.save_path}")
+
+        elif self.mask_type == 'both':
+            binary_path = f"{stem}_binary.npy"
+            multi_path  = f"{stem}_multi.npy"
+            np.save(binary_path, self.get_binary_mask())
+            print(f"Saved binary mask       → {binary_path}")
+            m = self.get_multi_cluster_mask()
+            np.save(multi_path, m)
+            print(f"Saved multi-ID mask ({len(np.unique(m))-1} region(s)) → {multi_path}")
 
         # Intensity mask is always its own separate file — never merged into ROI masks
         if self.intensity_active:

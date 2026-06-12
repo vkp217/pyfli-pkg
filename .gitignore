@@ -32,3 +32,6 @@ htmlcov/
 
 # Stray files
 pip
+
+# Private / proprietary modules not included in the public release
+src/pyfli/scripts/analysis/fbi_analysis.py

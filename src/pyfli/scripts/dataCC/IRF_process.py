@@ -1,17 +1,35 @@
+import warnings
 import numpy as np
 from scipy.fft import fft, ifft, fftfreq, fftshift
+
 
 class IRFAligner:
     def __init__(self, decay, irf, noise_bins=5):
         self.H, self.W, self.T = decay.shape
         self.dt = 12.5 / self.T
         
-        # 1. Dark Noise Subtraction
         d_bg = np.mean(decay[:, :, :noise_bins], axis=2, keepdims=True)
         i_bg = np.mean(irf[:, :, :noise_bins], axis=2, keepdims=True)
         
         self.decay = np.maximum(decay - d_bg, 0)
         self.irf = np.maximum(irf - i_bg, 0)
+
+        _threshold = 0.05
+        d_peak, i_peak = np.max(decay), np.max(irf)
+        if d_peak > 0 and np.mean(d_bg) > _threshold * d_peak:
+            warnings.warn(
+                f"Decay noise baseline ({np.mean(d_bg):.3g}) exceeds {_threshold*100:.0f}% "
+                f"of peak ({d_peak:.3g}). noise_bins window may be contaminated — "
+                "consider reducing noise_bins.",
+                UserWarning, stacklevel=2,
+            )
+        if i_peak > 0 and np.mean(i_bg) > _threshold * i_peak:
+            warnings.warn(
+                f"IRF noise baseline ({np.mean(i_bg):.3g}) exceeds {_threshold*100:.0f}% "
+                f"of peak ({i_peak:.3g}). noise_bins window may be contaminated — "
+                "consider reducing noise_bins.",
+                UserWarning, stacklevel=2,
+            )
 
     def _find_rising_point(self, data, fraction=0.1):
         """
@@ -58,8 +76,7 @@ class IRFAligner:
         # Shift = Target - Source
         return t_decay - t_irf
 
-    def apply_fourier_shift(self, shifts):
-        from scipy.fft import fft, ifft, fftfreq
+    def apply_fourier_shift(self, shifts):   
         
         freqs = fftfreq(self.T)
         # Apply the fractional shift in the frequency domain
@@ -96,3 +113,37 @@ class IRFAligner:
             return self.apply_circular_shift(shifts), shifts
         else:
             return self.apply_fourier_shift(shifts), shifts
+
+    def align_pixel(self, x, y, fraction=0.1, method='fourier', manual_correction=0.0):
+        """
+        Aligns the IRF for a single pixel (x, y) — useful for quick inspection
+        of the alignment at a specific spatial location without processing the
+        full data cube.
+        """
+        decay_trace = self.decay[x, y, :]
+        irf_trace = self.irf[x, y, :]
+
+        def _rising_point(trace):
+            peak_val = np.max(trace)
+            if peak_val <= 0:
+                return 0.0
+            threshold = peak_val * fraction
+            idx_above = np.where(trace >= threshold)[0]
+            if len(idx_above) == 0:
+                return 0.0
+            first_idx = idx_above[0]
+            if first_idx > 0:
+                v2, v1 = trace[first_idx], trace[first_idx - 1]
+                return (first_idx - 1) + (threshold - v1) / (v2 - v1 + 1e-12)
+            return float(first_idx)
+
+        shift = _rising_point(decay_trace) - _rising_point(irf_trace) - manual_correction
+
+        if method == 'circular':
+            aligned_irf = np.roll(irf_trace, int(round(shift)))
+        else:
+            freqs = fftfreq(self.T)
+            phase = np.exp(-2j * np.pi * freqs * shift)
+            aligned_irf = np.maximum(np.real(ifft(fft(irf_trace) * phase)), 0)
+
+        return aligned_irf, shift
