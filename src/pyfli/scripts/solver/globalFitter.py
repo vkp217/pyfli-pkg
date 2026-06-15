@@ -137,26 +137,52 @@ class GlobalFLIFitter:
             local_p0 = None
             local_bounds = None 
 
+            # Build cluster-specific mask: only the pixels that belong to this cluster.
+            # Using the original mask here would cause zero-filled non-cluster pixels
+            # to be fitted, producing garbage parameters that dominate the result.
+            c_mask = np.zeros((H, W), dtype=bool)
+            c_mask[coords[:, 0], coords[:, 1]] = True
+            if mask is not None:
+                c_mask = c_mask & mask
+
             if model_type == 'bi-exponential':
-                local_p0 = {'A': popt_sp[0], 'alpha1': popt_sp[1], 'tau1': popt_sp[2], 'tau2': popt_sp[3], 'B': popt_sp[4]}
+                # popt_sp = [S, alpha1, tau1, tau2, offset, h_shift]
+                local_p0 = {
+                    'A':      popt_sp[0],
+                    'alpha1': popt_sp[1],
+                    'tau1':   popt_sp[2],
+                    'tau2':   popt_sp[3],
+                    'B':      popt_sp[4],
+                    'h_shift': popt_sp[5] if len(popt_sp) > 5 else 0.0,
+                }
                 if not global_inf:
-                    # Constrain lifetimes using dynamic gi_tol
                     local_bounds = {
-                        'tau1': [popt_sp[2] * (1 - gi_tol), popt_sp[2] * (1 + gi_tol)],
-                        'tau2': [popt_sp[3] * (1 - gi_tol), popt_sp[3] * (1 + gi_tol)]
+                        'tau1': [max(popt_sp[2] * (1 - gi_tol), 1e-3),
+                                 popt_sp[2] * (1 + gi_tol)],
+                        'tau2': [max(popt_sp[3] * (1 - gi_tol), 1e-3),
+                                 popt_sp[3] * (1 + gi_tol)],
                     }
             else:
-                local_p0 = {'A': popt_sp[0], 'tau': popt_sp[1], 'B': popt_sp[2]}
+                # popt_sp = [S, tau, offset, h_shift]
+                local_p0 = {
+                    'A':      popt_sp[0],
+                    'tau':    popt_sp[1],
+                    'B':      popt_sp[2],
+                    'h_shift': popt_sp[3] if len(popt_sp) > 3 else 0.0,
+                }
                 if not global_inf:
-                    local_bounds = {'tau': [popt_sp[1] * (1 - gi_tol), popt_sp[1] * (1 + gi_tol)]}
+                    local_bounds = {
+                        'tau': [max(popt_sp[1] * (1 - gi_tol), 1e-3),
+                                popt_sp[1] * (1 + gi_tol)],
+                    }
 
             dataset = None
-            if hasattr(proc, 'process_image'): 
+            if hasattr(proc, 'process_image'):
                 kwargs['estimator'] = estimator.lower()
-                dataset = proc.process_image(image_cube=c_img, irf_cube=c_irf, mask=mask, p0=local_p0, bounds=local_bounds, **kwargs)
-            elif hasattr(proc, 'fit_image'): 
+                dataset = proc.process_image(image_cube=c_img, irf_cube=c_irf, mask=c_mask, p0=local_p0, bounds=local_bounds, **kwargs)
+            elif hasattr(proc, 'fit_image'):
                 kwargs['mode'] = estimator.upper()
-                dataset = proc.fit_image(image_cube=c_img, irf_cube=c_irf, mask=mask, p0=local_p0, bounds=local_bounds, **kwargs)
+                dataset = proc.fit_image(image_cube=c_img, irf_cube=c_irf, mask=c_mask, p0=local_p0, bounds=local_bounds, **kwargs)
 
             if dataset and 'results' in dataset:
                 dataset['name'] = f"{data_name}_Cluster_{cid}"
@@ -166,15 +192,20 @@ class GlobalFLIFitter:
 
     def stitch_results(self, cluster_results, H, W, T, model_type='bi-exponential'):
         """Combines cluster-wise datasets into global maps with corrected TR naming."""
+        _z2 = lambda: np.zeros((H, W), dtype=np.float32)
         stitched_maps = {
-            'alpha1_map' if model_type == 'bi-exponential' else 'tau_map': np.zeros((H, W), dtype=np.float32),
-            'tau1_map': np.zeros((H, W), dtype=np.float32) if model_type == 'bi-exponential' else None,
-            'tau2_map': np.zeros((H, W), dtype=np.float32) if model_type == 'bi-exponential' else None,
-            'fret_efficiency_map': np.zeros((H, W), dtype=np.float32) if model_type == 'bi-exponential' else None,
-            'Area_map': np.zeros((H, W), dtype=np.float32),
-            'offset_map': np.zeros((H, W), dtype=np.float32),
-            'Chi2_map': np.zeros((H, W), dtype=np.float32),
-            'pixel_health_map': np.zeros((H, W), dtype=np.float32)
+            'alpha1_map' if model_type == 'bi-exponential' else 'tau_map': _z2(),
+            'tau1_map':            _z2() if model_type == 'bi-exponential' else None,
+            'tau2_map':            _z2() if model_type == 'bi-exponential' else None,
+            'fret_efficiency_map': _z2() if model_type == 'bi-exponential' else None,
+            'Area_map':            _z2(),
+            'offset_map':          _z2(),
+            'h_shift_map':         _z2(),
+            'chi2_map':            _z2(),   # fitter writes 'chi2_map' (lowercase)
+            'R2_map':              _z2(),
+            'reduced_stat_map':    _z2(),
+            'convergence_map':     _z2(),
+            'pixel_health_map':    _z2(),
         }
         
         stitched_tr = {

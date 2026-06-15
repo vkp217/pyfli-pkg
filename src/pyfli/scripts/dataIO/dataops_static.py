@@ -21,43 +21,94 @@ class Staticdataops:
         return -np.log(1 - safe_data) * dynamic_range
 
     @staticmethod
+    def spad_hdf5_read(fname, gate_prefix, pile_up=True, bit_size=10):
+        """
+        Generic SPAD HDF5 reader shared by SS2 and SS3.
+        gate_prefix : key prefix used to identify gate datasets inside 'Gate Images'
+            SS3 → 'Bottom G2 Gate'
+            SS2 → 'Gate '
+        Reads datasets matching gate_prefix, sorts numerically, stacks → (H, W, T) float32.
+        """
+        with h5py.File(fname, 'r') as f:
+            gate_grp = f.get('Gate Images')
+            if gate_grp is None:
+                raise KeyError(f"'Gate Images' group not found in {fname}")
+            gate_keys = sorted(
+                (k for k in gate_grp.keys() if k.startswith(gate_prefix)),
+                key=lambda k: int(k.split('Gate ')[-1])
+            )
+            if not gate_keys:
+                raise KeyError(
+                    f"No '{gate_prefix}N' datasets found in 'Gate Images' in {fname}")
+            tpsfs = np.zeros(
+                (*gate_grp[gate_keys[0]].shape, len(gate_keys)), dtype=np.float32)
+            for i, key in enumerate(gate_keys):
+                tpsfs[:, :, i] = gate_grp[key][:]
+        if pile_up:
+            tpsfs = Staticdataops.pileup_correction(tpsfs, bit_size=bit_size)
+        return tpsfs
+
+    @staticmethod
+    def hotpixel_correct(data_3d, hp_map):
+        """
+        Replace each pixel flagged in hp_map with the nanmedian of its 3×3
+        spatial neighbourhood per time gate.
+        hp_map  : 2D bool array  (H, W)
+        data_3d : float array    (H, W, T)
+        """
+        cleaned = np.copy(data_3d)
+        H, W = data_3d.shape[:2]
+        for y, x in zip(*np.where(hp_map)):
+            y_min, y_max = max(0, y - 1), min(H, y + 2)
+            x_min, x_max = max(0, x - 1), min(W, x + 2)
+            nb = data_3d[y_min:y_max, x_min:x_max, :].copy()
+            nb[y - y_min, x - x_min, :] = np.nan
+            cleaned[y, x, :] = np.nanmedian(nb, axis=(0, 1))
+        return cleaned
+
+    @staticmethod
+    def load_hp_image(hp_path, ref_shape):
+        """
+        Load a hot pixel mask image (PNG / JPEG / TIFF) → bool (H, W).
+        Auto-rotated if image is (W, H) instead of (H, W).
+        ref_shape : (H, W) tuple from the corresponding data array.
+        """
+        mask = plt.imread(hp_path)
+        if mask.ndim == 3:
+            mask = mask[..., 0]
+        if mask.shape != ref_shape:
+            if mask.shape == ref_shape[::-1]:
+                print(f"[INFO] Hot pixel mask transposed from {mask.shape} → {ref_shape}.")
+                mask = mask.T
+            else:
+                raise ValueError(
+                    f"HP mask shape {mask.shape} cannot be matched to "
+                    f"data spatial shape {ref_shape}.")
+        return mask > 0
+
+    @staticmethod
     def apply_interpolation_mask(data_3d, hp_path=None):
         """
-        Identifies hot pixels from a mask and replaces them with the median 
-        of their 3x3 neighborhood (excluding the hot pixel itself).
+        Identifies hot pixels from a mask file and replaces them with the
+        nanmedian of their 3×3 neighbourhood (excluding the hot pixel itself).
+        Signature unchanged — safe to call from dataoperations.py.
         """
         if not hp_path:
             raise ValueError("Hotpixel removal mask path (hp_path) is not provided.")
-        
-        # Load mask and ensure it is 2D grayscale
+
         hotpixel_mask = plt.imread(hp_path)
         if hotpixel_mask.ndim == 3:
             hotpixel_mask = hotpixel_mask[..., 0]
-            
-        # Handle shape mismatches or transpositions
+
         if data_3d.shape[:2] != hotpixel_mask.shape:
-            if data_3d.shape[0] == hotpixel_mask.shape[1] and data_3d.shape[1] == hotpixel_mask.shape[0]:
+            if (data_3d.shape[0] == hotpixel_mask.shape[1] and
+                    data_3d.shape[1] == hotpixel_mask.shape[0]):
                 hotpixel_mask = hotpixel_mask.T
             else:
-                raise ValueError(f"Shape mismatch: data {data_3d.shape[:2]} vs mask {hotpixel_mask.shape}")
+                raise ValueError(
+                    f"Shape mismatch: data {data_3d.shape[:2]} vs mask {hotpixel_mask.shape}")
 
-        cleaned_data = np.copy(data_3d)
-        y_coords, x_coords = np.where(hotpixel_mask > 0)
-        
-        for y, x in zip(y_coords, x_coords):
-            # Define 3x3 neighborhood bounds
-            y_min, y_max = max(0, y-1), min(data_3d.shape[0], y+2)
-            x_min, x_max = max(0, x-1), min(data_3d.shape[1], x+2)
-            
-            # Extract neighborhood and mask the center pixel to avoid biasing the median
-            neighborhood = data_3d[y_min:y_max, x_min:x_max, :].copy()
-            local_y, local_x = y - y_min, x - x_min
-            neighborhood[local_y, local_x, :] = np.nan 
-            
-            # Use nanmedian to ignore the masked center pixel
-            cleaned_data[y, x, :] = np.nanmedian(neighborhood, axis=(0, 1))
-            
-        return cleaned_data
+        return Staticdataops.hotpixel_correct(data_3d, hotpixel_mask > 0)
 
     @staticmethod
     def load_mat_file(path):
@@ -100,44 +151,18 @@ class Staticdataops:
     @staticmethod
     def SS3HDF5read(fname, pileCorr=True, hot_pixels=True, hp_path=None):
         """
-        Reads gated HDF5 data, optionally applying pileup and hotpixel corrections.
+        Reads SS3 gated HDF5 data, optionally applying pile-up and hot-pixel corrections.
+        Signature unchanged — safe to call from dataoperations.py.
         """
-        # Critical Check: Prevent loading if correction is requested but path is missing
         if hot_pixels and hp_path is None:
             raise ValueError("hp_path must be provided when hot_pixels=True.")
-
         try:
-            with h5py.File(fname, 'r') as f:
-                gate_grp = f.get('Gate Images')
-                if not gate_grp:
-                    print("Error: 'Gate Images' group not found in HDF5.")
-                    return None
-                
-                # Sort gates numerically (Gate 0, Gate 1, etc.)
-                g2_keys = sorted(
-                    [k for k in gate_grp.keys() if k.startswith('Bottom G2 Gate')], 
-                    key=lambda x: int(x.split('Gate ')[-1])
-                )
-                
-                # Pre-allocate 3D array (Height, Width, Time/Gates)
-                first_gate = gate_grp[g2_keys[0]]
-                tpsfs = np.zeros((*first_gate.shape, len(g2_keys)), dtype=np.float32)
-                
-                for i, key in enumerate(g2_keys):
-                    tpsfs[:, :, i] = gate_grp[key][:]
-                
-                # Apply sequence of corrections
-                if pileCorr: 
-                    tpsfs = Staticdataops.pileup_correction(tpsfs)
-                
-                if hot_pixels: 
-                    tpsfs = Staticdataops.apply_interpolation_mask(tpsfs, hp_path=hp_path)
-                
-                return tpsfs
-
+            tpsfs = Staticdataops.spad_hdf5_read(
+                fname, 'Bottom G2 Gate', pile_up=pileCorr)
+            if hot_pixels:
+                tpsfs = Staticdataops.apply_interpolation_mask(tpsfs, hp_path=hp_path)
+            return tpsfs
         except Exception as e:
-            # If our internal logic raised a ValueError, pass it through. 
-            # Otherwise, catch unexpected I/O errors.
             if isinstance(e, ValueError):
                 raise e
             print(f"HDF5 Load Error: {e}")

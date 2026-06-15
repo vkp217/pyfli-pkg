@@ -34,11 +34,12 @@ class FliBinner:
 
         print(f"Applying spatial binning: Radius={n} ({window_size}x{window_size} window)")
         
-        # 3. Fast vectorized summation using window offsets
-        for dx in range(window_size):
-            for dy in range(window_size):
-                self.binned_img += img_pad[dx:dx+H, dy:dy+W, :]
-                self.binned_irf += irf_pad[dx:dx+H, dy:dy+W, :]
+        # 3. Fast vectorised summation using window offsets.
+        # dr shifts along rows (axis 0), dc along columns (axis 1).
+        for dr in range(window_size):
+            for dc in range(window_size):
+                self.binned_img += img_pad[dr:dr+H, dc:dc+W, :]
+                self.binned_irf += irf_pad[dr:dr+H, dc:dc+W, :]
         
         return self.binned_img, self.binned_irf
 
@@ -100,9 +101,8 @@ class BinnedFliFitter:
 
         # 3. Metadata Injection
         if dataset and 'results' in dataset:
-            dataset['name'] = f"{data_name}_Binned_R{self.bin_radius}"
-            if 'maps' in dataset['results']:
-                dataset['results']['maps']['bin_radius'] = self.bin_radius
+            dataset['name']        = f"{data_name}_Binned_R{self.bin_radius}"
+            dataset['bin_radius']  = self.bin_radius   # top-level; NOT inside maps (maps holds 2D arrays only)
                 
         return dataset
 
