@@ -5,85 +5,14 @@ from scipy.optimize import curve_fit, minimize, OptimizeWarning
 from scipy.signal import fftconvolve
 from joblib import Parallel, delayed
 
-# ── Suppress known non-fatal numerical warnings ───────────────────────────────
 warnings.filterwarnings("ignore", category=OptimizeWarning)
 warnings.filterwarnings("ignore", message="overflow encountered in exp",            category=RuntimeWarning)
 warnings.filterwarnings("ignore", message="overflow encountered in multiply",       category=RuntimeWarning)
 warnings.filterwarnings("ignore", message="invalid value encountered in multiply",  category=RuntimeWarning)
 warnings.filterwarnings("ignore", message="invalid value encountered in divide",    category=RuntimeWarning)
 warnings.filterwarnings("ignore", message="divide by zero encountered",             category=RuntimeWarning)
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-#  p0 FORMAT  (the ONLY accepted format)
-#  ─────────────────────────────────────
-#  p0 is a list of (lb, ub) tuples, one per model parameter, in order.
-#
-#  Mono  [A, tau, B]:
-#      p0 = [(0, np.inf), (0.6, 1.5), (0, np.inf)]
-#
-#  Bi    [A1, tau1, A2, tau2, B]:
-#      p0 = [(0, np.inf), (0.1, 0.6), (0, np.inf), (0.6, 1.5), (0, np.inf)]
-#
-#  Rules
-#  ─────
-#  lb < ub  → free; start = geometric mean (or midpoint / numeric fallback)
-#  lb == ub → CONSTANT; optimizer never moves it; chi² uses remaining dof
-#  p0=None  → all free; numeric starts; physical defaults for bounds
-#
-#  weighted argument
-#  ─────────────────
-#  weighted=False (default):
-#      FLIFitter           : minimise sum((y - yfit)²)         [unweighted LSQ]
-#      PoissonLikelihood   : minimise Poisson NLL = sum(yfit - y*log(yfit))
-#  weighted=True:
-#      FLIFitter           : minimise sum(((y - yfit)/σᵢ)²)    [chi² weighted]
-#                            σᵢ = sqrt(max(yᵢ, 1))  (Poisson counting noise)
-#                            CPU: curve_fit(sigma=σ, absolute_sigma=True)
-#                            GPU: W = diag(1/σᵢ) applied to residuals & Jacobian
-#      PoissonLikelihood   : same Poisson NLL (naturally weighted; σ absorbed
-#                            into the likelihood structure)
-#
-#  GPU equivalence guarantee
-#  ─────────────────────────
-#  Both GPU methods solve the SAME objective as their CPU counterparts:
-#
-#  FLIFitter GPU (weighted=False) : LSQ via batched LM
-#    • W = identity  →  residual r = (d - pred),  J = d(pred)/d(θ)
-#  FLIFitter GPU (weighted=True)  : χ² via batched LM
-#    • W = diag(1/σᵢ) →  r = (d - pred)/σ,  J = d(pred)/d(θ)/σ
-#
-#  PoissonLikelihoodFitter GPU    : Poisson NLL via batched LM (no softplus)
-#    • Score residual  r = (d - pred)/pred
-#    • Score Jacobian  J_k = d(pred)/d(θk) / pred
-#    • This is the exact gradient of Poisson NLL w.r.t. each parameter
-#
-#  All GPU paths share:
-#    • Parameters in physical space (NO softplus reparameterisation)
-#    • True hard bounds: clamp(p_new, lb, ub) after each accepted step
-#    • Per-pixel adaptive damping with gain-ratio (ρ) trust-region
-#    • τ₁ < τ₂ component-swap after every accepted step (bi-exponential only)
-#    • Constant parameters: Jacobian column zeroed + value re-pinned each step
-# ──────────────────────────────────────────────────────────────────────────────
 
 class FLIFitter:
-    """
-    Non-Linear Least-Squares Fitter for Fluorescence Lifetime Imaging (FLIM).
-
-    Parameters
-    ----------
-    decay         : ndarray (X, Y, T)
-    irf           : ndarray (X, Y, T)
-    fitting_model : 'mono-exponential' | 'bi-exponential'
-    frequency     : float   laser repetition rate in MHz (default 80)
-    solver        : 'lm' | 'trf'   scipy solver for CPU path (default 'lm')
-    min_photons   : int     minimum photon count to attempt a fit (default 50)
-    weighted      : bool
-        False (default) — unweighted least-squares: min sum((y - ŷ)²)
-        True            — chi²-weighted least-squares: min sum(((y - ŷ)/σ)²)
-                          where σᵢ = sqrt(max(yᵢ, 1))
-    """
 
     def __init__(self, decay, irf, fitting_model="mono-exponential",
                  frequency=80, solver="lm", min_photons=50, weighted=False):
@@ -99,14 +28,9 @@ class FLIFitter:
         self.period      = 1e3 / frequency
         self.t           = np.linspace(0, self.period, self.T)
 
-        # Normalize IRF pixel-wise
         self.irf /= (np.sum(self.irf, axis=2, keepdims=True) + 1e-12)
 
-    # ──────────────────────────────────────────────────────────────────────────
-    # SANITY CHECK
-    # ──────────────────────────────────────────────────────────────────────────
     def _sanity_check_pixel(self, decay_pixel, irf_pixel, threshold=0.0):
-        """Returns True (failed) when all decay or all IRF values ≤ threshold."""
         if np.all(decay_pixel <= threshold):
             return True
         if np.all(irf_pixel <= threshold):
@@ -119,9 +43,6 @@ class FLIFitter:
         nan_fitted = np.full(self.T, np.nan)
         return pix_x, pix_y, nan_params, nan_fitted, np.nan, np.nan, np.nan
 
-    # ──────────────────────────────────────────────────────────────────────────
-    # CONVOLVED MODEL
-    # ──────────────────────────────────────────────────────────────────────────
     def _convolved_model(self, params, irf_pixel):
         if self.model == "mono-exponential":
             A, tau, B = params
@@ -133,23 +54,7 @@ class FLIFitter:
         conv = fftconvolve(irf_pixel, decay_model, mode="full")[: self.T]
         return conv + params[-1]
 
-    # ──────────────────────────────────────────────────────────────────────────
-    # NUMERIC INITIAL GUESS
-    # ──────────────────────────────────────────────────────────────────────────
     def _estimate_p0_numeric(self, decay_pixel):
-        """
-        Mathematically grounded per-pixel starting value estimator.
-
-        Mono  → [A, tau, B]
-          B   : 10th-percentile of decay (robust baseline)
-          A   : peak of background-subtracted signal
-          tau : intensity-weighted mean arrival time  (MLE for single-exp)
-
-        Bi    → [A1, tau1, A2, tau2, B]
-          tau1: weighted log-linear slope in the early window (5–35 % of T)
-          tau2: weighted log-linear slope in the late  window (55–95 % of T)
-          A1,A2: energy-fraction split of the peak amplitude
-        """
         eps    = 1e-12
         d      = decay_pixel.copy()
         t      = self.t
@@ -193,24 +98,7 @@ class FLIFitter:
 
         return [A1_est, tau1_est, A2_est, tau2_est, B_est]
 
-    # ──────────────────────────────────────────────────────────────────────────
-    # P0 RANGE PARSING
-    # ──────────────────────────────────────────────────────────────────────────
     def _parse_p0_ranges(self, p0_ranges, decay_pixel):
-        """
-        Parse list-of-(lb,ub) tuples.
-        Returns (start, lb_vec, ub_vec, const_mask).
-
-        Starting-value strategy per parameter
-        ──────────────────────────────────────
-        lb == ub              → constant;  start = lb
-        lb < 0,  ub finite   → arithmetic midpoint  (lb+ub)/2
-        lb < 0,  ub = inf    → 0.0
-        lb = 0,  ub finite   → ub/2
-        lb = 0,  ub = inf    → _estimate_p0_numeric fallback
-        lb > 0,  ub finite   → geometric mean sqrt(lb*ub)
-        lb > 0,  ub = inf    → lb * 2
-        """
         n_params = 3 if self.model == "mono-exponential" else 5
 
         if p0_ranges is None:
@@ -267,33 +155,14 @@ class FLIFitter:
 
         return start, lb_vec, ub_vec, const_mask
 
-    # ──────────────────────────────────────────────────────────────────────────
-    # PHYSICAL DEFAULT BOUNDS
-    # ──────────────────────────────────────────────────────────────────────────
     def _default_p0_ranges(self):
-        """Physical-default p0_ranges (all free) for the current model."""
         if self.model == "mono-exponential":
             return [(0, np.inf), (0.01, self.period), (0, np.inf)]
         return [(0, np.inf), (0.01, self.period),
                 (0, np.inf), (0.01, self.period),
                 (0, np.inf)]
 
-    # ──────────────────────────────────────────────────────────────────────────
-    # STATS
-    # ──────────────────────────────────────────────────────────────────────────
     def _compute_stats(self, y, y_fit, n_free, sigma=None):
-        """
-        Compute residuals, R², RMSE, and reduced chi².
-
-        Parameters
-        ----------
-        y      : 1-D array  observed data
-        y_fit  : 1-D array  model prediction
-        n_free : int         number of free parameters
-        sigma  : 1-D array or None
-            Per-bin uncertainty.  Only used when self.weighted=True.
-            If None and weighted=True, defaults to sqrt(max(y, 1)).
-        """
         residual = y - y_fit
         ss_res   = np.sum(residual ** 2)
         ss_tot   = np.sum((y - np.mean(y)) ** 2)
@@ -326,17 +195,7 @@ class FLIFitter:
             params["tau_mean_map"] = (A1 * tau1 + A2 * tau2) / (A1 + A2 + 1e-12)
         return params
 
-    # ──────────────────────────────────────────────────────────────────────────
-    # SINGLE PIXEL  (CPU / scipy)
-    # ──────────────────────────────────────────────────────────────────────────
     def _single_pixel(self, pix_x, pix_y, p0=None, maxfev=2000):
-        """
-        Fit one pixel with NLSF (scipy curve_fit).
-
-        weighted=False : standard unweighted least-squares
-        weighted=True  : chi²-weighted via curve_fit(sigma=σ, absolute_sigma=True)
-                         where σᵢ = sqrt(max(dᵢ, 1))
-        """
         d     = self.decay[pix_x, pix_y]
         irf_p = self.irf[pix_x, pix_y]
 
@@ -351,7 +210,7 @@ class FLIFitter:
         n_free   = n_params - n_const
 
         free_idx  = [i for i, c in enumerate(const_mask) if not c]
-        const_idx = [i for i, c in enumerate(const_mask) if c]  # noqa: F841
+        const_idx = [i for i, c in enumerate(const_mask) if c]
 
         def _expand(free_params):
             full = list(start)
@@ -363,10 +222,8 @@ class FLIFitter:
         lb_free    = [lb_vec[i] for i in free_idx]
         ub_free    = [ub_vec[i] for i in free_idx]
 
-        # Sigma vector for weighted fitting
         sigma = np.sqrt(np.maximum(d, 1.0)) if self.weighted else None
 
-        # Build model function (operates in reduced free-parameter space)
         if self.model == "mono-exponential":
             if n_const == 0:
                 func = lambda t, A, tau, B: \
@@ -377,7 +234,7 @@ class FLIFitter:
             elif n_free == 1:
                 def func(t, fp0):
                     return self._convolved_model(_expand([fp0]), irf_p)
-            else:  # all constant
+            else:
                 fitted = self._convolved_model(start, irf_p)
                 _, r2, rmse, chi2 = self._compute_stats(d, fitted, 0, sigma)
                 return pix_x, pix_y, np.array(start), fitted, r2, rmse, chi2
@@ -411,15 +268,6 @@ class FLIFitter:
             return None
 
     def fit_single_pixel(self, pix_x, pix_y, p0=None, maxfev=2000):
-        """
-        Fit one pixel and return parameter maps + diagnostics.
-
-        Parameters
-        ----------
-        pix_x, pix_y : int
-        p0    : list of (lb, ub) tuples | None
-        maxfev: int  (default 2000)
-        """
         out = self._single_pixel(pix_x, pix_y, p0=p0, maxfev=maxfev)
         if out:
             px, py, popt, fitted, R2, RMSE, chi2 = out
@@ -431,16 +279,6 @@ class FLIFitter:
 
     def fit_entire_image_cpu(self, n_jobs=-1, p0=None, maxfev=2000,
                               progress_callback=None):
-        """
-        Fit the entire image on CPU (parallel row-by-row).
-
-        Parameters
-        ----------
-        n_jobs : int   (-1 = all CPUs)
-        p0     : list of (lb, ub) tuples | None
-        maxfev : int   (default 2000)
-        progress_callback : callable(pct, msg) | None
-        """
         n_params    = 3 if self.model == "mono-exponential" else 5
         param_cube  = np.full((self.X, self.Y, n_params), np.nan)
         fitted_cube = np.full_like(self.decay, np.nan)
@@ -473,9 +311,6 @@ class FLIFitter:
                 self.decay - fitted_cube,
                 {"R2_map": R2, "RMSE_map": RMSE, "chi2_map": chi2})
 
-    # ──────────────────────────────────────────────────────────────────────────
-    # GPU WHOLE-IMAGE — batched LM, solves the same LSQ as CPU
-    # ──────────────────────────────────────────────────────────────────────────
     def fit_entire_image_gpu(
         self,
         n_iter=400,
@@ -488,38 +323,10 @@ class FLIFitter:
         p0=None,
         progress_callback=None,
     ):
-        """
-        Fit the entire image on GPU using batched Levenberg-Marquardt.
-
-        Solves the SAME objective as fit_entire_image_cpu:
-          weighted=False → min sum((d - pred)²)                 [unweighted LSQ]
-          weighted=True  → min sum(((d - pred)/σ)²)             [chi²-weighted]
-                           where σᵢ = sqrt(max(dᵢ, 1))
-
-        Implementation guarantees vs previous version
-        ─────────────────────────────────────────────
-        • NO softplus: parameters live in physical space throughout.
-        • True hard bounds: clamp(p_new, lb, ub) after every accepted step.
-        • Per-pixel adaptive damping with gain-ratio (ρ) trust-region.
-        • τ₁ < τ₂ swap enforced after every accepted step (bi only).
-        • Constant parameters: Jacobian column zeroed + value re-pinned.
-        • λ clamped to [1e-10, 1e8] to prevent numerical blow-up.
-
-        Parameters
-        ----------
-        n_iter          : int    LM iterations (default 400)
-        lambda_init     : float  Initial damping factor (default 1e-2)
-        tau_min,tau_max : float  Hard lifetime bounds (ns) when p0=None
-        tau_prior_mu, tau_prior_sigma : float  Gaussian prior on lifetimes
-        reg_weight      : float  Weight of the lifetime prior term
-        p0              : list of (lb, ub) tuples | None
-        progress_callback : callable(pct, msg) | None
-        """
         device   = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         n_params = 3 if self.model == "mono-exponential" else 5
         eps      = 1e-8
 
-        # ── Bounds & const_mask ───────────────────────────────────────────────
         _dummy = np.ones(self.T, dtype=np.float64)
         _, lb_vec, ub_vec, const_mask = self._parse_p0_ranges(p0, _dummy)
 
@@ -534,7 +341,6 @@ class FLIFitter:
                                    for i in range(n_params)], dtype=np.float32)
         free_mask_np  = np.array([not c for c in const_mask], dtype=bool)
 
-        # ── Data ─────────────────────────────────────────────────────────────
         decay_t  = torch.tensor(self.decay, dtype=torch.float32, device=device)
         irf_t    = torch.tensor(self.irf,   dtype=torch.float32, device=device)
         X, Y, T  = decay_t.shape
@@ -547,18 +353,13 @@ class FLIFitter:
         n_fft   = 2 * T
         IRF_fft = torch.fft.rfft(irf_t, n=n_fft)
 
-        # ── Sanity mask ───────────────────────────────────────────────────────
         invalid_mask = (decay_t.sum(dim=1) <= 0) | (irf_t.sum(dim=1) <= 0)
 
-        # ── Per-pixel weight vector W (Npix, T) ──────────────────────────────
-        # weighted=True  : Wᵢ = 1 / σᵢ = 1 / sqrt(max(dᵢ, 1))
-        # weighted=False : Wᵢ = 1
         if self.weighted:
-            W_pix = 1.0 / torch.sqrt(torch.clamp(decay_t, min=1.0))  # (Npix, T)
+            W_pix = 1.0 / torch.sqrt(torch.clamp(decay_t, min=1.0))
         else:
-            W_pix = torch.ones_like(decay_t)                          # (Npix, T)
+            W_pix = torch.ones_like(decay_t)
 
-        # ── Per-pixel initial guess ───────────────────────────────────────────
         decay_np = self.decay.astype(np.float32).reshape(Npix, T)
         init_np  = np.zeros((Npix, n_params), dtype=np.float32)
 
@@ -578,11 +379,9 @@ class FLIFitter:
         lam = torch.full((Npix, 1, 1), lambda_init, device=device)
         I   = torch.eye(n_params, device=device).unsqueeze(0)
 
-        # ── Bounds tensors ────────────────────────────────────────────────────
         lb_t = torch.tensor([float(lb_vec[i]) for i in range(n_params)],
                               dtype=torch.float32, device=device
                               ).unsqueeze(0).expand(Npix, -1)
-        # Replace +inf with large finite value for torch.min
         ub_np_clamped = [float(ub_vec[i]) if not np.isinf(ub_vec[i]) else 1e9
                          for i in range(n_params)]
         ub_t = torch.tensor(ub_np_clamped, dtype=torch.float32, device=device
@@ -591,10 +390,8 @@ class FLIFitter:
         const_col   = torch.tensor(const_mask, dtype=torch.bool, device=device)
         const_val_t = torch.tensor(const_vals_np, dtype=torch.float32, device=device)
 
-        # ── LM ITERATIONS ─────────────────────────────────────────────────────
         for it in range(n_iter):
 
-            # Forward model + analytic Jacobian in physical space
             if self.model == "mono-exponential":
                 A        = p[:, 0:1];  tau = p[:, 1:2]
                 exp_term = torch.exp(-t_gpu / (tau + eps))
@@ -620,26 +417,22 @@ class FLIFitter:
             pred  = torch.fft.irfft(IRF_fft * M_fft, n=n_fft)[:, :T] + p[:, -1:]
             pred  = torch.clamp(pred, min=eps)
 
-            # Weighted residuals:  r = W * (d - pred)
-            r = (decay_t - pred) * W_pix                         # (Npix, T)
+            r = (decay_t - pred) * W_pix
 
-            # Weighted Jacobian:   J[:,t,k] = W_t * d(pred)/d(θ_k)
             J_list = []
             for dtheta in deriv_list:
                 d_fft  = torch.fft.rfft(dtheta, n=n_fft)
                 d_conv = torch.fft.irfft(IRF_fft * d_fft, n=n_fft)[:, :T]
                 J_list.append(d_conv * W_pix)
-            J = torch.stack(J_list, dim=2)                       # (Npix, T, n_params)
+            J = torch.stack(J_list, dim=2)
 
-            # Zero Jacobian columns for constant parameters
             if const_col.any():
                 J[:, :, const_col] = 0.0
 
-            JT = J.transpose(1, 2)                               # (Npix, n_params, T)
-            H  = JT @ J                                          # (Npix, n_params, n_params)
-            g  = JT @ r.unsqueeze(-1)                            # (Npix, n_params, 1)
+            JT = J.transpose(1, 2)
+            H  = JT @ J
+            g  = JT @ r.unsqueeze(-1)
 
-            # Bayesian lifetime prior (regularisation, optional)
             if self.model == "mono-exponential":
                 if not const_mask[1]:
                     tp         = (p[:, 1] - tau_prior_mu) / (tau_prior_sigma ** 2)
@@ -655,25 +448,19 @@ class FLIFitter:
                     H[:, 3, 3] += reg_weight / (tau_prior_sigma ** 2)
                     g[:, 3, 0] += tp2
 
-            # LM damping + linear solve
             H_lm  = H + lam * I
-            # delta = torch.linalg.solve(H_lm, g).squeeze(-1)     # (Npix, n_params)
             try:
                 delta = torch.linalg.solve(H_lm, g).squeeze(-1)
             except RuntimeError:
-                # Fallback to least-squares solve for singular batches
                 delta = torch.linalg.lstsq(H_lm, g).solution.squeeze(-1)
             p_new = p + delta
 
-            # True hard bounds clamp
             p_new = torch.max(p_new, lb_t)
             p_new = torch.min(p_new, ub_t)
 
-            # Re-pin constant parameters
             if const_col.any():
                 p_new[:, const_col] = const_val_t[const_col].unsqueeze(0)
 
-            # τ₁ < τ₂ ordering swap (bi-exponential only)
             if self.model != "mono-exponential":
                 swap = p_new[:, 1] > p_new[:, 3]
                 if swap.any():
@@ -682,7 +469,6 @@ class FLIFitter:
                     t1c = p_new[:, 1].clone(); t2c = p_new[:, 3].clone()
                     p_new[swap, 1] = t2c[swap]; p_new[swap, 3] = t1c[swap]
 
-            # ── Gain-ratio trust-region evaluation (per-pixel) ────────────────
             if self.model == "mono-exponential":
                 m_new = p_new[:, 0:1] * torch.exp(-t_gpu / (p_new[:, 1:2] + eps))
             else:
@@ -694,8 +480,8 @@ class FLIFitter:
             pred2  = torch.clamp(pred2, min=eps)
             r2_    = (decay_t - pred2) * W_pix
 
-            loss      = torch.sum(r   ** 2, dim=1, keepdim=True)   # current loss
-            loss2     = torch.sum(r2_ ** 2, dim=1, keepdim=True)   # proposed loss
+            loss      = torch.sum(r   ** 2, dim=1, keepdim=True)
+            loss2     = torch.sum(r2_ ** 2, dim=1, keepdim=True)
             pred_gain = torch.sum(delta * g.squeeze(-1), dim=1, keepdim=True)
             rho       = (loss - loss2) / (pred_gain + eps)
 
@@ -708,7 +494,6 @@ class FLIFitter:
                 progress_callback(int((it + 1) / n_iter * 100),
                                   f"GPU LM {it+1}/{n_iter}")
 
-        # ── Final prediction ──────────────────────────────────────────────────
         with torch.no_grad():
             if self.model == "mono-exponential":
                 m_fin = p[:, 0:1] * torch.exp(-t_gpu / (p[:, 1:2] + eps))
@@ -748,40 +533,9 @@ class FLIFitter:
         return (self._populate_param_maps(p_final), pred_final, residual,
                 {"R2_map": R2, "RMSE_map": RMSE, "chi2_map": chi2})
 
-
-# ══════════════════════════════════════════════════════════════════════════════
 class PoissonLikelihoodFitter(FLIFitter):
-    """
-    Poisson Maximum-Likelihood Fitter for FLIM.
 
-    CPU: minimises Poisson NLL = sum(ŷᵢ - yᵢ·log(ŷᵢ)) via L-BFGS-B.
-         weighted=True additionally scales by 1/σᵢ² for API symmetry.
-
-    GPU: minimises the same Poisson NLL via batched Levenberg-Marquardt,
-         using the exact Poisson score residual and score Jacobian —
-         mathematically equivalent to the CPU L-BFGS-B path.
-
-    GPU vs old (softplus + L-BFGS) fixes
-    ─────────────────────────────────────
-    1. No softplus reparameterisation: parameters live in physical space.
-       Eliminates curvature distortion, biased lifetimes, and slow Hessian.
-    2. True hard bounds via clamp after each accepted LM step.
-       Optimizer is always bound-aware (no post-projection).
-    3. Per-pixel adaptive damping with gain-ratio trust-region (ρ).
-    4. τ₁ < τ₂ ordering swap after every accepted step (bi only).
-    5. Poisson score Jacobian:  J_ik = d(ŷᵢ)/d(θk) / ŷᵢ
-       This is the exact partial derivative of Poisson NLL.
-    """
-
-    # ── CPU single pixel ──────────────────────────────────────────────────────
     def _single_pixel(self, pix_x, pix_y, p0=None, maxfev=2000):
-        """
-        Fit one pixel with Poisson MLE (scipy L-BFGS-B).
-
-        weighted=False : Poisson NLL = sum(ŷ - y·log(ŷ))
-        weighted=True  : weighted Poisson NLL = sum((ŷ - y·log(ŷ)) / σ²)
-                         where σᵢ = sqrt(max(dᵢ, 1))
-        """
         d     = self.decay[pix_x, pix_y]
         irf_p = self.irf[pix_x, pix_y]
 
@@ -796,7 +550,7 @@ class PoissonLikelihoodFitter(FLIFitter):
         n_free   = n_params - n_const
 
         free_idx  = [i for i, c in enumerate(const_mask) if not c]
-        const_idx = [i for i, c in enumerate(const_mask) if c]  # noqa: F841
+        const_idx = [i for i, c in enumerate(const_mask) if c]
 
         def _expand(free_params):
             full = list(start)
@@ -812,7 +566,7 @@ class PoissonLikelihoodFitter(FLIFitter):
 
         sigma = np.sqrt(np.maximum(d, 1.0)) if self.weighted else None
 
-        if n_free == 0:  # all constant — just evaluate
+        if n_free == 0:
             fitted = self._convolved_model(start, irf_p)
             _, r2, rmse, chi2 = self._compute_stats(d, fitted, 0, sigma)
             return pix_x, pix_y, np.array(start), fitted, r2, rmse, chi2
@@ -822,7 +576,7 @@ class PoissonLikelihoodFitter(FLIFitter):
             m    = np.clip(self._convolved_model(full, irf_p), 1e-12, None)
             nll  = np.sum(m - d * np.log(m))
             if self.weighted:
-                nll = nll / (sigma ** 2).sum()   # normalised weighted NLL
+                nll = nll / (sigma ** 2).sum()
             return nll
 
         res = minimize(objective, start_free,
@@ -838,17 +592,7 @@ class PoissonLikelihoodFitter(FLIFitter):
         _, r2, rmse, chi2 = self._compute_stats(d, fitted, n_free, sigma)
         return pix_x, pix_y, popt, fitted, r2, rmse, chi2
 
-    # ── CPU fit_single_pixel ──────────────────────────────────────────────────
     def fit_single_pixel(self, pix_x, pix_y, p0=None, maxfev=2000):
-        """
-        Fit one pixel with Poisson MLE and return maps + diagnostics.
-
-        Parameters
-        ----------
-        pix_x, pix_y : int
-        p0    : list of (lb, ub) tuples | None
-        maxfev: int  (default 2000)
-        """
         out = self._single_pixel(pix_x, pix_y, p0=p0, maxfev=maxfev)
         if out:
             px, py, popt, fitted, R2, RMSE, chi2 = out
@@ -858,19 +602,8 @@ class PoissonLikelihoodFitter(FLIFitter):
                     {"R2_map": R2, "RMSE_map": RMSE, "chi2_map": chi2})
         return None
 
-    # ── CPU whole-image ───────────────────────────────────────────────────────
     def fit_entire_image_cpu(self, n_jobs=-1, p0=None, maxfev=2000,
                               progress_callback=None):
-        """
-        Fit the entire image on CPU with Poisson MLE.
-
-        Parameters
-        ----------
-        n_jobs : int
-        p0     : list of (lb, ub) tuples | None
-        maxfev : int  (default 2000)
-        progress_callback : callable(pct, msg) | None
-        """
         n_params    = 3 if self.model == "mono-exponential" else 5
         param_cube  = np.full((self.X, self.Y, n_params), np.nan)
         fitted_cube = np.full_like(self.decay, np.nan)
@@ -903,41 +636,12 @@ class PoissonLikelihoodFitter(FLIFitter):
                 self.decay - fitted_cube,
                 {"R2_map": R2_map, "RMSE_map": RMSE_map, "chi2_map": chi2_map})
 
-    # ── GPU whole-image — Poisson LM, equivalent to CPU L-BFGS-B ─────────────
     def fit_entire_image_gpu(self, max_outer_iter=400, p0=None,
                               lambda_init=1e-2, progress_callback=None):
-        """
-        Fit the entire image on GPU using batched Levenberg-Marquardt
-        minimising the Poisson NLL — the SAME objective as CPU L-BFGS-B.
-
-        Poisson LM derivation
-        ─────────────────────
-        Poisson NLL: L = sum_i (ŷᵢ - yᵢ·log(ŷᵢ))
-        Gradient:    ∂L/∂θk = sum_i (1 - yᵢ/ŷᵢ) · d(ŷᵢ)/d(θk)
-                             = sum_i [(ŷᵢ - yᵢ)/ŷᵢ] · d(ŷᵢ)/d(θk)
-
-        Define score residual:    rᵢ = (yᵢ - ŷᵢ) / ŷᵢ     (negative gradient direction)
-        Define score Jacobian:    Jᵢk = d(ŷᵢ)/d(θk) / ŷᵢ
-        Then:  JᵀJ·δ = Jᵀr  is the Gauss-Newton system for Poisson NLL.
-
-        This is identical in form to weighted LSQ with Wᵢ = 1/ŷᵢ, which is
-        the Fisher information weighting — the correct weighting for Poisson data.
-
-        weighted=True additionally scales by 1/σᵢ² (σᵢ = sqrt(max(dᵢ,1))),
-        equivalent to reweighting the Poisson score by observation noise.
-
-        Parameters
-        ----------
-        max_outer_iter : int    LM iterations (default 400)
-        p0             : list of (lb, ub) tuples | None
-        lambda_init    : float  Initial damping (default 1e-2)
-        progress_callback : callable(pct, msg) | None
-        """
         device   = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         n_params = 3 if self.model == "mono-exponential" else 5
         eps      = 1e-8
 
-        # ── Bounds & const_mask ───────────────────────────────────────────────
         _dummy = np.ones(self.T, dtype=np.float64)
         _, lb_vec, ub_vec, const_mask = self._parse_p0_ranges(p0, _dummy)
 
@@ -945,7 +649,6 @@ class PoissonLikelihoodFitter(FLIFitter):
                                    for i in range(n_params)], dtype=np.float32)
         free_mask_np  = np.array([not c for c in const_mask], dtype=bool)
 
-        # ── Flatten + valid-pixel mask ────────────────────────────────────────
         decay_np = self.decay.astype(np.float32)
         irf_np   = self.irf.astype(np.float32)
 
@@ -960,11 +663,10 @@ class PoissonLikelihoodFitter(FLIFitter):
         if len(valid_idx) == 0:
             raise ValueError("No pixels above photon threshold.")
 
-        decay_v  = decay_t[mask]                  # (Nv, T)
+        decay_v  = decay_t[mask]
         irf_v    = irf_t[mask]
         n_pixels = decay_v.shape[0]
 
-        # ── Per-pixel initial guess ───────────────────────────────────────────
         valid_decay_np = decay_np.reshape(-1, self.T)[valid_idx.cpu().numpy()]
         init_np = np.zeros((n_pixels, n_params), dtype=np.float32)
 
@@ -984,7 +686,6 @@ class PoissonLikelihoodFitter(FLIFitter):
         lam = torch.full((n_pixels, 1, 1), lambda_init, device=device)
         I   = torch.eye(n_params, device=device).unsqueeze(0)
 
-        # ── Bounds tensors ────────────────────────────────────────────────────
         lb_t = torch.tensor([float(lb_vec[i]) for i in range(n_params)],
                               dtype=torch.float32, device=device
                               ).unsqueeze(0).expand(n_pixels, -1)
@@ -996,21 +697,17 @@ class PoissonLikelihoodFitter(FLIFitter):
         const_col   = torch.tensor(const_mask, dtype=torch.bool, device=device)
         const_val_t = torch.tensor(const_vals_np, dtype=torch.float32, device=device)
 
-        # ── FFT setup ─────────────────────────────────────────────────────────
         t_gpu   = torch.tensor(self.t.astype(np.float32), device=device).unsqueeze(0)
         n_fft   = 2 * self.T
         IRF_fft = torch.fft.rfft(irf_v, n=n_fft)
 
-        # Extra weighting for weighted=True: scale by 1/σᵢ² on top of Poisson
         if self.weighted:
-            W_extra = 1.0 / torch.clamp(decay_v, min=1.0)  # (Nv, T)
+            W_extra = 1.0 / torch.clamp(decay_v, min=1.0)
         else:
-            W_extra = torch.ones_like(decay_v)              # (Nv, T)
+            W_extra = torch.ones_like(decay_v)
 
-        # ── LM ITERATIONS ─────────────────────────────────────────────────────
         for it in range(max_outer_iter):
 
-            # Forward model + derivatives in physical parameter space
             if self.model == "mono-exponential":
                 A        = p[:, 0:1];  tau = p[:, 1:2]
                 exp_term = torch.exp(-t_gpu / (tau + eps))
@@ -1036,17 +733,15 @@ class PoissonLikelihoodFitter(FLIFitter):
             pred  = torch.fft.irfft(IRF_fft * M_fft, n=n_fft)[:, :self.T] + p[:, -1:]
             pred  = torch.clamp(pred, min=eps)
 
-            # Poisson score residual:  rᵢ = (yᵢ - ŷᵢ) / ŷᵢ  × W_extra
             inv_pred = 1.0 / pred
-            r        = (decay_v - pred) * inv_pred * W_extra        # (Nv, T)
+            r        = (decay_v - pred) * inv_pred * W_extra
 
-            # Poisson score Jacobian:  Jᵢk = d(ŷᵢ)/d(θk) / ŷᵢ × W_extra
             J_list = []
             for dtheta in deriv_list:
                 d_fft  = torch.fft.rfft(dtheta, n=n_fft)
                 d_conv = torch.fft.irfft(IRF_fft * d_fft, n=n_fft)[:, :self.T]
                 J_list.append(d_conv * inv_pred * W_extra)
-            J = torch.stack(J_list, dim=2)                           # (Nv, T, n_params)
+            J = torch.stack(J_list, dim=2)
 
             if const_col.any():
                 J[:, :, const_col] = 0.0
@@ -1055,20 +750,16 @@ class PoissonLikelihoodFitter(FLIFitter):
             H  = JT @ J
             g  = JT @ r.unsqueeze(-1)
 
-            # LM damping + solve
             H_lm  = H + lam * I
             delta = torch.linalg.solve(H_lm, g).squeeze(-1)
             p_new = p + delta
 
-            # True hard bounds clamp
             p_new = torch.max(p_new, lb_t)
             p_new = torch.min(p_new, ub_t)
 
-            # Re-pin constants
             if const_col.any():
                 p_new[:, const_col] = const_val_t[const_col].unsqueeze(0)
 
-            # τ₁ < τ₂ ordering swap (bi-exponential only)
             if self.model != "mono-exponential":
                 swap = p_new[:, 1] > p_new[:, 3]
                 if swap.any():
@@ -1077,7 +768,6 @@ class PoissonLikelihoodFitter(FLIFitter):
                     t1c = p_new[:, 1].clone(); t2c = p_new[:, 3].clone()
                     p_new[swap, 1] = t2c[swap]; p_new[swap, 3] = t1c[swap]
 
-            # ── Gain-ratio trust-region evaluation ───────────────────────────
             if self.model == "mono-exponential":
                 m_new = p_new[:, 0:1] * torch.exp(-t_gpu / (p_new[:, 1:2] + eps))
             else:
@@ -1105,7 +795,6 @@ class PoissonLikelihoodFitter(FLIFitter):
                 progress_callback(int((it + 1) / max_outer_iter * 100),
                                   f"GPU Poisson LM {it+1}/{max_outer_iter}")
 
-        # ── Final prediction ──────────────────────────────────────────────────
         with torch.no_grad():
             if self.model == "mono-exponential":
                 m_fin = p[:, 0:1] * torch.exp(-t_gpu / (p[:, 1:2] + eps))
@@ -1116,7 +805,6 @@ class PoissonLikelihoodFitter(FLIFitter):
             pred_f = torch.fft.irfft(IRF_fft * M_fin, n=n_fft)[:, :self.T] + p[:, -1:]
             pred_f = torch.clamp(pred_f, min=eps)
 
-        # ── Scatter back to full image ────────────────────────────────────────
         p_full      = torch.full((self.X * self.Y, n_params), float("nan"), device=device)
         fitted_full = torch.full((self.X * self.Y, self.T),   float("nan"), device=device)
         p_full[valid_idx]      = p
@@ -1139,7 +827,6 @@ class PoissonLikelihoodFitter(FLIFitter):
             chi2_map  = (np.sum((residual / sigma_img) ** 2, axis=2)
                          / max(self.T - n_free_gpu, 1))
         else:
-            # Poisson chi²: sum((d - ŷ)² / ŷ)
             chi2_map = (np.sum((self.decay - fitted_np) ** 2 / (fitted_np + 1e-12), axis=2)
                         / max(self.T - n_free_gpu, 1))
 
@@ -1151,12 +838,7 @@ class PoissonLikelihoodFitter(FLIFitter):
         return (self._populate_param_maps(p_np), fitted_np, residual,
                 {"R2_map": R2_map, "RMSE_map": RMSE_map, "chi2_map": chi2_map})
 
-    # ── Poisson deviance map ──────────────────────────────────────────────────
     def _poisson_deviance_map(self, decay, fitted, n_params):
-        """
-        Compute reduced Poisson deviance per pixel.
-        D = 2 · sum( d·log(d/ŷ) − (d − ŷ) ),  reduced by dof = T − n_params.
-        """
         eps  = 1e-12
         d    = decay;  m = fitted + eps
         term = np.zeros_like(d)
@@ -1164,26 +846,9 @@ class PoissonLikelihoodFitter(FLIFitter):
         term[nz] = d[nz] * np.log(d[nz] / m[nz])
         return 2 * np.sum(term - (d - m), axis=2) / max(self.T - n_params, 1)
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  FLIAnalysisSuite  — high-level convenience wrapper
-# ══════════════════════════════════════════════════════════════════════════════
-
 import matplotlib.pyplot as plt
 
 class FLIAnalysisSuite:
-    """
-    High-level wrapper orchestrating FLIFitter and PoissonLikelihoodFitter.
-
-    Parameters
-    ----------
-    decay, irf    : ndarray (X, Y, T)
-    frequency     : float  laser repetition rate MHz (default 80)
-    min_photons   : int    minimum photon count per pixel (default 50)
-    weighted      : bool   passed to both fitter classes (default False)
-                    False → unweighted LSQ / standard Poisson NLL
-                    True  → chi²-weighted LSQ / weighted Poisson NLL
-    """
 
     def __init__(self, decay, irf, frequency=80, min_photons=50, weighted=False):
         self.decay    = decay
@@ -1202,17 +867,6 @@ class FLIAnalysisSuite:
     def run_analysis(self, model_type="mono-exponential", fitting_method="both",
                      device="cpu", analysis="single pixel", px=(0, 0), p0=None,
                      maxfev=2000):
-        """
-        Parameters
-        ----------
-        model_type     : 'mono-exponential' | 'bi-exponential' | 'both'
-        fitting_method : 'nlsf' | 'mle' | 'both'
-        device         : 'cpu' | 'gpu' | 'both'  ('both' only for whole-image)
-        analysis       : 'single pixel' | 'whole'
-        px             : (row, col) for single-pixel mode
-        p0             : list of (lb, ub) tuples | None
-        maxfev         : int  Max function evaluations (CPU, default 2000)
-        """
         models  = (["mono-exponential", "bi-exponential"]
                    if model_type == "both" else [model_type])
         methods = (["nlsf", "mle"]
@@ -1306,7 +960,6 @@ class FLIAnalysisSuite:
                               f"R2={fmt(get_val(s, self.st[0]))}  "
                               f"chi2={fmt(get_val(s, self.st[2]))}")
 
-            # Plot: one block per model, outside the dev loop
             if analysis == "single pixel":
                 first_fit_dict = next(iter(dev_dict.values()))
                 pixel_data = {
@@ -1380,10 +1033,6 @@ class FLIAnalysisSuite:
         return fig
 
     def check_random_pixel(self, px=(0, 0)):
-        """
-        Re-plot a pixel from the most recent run_analysis call.
-        Works for both 'single pixel' and 'whole' analysis modes.
-        """
         if self.last_results is None:
             print("Error: Run analysis first (single pixel or whole image).")
             return

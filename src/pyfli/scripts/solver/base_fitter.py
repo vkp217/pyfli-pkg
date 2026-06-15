@@ -13,7 +13,8 @@ from .shared_metrics import (
 
 class BaseFLIFitter:
     def __init__(self, freq, decay_px, irf_px, white_noise=0.1,
-                 guess_plugin=moment_based_guess, custom_funcs=None):
+                 guess_plugin=moment_based_guess, custom_funcs=None,
+                 shift_method='zero_pad'):
         """
         Base Fitter for Non-Linear Least Squares (NLSF).
         Includes dynamic registry for solvers and a validation layer for parameters.
@@ -22,6 +23,7 @@ class BaseFLIFitter:
         self.irf = np.asarray(irf_px)
         self.white_noise = white_noise
         self.guess_plugin = guess_plugin
+        self.shift_method = shift_method
 
         # Timing constants
         self.T_laser = 1000.0 / freq[0]
@@ -88,7 +90,7 @@ class BaseFLIFitter:
         return self._post_process(popt, None, status, model_type, pcov=pcov)
 
     def model_fit(self, t, params, model_type='mono-exponential'):
-        return model_numpy(t, self.irf, params, model_type)
+        return model_numpy(t, self.irf, params, model_type, shift_method=self.shift_method)
 
     def _post_process(self, popt, jac, status, model_type, pcov=None):
         if model_type == 'bi-exponential':
@@ -120,7 +122,7 @@ class BaseFLIFitter:
     def compare_models(self, alpha=0.05):
         res_m = self.fit_with_estimator(model_type='mono-exponential')
         res_b = self.fit_with_estimator(model_type='bi-exponential')
-        n, p_m, p_b = len(self.fit_indices), 3, 5
+        n, p_m, p_b = len(self.fit_indices), 4, 6
         chi_m, chi_b = res_m[3], res_b[3]
         f_stat = ((chi_m - chi_b) / (p_b - p_m)) / (chi_b / (n - p_b))
         p_val = 1 - f.cdf(f_stat, p_b - p_m, n - p_b)

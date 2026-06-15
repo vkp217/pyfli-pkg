@@ -69,8 +69,9 @@ class TestBaseFLIFitterStructure:
             model_type="mono-exponential"
         )
         popt, perr, r2, chi2, red_chi2, ssr, converged = result
-        assert len(popt) == 3       # S, tau, offset
-        assert len(perr) == 3
+        # [S, tau, offset, h_shift] — 4 parameters
+        assert len(popt) == 4
+        assert len(perr) == 4
 
     def test_bi_output_length(self):
         decay, irf = _make_biexp()
@@ -78,8 +79,9 @@ class TestBaseFLIFitterStructure:
             model_type="bi-exponential"
         )
         popt, perr, r2, chi2, red_chi2, ssr, converged = result
-        assert len(popt) == 5       # S, alpha1, tau1, tau2, offset
-        assert len(perr) == 5
+        # [S, a1, tau1, tau2, offset, h_shift] — 6 parameters
+        assert len(popt) == 6
+        assert len(perr) == 6
 
     def test_tau_ordering_enforced(self):
         """Post-processing must ensure tau1 <= tau2."""
@@ -102,7 +104,7 @@ class TestBaseFLIFitterStructure:
         _, _, _, chi2, red_chi2, _, _ = BaseFLIFitter(_FREQ, decay, irf).fit_with_estimator(
             model_type="mono-exponential"
         )
-        dof = _N - 3    # N bins − 3 params
+        dof = _N - 4    # N bins − 4 params [S, tau, offset, h_shift]
         assert abs(red_chi2 - chi2 / dof) < 1e-4, "red_chi2 must equal chi2 / dof"
         assert chi2 > red_chi2
 
@@ -161,6 +163,15 @@ class TestBaseFLIFitterRecovery:
         )
         assert 0.5 < red_chi2 < 3.0, f"reduced chi2 = {red_chi2:.3f} out of expected range"
 
+    def test_h_shift_near_zero_for_aligned_irf(self):
+        """With a pre-aligned IRF the recovered h_shift should be close to 0."""
+        decay, irf = _make_mono(S=8000, seed=3)
+        popt, *_ = BaseFLIFitter(_FREQ, decay, irf).fit_with_estimator(
+            model_type="mono-exponential"
+        )
+        # h_shift is the last parameter; |shift| < 5 bins is within noise for aligned data
+        assert abs(popt[-1]) < 5.0, f"h_shift = {popt[-1]:.3f} bins, expected near 0"
+
 
 # ---------------------------------------------------------------------------
 # Fli_CPUProcessor — image-level integration tests
@@ -199,7 +210,7 @@ def mono_result(small_biexp_image):
 
 
 class TestCPUProcessorOutputKeys:
-    """Verify map keys are correct — including the chi2_map rename."""
+    """Verify map keys are correct — including h_shift_map."""
 
     def test_result_not_none(self, biexp_result):
         assert biexp_result is not None
@@ -224,12 +235,13 @@ class TestCPUProcessorOutputKeys:
 
     def test_biexp_param_keys(self, biexp_result):
         maps = biexp_result["results"]["maps"]
-        for key in ("Area_map", "alpha1_map", "tau1_map", "tau2_map", "offset_map"):
+        for key in ("Area_map", "alpha1_map", "tau1_map", "tau2_map",
+                    "offset_map", "h_shift_map"):
             assert key in maps, f"Missing key: {key}"
 
     def test_mono_param_keys(self, mono_result):
         maps = mono_result["results"]["maps"]
-        for key in ("Area_map", "tau_map", "offset_map", "chi2_map"):
+        for key in ("Area_map", "tau_map", "offset_map", "chi2_map", "h_shift_map"):
             assert key in maps, f"Missing key: {key}"
 
     def test_tr_maps_keys(self, biexp_result):
@@ -252,12 +264,12 @@ class TestCPUProcessorChi2Consistency:
             "chi2_map (raw) must be >= reduced_stat_map for every healthy pixel"
 
     def test_chi2_and_reduced_are_consistent(self, biexp_result):
-        """reduced_stat_map ≈ chi2_map / dof for bi-exponential (dof = N − 5)."""
+        """reduced_stat_map ≈ chi2_map / dof for bi-exponential (dof = N − 6)."""
         maps   = biexp_result["results"]["maps"]
         health = maps["pixel_health_map"] > 0
         if not health.any():
             pytest.skip("No healthy pixels")
-        dof = _N - 5
+        dof = _N - 6   # N bins − 6 params [S, a1, tau1, tau2, offset, h_shift]
         ratio = maps["chi2_map"][health] / maps["reduced_stat_map"][health]
         np.testing.assert_allclose(ratio, dof, rtol=1e-4)
 
@@ -279,7 +291,7 @@ class TestCPUProcessorArrayShapes:
     def test_error_maps_shape(self, biexp_result, small_biexp_image):
         H, W, _ = small_biexp_image[0].shape
         e = biexp_result["results"]["error_maps"]
-        assert e.shape == (H, W, 5)     # 5 params for bi-exponential
+        assert e.shape == (H, W, 6)     # 6 params for bi-exponential
 
 
 class TestCPUProcessorParamRecovery:
@@ -313,3 +325,14 @@ class TestCPUProcessorParamRecovery:
         tr  = biexp_result["results"]["TR_maps"]
         reconstructed = tr["fit_map"] + tr["residual_map"]
         np.testing.assert_allclose(reconstructed, image_cube, atol=1e-3)
+
+    def test_h_shift_map_shape_and_range(self, biexp_result, small_biexp_image):
+        """h_shift_map must have the correct shape and plausible values."""
+        H, W, _ = small_biexp_image[0].shape
+        maps   = biexp_result["results"]["maps"]
+        assert "h_shift_map" in maps
+        assert maps["h_shift_map"].shape == (H, W)
+        # For aligned test data the shift should be small (< 10 bins)
+        health = maps["pixel_health_map"] > 0
+        if health.any():
+            assert np.all(np.abs(maps["h_shift_map"][health]) < 10.0)

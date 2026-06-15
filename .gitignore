@@ -25,6 +25,9 @@ notebooks/
 .vscode/
 .idea/
 
+# Claude Code
+.claude/
+
 # Pytest / coverage cache
 .pytest_cache/
 .coverage

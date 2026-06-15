@@ -819,6 +819,227 @@ class Plotter:
         ax.legend(handles=elements, loc='upper left',
                   bbox_to_anchor=(1.02, 1), frameon=False)
 
+    # ── cluster comparison ────────────────────────────────────────────────────
+    def make_cluster_plot(
+        self,
+        multi_cluster_mask: np.ndarray,
+        cluster_names: Optional[List[str]] = None,
+        title: str = "Cluster Analysis",
+        graph_type: str = "box",
+        show_significance: bool = True,
+        point_type=None, show_mean=None, show_median=None,
+        test_type=None, correction=None,
+        **config_overrides,
+    ) -> Figure:
+        """Per-cluster breakdown of make_plot.
+
+        For every key in ``self.labels`` one subplot is drawn; within each
+        subplot the **x-axis represents cluster IDs** and grouped
+        boxes/violins/etc. represent **data sources** (color-coded by source).
+
+        Parameters
+        ----------
+        multi_cluster_mask : 2-D int array (H, W)
+            0 = background (ignored); 1, 2, 3 … = cluster IDs.
+        cluster_names : list[str], optional
+            Display labels for each cluster. Auto-generated when *None*.
+        All remaining parameters are identical to ``make_plot``.
+
+        Supported graph_type values: ``"box"``, ``"overlay"``, ``"swarm"``,
+        ``"violin"``, ``"raincloud"``.
+        """
+        # ── resolve config (same merge logic as make_plot) ───────────────────
+        legacy = {k: v for k, v in [
+            ("point_type", point_type), ("show_mean", show_mean),
+            ("show_median", show_median), ("test_type", test_type),
+            ("correction", correction),
+        ] if v is not None}
+        config_overrides = {**legacy, **config_overrides}
+
+        unknown = {k for k in config_overrides
+                   if k not in PlotConfig.__dataclass_fields__}
+        if unknown:
+            raise TypeError(
+                f"make_cluster_plot() got unexpected keyword arguments: "
+                f"{sorted(unknown)}")
+
+        cfg = (dc_replace(self.config, **config_overrides)
+               if config_overrides else self.config)
+
+        self.stats_results = []
+
+        # ── cluster IDs ──────────────────────────────────────────────────────
+        mask_arr   = np.asarray(multi_cluster_mask)
+        unique_ids = sorted(int(c) for c in np.unique(mask_arr) if c != 0)
+        if not unique_ids:
+            raise ValueError(
+                "multi_cluster_mask contains no non-zero cluster IDs.")
+
+        if cluster_names is None:
+            cluster_names = [f"Cluster {cid}" for cid in unique_ids]
+        if len(cluster_names) != len(unique_ids):
+            raise ValueError(
+                "cluster_names length must match the number of cluster IDs.")
+
+        n_clusters = len(unique_ids)
+        n_sources  = len(self.raw_data)
+        n_keys     = len(self.labels)
+
+        # ── extract per-cluster pixel arrays ─────────────────────────────────
+        # groups[key][cluster_idx] = [arr_src0, arr_src1, ...]
+        groups: Dict[str, List[List[np.ndarray]]] = {}
+        for key in self.labels:
+            groups[key] = [[] for _ in unique_ids]
+            for src_idx, src in enumerate(self.raw_data):
+                try:
+                    raw = np.asanyarray(src[key]).astype(float)
+                except (KeyError, TypeError):
+                    for ci in range(n_clusters):
+                        groups[key][ci].append(np.array([]))
+                    continue
+
+                # per-source operations: strip 'mask' (cluster mask takes over)
+                if isinstance(self._operations, list):
+                    ops_raw = (self._operations[src_idx]
+                               if src_idx < len(self._operations) else {})
+                else:
+                    ops_raw = self._operations or {}
+                ops = {k: v for k, v in ops_raw.items() if k != "mask"}
+
+                for ci, cid in enumerate(unique_ids):
+                    cluster_px = mask_arr == cid
+                    vals = raw[cluster_px] if raw.shape == mask_arr.shape else raw.flatten()
+                    _, valid = DataProcessor.process(vals.reshape(-1), ops)
+                    groups[key][ci].append(valid)
+
+        # ── layout: one subplot per key ───────────────────────────────────────
+        col_w = max(cfg.figsize[0] / max(n_keys, 1), 4)
+        fig, axes = plt.subplots(
+            1, n_keys,
+            figsize=(col_w * n_keys, cfg.figsize[1]),
+            squeeze=False,
+        )
+        axes = axes[0]   # shape (n_keys,)
+
+        x_centers = np.arange(n_clusters, dtype=float)
+        width     = 0.6 / max(n_sources, 1)
+
+        for key_idx, key in enumerate(self.labels):
+            ax = axes[key_idx]
+
+            for src_idx in range(n_sources):
+                color     = cfg.color(src_idx)
+                positions = []
+                data_list = []
+
+                for ci in range(n_clusters):
+                    src_arrs = groups[key][ci]
+                    arr = (src_arrs[src_idx]
+                           if src_idx < len(src_arrs) else np.array([]))
+                    if len(arr):
+                        offset = (src_idx - (n_sources - 1) / 2) * width * 1.2
+                        positions.append(x_centers[ci] + offset)
+                        data_list.append(arr)
+
+                if not data_list:
+                    continue
+
+                if graph_type in ("box", "overlay"):
+                    ax.boxplot(
+                        data_list, positions=positions, widths=width * 0.9,
+                        patch_artist=True, showfliers=False,
+                        boxprops=dict(facecolor=color, alpha=0.5),
+                        medianprops=dict(color="black"),
+                    )
+
+                if graph_type in ("swarm", "overlay"):
+                    for pos, arr in zip(positions, data_list):
+                        samp = (arr if len(arr) < 250
+                                else np.random.choice(arr, 250, replace=False))
+                        if cfg.point_type == "swarm":
+                            sns.swarmplot(x=np.repeat(pos, len(samp)), y=samp,
+                                          ax=ax, color=color, size=4,
+                                          edgecolor="black", linewidth=0.4)
+                        else:
+                            ax.scatter(
+                                np.random.normal(pos, width * 0.08, len(samp)),
+                                samp, s=12, color=color, alpha=0.6)
+
+                if graph_type == "violin":
+                    for pos, arr in zip(positions, data_list):
+                        if DataProcessor.is_valid(arr):
+                            v = ax.violinplot(arr, positions=[pos], widths=width,
+                                              showmeans=False, showmedians=False,
+                                              showextrema=True)
+                            for part in ("cbars", "cmins", "cmaxes"):
+                                if part in v:
+                                    v[part].set_edgecolor("black")
+                                    v[part].set_linewidth(1.2)
+                            for body in v["bodies"]:
+                                body.set_facecolor(color); body.set_alpha(0.6)
+                                body.set_edgecolor("black"); body.set_linewidth(1.2)
+
+                if graph_type == "raincloud":
+                    for pos, arr in zip(positions, data_list):
+                        PlotKit.raincloud(ax, arr, config=cfg, color=color,
+                                          position=pos, width=width)
+
+                for pos, arr in zip(positions, data_list):
+                    if cfg.show_mean:
+                        ax.scatter(pos, np.nanmean(arr), color="white",
+                                   edgecolor="black", s=40, zorder=5)
+                    if cfg.show_median:
+                        ax.hlines(np.nanmedian(arr),
+                                  pos - width / 3, pos + width / 3,
+                                  color="black", lw=2)
+
+            ax.set_xticks(x_centers)
+            ax.set_xticklabels(cluster_names, rotation=20, ha="right")
+            ax.set_title(key)
+
+            if (show_significance and cfg.test_type.lower() != "none"
+                    and n_sources >= 2):
+                self._annotate_cluster_significance(
+                    ax, groups[key], n_sources, x_centers, width, cfg)
+
+        self._add_legend(axes[-1], n_sources, cfg)
+        fig.suptitle(title, fontsize=13, fontweight="bold")
+        plt.tight_layout()
+        self.current_fig = fig
+        return fig
+
+    def _annotate_cluster_significance(self, ax, key_groups, n_sources,
+                                        x_centers, width, cfg):
+        """Significance stars between sources at each cluster position."""
+        n_clusters = len(key_groups)
+        num_comps  = n_clusters * (n_sources - 1) if cfg.correction else 1
+        ymin, ymax = ax.get_ylim()
+        star_y     = ymax - 0.05 * (ymax - ymin)
+
+        for ci in range(n_clusters):
+            if not key_groups[ci]:
+                continue
+            s1 = key_groups[ci][0]
+            for src in range(1, n_sources):
+                if src >= len(key_groups[ci]):
+                    continue
+                s2 = key_groups[ci][src]
+                if len(s1) < 3 or len(s2) < 3:
+                    continue
+                if cfg.test_type.lower() == "paired":
+                    m = min(len(s1), len(s2))
+                    _, p = stats.ttest_rel(s1[:m], s2[:m])
+                else:
+                    _, p = stats.ttest_ind(s1, s2, equal_var=False)
+                adj_p = min(1.0, p * num_comps)
+                sig   = ("***" if adj_p < 0.001 else "**" if adj_p < 0.01
+                         else "*" if adj_p < 0.05 else "NS")
+                offset = (src - (n_sources - 1) / 2) * width * 1.2
+                ax.text(x_centers[ci] + offset, star_y, sig,
+                        ha="center", fontsize=9, fontweight="bold")
+                self.stats_results.append(
+                    {"Cluster": ci, "Source": src + 1, "P": adj_p})
+
     # ── export ─────────────────────────────────────────────────────────────────
     def export_data(self, save_pdf=False, save_png=False, save_csv=False,
                     filename="results", dpi=150) -> None:
