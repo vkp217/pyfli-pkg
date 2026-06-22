@@ -148,11 +148,11 @@ class GlobalFLIFitter:
             if model_type == 'bi-exponential':
                 # popt_sp = [S, alpha1, tau1, tau2, offset, h_shift]
                 local_p0 = {
-                    'A':      popt_sp[0],
+                    'amp':    popt_sp[0],
                     'alpha1': popt_sp[1],
                     'tau1':   popt_sp[2],
                     'tau2':   popt_sp[3],
-                    'B':      popt_sp[4],
+                    'offset': popt_sp[4],
                     'h_shift': popt_sp[5] if len(popt_sp) > 5 else 0.0,
                 }
                 if not global_inf:
@@ -165,9 +165,9 @@ class GlobalFLIFitter:
             else:
                 # popt_sp = [S, tau, offset, h_shift]
                 local_p0 = {
-                    'A':      popt_sp[0],
+                    'amp':    popt_sp[0],
                     'tau':    popt_sp[1],
-                    'B':      popt_sp[2],
+                    'offset': popt_sp[2],
                     'h_shift': popt_sp[3] if len(popt_sp) > 3 else 0.0,
                 }
                 if not global_inf:

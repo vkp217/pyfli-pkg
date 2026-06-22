@@ -53,7 +53,7 @@ dependencies = [
 
 
 [project.optional-dependencies]
-cuda = [
+gpu = [
     "nvidia-cuda-nvrtc",
     "nvidia-cuda-runtime",
 ]
