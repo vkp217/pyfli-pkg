@@ -53,17 +53,9 @@ dependencies = [
 
 
 [project.optional-dependencies]
-cuda13 = [
-    "nvidia-cuda-nvrtc-cu13",
-    "nvidia-cuda-runtime-cu13",
-]
-cuda12 = [
-    "nvidia-cuda-nvrtc-cu12",
-    "nvidia-cuda-runtime-cu12",
-]
-cuda11 = [
-    "nvidia-cuda-nvrtc-cu11",
-    "nvidia-cuda-runtime-cu11",
+cuda = [
+    "nvidia-cuda-nvrtc",
+    "nvidia-cuda-runtime",
 ]
 tf = [
     "tensorflow>=2.15.0",
