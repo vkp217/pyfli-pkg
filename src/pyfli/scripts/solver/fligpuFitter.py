@@ -116,7 +116,7 @@ class Fli_GPUProcessor:
 
     def fit_image(self, image_cube, irf_cube, mask=None, mode='MLE',
                   model_type='bi-exponential', max_iter=150, CRLB=False,
-                  data_name="Torch_Fit", shift_method='fourier', **kwargs):
+                  data_name="Torch_Fit", shift_method='fourier', p0=None, **kwargs):
         start_time = time.time()
         H, W, T = image_cube.shape
         t_axis = torch.arange(T, device=self.device) * (self.T_acq / T)
@@ -139,7 +139,10 @@ class Fli_GPUProcessor:
         flat_data = torch.tensor(image_cube.reshape(-1, T)[valid_idx], device=self.device, dtype=torch.float32)
         flat_irf  = irf_norm[valid_idx]
 
-        p_guess = self._get_sophisticated_guess(flat_data, flat_irf, model_type)
+        if p0 is not None:
+            p_guess = self._p0_to_tensor(p0, len(valid_idx), model_type)
+        else:
+            p_guess = self._get_sophisticated_guess(flat_data, flat_irf, model_type)
         raw_p = torch.zeros_like(p_guess)
 
         with torch.no_grad():
@@ -155,24 +158,22 @@ class Fli_GPUProcessor:
         raw_p.requires_grad_(True)
         pixel_health_map = np.ones(H * W, dtype=np.float32)
 
-        n_photons = flat_data.sum(dim=1, keepdim=True).clamp(min=1.0)
-
         if mode == 'LSE':
             def objective_fn(p_raw):
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
                 pred_safe = torch.clamp(pred, min=1.0)
                 per_px = torch.sum((pred - flat_data) ** 2 / pred_safe, dim=1, keepdim=True)
-                return (per_px / n_photons).sum()
+                return per_px.sum()
         else:
             def objective_fn(p_raw):
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
-                pred = torch.clamp(pred, min=1e-9)
+                pred_safe = torch.clamp(pred, min=1.0)
                 per_px = 2 * torch.sum(
-                    pred - flat_data + flat_data * torch.log(torch.clamp(flat_data, 1e-9) / pred),
+                    pred - flat_data + flat_data * torch.log(flat_data.clamp(min=1e-9) / pred_safe),
                     dim=1, keepdim=True)
-                return (per_px / n_photons).sum()
+                return per_px.sum()
 
         optimizer = torch.optim.LBFGS([raw_p], lr=1, max_iter=max_iter, history_size=10, line_search_fn="strong_wolfe")
 
@@ -303,28 +304,69 @@ class Fli_GPUProcessor:
             }
         }
 
+    def _p0_to_tensor(self, p0, n_pixels, model_type):
+        if isinstance(p0, dict):
+            if model_type == 'bi-exponential':
+                vals = [
+                    p0.get('amp',     1000.0),
+                    p0.get('alpha1',  0.5),
+                    p0.get('tau1',    1.0),
+                    p0.get('tau2',    3.0),
+                    p0.get('offset',  10.0),
+                    p0.get('h_shift', 0.0),
+                ]
+            else:
+                vals = [
+                    p0.get('amp',     1000.0),
+                    p0.get('tau',     2.0),
+                    p0.get('offset',  10.0),
+                    p0.get('h_shift', 0.0),
+                ]
+            arr = np.tile(vals, (n_pixels, 1)).astype(np.float32)
+        else:
+            row = np.asarray(p0, dtype=np.float32).ravel()
+            arr = np.tile(row, (n_pixels, 1))
+        return torch.tensor(arr, device=self.device, dtype=torch.float32)
+
     def _get_sophisticated_guess(self, data, irf, model_type):
-        guesses = []
-        cpu_data = data.detach().cpu().numpy()
-        T = cpu_data.shape[-1]
+        cpu_data = data.detach().cpu().numpy().astype(np.float64)
+        P, T  = cpu_data.shape
         t_axis = np.linspace(0, self.T_acq, T, endpoint=False)
+        dt    = (t_axis[1] - t_axis[0]) if T > 1 else 1.0
 
-        for i in range(cpu_data.shape[0]):
-            current_decay = cpu_data[i]
+        offset_guess = np.percentile(cpu_data, 5, axis=1)                          # (P,)
+        clean_d = np.clip(cpu_data - offset_guess[:, None], 1e-6, None)            # (P, T)
 
-            p0_safe, _ = resolve_params_and_bounds(
-                user_p0=None,
-                user_bounds=None,
-                model_type=model_type,
-                t=t_axis,
-                decay=current_decay,
-                T_laser=self.T_laser,
-                guess_plugin=moment_based_guess,
-                T_acq=self.T_acq
-            )
+        idx_max   = np.argmax(clean_d, axis=1)                                     # (P,)
+        col_idx   = np.arange(T)[None, :]                                          # (1, T)
+        post_peak = col_idx >= idx_max[:, None]                                    # (P, T)
+        d_post    = clean_d * post_peak                                            # (P, T)
 
-            guesses.append(p0_safe)
-        return torch.tensor(np.array(guesses), device=self.device, dtype=torch.float32)
+        t_peak = t_axis[idx_max]                                                   # (P,)
+        t_rel  = np.maximum(t_axis[None, :] - t_peak[:, None], 0.0) * post_peak   # (P, T)
+
+        m0 = np.trapezoid(d_post,         dx=dt, axis=1).clip(min=1e-12)          # (P,)
+        m1 = np.trapezoid(t_rel * d_post, dx=dt, axis=1)                          # (P,)
+
+        tau_mean = np.clip(m1 / m0, 0.05, self.T_laser * 0.8)
+        s_guess  = np.clip(m0 / (1.0 - np.exp(-self.T_acq / tau_mean)), 1e-3, None)
+        offset_safe = np.clip(offset_guess, 0.0, None)
+
+        if model_type == 'mono-exponential':
+            guesses = np.stack([s_guess, tau_mean, offset_safe, np.zeros(P)], axis=1)
+        else:
+            tau1 = np.clip(tau_mean * 0.5, 1e-4, self.T_laser * 0.99)
+            tau2 = np.clip(tau_mean * 1.5, tau1 * 1.01, self.T_laser)
+
+            # Data-driven α₁: fraction of post-peak area before the midpoint
+            mid_idx    = (idx_max + T) // 2
+            early_mask = post_peak & (col_idx < mid_idx[:, None])
+            a_early    = np.trapezoid(clean_d * early_mask, dx=dt, axis=1).clip(min=1e-9)
+            alpha1     = np.clip(a_early / m0.clip(min=1e-9), 0.15, 0.85)
+
+            guesses = np.stack([s_guess, alpha1, tau1, tau2, offset_safe, np.zeros(P)], axis=1)
+
+        return torch.tensor(guesses.astype(np.float32), device=self.device)
 
     def save_results(self, dataset, folder="results"):
         if not os.path.exists(folder): os.makedirs(folder)

@@ -103,19 +103,19 @@ class BaseFLIFitter:
         if pcov is not None:
             perr = np.sqrt(np.maximum(np.diag(pcov), 0))
         elif jac is not None:
-            perr = self.calculate_uncertainties(jac, ssr, len(d_fit), len(popt))
+            perr = self.calculate_uncertainties(jac, chi_sq, len(d_fit), len(popt))
         else:
             perr = np.full(len(popt), np.nan)
 
         return popt, perr, r_sq, chi_sq, red_chi_sq, ssr, (1 if status > 0 else 0)
 
-    def calculate_uncertainties(self, jacobian, ssr, n_data, n_params):
+    def calculate_uncertainties(self, jacobian, chi_sq, n_data, n_params):
         try:
             dof = n_data - n_params
-            if dof <= 0 or ssr <= 0: return np.zeros(n_params)
-            mse = ssr / dof
+            if dof <= 0 or chi_sq <= 0: return np.zeros(n_params)
+            red_chi_sq = chi_sq / dof
             hessian_inv = np.linalg.pinv(jacobian.T @ jacobian)
-            return np.sqrt(np.maximum(np.diag(hessian_inv) * mse, 0))
+            return np.sqrt(np.maximum(np.diag(hessian_inv) * red_chi_sq, 0))
         except:
             return np.full(n_params, np.nan)
 

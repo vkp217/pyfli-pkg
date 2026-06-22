@@ -42,7 +42,7 @@ def resolve_params_and_bounds(user_p0, user_bounds, model_type, t, decay, T_lase
     if model_type == 'bi-exponential':
         low_vec[1],  high_vec[1]  = 0.0,  1.0
         low_vec[2],  high_vec[2]  = 1e-4, T_laser
-        low_vec[3],  high_vec[3]  = 1e-4, T_laser
+        low_vec[3],  high_vec[3]  = max(float(p0_vec[2]), 1e-4), T_laser
         low_vec[5],  high_vec[5]  = -shift_bound, shift_bound
     else:
         low_vec[1],  high_vec[1]  = 1e-4, T_laser
@@ -94,9 +94,16 @@ def moment_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
             'offset': float(offset_guess)
         }
     else:
+        if len(d_decay) > 2:
+            half = max(len(d_decay) // 2, 1)
+            a_early = float(np.trapezoid(d_decay[:half], t_decay[:half])) + 1e-9
+            a_late  = float(np.trapezoid(d_decay[half:], t_decay[half:])) + 1e-9
+            alpha1_guess = float(np.clip(a_early / (a_early + a_late), 0.15, 0.85))
+        else:
+            alpha1_guess = 0.5
         return {
             'amp': float(s_guess),
-            'alpha1': 0.5,
+            'alpha1': alpha1_guess,
             'tau1': float(tau_g * 0.5),
             'tau2': float(tau_g * 1.5),
             'offset': float(offset_guess)
