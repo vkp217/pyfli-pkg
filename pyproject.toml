@@ -46,19 +46,31 @@ dependencies = [
     "pandas>=2.0.0",
     "scikit-learn>=1.3.0",
     "torch>=2.0.0",
-    "PySide6>=6.4.0"
+    "PySide6>=6.4.0",
+    "ipykernel>=6.0.0",
+    "ipywidgets>=7.0.0",
 ]
 
 
 [project.optional-dependencies]
-gpu = [
+cuda13 = [
+    "nvidia-cuda-nvrtc-cu13",
+    "nvidia-cuda-runtime-cu13",
+]
+cuda12 = [
+    "nvidia-cuda-nvrtc-cu12",
+    "nvidia-cuda-runtime-cu12",
+]
+cuda11 = [
+    "nvidia-cuda-nvrtc-cu11",
+    "nvidia-cuda-runtime-cu11",
+]
+tf = [
     "tensorflow>=2.15.0",
 ]
 dev = [
     "pytest",
     "black",
-    "ipykernel>=6.0.0",
-    "ipywidgets>=7.0.0",
 ]
 
 [tool.setuptools.packages.find]
