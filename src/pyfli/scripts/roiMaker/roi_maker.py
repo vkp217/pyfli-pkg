@@ -1166,6 +1166,16 @@ class ImageCanvas(QWidget):
         self._offset_x = 0.0
         self._offset_y = 0.0
 
+        # zoom / pan
+        self._zoom       = 1.0
+        self._pan_x      = 0.0
+        self._pan_y      = 0.0
+        self._fit_scale  = 1.0
+        self._panning    = False
+        self._pan_start_w  = None
+        self._pan_start_ox = None
+        self._pan_start_oy = None
+
         # base image
         arr = np.asarray(rm.display_base, dtype=np.uint8)
         h, w = arr.shape
@@ -1187,9 +1197,41 @@ class ImageCanvas(QWidget):
     def _recompute_transform(self):
         cw, ch = self.width(), self.height()
         iw, ih = self._pixmap.width(), self._pixmap.height()
-        self._scale    = min(cw / iw, ch / ih)
-        self._offset_x = (cw - iw * self._scale) / 2
-        self._offset_y = (ch - ih * self._scale) / 2
+        self._fit_scale = min(cw / iw, ch / ih)
+        self._scale    = self._fit_scale * self._zoom
+        self._offset_x = (cw - iw * self._scale) / 2 + self._pan_x
+        self._offset_y = (ch - ih * self._scale) / 2 + self._pan_y
+
+    def wheelEvent(self, e):
+        delta = e.angleDelta().y()
+        if delta == 0:
+            return
+        self._recompute_transform()
+        mx_w = e.position().x()
+        my_w = e.position().y()
+        # Image-space coords under the cursor before zooming
+        ix, iy = self._w2i(mx_w, my_w)
+        factor = 1.15 if delta > 0 else (1.0 / 1.15)
+        new_zoom = max(1.0, min(self._zoom * factor, 20.0))
+        if abs(new_zoom - self._zoom) < 1e-9:
+            return
+        self._zoom = new_zoom
+        # Recompute natural center offset at new scale, then shift pan so the
+        # image-space point under the cursor stays under the cursor.
+        new_scale = self._fit_scale * new_zoom
+        cw, ch = self.width(), self.height()
+        iw, ih = self._pixmap.width(), self._pixmap.height()
+        desired_ox = mx_w - ix * new_scale
+        desired_oy = my_w - iy * new_scale
+        self._pan_x = desired_ox - (cw - iw * new_scale) / 2
+        self._pan_y = desired_oy - (ch - ih * new_scale) / 2
+        self.update()
+
+    def reset_zoom(self):
+        self._zoom  = 1.0
+        self._pan_x = 0.0
+        self._pan_y = 0.0
+        self.update()
 
     def _w2i(self, wx, wy):
         return ((wx - self._offset_x) / self._scale,
@@ -1350,6 +1392,14 @@ class ImageCanvas(QWidget):
     # ── mouse ──────────────────────────────────────────────────────────────────
 
     def mousePressEvent(self, e):
+        if e.button() == Qt.MiddleButton:
+            self._recompute_transform()
+            self._panning    = True
+            self._pan_start_w  = QPointF(e.pos())
+            self._pan_start_ox = self._pan_x
+            self._pan_start_oy = self._pan_y
+            self.setCursor(Qt.ClosedHandCursor)
+            return
         if e.button() != Qt.LeftButton:
             return
         wpt = QPointF(e.pos())
@@ -1405,6 +1455,12 @@ class ImageCanvas(QWidget):
         wpt = QPointF(e.pos())
         self._cur_mw = wpt
 
+        if self._panning:
+            self._pan_x = self._pan_start_ox + wpt.x() - self._pan_start_w.x()
+            self._pan_y = self._pan_start_oy + wpt.y() - self._pan_start_w.y()
+            self.update()
+            return
+
         if self._resizing and self.selected_idx != -1:
             self._apply_resize(wpt)
         elif self._moving and self.selected_idx != -1:
@@ -1438,6 +1494,10 @@ class ImageCanvas(QWidget):
         self.update()
 
     def mouseReleaseEvent(self, e):
+        if e.button() == Qt.MiddleButton:
+            self._panning = False
+            self.setCursor(Qt.ArrowCursor)
+            return
         if e.button() != Qt.LeftButton:
             return
         if self._resizing:
@@ -1492,6 +1552,8 @@ class ImageCanvas(QWidget):
     def keyPressEvent(self, e):
         if e.key() in (Qt.Key_Delete, Qt.Key_Backspace):
             self._delete_selected()
+        elif e.key() == Qt.Key_Home:
+            self.reset_zoom()
 
     def _delete_selected(self):
         if 0 <= self.selected_idx < len(self.rm.rois):
@@ -1981,6 +2043,8 @@ class ROIApp(QMainWindow):
             self._save_close()
         elif e.key() == Qt.Key_Escape:
             self._cancel()
+        elif e.key() == Qt.Key_Home:
+            self.canvas.reset_zoom()
         else:
             super().keyPressEvent(e)
 
@@ -2057,6 +2121,18 @@ class ROIMaker:
             cv2.fillPoly(mask, [roi.pts.astype(np.int32)], 1)
         return mask
 
+    def get_threshold_binary_mask(self) -> np.ndarray:
+        """Binary (H,W) uint8 mask built purely from intensity thresholds.
+
+        Every pixel whose value is within [intensity_low, intensity_high] is 1;
+        everything else is 0.  No polygon filling is involved, so pixels that
+        sit inside a closed/ring-shaped ROI boundary but fall outside the
+        intensity range are correctly excluded — the problem that arises when
+        fillPoly floods a hollow structure's interior.
+        """
+        lo, hi = self.intensity_low, self.intensity_high
+        return ((self._raw_img >= lo) & (self._raw_img <= hi)).astype(np.uint8)
+
     def get_multi_cluster_mask(self) -> np.ndarray:
         """Each ROI → its roi_id; background → 0.  Intensity filter NOT applied."""
         mask = np.zeros((self.H, self.W), dtype=np.int32)
@@ -2089,8 +2165,13 @@ class ROIMaker:
         os.makedirs(os.path.dirname(stem) or ".", exist_ok=True)
 
         if self.mask_type == 'binary':
-            np.save(self.save_path, self.get_binary_mask())
-            print(f"Saved binary mask → {self.save_path}")
+            if self.intensity_active:
+                mask = self.get_threshold_binary_mask()
+                np.save(self.save_path, mask)
+                print(f"Saved threshold binary mask (intensity [{self.intensity_low}–{self.intensity_high}]) → {self.save_path}")
+            else:
+                np.save(self.save_path, self.get_binary_mask())
+                print(f"Saved binary mask → {self.save_path}")
 
         elif self.mask_type == 'multi':
             m = self.get_multi_cluster_mask()
