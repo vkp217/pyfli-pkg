@@ -916,6 +916,15 @@ class ROIApp(QMainWindow):
         self.canvas.update()
         self._refresh_status()
 
+    def _save_threshold_mask(self):
+        """Save a binary mask built purely from intensity thresholds (no ROI polygons)."""
+        if not self.rm.intensity_active:
+            self.statusBar().showMessage("  Enable the intensity filter first.", 3000)
+            return
+        path = self.rm.save_threshold_binary_mask()
+        self.statusBar().showMessage(
+            f"  Saved threshold binary mask → {path}", 5000)
+
     def _reset_ids(self):
         """Clear all ID assignments — every ROI returns to unassigned state."""
         for roi in self.rm.rois:
@@ -1764,6 +1773,16 @@ class ROIApp(QMainWindow):
         thresh_btn.clicked.connect(self._create_threshold_rois)
         layout.addWidget(thresh_btn)
 
+        save_thresh_btn = self._action_button('◈', 'Save Threshold Mask', '')
+        save_thresh_btn.setToolTip(
+            "Save a binary mask directly from intensity thresholds.\n"
+            "Each pixel = 1 if inside [low, high], else 0.\n"
+            "No ROI polygons — hollow structures stay correct.\n"
+            "Saved as <name>_threshold_binary.npy"
+        )
+        save_thresh_btn.clicked.connect(self._save_threshold_mask)
+        layout.addWidget(save_thresh_btn)
+
         layout.addSpacing(4); layout.addWidget(self._divider())
 
         # ── FILE ──
@@ -1936,6 +1955,15 @@ class ROIApp(QMainWindow):
                 f"  Added {n} threshold-based ROI(s).  Assign IDs before saving.", 4000)
         self.canvas.update()
         self._refresh_status()
+
+    def _save_threshold_mask(self):
+        """Save a binary mask built purely from intensity thresholds (no ROI polygons)."""
+        if not self.rm.intensity_active:
+            self.statusBar().showMessage("  Enable the intensity filter first.", 3000)
+            return
+        path = self.rm.save_threshold_binary_mask()
+        self.statusBar().showMessage(
+            f"  Saved threshold binary mask → {path}", 5000)
 
     def _reset_ids(self):
         """Clear all ID assignments — every ROI returns to unassigned state."""
@@ -2133,6 +2161,21 @@ class ROIMaker:
         lo, hi = self.intensity_low, self.intensity_high
         return ((self._raw_img >= lo) & (self._raw_img <= hi)).astype(np.uint8)
 
+    def save_threshold_binary_mask(self) -> str:
+        """Save a binary mask derived purely from intensity thresholds and return the path.
+
+        Each pixel is 1 if its value is within [intensity_low, intensity_high], 0 otherwise.
+        No ROI polygons or fillPoly are involved, so hollow/ring structures are handled
+        correctly — interior pixels that fall outside the range stay excluded.
+
+        Saved independently of the main ROI mask pipeline as <stem>_threshold_binary.npy.
+        """
+        stem, _ = os.path.splitext(os.path.abspath(self.save_path))
+        os.makedirs(os.path.dirname(stem) or ".", exist_ok=True)
+        path = f"{stem}_threshold_binary.npy"
+        np.save(path, self.get_threshold_binary_mask())
+        return path
+
     def get_multi_cluster_mask(self) -> np.ndarray:
         """Each ROI → its roi_id; background → 0.  Intensity filter NOT applied."""
         mask = np.zeros((self.H, self.W), dtype=np.int32)
@@ -2165,13 +2208,8 @@ class ROIMaker:
         os.makedirs(os.path.dirname(stem) or ".", exist_ok=True)
 
         if self.mask_type == 'binary':
-            if self.intensity_active:
-                mask = self.get_threshold_binary_mask()
-                np.save(self.save_path, mask)
-                print(f"Saved threshold binary mask (intensity [{self.intensity_low}–{self.intensity_high}]) → {self.save_path}")
-            else:
-                np.save(self.save_path, self.get_binary_mask())
-                print(f"Saved binary mask → {self.save_path}")
+            np.save(self.save_path, self.get_binary_mask())
+            print(f"Saved binary mask → {self.save_path}")
 
         elif self.mask_type == 'multi':
             m = self.get_multi_cluster_mask()
