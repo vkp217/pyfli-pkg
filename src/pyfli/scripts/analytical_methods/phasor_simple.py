@@ -321,15 +321,18 @@ class PhasorAnalyzer:
         g_flat = np.ravel(G_2d)
         s_flat = np.ravel(S_2d)
         if mask is not None:
-            mask_flat = np.ravel(mask)
+            mask_flat = np.ravel(mask).astype(bool)  # uint8 masks must be bool; int array would integer-index instead
             g_plot = g_flat[mask_flat]
             s_plot = s_flat[mask_flat]
         else:
             g_plot = g_flat
             s_plot = s_flat
+        valid = ~np.isnan(g_plot) & ~np.isnan(s_plot)
+        g_plot = g_plot[valid]
+        s_plot = s_plot[valid]
         if colors is None:
             cmap_to_use = hexbin_color if hexbin_color is not None else 'autumn'
-            hb = ax.hexbin(g_plot, s_plot, gridsize=200, cmap=cmap_to_use, mincnt=1)
+            hb = ax.hexbin(g_plot, s_plot, gridsize=100, cmap=cmap_to_use, mincnt=1)
             fig.colorbar(hb, ax=ax).set_label("Pixel Count")
         else:
             if isinstance(colors, str):
@@ -339,9 +342,9 @@ class PhasorAnalyzer:
             else:
                 c_flat = np.reshape(colors, (-1, 3))
                 if mask is not None:
-                    c_plot = c_flat[mask_flat]
+                    c_plot = c_flat[mask_flat][valid]
                 else:
-                    c_plot = c_flat
+                    c_plot = c_flat[valid]
                 ax.scatter(g_plot, s_plot, c=c_plot, s=8, marker="o")
 
         G_mark, S_mark = self.lifetime_to_phasor(_TAU_MARKS_NS, self.frequency)
@@ -650,7 +653,7 @@ class PhasorAnalyzer:
 
             if colors is None:
                 cmap_to_use = hexbin_color if hexbin_color is not None else 'jet'
-                hb = ax.hexbin(g_plot, s_plot, gridsize=150, cmap=cmap_to_use, mincnt=1)
+                hb = ax.hexbin(g_plot, s_plot, gridsize=100, cmap=cmap_to_use, mincnt=1)
                 fig.colorbar(hb, ax=ax, fraction=0.046, pad=0.04).set_label("Pixel Count")
             
             else:
