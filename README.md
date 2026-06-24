@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="PyFLI_logo.png" alt="PyFLI Logo" width="300"/>
+  <img src="src/pyfli/PyFLI_logo.png" alt="PyFLI Logo" width="300"/>
 </p>
 
 # pyfli: A Unified Platform for FLI Data Processing
