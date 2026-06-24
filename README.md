@@ -100,4 +100,5 @@ If you use the **phasor SEPL analysis** functionality specifically, please also 
 
 The source code is hosted on GitHub. Please report any bugs or feature requests via the issues tracker.
 * **GitHub:** [https://github.com/vkp217/pyfli-pkg](https://github.com/vkp217/pyfli-pkg)
+* **Contact:** For any queries, reach out at [pyfli4lifetime@gmail.com](mailto:pyfli4lifetime@gmail.com)
 

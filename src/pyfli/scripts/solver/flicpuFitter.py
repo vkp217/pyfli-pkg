@@ -117,7 +117,7 @@ class Fli_CPUProcessor:
                 'tau2_map':            tau2_m,
                 'tau_mean_map':        (alpha1_m * tau1_m + (1.0 - alpha1_m) * tau2_m).astype(np.float32),
                 'v_shift_map':         p_maps[..., 4],
-                'fret_efficiency_map': np.where(tau2_m > 0, 1.0 - tau1_m / tau2_m, 0.0).astype(np.float32),
+                'fret_efficiency_map': (1.0 - np.divide(tau1_m, tau2_m, out=np.zeros_like(tau2_m, dtype=np.float32), where=tau2_m > 0)).astype(np.float32),
                 'h_shift_map':         p_maps[..., 5].astype(np.float32),
             }
         else:

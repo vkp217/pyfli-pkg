@@ -117,6 +117,10 @@ class Fli_GPUProcessor:
     def fit_image(self, image_cube, irf_cube, mask=None, mode='MLE',
                   model_type='bi-exponential', max_iter=150, CRLB=False,
                   data_name="Torch_Fit", shift_method='interp', p0=None, **kwargs):
+        # Normalise mode: any NLSF-like string → 'LSE', everything else → 'MLE'
+        _MLE_MODES = {'MLE', 'POISSON', 'PEARSON', 'NEYMAN'}
+        mode = 'MLE' if mode.upper() in _MLE_MODES else 'LSE'
+
         start_time = time.time()
         H, W, T = image_cube.shape
         t_axis = torch.arange(T, device=self.device) * (self.T_acq / T)
@@ -149,9 +153,9 @@ class Fli_GPUProcessor:
             raw_p[:, 0]  = torch.log(torch.clamp(p_guess[:, 0], min=1e-3))
             raw_p[:, -2] = torch.log(torch.clamp(p_guess[:, -2], min=1e-6))
             if model_type == 'bi-exponential':
-                raw_p[:, 1] = torch.logit(torch.clamp(p_guess[:, 1], 0.01, 0.99))
-                raw_p[:, 2] = torch.log(torch.clamp(p_guess[:, 2], min=0.1))
-                raw_p[:, 3] = torch.log(torch.clamp(p_guess[:, 3] - p_guess[:, 2], min=0.1))
+                raw_p[:, 1] = torch.logit(torch.clamp(p_guess[:, 1], 0.001, 0.999))
+                raw_p[:, 2] = torch.log(torch.clamp(p_guess[:, 2], min=1e-3))
+                raw_p[:, 3] = torch.log(torch.clamp(p_guess[:, 3] - p_guess[:, 2], min=1e-3))
             else:
                 raw_p[:, 1] = torch.log(torch.clamp(p_guess[:, 1], min=0.1))
 
@@ -280,7 +284,7 @@ class Fli_GPUProcessor:
                 'tau2_map':            tau2_m,
                 'tau_mean_map':        (alpha1_m * tau1_m + (1.0 - alpha1_m) * tau2_m).astype(np.float32),
                 'v_shift_map':         p_maps[..., 4],
-                'fret_efficiency_map': np.where(tau2_m > 0, 1.0 - tau1_m / tau2_m, 0.0).astype(np.float32),
+                'fret_efficiency_map': (1.0 - np.divide(tau1_m, tau2_m, out=np.zeros_like(tau2_m, dtype=np.float32), where=tau2_m > 0)).astype(np.float32),
                 'h_shift_map':         p_maps[..., 5].astype(np.float32),
                 **common,
             }
@@ -363,7 +367,7 @@ class Fli_GPUProcessor:
             mid_idx    = (idx_max + T) // 2
             early_mask = post_peak & (col_idx < mid_idx[:, None])
             a_early    = np.trapezoid(clean_d * early_mask, dx=dt, axis=1).clip(min=1e-9)
-            alpha1     = np.clip(a_early / m0.clip(min=1e-9), 0.15, 0.85)
+            alpha1     = np.clip(a_early / m0.clip(min=1e-9), 0.001, 0.999)
 
             guesses = np.stack([s_guess, alpha1, tau1, tau2, offset_safe, np.zeros(P)], axis=1)
 

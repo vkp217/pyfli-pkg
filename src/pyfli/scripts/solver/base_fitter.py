@@ -62,31 +62,34 @@ class BaseFLIFitter:
             full_model = self.model_fit(self.t, params, model_type=model_type)
             return (full_model[self.fit_indices] - d_fit) * weights
 
+        max_nfev = kwargs.get('max_iter', kwargs.get('maxiter', 500))
         res = least_squares(residuals, x0=p0, bounds=bounds,
                             ftol=kwargs.get('ftol', 1e-7),
                             xtol=kwargs.get('xtol', 1e-7),
-                            max_nfev=kwargs.get('maxiter', 500))
+                            max_nfev=max_nfev)
         return self._post_process(res.x, res.jac, res.status, model_type)
 
     def trust_region(self, p0, bounds, model_type, **kwargs):
+        max_nfev = kwargs.get('max_iter', kwargs.get('maxiter', 2000))
         def wrapper(t_sub, *p):
             return self.model_fit(self.t, p, model_type=model_type)[self.fit_indices]
         try:
             popt, pcov = curve_fit(wrapper, self.t[self.fit_indices], self.decay[self.fit_indices],
-                                    p0=p0, method='trf', bounds=bounds)
+                                    p0=p0, method='trf', bounds=bounds, max_nfev=max_nfev)
             status = 1
         except:
             popt, pcov, status = p0, None, 0
         return self._post_process(popt, None, status, model_type, pcov=pcov)
 
     def unconstrained(self, p0, bounds, model_type, **kwargs):
+        max_nfev = kwargs.get('max_iter', kwargs.get('maxiter', 2000))
         def wrapper(t_sub, *p):
             return self.model_fit(self.t, p, model_type=model_type)[self.fit_indices]
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", OptimizeWarning)
                 popt, pcov = curve_fit(wrapper, self.t[self.fit_indices], self.decay[self.fit_indices],
-                                       p0=p0, method='lm')
+                                       p0=p0, method='lm', maxfev=max_nfev)
             status = 1
         except:
             return self.fit_with_estimator(estimator_type='trust_region', model_type=model_type, p0=p0)
