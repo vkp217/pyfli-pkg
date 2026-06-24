@@ -22,12 +22,14 @@ class FLIEngine:
         
         irf = irf_picker(irf_full)
         # Timing and Normalization
-        self.irf = np.nan_to_num(irf / irf.sum())
-        self.laser_period = 1000/laser_feq
-        self.t = np.linspace(0, self.laser_period, len(self.irf))
-        
-        # Compatibility with TCSPC logic
-        self.dt = self.t[1] - self.t[0]
+        irf_sum = irf.sum()
+        if not np.isfinite(irf_sum) or irf_sum <= 0:
+            raise ValueError(f"Invalid IRF: sum={irf_sum}. IRF must be non-negative and non-zero.")
+        self.irf = irf / irf_sum
+        self.laser_period = 1000 / laser_feq
+        # N bins each of width dt covering [0, laser_period); endpoint-exclusive
+        self.dt = self.laser_period / len(self.irf)
+        self.t  = np.arange(len(self.irf)) * self.dt
 
         #  Parameters Storage
         self.params_cfg = {
@@ -58,9 +60,16 @@ class FLIEngine:
             f = (A1 * (1-np.exp(-self.laser_period/t1))) / (A1*(1-np.exp(-self.laser_period/t1)) + (1-A1)*(1-np.exp(-self.laser_period/t2)))
             return {"mono": True, "E": E, "f": f, "tau1": t1, "tau2": t2, "A1": A1, "A2": 1.0 - A1}
         
-        E = ParameterSampler.sample_beta(*self.params_cfg['eff'], scale=0.9, offset=0.1)
-        f = ParameterSampler.sample_beta(*self.params_cfg['f'], scale=0.9, offset=0.05)
-        return {"mono": False, "E": E, "f": f, "tau1": t2*(1-E), "tau2": t2, "A1": f, "A2": 1.0 - f}
+        E  = ParameterSampler.sample_beta(*self.params_cfg['eff'], scale=0.9, offset=0.1)
+        A1 = ParameterSampler.sample_beta(*self.params_cfg['f'],   scale=0.9, offset=0.05)
+        A2 = 1.0 - A1
+        t1 = t2 * (1 - E)
+        # Pulsed-repetition correction (same formula as mono mode)
+        w1    = A1 * (1 - np.exp(-self.laser_period / t1))
+        w2    = A2 * (1 - np.exp(-self.laser_period / t2))
+        denom = w1 + w2
+        f     = w1 / denom if denom > 0 else A1
+        return {"mono": False, "E": E, "f": f, "tau1": t1, "tau2": t2, "A1": A1, "A2": A2}
 
     def get_analytical_decay(self, p):
         """Returns the clean multiexponential decay curve."""

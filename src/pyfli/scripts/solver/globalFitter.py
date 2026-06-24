@@ -197,13 +197,14 @@ class GlobalFLIFitter:
             'alpha1_map' if model_type == 'bi-exponential' else 'tau_map': _z2(),
             'tau1_map':            _z2() if model_type == 'bi-exponential' else None,
             'tau2_map':            _z2() if model_type == 'bi-exponential' else None,
+            'tau_mean_map':        _z2() if model_type == 'bi-exponential' else None,
             'fret_efficiency_map': _z2() if model_type == 'bi-exponential' else None,
-            'Area_map':            _z2(),
-            'offset_map':          _z2(),
+            'photon_count_map':    _z2(),
+            'v_shift_map':         _z2(),
             'h_shift_map':         _z2(),
-            'chi2_map':            _z2(),   # fitter writes 'chi2_map' (lowercase)
+            'chi2_map':            _z2(),
             'R2_map':              _z2(),
-            'reduced_stat_map':    _z2(),
+            'reduced_chi2_map':    _z2(),
             'convergence_map':     _z2(),
             'pixel_health_map':    _z2(),
         }
@@ -236,10 +237,11 @@ class GlobalFLIFitter:
                 stitched_tr['residual_map'][r_idx, c_idx, :] = tr_maps['residual_map'][r_idx, c_idx, :]
 
         return {
-            'name': "Global_Stitched_Result",
+            'name':   "Global_Stitched_Result",
+            'method': 'GlobalFit',
             'results': {
-                'maps': {k: v for k, v in stitched_maps.items() if v is not None},
-                'TR_maps': stitched_tr
+                'maps':    {k: v for k, v in stitched_maps.items() if v is not None},
+                'TR_maps': stitched_tr,
             }
         }
 

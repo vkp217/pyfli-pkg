@@ -15,8 +15,8 @@ class ParameterSampler:
     def sample_noise_params(bit_depth, sensor_type='ICCD'):
         """Centralized control for hardware noise levels."""
         if sensor_type.upper() == 'ICCD':
-            # Linear scaling for read noise and DCR
-            read_sigma = np.random.uniform(1.0, 3.0) * (bit_depth / 8.0)
+            # Read noise is a fixed electronic property (electrons RMS), independent of bit depth
+            read_sigma = np.random.uniform(1.0, 3.0)
             return {"read_sigma": read_sigma}
         return {"read_sigma": 0.0} # SPADs effectively have zero read noise
     

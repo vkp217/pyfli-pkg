@@ -13,12 +13,12 @@ from pyfli.scripts.solver.base_fitter import BaseFLIFitter
 from pyfli.scripts.solver.flicpuFitter import Fli_CPUProcessor
 
 # ---------------------------------------------------------------------------
-# Constants — 80 MHz system, 256 bins at 0.05 ns/bin → T_acq = 12.8 ns
+# Constants — 80 MHz system, 256 bins → T_acq = 12.5 ns, dt = 12.5/256 ns/bin
 # ---------------------------------------------------------------------------
 _N   = 256
-_DT  = 0.05          # ns/bin
+_DT  = 12.5 / _N    # ≈ 0.04883 ns/bin (12.5 ns laser period / 256 bins)
 _T   = np.arange(_N) * _DT   # time axis
-_FREQ = [80.0, 1000.0 / (_N * _DT)]   # [laser MHz, acq MHz]
+_FREQ = [80.0, 1000.0 / (_N * _DT)]   # [laser MHz, acq MHz] — both 80.0 MHz
 
 
 # ---------------------------------------------------------------------------
@@ -221,8 +221,8 @@ class TestCPUProcessorOutputKeys:
     def test_old_chi2_key_absent(self, biexp_result):
         assert "chi2_or_deviance_map" not in biexp_result["results"]["maps"]
 
-    def test_reduced_stat_map_present(self, biexp_result):
-        assert "reduced_stat_map" in biexp_result["results"]["maps"]
+    def test_reduced_chi2_map_present(self, biexp_result):
+        assert "reduced_chi2_map" in biexp_result["results"]["maps"]
 
     def test_r2_map_present(self, biexp_result):
         assert "R2_map" in biexp_result["results"]["maps"]
@@ -235,13 +235,13 @@ class TestCPUProcessorOutputKeys:
 
     def test_biexp_param_keys(self, biexp_result):
         maps = biexp_result["results"]["maps"]
-        for key in ("Area_map", "alpha1_map", "tau1_map", "tau2_map",
-                    "offset_map", "h_shift_map"):
+        for key in ("photon_count_map", "alpha1_map", "tau1_map", "tau2_map",
+                    "tau_mean_map", "v_shift_map", "h_shift_map"):
             assert key in maps, f"Missing key: {key}"
 
     def test_mono_param_keys(self, mono_result):
         maps = mono_result["results"]["maps"]
-        for key in ("Area_map", "tau_map", "offset_map", "chi2_map", "h_shift_map"):
+        for key in ("photon_count_map", "tau_map", "v_shift_map", "chi2_map", "h_shift_map"):
             assert key in maps, f"Missing key: {key}"
 
     def test_tr_maps_keys(self, biexp_result):
@@ -259,18 +259,18 @@ class TestCPUProcessorChi2Consistency:
         if not health.any():
             pytest.skip("No healthy pixels")
         chi2_raw = maps["chi2_map"][health]
-        chi2_red = maps["reduced_stat_map"][health]
+        chi2_red = maps["reduced_chi2_map"][health]
         assert np.all(chi2_raw >= chi2_red), \
-            "chi2_map (raw) must be >= reduced_stat_map for every healthy pixel"
+            "chi2_map (raw) must be >= reduced_chi2_map for every healthy pixel"
 
     def test_chi2_and_reduced_are_consistent(self, biexp_result):
-        """reduced_stat_map ≈ chi2_map / dof for bi-exponential (dof = N − 6)."""
+        """reduced_chi2_map ≈ chi2_map / dof for bi-exponential (dof = N − 6)."""
         maps   = biexp_result["results"]["maps"]
         health = maps["pixel_health_map"] > 0
         if not health.any():
             pytest.skip("No healthy pixels")
         dof = _N - 6   # N bins − 6 params [S, a1, tau1, tau2, offset, h_shift]
-        ratio = maps["chi2_map"][health] / maps["reduced_stat_map"][health]
+        ratio = maps["chi2_map"][health] / maps["reduced_chi2_map"][health]
         np.testing.assert_allclose(ratio, dof, rtol=1e-4)
 
 

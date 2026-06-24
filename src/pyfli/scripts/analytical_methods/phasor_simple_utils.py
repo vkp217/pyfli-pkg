@@ -40,9 +40,7 @@ def _draw_lifetime_ticks(ax, G_mark, S_mark,
 
 
 def _style_phasor_ax(ax, title: str = "Phasor Diagram",
-                     xlim=(-0.1, 1.1), ylim=(-0.6, 0.6), half_circle: bool = False):
-    if half_circle:
-        ylim = (0, ylim[1])
+                     xlim=(-0.1, 1.1), ylim=(0.0, 0.6), half_circle: bool = True):
     ax.set_xlabel("G")
     ax.set_ylabel("S")
     ax.set_title(title)

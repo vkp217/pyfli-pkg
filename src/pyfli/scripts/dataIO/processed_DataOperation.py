@@ -113,7 +113,7 @@ class AlliGprocessedImport(DatasetPlotter):
             if is_biexp:
                 biexp_rename = {'A_1 Map': "A1_map", 'A_2 Map':"A2_map", 'Baseline Map': 'baseline_map', 
                                 'Chi^2 Map': 'chi2_map', 'f1_a Map':'f1a_map', 'f1_i Map':'f1i_map',
-                                'f2_a Map':'f2a_map', 'f2_i Map':'f2i_map', 'Offset Map':'offset_map', 'R^2 Map': 'r2_map',
+                                'f2_a Map':'f2a_map', 'f2_i Map':'f2i_map', 'Offset Map':'v_shift_map', 'R^2 Map': 'r2_map',
                                 'tau_1 Map':'tau1_map', 'tau_2 Map':'tau2_map', '-tau-_a Map':'tau_mean_map','-tau-_i Map':'taui_mean_map'} 
                 try:
                     key_lookup = var_name + " Map"
@@ -124,7 +124,7 @@ class AlliGprocessedImport(DatasetPlotter):
                     print(f"Could not load {full_name}: {e}")
             else:
                 monoexp_rename = {'A Map':'A_map', 'Baseline Map':'baseline_map', 
-                                  'Chi^2 Map':'chi2_map', 'Offset Map':'offset_map',
+                                  'Chi^2 Map':'chi2_map', 'Offset Map':'v_shift_map',
                                   'R^2 Map':'r2_map', 'tau Map':'tau_map'}
                 try:
                     key_lookup = var_name + " Map"
@@ -182,11 +182,11 @@ class BHprocessedImport(DatasetPlotter):
         is_biexp = self._detect_fit_type(files)
         
         biexp_rename = {'a1': 'A1_map', 'a1[%]': 'A1_perc_map', 'a2': 'A2_map', 'a2[%]': 'A2_perc_map',
-                        't1': 'tau1_map', 't2': 'tau2_map', 'tm': 'tau_mean_map', 'offset': 'offset_map', 
+                        't1': 'tau1_map', 't2': 'tau2_map', 'tm': 'tau_mean_map', 'offset': 'v_shift_map', 
                         'chi': 'chi2_map', 'r2': 'r2_map', 'phasor': "phasor_map"}
         
         mono_rename = {'a': 'A_map', 'a[%]': 'A_perc_map', 't': 'tau_map', 
-                       'offset': 'offset_map', 'chi': 'chi2_map', 'r2': 'r2_map', 'phasor': "phasor_map"}
+                       'offset': 'v_shift_map', 'chi': 'chi2_map', 'r2': 'r2_map', 'phasor': "phasor_map"}
 
         special_cases = ['phasor', 'irf'] 
 

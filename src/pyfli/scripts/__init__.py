@@ -2,9 +2,7 @@
 from .dataIO import (DataOperations, AlliGprocessedImport, 
                         BHprocessedImport, PyFliprocessedImport, DatasetPlotter, DataIO_utils,
                          Detector, load_flim_data, collapse_to_xyt, plot_xyt )
-from .analytical_methods import (PhasorAnalyzer, FLIFitter, PoissonLikelihoodFitter, 
-                                 FLIAnalysisSuite, AnalyticalHelpers,
-                                 LaguerreFLI)
+from .analytical_methods import (PhasorAnalyzer, AnalyticalHelpers, LaguerreFLI)
 from .dataCC import IRFAligner, DataPreprocessing, Normalization, ROIoperations
 from .dataVnP import (DataViewer, Plotter, DLModelComparator, Colorprocess,
                                PlotConfig, DataProcessor, SourceLoader,
@@ -50,8 +48,7 @@ from .phasor import (
 # This allows: from pyfli.scripts import DataViewer
 __all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport",
     "BHprocessedImport", "PyFliprocessedImport", "DatasetPlotter", "HardSimulator",
-    "HardestSimulator", "FLIFitter", "PoissonLikelihoodFitter", "FLIAnalysisSuite", 
-    "PhasorAnalyzer", "Plotter", "DLModelComparator", "DataPreprocessing",
+    "HardestSimulator", "PhasorAnalyzer", "Plotter", "DLModelComparator", "DataPreprocessing",
     "PlotConfig", "DataProcessor", "SourceLoader", "PlotKit", "SubplotVisualizer", "plot_2d_subplots",
     "BaseFLIFitter", "Fli_CPUProcessor", "Fli_GPUProcessor", "MLEFLIFitter", "GlobalFLIFitter",
     "ROIMaker", "AnalyticalHelpers", "DataIO_utils", "Colorprocess",

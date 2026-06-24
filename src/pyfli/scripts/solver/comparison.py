@@ -2,7 +2,6 @@
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-from tabulate import tabulate
 
 class FittingComparator:
     def __init__(self, freq, base_fitter_class, mle_fitter_class):
@@ -18,6 +17,67 @@ class FittingComparator:
             'pearson':       ('MLE',  self.MLEClass),
             'neyman':        ('MLE',  self.MLEClass)
         }
+
+    @staticmethod
+    def _print_result_block(method, category, success, elapsed, r2, stat, red_stat, popt, model_type):
+        W = 62
+        hl = '─' * W
+        tag = f"[{category}]"
+        title = f"  {method}"
+        header_line = title + tag.rjust(W - len(title))
+
+        def box(content=''):
+            return f'│{content[:W].ljust(W)}│'
+
+        def two(lk, lv, rk='', rv=''):
+            half = W // 2
+            left  = f"  {lk:<10}{lv}"
+            right = f"  {rk:<10}{rv}" if rk else ''
+            full  = f"{left:<{half}}{right}"
+            return box(full)
+
+        icon   = '✓' if success == 'YES' else '✗'
+        status = f"{icon}  Converged" if success == 'YES' else f"{icon}  Failed"
+
+        print(f'┌{hl}┐')
+        print(box(header_line))
+        print(f'├{hl}┤')
+        print(two('Status', status, 'Time', elapsed))
+        print(two('R²', f'{r2:.4f}', 'Chi²', f'{stat:.2f}'))
+        print(box(f'  {"Red. Chi²":<10}{red_stat:.4f}'))
+        print(f'├{hl}┤')
+
+        if model_type == 'bi-exponential' and len(popt) >= 5:
+            h_s = f"{popt[5]:.3f} bins" if len(popt) > 5 else '—'
+            print(two('photon_counts', f'{popt[0]:.2f}', 'α', f'{popt[1]:.4f}'))
+            print(two('τ₁', f'{popt[2]:.4f} ns', 'τ₂', f'{popt[3]:.4f} ns'))
+            print(two('v-shift', f'{popt[4]:.2f}', 'h-shift', h_s))
+        else:
+            h_s = f"{popt[3]:.3f} bins" if len(popt) > 3 else '—'
+            print(two('photon_counts', f'{popt[0]:.2f}', 'τ', f'{popt[1]:.4f} ns'))
+            print(two('v-shift', f'{popt[2]:.2f}', 'h-shift', h_s))
+
+        print(f'└{hl}┘')
+        print()
+
+    @staticmethod
+    def _print_fail_block(method, category, error_msg):
+        W = 62
+        hl = '─' * W
+        tag = f"[{category}]"
+        title = f"  {method}"
+        header_line = title + tag.rjust(W - len(title))
+
+        def box(content=''):
+            return f'│{content[:W].ljust(W)}│'
+
+        print(f'┌{hl}┐')
+        print(box(header_line))
+        print(f'├{hl}┤')
+        print(box(f'  {"Status":<10}✗  Failed'))
+        print(box(f'  {"Error":<10}{str(error_msg)[:W - 14]}'))
+        print(f'└{hl}┘')
+        print()
 
     @staticmethod
     def _weighted_residual(method, y, model):
@@ -50,9 +110,14 @@ class FittingComparator:
 
         plot_data = {'y': y_in, 'irf': irf_in, 'fits': {}, 'residuals': {}, 't': None}
 
-        print(f"\n{'='*150}")
-        print(f"FLI DIAGNOSTIC BENCHMARK | Model: {model_type.upper()}")
-        print(f"{'='*150}\n")
+        W = 62
+        n_methods = len([m for m in methods if m in self.method_mapping])
+        title    = f"FLI Fitting Results  |  {model_type.upper()}"
+        subtitle = f"{n_methods} method{'s' if n_methods != 1 else ''} queued"
+        print(f'\n┌{"─"*W}┐')
+        print(f'│  {title:<{W-2}}│')
+        print(f'│  {subtitle:<{W-2}}│')
+        print(f'└{"─"*W}┘\n')
 
         for method in methods:
             if method not in self.method_mapping: continue
@@ -87,23 +152,23 @@ class FittingComparator:
                     plot_data['residuals'][method] = resid
 
                 if model_type == 'bi-exponential':
-                    h_s = f", Δh:{popt[5]:.2f}" if len(popt) > 5 else ""
+                    h_s = f", h-shift:{popt[5]:.2f}" if len(popt) > 5 else ""
                     p_str = f"A:{popt[0]:.1f}, α:{popt[1]:.2f}, τ1:{popt[2]:.2f}, τ2:{popt[3]:.2f}, B:{popt[4]:.1f}{h_s}"
                 else:
-                    h_s = f", Δh:{popt[3]:.2f}" if len(popt) > 3 else ""
+                    h_s = f", h-shift:{popt[3]:.2f}" if len(popt) > 3 else ""
                     p_str = f"A:{popt[0]:.1f}, τ:{popt[1]:.2f}, B:{popt[2]:.1f}{h_s}"
 
+                self._print_result_block(method.upper(), category, success,
+                                         f"{elapsed:.2f} ms", r2, stat, red_stat,
+                                         popt, model_type)
                 results_table.append([
-                    method.upper(), category, success, f"{elapsed:.2f} ms", 
+                    method.upper(), category, success, f"{elapsed:.2f} ms",
                     f"{r2:.4f}", f"{stat:.2f}", f"{red_stat:.3f}", p_str
                 ])
 
             except Exception as e:
+                self._print_fail_block(method.upper(), category, str(e))
                 results_table.append([method.upper(), category, "FAIL", "N/A", "N/A", "N/A", "N/A", f"Err: {str(e)[:30]}"])
-
-        # Display Summary Table
-        headers = ["Method", "Type", "Conv", "Time", "R2", "Chi2", "Red. Chi2", "Parameters"]
-        print(tabulate(results_table, headers=headers, tablefmt="fancy_grid"))
 
         if plot and plot_data['fits']:
             self._plot_comparison(plot_data, yscale, model_type)

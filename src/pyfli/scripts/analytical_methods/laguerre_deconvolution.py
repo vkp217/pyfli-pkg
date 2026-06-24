@@ -5,6 +5,7 @@ from scipy.optimize import least_squares, minimize_scalar, nnls
 from scipy.signal import lfilter, fftconvolve
 from tqdm.auto import tqdm
 from ..solver.forward_model import _apply_irf_shift
+from ..solver.base_static import moment_based_guess
 
 class LaguerreFLI:
 
@@ -162,11 +163,23 @@ class LaguerreFLI:
         if self.taus_init is not None and self.taus_init.size == N:
             tau0 = self._safe_tau0(self.taus_init.astype(float), tau_lo, tau_hi)
         else:
-            span = T * self.dt
-            tau0 = self._safe_tau0(
-                np.geomspace(max(0.05 * span, tau_lo), min(0.5 * span, tau_hi * 0.9), N),
-                tau_lo, tau_hi,
-            )
+            T_acq   = T * self.dt
+            T_laser = self.laser_period_ns if self.laser_period_ns is not None else T_acq
+            t_axis  = np.arange(T, dtype=float) * self.dt
+            model_str = 'mono-exponential' if N == 1 else 'bi-exponential'
+            guess = moment_based_guess(t_axis, h_avg, T_acq, T_laser, model_str)
+
+            if N == 1:
+                tau0 = np.array([guess['tau']])
+            elif N == 2:
+                tau0 = np.array([guess['tau1'], guess['tau2']])
+            else:
+                tau_start = guess.get('tau1', 0.05 * T_acq)
+                tau_end   = guess.get('tau2', 0.5  * T_acq)
+                tau0 = np.geomspace(
+                    max(tau_start, tau_lo), min(tau_end, tau_hi * 0.9), N
+                )
+            tau0 = self._safe_tau0(tau0, tau_lo, tau_hi)
 
         def residual(params):
             E = np.exp(-n[:, None] * self.dt / params[None, :])
@@ -357,8 +370,12 @@ class LaguerreFLI:
 
         pixel_health = (photon_count > 0).astype(np.float32)
 
-        tau_maps   = {f'tau{i+1}_map':   self.taus_[..., i].astype(np.float32)      for i in range(N)}
-        alpha_maps = {f'alpha{i+1}_map': self.fractions_[..., i].astype(np.float32) for i in range(N)}
+        if N == 1:
+            tau_maps   = {'tau_map':   self.taus_[..., 0].astype(np.float32)}
+            alpha_maps = {'alpha_map': self.fractions_[..., 0].astype(np.float32)}
+        else:
+            tau_maps   = {f'tau{i+1}_map':   self.taus_[..., i].astype(np.float32)      for i in range(N)}
+            alpha_maps = {f'alpha{i+1}_map': self.fractions_[..., i].astype(np.float32) for i in range(N)}
 
         if N >= 2:
             tau1_m = self.taus_[..., 0]
@@ -376,17 +393,16 @@ class LaguerreFLI:
         maps = {
             **tau_maps,
             **alpha_maps,
-            'Area_map':             photon_count,
+            'photon_count_map':             photon_count,
             'tau_mean_map':         self.tau_mean_.astype(np.float32),
-            'offset_map':           np.zeros((X, Y), dtype=np.float32),
+            'v_shift_map':           np.zeros((X, Y), dtype=np.float32),
             'h_shift_map':          np.full((X, Y), self.h_shift, dtype=np.float32),
             'fret_efficiency_map':  fret_eff,
             'R2_map':               r2_map,
             'chi2_map':             chi_sq_raw,
-            'reduced_stat_map':     chi_sq_reduced,
+            'reduced_chi2_map':     chi_sq_reduced,
             'convergence_map':      convergence,
             'pixel_health_map':     pixel_health,
-            'photon_count_map':     photon_count,
         }
 
         internal_popt_len = 2 * N + 1
