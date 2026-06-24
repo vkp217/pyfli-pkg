@@ -98,7 +98,7 @@ def moment_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
             half = max(len(d_decay) // 2, 1)
             a_early = float(np.trapezoid(d_decay[:half], t_decay[:half])) + 1e-9
             a_late  = float(np.trapezoid(d_decay[half:], t_decay[half:])) + 1e-9
-            alpha1_guess = float(np.clip(a_early / (a_early + a_late), 0.15, 0.85))
+            alpha1_guess = float(np.clip(a_early / (a_early + a_late), 0.001, 0.999))
         else:
             alpha1_guess = 0.5
         return {

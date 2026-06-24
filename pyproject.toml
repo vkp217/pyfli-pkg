@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "CC BY-NC-ND 4.0"}
 authors = [
-    {name = "Vikas Pandey"}
+    {name = "Vikas Pandey", email = "pyfli4lifetime@gmail.com"}
 ]
 keywords = [
     "fluorescence", "lifetime", "FLIM", "FLI", "TCSPC", "phasor",
