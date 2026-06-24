@@ -1,6 +1,5 @@
 import os
 import numpy as np
-from tabulate import tabulate
 
 class Msg_display:
     def __init__(self, saver=None):
@@ -69,30 +68,46 @@ class Msg_display:
         footer = '-' * 60 + f"\n{'Session Initialized':^60}\n" + '-' * 60 + '\n'
         self._internal_log(footer)
 
+    # Fixed display order: label → candidate map keys (first match wins)
+    _PIXEL_FIELDS = [
+        ('A',        ['photon_count_map']),
+        ('α',        ['alpha1_map', 'alpha_map']),
+        ('τ₁',       ['tau1_map',   'tau_map']),
+        ('τ₂',       ['tau2_map']),
+        ('R²',       ['R2_map']),
+        ('Red.χ²',   ['reduced_chi2_map']),
+        ('Raw.χ²',   ['chi2_map']),
+        ('v-shift',  ['v_shift_map']),
+        ('h-shift',  ['h_shift_map']),
+    ]
+
     def get_pixel_summary(self, data_maps, px):
         x, y = px
-        table_data = []    
-        for key, map_2d in data_maps.items():
-            try:
-                if isinstance(map_2d, np.ndarray) and map_2d.ndim == 2:
-                    value = map_2d[x, y]
-                    formatted_val = f"{value:.4f}" if isinstance(value, (float, np.float32, np.float64)) else value
-                    table_data.append([key, formatted_val])
-            except Exception as e:
-                table_data.append([key, f"ERROR: {str(e)}"])
-                
-        headers = ["Parameters", f"Value at {px}"]
-        
-        # Create Table
-        table_output = tabulate(table_data, headers=headers, tablefmt="fancy_grid")
-        
-        # Display logic
-        print(f"\n{'='*50}\nPIXEL DIAGNOSTIC: {px}\n{'='*50}")
-        print(table_output)
+        rows = []
+        for label, candidates in self._PIXEL_FIELDS:
+            val = '—'
+            for key in candidates:
+                m = data_maps.get(key)
+                if isinstance(m, np.ndarray) and m.ndim == 2:
+                    try:
+                        v = m[x, y]
+                        val = f'{float(v):.4f}'
+                    except Exception:
+                        val = 'error'
+                    break
+            rows.append((label, val))
 
-        # Log logic (using a simpler table format for the .txt file to keep it readable)
+        label_w = max(len(lbl) for lbl, _ in rows)
+        rule = '─' * (label_w + 14)
+        lines = [f'\n  Pixel {px}', f'  {rule}']
+        for label, val in rows:
+            lines.append(f'  {label:<{label_w}}   {val}')
+        lines.append(f'  {rule}\n')
+
+        output = '\n'.join(lines)
+        print(output)
+
         if self.saver:
-            clean_table = tabulate(table_data, headers=headers, tablefmt="plain")
-            self.saver.log(f"\nPIXEL DIAGNOSTIC: {px}\n{clean_table}")
-        
-        return table_data
+            self.saver.log(output)
+
+        return rows
