@@ -191,7 +191,10 @@ class LaguerreFLI:
         return np.sort(np.clip(np.abs(res.x), tau_lo, tau_hi))
 
     def _fit_pixel_exponentials(
-        self, h_stack: np.ndarray, tau_init: np.ndarray
+        self,
+        h_stack: np.ndarray,
+        tau_init: np.ndarray,
+        mask: Optional[np.ndarray] = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         X, Y, T = h_stack.shape
         N = self.n_components
@@ -201,14 +204,17 @@ class LaguerreFLI:
         tau_init_safe = self._safe_tau0(tau_init, tau_lo, tau_hi)
         bounds = ([tau_lo] * N, [tau_hi] * N)
 
-        taus_map     = np.zeros((X, Y, N), dtype=np.float64)
-        amps_map     = np.zeros((X, Y, N), dtype=np.float64)
-        converged_map = np.zeros((X, Y),   dtype=np.float32)
+        taus_map      = np.zeros((X, Y, N), dtype=np.float64)
+        amps_map      = np.zeros((X, Y, N), dtype=np.float64)
+        converged_map = np.zeros((X, Y),    dtype=np.float32)
 
-        with tqdm(total=X * Y, desc="  Pixels", unit="px",
+        total_px = int(mask.sum()) if mask is not None else X * Y
+        with tqdm(total=total_px, desc="  Pixels", unit="px",
                   leave=False, disable=not self.verbose) as pbar:
             for x in range(X):
                 for y in range(Y):
+                    if mask is not None and not mask[x, y]:
+                        continue
                     h = h_stack[x, y, :]
                     if h.sum() >= 1e-10:
                         def residual(params, h=h):
@@ -233,7 +239,12 @@ class LaguerreFLI:
 
         return taus_map, amps_map, converged_map
 
-    def fit(self, decay: np.ndarray, irf: np.ndarray) -> "LaguerreFLI":
+    def fit(
+        self,
+        decay: np.ndarray,
+        irf: np.ndarray,
+        mask: Optional[np.ndarray] = None,
+    ) -> "LaguerreFLI":
         decay = np.asarray(decay, dtype=np.float64)
         irf   = np.asarray(irf,   dtype=np.float64)
 
@@ -244,13 +255,25 @@ class LaguerreFLI:
         X, Y, T = decay.shape
         self.decay_ = decay.astype(np.float32)
 
+        if mask is not None:
+            mask = np.asarray(mask, dtype=bool)
+            if mask.shape != (X, Y):
+                raise ValueError(
+                    f"mask shape {mask.shape} must match image shape ({X}, {Y})."
+                )
+        self.mask_ = mask
+
         ppirf = (irf.ndim == 3)
         if ppirf and irf.shape != decay.shape:
             raise ValueError("per-pixel IRF must match decay shape.")
         if not ppirf and not (irf.ndim == 1 and irf.shape[0] == T):
             raise ValueError("irf must be (T,) or (X, Y, T).")
 
-        avg_decay = decay.reshape(-1, T).mean(0)
+        decay_flat = decay.reshape(-1, T)
+        if mask is not None:
+            avg_decay = decay_flat[mask.ravel()].mean(0)
+        else:
+            avg_decay = decay_flat.mean(0)
 
         if ppirf:
             irf_2d = irf.reshape(-1, T)
@@ -285,7 +308,7 @@ class LaguerreFLI:
             pbar.update(1)
 
             pbar.set_description("Solving Laguerre coefficients")
-            Y2d = decay.reshape(-1, T).T
+            Y2d = decay_flat.T
             if single_irf:
                 self.V_ = self._convolve_with_irf(self.basis_, alpha_irf_shifted)
                 C = self._solve_coefficients(self.V_, Y2d)
@@ -311,12 +334,15 @@ class LaguerreFLI:
             pbar.update(1)
 
             pbar.set_description("Estimating global lifetimes")
-            h_avg     = h_stack.reshape(-1, T).mean(0)
+            h_flat = h_stack.reshape(-1, T)
+            h_avg  = h_flat[mask.ravel()].mean(0) if mask is not None else h_flat.mean(0)
             taus_init = self._estimate_global_taus(h_avg)
             pbar.update(1)
 
             pbar.set_description("Fitting per-pixel exponentials")
-            self.taus_, A, self.converged_ = self._fit_pixel_exponentials(h_stack, taus_init)
+            self.taus_, A, self.converged_ = self._fit_pixel_exponentials(
+                h_stack, taus_init, mask=mask
+            )
             self.amplitudes_ = A
             total_amp = A.sum(axis=-1, keepdims=True)
             with np.errstate(invalid="ignore", divide="ignore"):
@@ -366,7 +392,7 @@ class LaguerreFLI:
 
         ss_res = np.sum(residuals_d ** 2, axis=-1)
         ss_tot = np.sum((decay_d - decay_d.mean(axis=-1, keepdims=True)) ** 2, axis=-1)
-        r2_map = np.where(ss_tot > eps, 1.0 - ss_res / ss_tot, 0.0).astype(np.float32)
+        r2_map = (1.0 - np.divide(ss_res, ss_tot, out=np.zeros_like(ss_res), where=ss_tot > eps)).astype(np.float32)
 
         pixel_health = (photon_count > 0).astype(np.float32)
 

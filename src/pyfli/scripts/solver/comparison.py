@@ -19,64 +19,72 @@ class FittingComparator:
         }
 
     @staticmethod
-    def _print_result_block(method, category, success, elapsed, r2, stat, red_stat, popt, model_type):
-        W = 62
-        hl = '─' * W
-        tag = f"[{category}]"
-        title = f"  {method}"
-        header_line = title + tag.rjust(W - len(title))
-
-        def box(content=''):
-            return f'│{content[:W].ljust(W)}│'
-
-        def two(lk, lv, rk='', rv=''):
-            half = W // 2
-            left  = f"  {lk:<10}{lv}"
-            right = f"  {rk:<10}{rv}" if rk else ''
-            full  = f"{left:<{half}}{right}"
-            return box(full)
-
-        icon   = '✓' if success == 'YES' else '✗'
-        status = f"{icon}  Converged" if success == 'YES' else f"{icon}  Failed"
-
-        print(f'┌{hl}┐')
-        print(box(header_line))
-        print(f'├{hl}┤')
-        print(two('Status', status, 'Time', elapsed))
-        print(two('R²', f'{r2:.4f}', 'Chi²', f'{stat:.2f}'))
-        print(box(f'  {"Red. Chi²":<10}{red_stat:.4f}'))
-        print(f'├{hl}┤')
-
-        if model_type == 'bi-exponential' and len(popt) >= 5:
-            h_s = f"{popt[5]:.3f} bins" if len(popt) > 5 else '—'
-            print(two('photon_counts', f'{popt[0]:.2f}', 'α', f'{popt[1]:.4f}'))
-            print(two('τ₁', f'{popt[2]:.4f} ns', 'τ₂', f'{popt[3]:.4f} ns'))
-            print(two('v-shift', f'{popt[4]:.2f}', 'h-shift', h_s))
+    def _print_summary_table(rows, model_type):
+        """rows: list of [method, category, success, elapsed, r2, stat, red_stat, popt | None]"""
+        is_bi = model_type == 'bi-exponential'
+        if is_bi:
+            cols = [
+                ('Method',  14, '<'), ('Type',   4, '^'),
+                ('A',        7, '>'), ('α',      7, '>'),
+                ('τ₁',       8, '>'), ('τ₂',     8, '>'),
+                ('R²',       7, '>'), ('Red.χ²', 8, '>'), ('Raw.χ²', 8, '>'),
+                ('v-shift',  7, '>'), ('h-shift', 8, '>'),
+            ]
         else:
-            h_s = f"{popt[3]:.3f} bins" if len(popt) > 3 else '—'
-            print(two('photon_counts', f'{popt[0]:.2f}', 'τ', f'{popt[1]:.4f} ns'))
-            print(two('v-shift', f'{popt[2]:.2f}', 'h-shift', h_s))
+            cols = [
+                ('Method',  14, '<'), ('Type',   4, '^'),
+                ('A',        7, '>'), ('τ',      8, '>'),
+                ('R²',       7, '>'), ('Red.χ²', 8, '>'), ('Raw.χ²', 8, '>'),
+                ('v-shift',  7, '>'), ('h-shift', 8, '>'),
+            ]
 
-        print(f'└{hl}┘')
+        def fmt_cell(text, width, align):
+            s = str(text)
+            if align == '<':  return f' {s:<{width}} '
+            if align == '>':  return f' {s:>{width}} '
+            return f' {s:^{width}} '
+
+        def row_str(cells):
+            return '│' + '│'.join(fmt_cell(c, w, a) for c, (_, w, a) in zip(cells, cols)) + '│'
+
+        def sep(left, mid, right):
+            return left + mid.join('─' * (w + 2) for _, w, _ in cols) + right
+
         print()
+        print(sep('┌', '┬', '┐'))
+        print(row_str([c[0] for c in cols]))
+        print(sep('├', '┼', '┤'))
 
-    @staticmethod
-    def _print_fail_block(method, category, error_msg):
-        W = 62
-        hl = '─' * W
-        tag = f"[{category}]"
-        title = f"  {method}"
-        header_line = title + tag.rjust(W - len(title))
+        for method, category, success, elapsed, r2, stat, red_stat, popt in rows:
+            if popt is None:
+                filler = ['—'] * (len(cols) - 2)
+                cells = [method, category] + filler
+            elif is_bi and len(popt) >= 6:
+                cells = [
+                    method, category,
+                    f'{popt[0]:.2f}', f'{popt[1]:.4f}',
+                    f'{popt[2]:.3f}', f'{popt[3]:.3f}',
+                    f'{r2:.4f}', f'{red_stat:.4f}', f'{stat:.2f}',
+                    f'{popt[4]:.2f}', f'{popt[5]:.3f}',
+                ]
+            elif is_bi and len(popt) >= 5:
+                cells = [
+                    method, category,
+                    f'{popt[0]:.2f}', f'{popt[1]:.4f}',
+                    f'{popt[2]:.3f}', f'{popt[3]:.3f}',
+                    f'{r2:.4f}', f'{red_stat:.4f}', f'{stat:.2f}',
+                    f'{popt[4]:.2f}', '—',
+                ]
+            else:
+                cells = [
+                    method, category,
+                    f'{popt[0]:.2f}', f'{popt[1]:.3f}',
+                    f'{r2:.4f}', f'{red_stat:.4f}', f'{stat:.2f}',
+                    f'{popt[2]:.2f}', f'{popt[3]:.3f}' if len(popt) > 3 else '—',
+                ]
+            print(row_str(cells))
 
-        def box(content=''):
-            return f'│{content[:W].ljust(W)}│'
-
-        print(f'┌{hl}┐')
-        print(box(header_line))
-        print(f'├{hl}┤')
-        print(box(f'  {"Status":<10}✗  Failed'))
-        print(box(f'  {"Error":<10}{str(error_msg)[:W - 14]}'))
-        print(f'└{hl}┘')
+        print(sep('└', '┴', '┘'))
         print()
 
     @staticmethod
@@ -151,28 +159,21 @@ class FittingComparator:
                     plot_data['fits'][method]      = fit_full
                     plot_data['residuals'][method] = resid
 
-                if model_type == 'bi-exponential':
-                    h_s = f", h-shift:{popt[5]:.2f}" if len(popt) > 5 else ""
-                    p_str = f"A:{popt[0]:.1f}, α:{popt[1]:.2f}, τ1:{popt[2]:.2f}, τ2:{popt[3]:.2f}, B:{popt[4]:.1f}{h_s}"
-                else:
-                    h_s = f", h-shift:{popt[3]:.2f}" if len(popt) > 3 else ""
-                    p_str = f"A:{popt[0]:.1f}, τ:{popt[1]:.2f}, B:{popt[2]:.1f}{h_s}"
-
-                self._print_result_block(method.upper(), category, success,
-                                         f"{elapsed:.2f} ms", r2, stat, red_stat,
-                                         popt, model_type)
                 results_table.append([
                     method.upper(), category, success, f"{elapsed:.2f} ms",
-                    f"{r2:.4f}", f"{stat:.2f}", f"{red_stat:.3f}", p_str
+                    r2, stat, red_stat, popt
                 ])
 
             except Exception as e:
-                self._print_fail_block(method.upper(), category, str(e))
-                results_table.append([method.upper(), category, "FAIL", "N/A", "N/A", "N/A", "N/A", f"Err: {str(e)[:30]}"])
+                results_table.append([
+                    method.upper(), category, "FAIL", "N/A", 0.0, 0.0, 0.0, None
+                ])
+
+        self._print_summary_table(results_table, model_type)
 
         if plot and plot_data['fits']:
             self._plot_comparison(plot_data, yscale, model_type)
-            
+
         return results_table
 
     def run_all(self, y_data, irf_data, model_type='bi-exponential', p0=None, bounds=None, yscale='log', plot=True):

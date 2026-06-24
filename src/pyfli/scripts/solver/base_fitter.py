@@ -1,6 +1,7 @@
 # solver/base_fitter.py
+import warnings
 import numpy as np
-from scipy.optimize import curve_fit, least_squares
+from scipy.optimize import curve_fit, least_squares, OptimizeWarning
 from scipy.stats import f
 from .base_static import moment_based_guess, resolve_params_and_bounds
 from .forward_model import model_numpy
@@ -82,8 +83,10 @@ class BaseFLIFitter:
         def wrapper(t_sub, *p):
             return self.model_fit(self.t, p, model_type=model_type)[self.fit_indices]
         try:
-            popt, pcov = curve_fit(wrapper, self.t[self.fit_indices], self.decay[self.fit_indices],
-                                    p0=p0, method='lm')
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", OptimizeWarning)
+                popt, pcov = curve_fit(wrapper, self.t[self.fit_indices], self.decay[self.fit_indices],
+                                       p0=p0, method='lm')
             status = 1
         except:
             return self.fit_with_estimator(estimator_type='trust_region', model_type=model_type, p0=p0)
