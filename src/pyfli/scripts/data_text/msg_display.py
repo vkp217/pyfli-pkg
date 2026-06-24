@@ -29,7 +29,7 @@ class Msg_display:
         output.append(f'FIT PARAMETERS ({model_type.upper()})')
         output.append('-'*30)
 
-        labels = ['Ar', 'alpha1', 'tau1', 'tau2', 'Offset'] if model_type == 'bi-exponential' else ['Ar', 'tau', 'Offset']
+        labels = ['photon_counts', 'alpha1', 'tau1', 'tau2', 'v-shift'] if model_type == 'bi-exponential' else ['photon_counts', 'tau', 'v-shift']
         
         for i, label in enumerate(labels):
             output.append(f'{label:8}: {p[i]:.4f} \u00B1 {err[i]:.4f}')

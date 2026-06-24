@@ -109,37 +109,40 @@ class Fli_CPUProcessor:
         S_map = p_maps[..., 0]
         if model_type == 'bi-exponential':
             tau1_m, tau2_m = p_maps[..., 2], p_maps[..., 3]
+            alpha1_m = p_maps[..., 1]
             param_maps = {
-                'Area_map': S_map,
-                'alpha1_map': p_maps[..., 1],
-                'tau1_map': tau1_m,
-                'tau2_map': tau2_m,
-                'offset_map': p_maps[..., 4],
+                'photon_count_map':    S_map,
+                'alpha1_map':          alpha1_m,
+                'tau1_map':            tau1_m,
+                'tau2_map':            tau2_m,
+                'tau_mean_map':        (alpha1_m * tau1_m + (1.0 - alpha1_m) * tau2_m).astype(np.float32),
+                'v_shift_map':         p_maps[..., 4],
                 'fret_efficiency_map': np.where(tau2_m > 0, 1.0 - tau1_m / tau2_m, 0.0).astype(np.float32),
-                'h_shift_map': p_maps[..., 5].astype(np.float32),
+                'h_shift_map':         p_maps[..., 5].astype(np.float32),
             }
         else:
             param_maps = {
-                'Area_map': S_map,
+                'photon_count_map': S_map,
                 'tau_map': p_maps[..., 1],
-                'offset_map': p_maps[..., 2],
+                'v_shift_map': p_maps[..., 2],
                 'h_shift_map': p_maps[..., 3].astype(np.float32),
             }
         
         param_maps.update({
             'R2_map': r2_map, 
             'chi2_map': stat_map,
-            'reduced_stat_map': red_stat_map, 
+            'reduced_chi2_map': red_stat_map, 
             'convergence_map': conv_map,
             'pixel_health_map': pixel_health_map
         })
         
         return {
-            'name': data_name, 
+            'name':   data_name,
+            'method': f'CPU_{estimator}',
             'results': {
-                'maps': param_maps, 
+                'maps':       param_maps,
                 'error_maps': e_maps,
-                'TR_maps': {'fit_map': fit_map, 'residual_map': res_map}
+                'TR_maps':    {'fit_map': fit_map, 'residual_map': res_map}
             }
         }
 

@@ -43,14 +43,17 @@ class Macro_sim:
         # Applying Modular Noise Pipeline
         if self.use_jitter:
             shift = np.random.randint(-2, 3)
-            obs = np.roll(obs, shift)
+            n = len(obs)
+            if shift > 0:
+                obs = np.concatenate([np.zeros(shift), obs[:n - shift]])
+            elif shift < 0:
+                obs = np.concatenate([obs[-shift:], np.zeros(-shift)])
 
         if self.use_qe:
             obs = obs * ParameterSampler.sample_qe(self.sensor_type)
 
         if self.use_dcr:
-            # Scale DCR relative to bit depth
-            bit_scaling = bit_depth / 8.0 if self.sensor_type == 'ICCD' else (2**bit_depth)/256.0
+            bit_scaling = bit_depth / 8.0
             obs = NoiseEngine.apply_dcr(obs, self.engine.params_cfg['dcr'] * bit_scaling)
 
         if self.use_read_noise and self.sensor_type == 'ICCD':
@@ -72,10 +75,13 @@ class Macro_sim:
         # This ensures the residuals (obs - fit) reflect ONLY the noise/stochastics
         obs_peak = np.max(obs)
         if obs_peak > 0:
-            # Align the ground truth fit to the noisy observation's peak
             fit_map = full_conv * (obs_peak / np.max(full_conv) if np.max(full_conv) > 0 else 1.0)
             if self.use_jitter:
-                fit_map = np.roll(fit_map, shift)
+                n = len(fit_map)
+                if shift > 0:
+                    fit_map = np.concatenate([np.zeros(shift), fit_map[:n - shift]])
+                elif shift < 0:
+                    fit_map = np.concatenate([fit_map[-shift:], np.zeros(-shift)])
         else:
             fit_map = np.zeros_like(obs)
 
@@ -113,16 +119,21 @@ class TCSPC_sim:
         # Fit Scaling
         total_photons_expected = effective_mu * n_cycles
         clean = self.engine.get_analytical_decay(p)
-        fit_norm = np.convolve(clean, self.engine.irf, mode='full')[:len(clean)]
+        fit_norm = fftconvolve(clean, self.engine.irf, mode='full')[:len(clean)]
         fit = fit_norm * (total_photons_expected / np.sum(fit_norm)) if np.sum(fit_norm) > 0 else fit_norm
 
         if self.use_jitter:
             shift = np.random.randint(-2, 3)
-            obs = np.roll(obs, shift)
-            fit = np.roll(fit, shift)
-            
+            n = len(obs)
+            if shift > 0:
+                obs = np.concatenate([np.zeros(shift), obs[:n - shift]])
+                fit = np.concatenate([np.zeros(shift), fit[:n - shift]])
+            elif shift < 0:
+                obs = np.concatenate([obs[-shift:], np.zeros(-shift)])
+                fit = np.concatenate([fit[-shift:], np.zeros(-shift)])
+
         if self.use_dcr:
-            bit_scaling = (2**bit_depth) / 256.0
+            bit_scaling = bit_depth / 8.0
             obs = NoiseEngine.apply_dcr(obs, self.engine.params_cfg['dcr'] * bit_scaling)
 
         # --- New: Clipping for TCSPC ---

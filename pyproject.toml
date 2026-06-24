@@ -70,6 +70,9 @@ where = ["src"]
 include = ["pyfli*"]
 exclude = ["notebooks*", "config*", "data*"]
 
+[tool.setuptools.package-data]
+pyfli = ["PyFLI_logo.png"]
+
 [project.urls]
 Homepage = "https://github.com/vkp217/pyfli-pkg"
 Repository = "https://github.com/vkp217/pyfli-pkg.git"

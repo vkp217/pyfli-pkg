@@ -233,7 +233,7 @@ class TestGetParameters:
 
     def test_maps_contain_standard_keys(self, params):
         maps = params["results"]["maps"]
-        assert "Area_map" in maps
+        assert "photon_count_map" in maps
         assert "tau_mean_map" in maps
         assert "chi2_map" in maps
         assert "pixel_health_map" in maps

@@ -116,7 +116,7 @@ class Fli_GPUProcessor:
 
     def fit_image(self, image_cube, irf_cube, mask=None, mode='MLE',
                   model_type='bi-exponential', max_iter=150, CRLB=False,
-                  data_name="Torch_Fit", shift_method='fourier', p0=None, **kwargs):
+                  data_name="Torch_Fit", shift_method='interp', p0=None, **kwargs):
         start_time = time.time()
         H, W, T = image_cube.shape
         t_axis = torch.arange(T, device=self.device) * (self.T_acq / T)
@@ -163,8 +163,8 @@ class Fli_GPUProcessor:
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
                 pred_safe = torch.clamp(pred, min=1.0)
-                per_px = torch.sum((pred - flat_data) ** 2 / pred_safe, dim=1, keepdim=True)
-                return per_px.sum()
+                per_px = torch.sum((pred - flat_data) ** 2 / pred_safe, dim=1)
+                return per_px[torch.isfinite(per_px)].sum()
         else:
             def objective_fn(p_raw):
                 p_phys = self._transform_params(p_raw, model_type)
@@ -172,8 +172,8 @@ class Fli_GPUProcessor:
                 pred_safe = torch.clamp(pred, min=1.0)
                 per_px = 2 * torch.sum(
                     pred - flat_data + flat_data * torch.log(flat_data.clamp(min=1e-9) / pred_safe),
-                    dim=1, keepdim=True)
-                return per_px.sum()
+                    dim=1)
+                return per_px[torch.isfinite(per_px)].sum()
 
         optimizer = torch.optim.LBFGS([raw_p], lr=1, max_iter=max_iter, history_size=10, line_search_fn="strong_wolfe")
 
@@ -183,8 +183,6 @@ class Fli_GPUProcessor:
         def closure():
             optimizer.zero_grad()
             loss = objective_fn(raw_p)
-            if torch.isnan(loss):
-                return torch.tensor(0.0, device=self.device, requires_grad=True)
             loss.backward()
             pbar.update(1)
             return loss
@@ -267,27 +265,30 @@ class Fli_GPUProcessor:
         S = p_maps[..., 0]
         common = {
             'chi2_map':         chi2_raw,
-            'reduced_stat_map': chi2_reduced,
+            'reduced_chi2_map': chi2_reduced,
             'R2_map':           r2_map,
             'pixel_health_map': health_map,
+            'convergence_map':  health_map,
         }
         if model_type == 'bi-exponential':
             tau1_m, tau2_m = p_maps[..., 2], p_maps[..., 3]
+            alpha1_m = p_maps[..., 1]
             maps = {
-                'Area_map':          S,
-                'alpha1_map':        p_maps[..., 1],
-                'tau1_map':          tau1_m,
-                'tau2_map':          tau2_m,
-                'offset_map':        p_maps[..., 4],
+                'photon_count_map':    S,
+                'alpha1_map':          alpha1_m,
+                'tau1_map':            tau1_m,
+                'tau2_map':            tau2_m,
+                'tau_mean_map':        (alpha1_m * tau1_m + (1.0 - alpha1_m) * tau2_m).astype(np.float32),
+                'v_shift_map':         p_maps[..., 4],
                 'fret_efficiency_map': np.where(tau2_m > 0, 1.0 - tau1_m / tau2_m, 0.0).astype(np.float32),
-                'h_shift_map':       p_maps[..., 5].astype(np.float32),
+                'h_shift_map':         p_maps[..., 5].astype(np.float32),
                 **common,
             }
         else:
             maps = {
-                'Area_map':    S,
+                'photon_count_map':    S,
                 'tau_map':     p_maps[..., 1],
-                'offset_map':  p_maps[..., 2],
+                'v_shift_map':  p_maps[..., 2],
                 'h_shift_map': p_maps[..., 3].astype(np.float32),
                 **common,
             }

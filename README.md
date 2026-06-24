@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="PyFLI_logo.png" alt="PyFLI Logo" width="300"/>
+</p>
+
 # pyfli: A Unified Platform for FLI Data Processing
 
 [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)

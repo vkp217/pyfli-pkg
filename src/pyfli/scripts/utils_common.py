@@ -571,18 +571,23 @@ def compute_detailed_results(tau1, tau2, f, freq_acq, binned_irf, binned_decay,
     health = (photon_count > 0).astype(np.float32)
 
     # --- Package-compatible 2-D maps ------------------------------------------
+    tau1_f = tau1.astype(np.float32)
+    tau2_f = tau2.astype(np.float32)
+    f_f    = f.astype(np.float32)
     param_maps = {
-        "Area_map":             photon_count.astype(np.float32),   # scale = total counts
-        "alpha1_map":           f.astype(np.float32),
-        "tau1_map":             tau1.astype(np.float32),
-        "tau2_map":             tau2.astype(np.float32),
-        "offset_map":           np.zeros((H, W), dtype=np.float32),  # no offset in model
+        "photon_count_map":     photon_count.astype(np.float32),
+        "alpha1_map":           f_f,
+        "tau1_map":             tau1_f,
+        "tau2_map":             tau2_f,
+        "tau_mean_map":         (f_f * tau1_f + (1.0 - f_f) * tau2_f),
+        "fret_efficiency_map":  np.where(tau2_f > 0, 1.0 - tau1_f / tau2_f, 0.0).astype(np.float32),
+        "v_shift_map":          np.zeros((H, W), dtype=np.float32),
+        "h_shift_map":          np.zeros((H, W), dtype=np.float32),
         "R2_map":               r2_map.astype(np.float32),
-        "chi2_map": chi_sq_raw.astype(np.float32),
-        "reduced_stat_map":     chi_sq_map.astype(np.float32),
+        "chi2_map":             chi_sq_raw.astype(np.float32),
+        "reduced_chi2_map":     chi_sq_map.astype(np.float32),
         "convergence_map":      health.copy(),
         "pixel_health_map":     health,
-        "photon_count_map":     photon_count.astype(np.float32),
     }
 
     # No per-parameter uncertainties here -> zeros, shaped like the package e_maps
@@ -601,7 +606,8 @@ def compute_detailed_results(tau1, tau2, f, freq_acq, binned_irf, binned_decay,
     print(f"Mean Chi-Squared (Active Pixels): {mean_chi_sq:.4f}")
 
     return {
-        "name": data_name,
+        "name":   data_name,
+        "method": "DirectCompute",
         "results": {
             "maps":       param_maps,
             "error_maps": error_maps,

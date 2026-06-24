@@ -20,9 +20,9 @@ class PhasorPlotsMixin:
         G_col = G[0] if G.ndim == 3 else G
         S_col = S[0] if S.ndim == 3 else S
         phasor_val = np.sqrt(G_col ** 2 + S_col ** 2)
-        p_min, p_max = phasor_val.min(), phasor_val.max()
+        p_min, p_max = np.nanmin(phasor_val), np.nanmax(phasor_val)
         phasor_val = (phasor_val - p_min) / (p_max - p_min + self.eps)
-        colors = plt.get_cmap(colormap)(phasor_val)[:, :, :3]
+        colors = plt.colormaps[colormap](phasor_val)[:, :, :3]
         if intensity is not None:
             denom     = intensity.max() - intensity.min() + self.eps
             int_norm  = (intensity - intensity.min()) / denom
@@ -79,7 +79,7 @@ class PhasorPlotsMixin:
     def plot_phasor_diagram(self, G, S, mask=None, colors=None,
                             hexbin_color=None, ax=None, figsize=(8, 3),
                             half_circle=True, title="Phasor Diagram",
-                            xlim=(-0.1, 1.1), ylim=(-0.6, 0.6)):
+                            xlim=(-0.1, 1.1), ylim=(0.0, 0.6)):
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
@@ -178,13 +178,13 @@ class PhasorPlotsMixin:
             phasor_colors = phasor_colors[..., :3]
 
         if noise_removed:
-            final_mask = np.ones(G.shape, dtype=bool)
-        else:
             intensity_img = self.generate_intensity_image(decay)
             i_min, i_max  = intensity_img.min(), intensity_img.max()
             denom         = (i_max - i_min) if (i_max - i_min) != 0 else 1
             int_norm      = (intensity_img - i_min) / denom
             final_mask    = int_norm > 0.1
+        else:
+            final_mask = np.ones(phasor_colors.shape[:2], dtype=bool)
 
         pure_overlay = np.zeros_like(phasor_colors)
         pure_overlay[final_mask] = phasor_colors[final_mask]
@@ -205,7 +205,7 @@ class PhasorPlotsMixin:
                               colormaps=["jet", "jet", "viridis", "jet"],
                               noise_removed=True, figsize=(15, 10),
                               half_circle=True,
-                              xlim=(-0.1, 1.1), ylim=(-0.6, 0.6),
+                              xlim=(-0.1, 1.1), ylim=(0.0, 0.6),
                               bg_color="black", transpose=False):
        
         _t = (lambda a: np.swapaxes(a, 0, 1)) if transpose else (lambda a: a)
@@ -306,7 +306,7 @@ class PhasorPlotsMixin:
         ax6 = fig.add_subplot(gs[1, 2])
         ax6.plot(ug, us, "k--", alpha=0.8, zorder=1)
         if len(g_v):
-            hb = ax6.hexbin(g_v, s_v, gridsize=50, cmap=colormaps[3], mincnt=1, zorder=2)
+            hb = ax6.hexbin(g_v, s_v, gridsize=100, cmap=colormaps[3], mincnt=1, zorder=2)
             fig.colorbar(hb, ax=ax6, fraction=0.046, pad=0.04).set_label("Pixel count")
         if G_mark is not None:
             _draw_lifetime_ticks(ax6, G_mark, S_mark, color="black", lw=2, fontsize=9)
@@ -430,7 +430,7 @@ class PhasorPlotsMixin:
     def plot_phasor_harmonics(self, G, S, harmonics=(1, 2, 3, 4), mask=None,
                               colors=None, hexbin_color=None, figsize=(22, 5),
                               axes=None, half_circle=True,
-                              xlim=(-0.1, 1.1), ylim=(-0.6, 0.6)):
+                              xlim=(-0.1, 1.1), ylim=(0.0, 0.6)):
         G = np.asarray(G)
         S = np.asarray(S)
         n_panels = len(harmonics)
@@ -442,8 +442,7 @@ class PhasorPlotsMixin:
                 axes = [axes]
         else:
             fig = axes[0].get_figure()
-
-        mask_flat = np.ravel(mask) if mask is not None else None
+        mask_flat = np.ravel(mask).astype(bool) if mask is not None else None
 
         for ax, k in zip(axes, harmonics):
             if G.ndim == 3 and k <= G.shape[0]:
@@ -466,18 +465,31 @@ class PhasorPlotsMixin:
                 g_plot = g_flat
                 s_plot = s_flat
 
+            valid  = ~np.isnan(g_plot) & ~np.isnan(s_plot)
+            g_plot = g_plot[valid]
+            s_plot = s_plot[valid]
+
             if colors is None:
                 cmap_to_use = hexbin_color if hexbin_color is not None else 'jet'
                 hb = ax.hexbin(g_plot, s_plot, gridsize=100, cmap=cmap_to_use, mincnt=1)
                 fig.colorbar(hb, ax=ax, fraction=0.046, pad=0.04).set_label("Pixel Count")
             else:
                 if isinstance(colors, str):
-                    c_vals = g_plot
-                    path   = ax.scatter(g_plot, s_plot, cmap=colors, c=c_vals, s=8, marker="o")
+                    path = ax.scatter(g_plot, s_plot, cmap=colors, c=g_plot, s=8, marker="o")
                     fig.colorbar(path, ax=ax, fraction=0.046, pad=0.04).set_label("Phasor G Value")
                 else:
-                    c_flat = np.reshape(colors, (-1, 3))
-                    c_plot = c_flat[mask_flat] if mask_flat is not None else c_flat
+                    # Bug fix 2: if colors has a harmonic axis (n, H, W, 3) use slice k-1;
+                    # otherwise treat as a single (H, W, 3) array shared across all harmonics
+                    colors_arr = np.asarray(colors)
+                    if colors_arr.ndim == 4 and k - 1 < colors_arr.shape[0]:
+                        c_panel = colors_arr[k - 1]
+                    else:
+                        c_panel = colors_arr
+                    c_flat = np.reshape(c_panel, (-1, 3))
+                    if mask_flat is not None:
+                        c_plot = c_flat[mask_flat][valid]
+                    else:
+                        c_plot = c_flat[valid]
                     ax.scatter(g_plot, s_plot, c=c_plot, s=8, marker="o")
 
             G_mark, S_mark = self.lifetime_to_phasor(_TAU_MARKS_NS, k * self.frequency)
@@ -499,7 +511,7 @@ class PhasorPlotsMixin:
     def plot_traceable_analysis(self, G, S, decay, mask=None,
                                 colormap="viridis", figsize=(14, 6),
                                 axes=None, half_circle=True,
-                                xlim=(-0.1, 1.1), ylim=(-0.6, 0.6)):
+                                xlim=(-0.1, 1.1), ylim=(0.0, 0.6)):
         G_2d = G[0] if G.ndim == 3 else G
         S_2d = S[0] if S.ndim == 3 else S
 
@@ -524,13 +536,13 @@ class PhasorPlotsMixin:
 
         phi         = np.arctan2(S_2d, G_2d)
         first_q     = phi[(G_2d > 0) & (S_2d > 0)]
-        phi_min_val = float(first_q.min()) if first_q.size > 0 else 0.0
-        phi_max_val = float(first_q.max()) if first_q.size > 0 else 0.5
+        phi_min_val = float(np.nanmin(first_q)) if first_q.size > 0 else 0.0
+        phi_max_val = float(np.nanmax(first_q)) if first_q.size > 0 else 0.5
         omega       = 2 * np.pi * self.frequency
         tau_min     = np.tan(np.clip(phi_min_val, 1e-6, np.pi / 2 - 0.05)) / omega * 1e9
         tau_max     = np.tan(np.clip(phi_max_val, 1e-6, np.pi / 2 - 0.05)) / omega * 1e9
 
-        sm = ScalarMappable(cmap=plt.get_cmap(colormap),
+        sm = ScalarMappable(cmap=plt.colormaps[colormap],
                             norm=Normalize(vmin=tau_min, vmax=tau_max))
         sm.set_array([])
         cbar = fig.colorbar(sm, ax=axes[0], fraction=0.046, pad=0.04)

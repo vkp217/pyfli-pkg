@@ -5,7 +5,7 @@ __version__ = "0.1.17"
 from .scripts import (DataOperations, IRFAligner, DataViewer,
                         AlliGprocessedImport, BHprocessedImport, PyFliprocessedImport,
                         HardSimulator, HardestSimulator, DatasetPlotter,
-                        PhasorAnalyzer, FLIFitter, PoissonLikelihoodFitter, FLIAnalysisSuite,
+                        PhasorAnalyzer,
                         Plotter, DLModelComparator, DataPreprocessing,
                         PlotConfig, DataProcessor, SourceLoader, PlotKit, SubplotVisualizer, plot_2d_subplots,
                         BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, MLEFLIFitter,
@@ -32,11 +32,12 @@ from .scripts import (DataOperations, IRFAligner, DataViewer,
                         FBI_RESULT_FILENAME, FBI_RAW_FILENAME)
 
 from .spAnalysis import (BasisPatterns, MeasurementSimulator, Reconstructor)
+from ._logo import pflogo
 
 __all__ = ['DataOperations', 'IRFAligner', 'DataViewer', 
         'AlliGprocessedImport', 'BHprocessedImport', 'PyFliprocessedImport', 
         'HardSimulator', 'HardestSimulator', 'DatasetPlotter',
-        'PhasorAnalyzer', 'FLIFitter', 'PoissonLikelihoodFitter', 'FLIAnalysisSuite',
+        'PhasorAnalyzer',
         'Plotter', 'DLModelComparator', 'DataPreprocessing', 
         'BaseFLIFitter', 'Fli_CPUProcessor', 'Fli_GPUProcessor', 
         'MLEFLIFitter', 'GlobalFLIFitter', 'ROIMaker', 
@@ -69,5 +70,6 @@ __all__ = ['DataOperations', 'IRFAligner', 'DataViewer',
         'plot_statistical_comparison', 'plot_2d_analysis',
         'run_mono_bi_classifier',
         'FBI_RESULT_FILENAME', 'FBI_RAW_FILENAME',
+        'pflogo',
         ]
 
