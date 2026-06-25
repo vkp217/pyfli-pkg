@@ -144,7 +144,8 @@ class PhasorAnalyzer(PhasorPlotsMixin):
     def compute_lifetime(self, G, S):
         G = np.asarray(G, dtype=np.float64)
         S = np.asarray(S, dtype=np.float64)
-        return np.where(np.abs(G) > 1e-4, S / (G * self.omega) * 1e9, np.nan)
+        safe_denom = np.where(np.abs(G) > 1e-4, G * self.omega, np.inf)
+        return np.where(np.abs(G) > 1e-4, S / safe_denom * 1e9, np.nan)
 
     def compute_modulation_lifetime(self, G, S):
         G    = np.asarray(G, dtype=np.float64)
