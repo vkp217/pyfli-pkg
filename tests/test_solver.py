@@ -169,8 +169,9 @@ class TestBaseFLIFitterRecovery:
         popt, *_ = BaseFLIFitter(_FREQ, decay, irf).fit_with_estimator(
             model_type="mono-exponential"
         )
-        # h_shift is the last parameter; |shift| < 5 bins is within noise for aligned data
-        assert abs(popt[-1]) < 5.0, f"h_shift = {popt[-1]:.3f} bins, expected near 0"
+        # h_shift is now in ns; for aligned data the recovered delay should be small
+        T_acq = 1000.0 / _FREQ[1]
+        assert abs(popt[-1]) < T_acq / 4, f"h_shift = {popt[-1]:.4f} ns, expected near 0"
 
 
 # ---------------------------------------------------------------------------

@@ -146,13 +146,13 @@ class GlobalFLIFitter:
                 c_mask = c_mask & mask
 
             if model_type == 'bi-exponential':
-                # popt_sp = [S, alpha1, tau1, tau2, offset, h_shift]
+                # popt_sp = [S, alpha1, tau1, tau2, v_shift, h_shift]
                 local_p0 = {
                     'amp':    popt_sp[0],
                     'alpha1': popt_sp[1],
                     'tau1':   popt_sp[2],
                     'tau2':   popt_sp[3],
-                    'offset': popt_sp[4],
+                    'v_shift': popt_sp[4],
                     'h_shift': popt_sp[5] if len(popt_sp) > 5 else 0.0,
                 }
                 if not global_inf:
@@ -163,11 +163,11 @@ class GlobalFLIFitter:
                                  popt_sp[3] * (1 + gi_tol)],
                     }
             else:
-                # popt_sp = [S, tau, offset, h_shift]
+                # popt_sp = [S, tau, v_shift, h_shift]
                 local_p0 = {
                     'amp':    popt_sp[0],
                     'tau':    popt_sp[1],
-                    'offset': popt_sp[2],
+                    'v_shift': popt_sp[2],
                     'h_shift': popt_sp[3] if len(popt_sp) > 3 else 0.0,
                 }
                 if not global_inf:
