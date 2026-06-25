@@ -96,7 +96,7 @@ class BaseFLIFitter:
         return self._post_process(popt, None, status, model_type, pcov=pcov)
 
     def model_fit(self, t, params, model_type='mono-exponential'):
-        return model_numpy(t, self.irf, params, model_type, shift_method=self.shift_method)
+        return model_numpy(t, self.irf, params, model_type)
 
     def _post_process(self, popt, jac, status, model_type, pcov=None):
         if model_type == 'bi-exponential':

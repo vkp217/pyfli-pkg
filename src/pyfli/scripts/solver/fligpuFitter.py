@@ -13,84 +13,44 @@ class Fli_GPUProcessor:
         self.fitter_class = fitter_class
         self.T_acq = 1000.0 / freq[1]
         self.T_laser = 1000.0 / freq[0]
-        self._shift_bound = 64.0
         print(f"Using Device: {self.device}")
 
-    def _shift_irf_interp(self, irf: torch.Tensor, shift: torch.Tensor) -> torch.Tensor:
-        P, T = irf.shape
-        t_idx  = torch.arange(T, device=self.device, dtype=torch.float32)
-        t_src  = t_idx.unsqueeze(0) - shift
-        valid  = (t_src >= 0.0) & (t_src <= T - 1.0)
-        t_clamp = t_src.clamp(0.0, T - 1.0)
-        t_lo   = t_clamp.long()
-        t_hi   = (t_lo + 1).clamp(max=T - 1)
-        frac   = t_clamp - t_lo.float()
-        return (irf.gather(1, t_lo) * (1.0 - frac) +
-                irf.gather(1, t_hi) * frac) * valid.float()
-
-    def _shift_irf_fourier(self, irf: torch.Tensor, shift: torch.Tensor) -> torch.Tensor:
-        P, T = irf.shape
-        freqs = torch.fft.rfftfreq(T, device=self.device)
-        phase = torch.exp(-2j * torch.pi * freqs * shift)
-        shifted = torch.fft.irfft(torch.fft.rfft(irf, n=T) * phase, n=T)
-        return shifted.clamp(min=0.0)
-
-    def _shift_irf_zero_pad(self, irf: torch.Tensor, shift: torch.Tensor) -> torch.Tensor:
-        P, T = irf.shape
-        h = shift.detach().round().long().squeeze(-1).clamp(-T + 1, T - 1)
-        out = torch.zeros_like(irf)
-        for i in range(P):
-            hi = int(h[i].item())
-            if hi == 0:
-                out[i] = irf[i]
-            elif hi > 0:
-                out[i, hi:] = irf[i, :T - hi]
-            else:
-                out[i, :T + hi] = irf[i, -hi:]
-        return out
-
-    def _shift_irf(self, irf: torch.Tensor, shift: torch.Tensor) -> torch.Tensor:
-        method = getattr(self, '_shift_method', 'fourier')
-        if method == 'fourier':
-            return self._shift_irf_fourier(irf, shift)
-        elif method == 'zero_pad':
-            return self._shift_irf_zero_pad(irf, shift)
-        else:
-            return self._shift_irf_interp(irf, shift)
-
     def _transform_params(self, raw_p, model_type):
-        S     = torch.exp(raw_p[:, 0:1])
-        b     = torch.exp(raw_p[:, -2:-1])
-        shift = self._shift_bound * torch.tanh(raw_p[:, -1:])
+
+        shift_bound = self.T_acq / 4.0
+        S       = torch.exp(raw_p[:, 0:1])
+        b       = torch.exp(raw_p[:, -2:-1])
+        h_shift = torch.tanh(raw_p[:, -1:]) * shift_bound
 
         if model_type == 'bi-exponential':
             a1 = torch.sigmoid(raw_p[:, 1:2])
             t1 = torch.exp(raw_p[:, 2:3])
             t2 = t1 + torch.exp(raw_p[:, 3:4])
-            return torch.cat([S, a1, t1, t2, b, shift], dim=1)
+            return torch.cat([S, a1, t1, t2, b, h_shift], dim=1)
         else:
             tau = torch.exp(raw_p[:, 1:2])
-            return torch.cat([S, tau, b, shift], dim=1)
+            return torch.cat([S, tau, b, h_shift], dim=1)
 
     def _model_kernel(self, params, t, irf, model_type):
         if model_type == 'mono-exponential':
-            S, tau, b, shift = (params[:, 0:1], params[:, 1:2],
-                                params[:, 2:3], params[:, 3:4])
-            decay = (S / tau) * torch.exp(-t / tau)
+            S, tau, b, h_shift = (params[:, 0:1], params[:, 1:2],
+                                   params[:, 2:3], params[:, 3:4])
+            t_eff = torch.clamp(t - h_shift, min=0.0)
+            decay = (S / tau) * torch.exp(-t_eff / tau)
         else:
-            S, a1, t1, t2, b, shift = (params[:, 0:1], params[:, 1:2],
-                                       params[:, 2:3], params[:, 3:4],
-                                       params[:, 4:5], params[:, 5:6])
-            decay = S * ((a1 / t1) * torch.exp(-t / t1) +
-                         ((1.0 - a1) / t2) * torch.exp(-t / t2))
+            S, a1, t1, t2, b, h_shift = (params[:, 0:1], params[:, 1:2],
+                                           params[:, 2:3], params[:, 3:4],
+                                           params[:, 4:5], params[:, 5:6])
+            t_eff = torch.clamp(t - h_shift, min=0.0)
+            decay = S * ((a1 / t1) * torch.exp(-t_eff / t1) +
+                         ((1.0 - a1) / t2) * torch.exp(-t_eff / t2))
 
-        irf_shifted = self._shift_irf(irf, shift)
-        irf_shifted = irf_shifted / irf_shifted.sum(dim=1, keepdim=True).clamp(min=1e-9)
+        irf_norm = irf / irf.sum(dim=1, keepdim=True).clamp(min=1e-9)
 
         T = t.shape[-1]
         n_fft = 2 * T
         decay_fft = torch.fft.rfft(decay, n=n_fft)
-        irf_fft   = torch.fft.rfft(irf_shifted, n=n_fft)
+        irf_fft   = torch.fft.rfft(irf_norm, n=n_fft)
         convolved = torch.fft.irfft(decay_fft * irf_fft, n=n_fft)[..., :T]
         return convolved + b
 
@@ -115,22 +75,17 @@ class Fli_GPUProcessor:
                 return torch.zeros_like(p_phys)
 
     def fit_image(self, image_cube, irf_cube, mask=None, mode='MLE',
-                  model_type='bi-exponential', max_iter=150, CRLB=False,
-                  data_name="Torch_Fit", shift_method='interp', p0=None, **kwargs):
-        # Normalise mode: any NLSF-like string → 'LSE', everything else → 'MLE'
-        _MLE_MODES = {'MLE', 'POISSON', 'PEARSON', 'NEYMAN'}
-        mode = 'MLE' if mode.upper() in _MLE_MODES else 'LSE'
+                  model_type='bi-exponential', max_iter=500, CRLB=False,
+                  data_name="Torch_Fit", p0=None, **kwargs):
+        # Normalise mode tag: NLSF/LSE variants → 'NLSF', everything else → 'MLE'
+        _NLSF_MODES = {'NLSF', 'LSE', 'WLS', 'NEYMAN'}
+        mode = 'NLSF' if mode.upper() in _NLSF_MODES else 'MLE'
 
         start_time = time.time()
         H, W, T = image_cube.shape
         t_axis = torch.arange(T, device=self.device) * (self.T_acq / T)
 
-        self._shift_method = shift_method
-
-        self._shift_bound = float(T // 4)
-
         irf_tensor = torch.tensor(irf_cube, device=self.device, dtype=torch.float32).reshape(-1, T)
-        irf_norm = irf_tensor / torch.clamp(irf_tensor.sum(dim=1, keepdim=True), 1e-9)
 
         if mask is None:
             mask = np.sum(image_cube, axis=2) > 20
@@ -141,7 +96,7 @@ class Fli_GPUProcessor:
             return None
 
         flat_data = torch.tensor(image_cube.reshape(-1, T)[valid_idx], device=self.device, dtype=torch.float32)
-        flat_irf  = irf_norm[valid_idx]
+        flat_irf  = irf_tensor[valid_idx]
 
         if p0 is not None:
             p_guess = self._p0_to_tensor(p0, len(valid_idx), model_type)
@@ -150,8 +105,9 @@ class Fli_GPUProcessor:
         raw_p = torch.zeros_like(p_guess)
 
         with torch.no_grad():
-            raw_p[:, 0]  = torch.log(torch.clamp(p_guess[:, 0], min=1e-3))
-            raw_p[:, -2] = torch.log(torch.clamp(p_guess[:, -2], min=1e-6))
+            raw_p[:, 0]  = torch.log(torch.clamp(p_guess[:, 0], min=1e-3))   # log(S)
+            raw_p[:, -2] = torch.log(torch.clamp(p_guess[:, -2], min=1e-6))  # log(v_shift)
+            raw_p[:, -1] = 0.0                                                 # atanh(h_shift/bound)=0
             if model_type == 'bi-exponential':
                 raw_p[:, 1] = torch.logit(torch.clamp(p_guess[:, 1], 0.001, 0.999))
                 raw_p[:, 2] = torch.log(torch.clamp(p_guess[:, 2], min=1e-3))
@@ -162,38 +118,53 @@ class Fli_GPUProcessor:
         raw_p.requires_grad_(True)
         pixel_health_map = np.ones(H * W, dtype=np.float32)
 
-        if mode == 'LSE':
+        if mode == 'NLSF':
+            # Neyman chi-squared: weights by measured data — matches CPU BaseFLIFitter
             def objective_fn(p_raw):
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
-                pred_safe = torch.clamp(pred, min=1.0)
-                per_px = torch.sum((pred - flat_data) ** 2 / pred_safe, dim=1)
+                data_safe = torch.clamp(flat_data, min=1.0)
+                per_px = torch.sum((pred - flat_data) ** 2 / data_safe, dim=1)
                 return per_px[torch.isfinite(per_px)].sum()
         else:
+            # Poisson MLE (C-statistic): matches CPU MLEFLIFitter
             def objective_fn(p_raw):
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
                 pred_safe = torch.clamp(pred, min=1.0)
-                per_px = 2 * torch.sum(
-                    pred - flat_data + flat_data * torch.log(flat_data.clamp(min=1e-9) / pred_safe),
+                per_px = 2.0 * torch.sum(
+                    pred_safe - flat_data + flat_data * torch.log(flat_data.clamp(min=1e-9) / pred_safe),
                     dim=1)
                 return per_px[torch.isfinite(per_px)].sum()
 
-        optimizer = torch.optim.LBFGS([raw_p], lr=1, max_iter=max_iter, history_size=10, line_search_fn="strong_wolfe")
+        # Adam operates per-parameter independently — unlike LBFGS it does not maintain
+        # a single global Hessian across all pixels, correctly handling the joint space.
+        optimizer = torch.optim.Adam([raw_p], lr=kwargs.get('lr', 0.05))
 
         print(f"--- GPU {mode} Processing ({len(valid_idx)} pixels) ---")
-        pbar = tqdm(total=max_iter, desc=f"Optimizing {mode}")
+        pbar = tqdm(total=max_iter, desc=f"Optimizing ({mode})")
 
-        def closure():
-            optimizer.zero_grad()
-            loss = objective_fn(raw_p)
-            loss.backward()
-            pbar.update(1)
-            return loss
+        prev_loss = float('inf')
+        patience_count = 0
+        patience = kwargs.get('patience', 50)
 
         try:
-            optimizer.step(closure)
-            pbar.update(max_iter - pbar.n)
+            for step in range(max_iter):
+                optimizer.zero_grad()
+                loss = objective_fn(raw_p)
+                loss.backward()
+                optimizer.step()
+                pbar.update(1)
+
+                cur = loss.item()
+                if abs(prev_loss - cur) < 1e-7 * (abs(prev_loss) + 1e-10):
+                    patience_count += 1
+                    if patience_count >= patience:
+                        pbar.update(max_iter - pbar.n)
+                        break
+                else:
+                    patience_count = 0
+                prev_loss = cur
         except Exception as e:
             print(f"Optimization interrupted: {e}")
             pixel_health_map[valid_idx] = 0
@@ -240,18 +211,15 @@ class Fli_GPUProcessor:
         tau_lo, tau_hi = 1e-4, self.T_laser
         p_np = p_final.detach().cpu().numpy()
         chi2_red_np = full_chi2_red[valid_idx]
-        shift_bound_np = self._shift_bound * 0.99
 
         if model_type == 'bi-exponential':
             at_bound = (
                 (p_np[:, 2] <= tau_lo * 1.01) | (p_np[:, 2] >= tau_hi * 0.99) |
-                (p_np[:, 3] <= tau_lo * 1.01) | (p_np[:, 3] >= tau_hi * 0.99) |
-                (np.abs(p_np[:, 5]) >= shift_bound_np)
+                (p_np[:, 3] <= tau_lo * 1.01) | (p_np[:, 3] >= tau_hi * 0.99)
             )
         else:
             at_bound = (
-                (p_np[:, 1] <= tau_lo * 1.01) | (p_np[:, 1] >= tau_hi * 0.99) |
-                (np.abs(p_np[:, 3]) >= shift_bound_np)
+                (p_np[:, 1] <= tau_lo * 1.01) | (p_np[:, 1] >= tau_hi * 0.99)
             )
         health_mask[valid_idx] = np.where(at_bound | (chi2_red_np > 5.0), 0.0, 1.0)
 
@@ -283,17 +251,17 @@ class Fli_GPUProcessor:
                 'tau1_map':            tau1_m,
                 'tau2_map':            tau2_m,
                 'tau_mean_map':        (alpha1_m * tau1_m + (1.0 - alpha1_m) * tau2_m).astype(np.float32),
-                'v_shift_map':         p_maps[..., 4],
-                'fret_efficiency_map': (1.0 - np.divide(tau1_m, tau2_m, out=np.zeros_like(tau2_m, dtype=np.float32), where=tau2_m > 0)).astype(np.float32),
+                'v_shift_map':         p_maps[..., 4].astype(np.float32),
                 'h_shift_map':         p_maps[..., 5].astype(np.float32),
+                'fret_efficiency_map': (1.0 - np.divide(tau1_m, tau2_m, out=np.zeros_like(tau2_m, dtype=np.float32), where=tau2_m > 0)).astype(np.float32),
                 **common,
             }
         else:
             maps = {
-                'photon_count_map':    S,
-                'tau_map':     p_maps[..., 1],
-                'v_shift_map':  p_maps[..., 2],
-                'h_shift_map': p_maps[..., 3].astype(np.float32),
+                'photon_count_map': S,
+                'tau_map':          p_maps[..., 1],
+                'v_shift_map':      p_maps[..., 2].astype(np.float32),
+                'h_shift_map':      p_maps[..., 3].astype(np.float32),
                 **common,
             }
         return {
@@ -314,17 +282,17 @@ class Fli_GPUProcessor:
             if model_type == 'bi-exponential':
                 vals = [
                     p0.get('amp',     1000.0),
-                    p0.get('alpha1',  0.5),
-                    p0.get('tau1',    1.0),
-                    p0.get('tau2',    3.0),
-                    p0.get('offset',  10.0),
+                    p0.get('alpha1',  0.2),
+                    p0.get('tau1',    0.5),
+                    p0.get('tau2',    1.1),
+                    p0.get('v_shift', 10.0),
                     p0.get('h_shift', 0.0),
                 ]
             else:
                 vals = [
                     p0.get('amp',     1000.0),
-                    p0.get('tau',     2.0),
-                    p0.get('offset',  10.0),
+                    p0.get('tau',     0.9),
+                    p0.get('v_shift', 10.0),
                     p0.get('h_shift', 0.0),
                 ]
             arr = np.tile(vals, (n_pixels, 1)).astype(np.float32)
@@ -339,37 +307,38 @@ class Fli_GPUProcessor:
         t_axis = np.linspace(0, self.T_acq, T, endpoint=False)
         dt    = (t_axis[1] - t_axis[0]) if T > 1 else 1.0
 
-        offset_guess = np.percentile(cpu_data, 5, axis=1)                          # (P,)
-        clean_d = np.clip(cpu_data - offset_guess[:, None], 1e-6, None)            # (P, T)
+        offset_guess = np.percentile(cpu_data, 5, axis=1)
+        clean_d = np.clip(cpu_data - offset_guess[:, None], 1e-6, None)
 
-        idx_max   = np.argmax(clean_d, axis=1)                                     # (P,)
-        col_idx   = np.arange(T)[None, :]                                          # (1, T)
-        post_peak = col_idx >= idx_max[:, None]                                    # (P, T)
-        d_post    = clean_d * post_peak                                            # (P, T)
+        idx_max   = np.argmax(clean_d, axis=1)
+        col_idx   = np.arange(T)[None, :]
+        post_peak = col_idx >= idx_max[:, None]
+        d_post    = clean_d * post_peak
 
-        t_peak = t_axis[idx_max]                                                   # (P,)
-        t_rel  = np.maximum(t_axis[None, :] - t_peak[:, None], 0.0) * post_peak   # (P, T)
+        t_peak = t_axis[idx_max]
+        t_rel  = np.maximum(t_axis[None, :] - t_peak[:, None], 0.0) * post_peak
 
-        m0 = np.trapezoid(d_post,         dx=dt, axis=1).clip(min=1e-12)          # (P,)
-        m1 = np.trapezoid(t_rel * d_post, dx=dt, axis=1)                          # (P,)
+        m0 = np.trapezoid(d_post,         dx=dt, axis=1).clip(min=1e-12)
+        m1 = np.trapezoid(t_rel * d_post, dx=dt, axis=1)
 
-        tau_mean = np.clip(m1 / m0, 0.05, self.T_laser * 0.8)
-        s_guess  = np.clip(m0 / (1.0 - np.exp(-self.T_acq / tau_mean)), 1e-3, None)
+        tau_mean    = np.clip(m1 / m0, 0.05, self.T_laser * 0.8)
+        s_guess     = np.clip(m0 / (1.0 - np.exp(-self.T_acq / tau_mean)), 1e-3, None)
         offset_safe = np.clip(offset_guess, 0.0, None)
 
+        h_shift_guess = np.zeros(P)
+
         if model_type == 'mono-exponential':
-            guesses = np.stack([s_guess, tau_mean, offset_safe, np.zeros(P)], axis=1)
+            guesses = np.stack([s_guess, tau_mean, offset_safe, h_shift_guess], axis=1)
         else:
             tau1 = np.clip(tau_mean * 0.5, 1e-4, self.T_laser * 0.99)
             tau2 = np.clip(tau_mean * 1.5, tau1 * 1.01, self.T_laser)
 
-            # Data-driven α₁: fraction of post-peak area before the midpoint
-            mid_idx    = (idx_max + T) // 2
-            early_mask = post_peak & (col_idx < mid_idx[:, None])
-            a_early    = np.trapezoid(clean_d * early_mask, dx=dt, axis=1).clip(min=1e-9)
-            alpha1     = np.clip(a_early / m0.clip(min=1e-9), 0.001, 0.999)
+            # Neutral alpha1=0.5: the area-ratio estimate is unreliable when one
+            # lifetime is near the IRF width (fast component area ≈ slow area in
+            # any early/late split), so starting at 0.5 is always safer.
+            alpha1 = np.full(P, 0.5)
 
-            guesses = np.stack([s_guess, alpha1, tau1, tau2, offset_safe, np.zeros(P)], axis=1)
+            guesses = np.stack([s_guess, alpha1, tau1, tau2, offset_safe, h_shift_guess], axis=1)
 
         return torch.tensor(guesses.astype(np.float32), device=self.device)
 

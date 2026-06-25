@@ -12,9 +12,12 @@ class MLEFLIFitter(BaseFLIFitter):
     def poisson_log_likelihood(self, params, model_type):
         """Standard Poisson MLE (Deviance/C-Statistic)."""
         model = self.model_fit(self.t, params, model_type=model_type)[self.fit_indices]
+        if not np.all(np.isfinite(model)):
+            return np.inf
         data  = self.decay[self.fit_indices]
         model = np.clip(model, 1e-9, None)
-        return 2.0 * np.sum(model - data + data * np.log(np.clip(data, 1e-9, None) / model))
+        val = 2.0 * np.sum(model - data + data * np.log(np.clip(data, 1e-9, None) / model))
+        return val if np.isfinite(val) else np.inf
 
     def pearson_chi_square(self, params, model_type):
         """Pearson's Chi-square: Weighted by the MODEL [1/y_model]."""
@@ -57,8 +60,10 @@ class MLEFLIFitter(BaseFLIFitter):
             bounds=bnds,
             method='L-BFGS-B',
             options={
-                'ftol': kwargs.get('ftol', 1e-9),
-                'gtol': kwargs.get('gtol', 1e-9),
+                'ftol':    kwargs.get('ftol',    1e-12),
+                'gtol':    kwargs.get('gtol',    1e-9),
+                'maxfun':  kwargs.get('maxfun',  50000),
+                'maxiter': kwargs.get('maxiter', 2000),
             }
         )
 

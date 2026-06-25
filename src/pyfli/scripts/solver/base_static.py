@@ -8,8 +8,8 @@ def resolve_params_and_bounds(user_p0, user_bounds, model_type, t, decay, T_lase
     if isinstance(user_p0, dict):
         smart_dict.update(user_p0)
     elif isinstance(user_p0, (list, np.ndarray)):
-        keys = ['amp', 'tau', 'offset', 'h_shift'] if model_type == 'mono-exponential' else \
-                ['amp', 'alpha1', 'tau1', 'tau2', 'offset', 'h_shift']
+        keys = ['amp', 'tau', 'v_shift', 'h_shift'] if model_type == 'mono-exponential' else \
+                ['amp', 'alpha1', 'tau1', 'tau2', 'v_shift', 'h_shift']
         for i, val in enumerate(user_p0):
             if i < len(keys):
                 smart_dict[keys[i]] = val
@@ -18,7 +18,7 @@ def resolve_params_and_bounds(user_p0, user_bounds, model_type, t, decay, T_lase
         p0_vec = np.array([
             smart_dict['amp'],
             smart_dict['tau'],
-            smart_dict['offset'],
+            smart_dict['v_shift'],
             smart_dict.get('h_shift', 0.0),
         ])
     else:
@@ -27,14 +27,14 @@ def resolve_params_and_bounds(user_p0, user_bounds, model_type, t, decay, T_lase
             smart_dict['alpha1'],
             smart_dict['tau1'],
             smart_dict['tau2'],
-            smart_dict['offset'],
+            smart_dict['v_shift'],
             smart_dict.get('h_shift', 0.0),
         ])
 
     n_params = len(p0_vec)
 
-    N = len(t)
-    shift_bound = float(N // 4)
+    # h_shift is now in ns (same units as t), so bound by T_acq/4
+    shift_bound = T_acq / 4.0
 
     low_vec  = np.zeros(n_params)
     high_vec = np.full(n_params, np.inf)
@@ -50,9 +50,9 @@ def resolve_params_and_bounds(user_p0, user_bounds, model_type, t, decay, T_lase
 
     if isinstance(user_bounds, dict):
         key_map = {
-            'amp': 0, 'tau': 1, 'offset': 2, 'h_shift': 3,
+            'amp': 0, 'tau': 1, 'v_shift': 2, 'h_shift': 3,
         } if model_type == 'mono-exponential' else {
-            'amp': 0, 'alpha1': 1, 'tau1': 2, 'tau2': 3, 'offset': 4, 'h_shift': 5,
+            'amp': 0, 'alpha1': 1, 'tau1': 2, 'tau2': 3, 'v_shift': 4, 'h_shift': 5,
         }
         for k, v in user_bounds.items():
             if k in key_map:
@@ -91,7 +91,7 @@ def moment_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
         return {
             'amp': float(s_guess),
             'tau': float(tau_g),
-            'offset': float(offset_guess)
+            'v_shift': float(offset_guess)
         }
     else:
         if len(d_decay) > 2:
@@ -106,7 +106,7 @@ def moment_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
             'alpha1': alpha1_guess,
             'tau1': float(tau_g * 0.5),
             'tau2': float(tau_g * 1.5),
-            'offset': float(offset_guess)
+            'v_shift': float(offset_guess)
         }
 
 def rld_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
@@ -131,7 +131,7 @@ def rld_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
         return {
             'amp': float(np.max(y_fit)),
             'tau': float(tau_g),
-            'offset': float(offset_guess)
+            'v_shift': float(offset_guess)
         }
     else:
         q = num_bins // 4
@@ -149,5 +149,5 @@ def rld_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
             'alpha1': 0.5,
             'tau1': float(tau1_g),
             'tau2': float(tau2_g),
-            'offset': float(offset_guess)
+            'v_shift': float(offset_guess)
         }

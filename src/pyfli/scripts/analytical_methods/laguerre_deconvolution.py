@@ -4,7 +4,6 @@ import numpy as np
 from scipy.optimize import least_squares, minimize_scalar, nnls
 from scipy.signal import lfilter, fftconvolve
 from tqdm.auto import tqdm
-from ..solver.forward_model import _apply_irf_shift
 from ..solver.base_static import moment_based_guess
 
 class LaguerreFLI:
@@ -22,8 +21,6 @@ class LaguerreFLI:
         reg_power: float = 2.0,
         nonneg: bool = True,
         verbose: bool = True,
-        h_shift: float = 0.0,
-        shift_method: str = 'fourier',
     ):
         if n_components < 1:
             raise ValueError("n_components must be >= 1.")
@@ -48,8 +45,6 @@ class LaguerreFLI:
         self.reg_power       = float(reg_power)
         self.nonneg          = bool(nonneg)
         self.verbose         = bool(verbose)
-        self.h_shift         = float(h_shift)
-        self.shift_method    = str(shift_method)
 
         self.basis_:          Optional[np.ndarray] = None
         self.V_:              Optional[np.ndarray] = None
@@ -290,27 +285,19 @@ class LaguerreFLI:
         else:
             alpha_irf = irf_2d.mean(0)
 
-        t_axis = np.arange(T, dtype=float)
-
-        def _shift(arr1d: np.ndarray) -> np.ndarray:
-            if self.h_shift == 0.0:
-                return arr1d
-            return _apply_irf_shift(arr1d, self.h_shift, t_axis, self.shift_method)
-
         with tqdm(total=5, desc="LaguerreFLI", unit="stage",
                   disable=not self.verbose) as pbar:
 
             pbar.set_description("Building Laguerre basis")
-            alpha_irf_shifted = _shift(alpha_irf)
             if self.auto_alpha:
-                self.alpha = self._optimize_alpha(avg_decay, alpha_irf_shifted, T)
+                self.alpha = self._optimize_alpha(avg_decay, alpha_irf, T)
             self.basis_ = self._discrete_laguerre_basis(T, self.alpha, self.n_laguerre)
             pbar.update(1)
 
             pbar.set_description("Solving Laguerre coefficients")
             Y2d = decay_flat.T
             if single_irf:
-                self.V_ = self._convolve_with_irf(self.basis_, alpha_irf_shifted)
+                self.V_ = self._convolve_with_irf(self.basis_, alpha_irf)
                 C = self._solve_coefficients(self.V_, Y2d)
                 model_y = (self.V_ @ C).T.reshape(X, Y, T)
             else:
@@ -320,7 +307,7 @@ class LaguerreFLI:
                 fit_2d = np.zeros((P, T), dtype=np.float64)
                 for g, rep in enumerate(rep_idx):
                     cols = np.flatnonzero(labels == g)
-                    Vg = self._convolve_with_irf(self.basis_, _shift(irf_2d[rep]))
+                    Vg = self._convolve_with_irf(self.basis_, irf_2d[rep])
                     Cg = self._solve_coefficients(Vg, Y2d[:, cols])
                     C[:, cols] = Cg
                     fit_2d[cols] = (Vg @ Cg).T
@@ -422,7 +409,7 @@ class LaguerreFLI:
             'photon_count_map':             photon_count,
             'tau_mean_map':         self.tau_mean_.astype(np.float32),
             'v_shift_map':           np.zeros((X, Y), dtype=np.float32),
-            'h_shift_map':          np.full((X, Y), self.h_shift, dtype=np.float32),
+            'h_shift_map':           np.zeros((X, Y), dtype=np.float32),
             'fret_efficiency_map':  fret_eff,
             'R2_map':               r2_map,
             'chi2_map':             chi_sq_raw,
@@ -494,8 +481,7 @@ class LaguerreFLI:
             f"LaguerreFLI(n_components={self.n_components}, "
             f"n_laguerre={self.n_laguerre}, alpha={self.alpha:.3f}, "
             f"dt={self.dt} ns, laser_period={period}, "
-            f"reg_strength={self.reg_strength}, "
-            f"h_shift={self.h_shift}, shift_method={self.shift_method!r})"
+            f"reg_strength={self.reg_strength})"
         )
 
 if __name__ == "__main__":
