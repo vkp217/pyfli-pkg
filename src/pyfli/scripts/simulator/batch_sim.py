@@ -17,10 +17,10 @@ class Batch_sim:
         batch_data = {
             'decay': np.array([s['raw_data']['decay'] for s in samples]),
             'irf': np.array([s['raw_data']['irf'] for s in samples]),
-            'tau1': np.array([s['results']['maps']['tau1'] for s in samples]).reshape(-1, 1),
-            'tau2': np.array([s['results']['maps']['tau2'] for s in samples]).reshape(-1, 1),
-            'f': np.array([s['results']['maps']['f'] for s in samples]).reshape(-1, 1),
-            'photon_count': np.array([s['results']['maps']['photon_count'] for s in samples]).reshape(-1, 1)
+            'tau1_map': np.array([s['results']['maps']['tau1_map'] for s in samples]).reshape(-1, 1),
+            'tau2_map': np.array([s['results']['maps']['tau2_map'] for s in samples]).reshape(-1, 1),
+            'alpha1_map': np.array([s['results']['maps']['alpha1_map'] for s in samples]).reshape(-1, 1),
+            'photon_count_map': np.array([s['results']['maps']['photon_count_map'] for s in samples]).reshape(-1, 1)
         }
         return batch_data
 
@@ -41,13 +41,13 @@ class Batch_sim:
                 "maps": {
                     key: np.array([s['results']['maps'][key] for s in samples]).reshape(-1, 1)
                     for key in map_keys
+                },
+                "TR_maps": {
+                    "fit_map": np.stack([s['results']['TR_maps']['fit_map'] for s in samples]),
+                    "residual_map": np.stack([s['results']['TR_maps']['residual_map'] for s in samples])
                 }
-            },
-            "TR_maps": {
-                "fit_map": np.stack([s['TR_maps']['fit_map'] for s in samples]),
-                "residuals_map": np.stack([s['TR_maps']['residuals_map'] for s in samples])
             }
-        }    
+        }
         return batch_data
     
     def generate_batch2D(self, sim_funcs, num_list, shape=(10, 10)):
@@ -71,11 +71,11 @@ class Batch_sim:
                 "maps": {
                     key: np.array([s['results']['maps'][key] for s in samples]).reshape(rows, cols)
                     for key in map_keys
+                },
+                "TR_maps": {
+                    "fit_map": np.stack([s['results']['TR_maps']['fit_map'] for s in samples]).reshape(rows, cols, -1),
+                    "residual_map": np.stack([s['results']['TR_maps']['residual_map'] for s in samples]).reshape(rows, cols, -1)
                 }
-            },
-            "TR_maps": {
-                "fit_map": np.stack([s['TR_maps']['fit_map'] for s in samples]).reshape(rows, cols, -1),
-                "residuals_map": np.stack([s['TR_maps']['residuals_map'] for s in samples]).reshape(rows, cols, -1)
             }
-        }    
+        }
         return batch_data
