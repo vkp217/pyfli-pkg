@@ -87,23 +87,34 @@ class Macro_sim:
 
         return {
             "raw_data": {"decay": obs, "irf": self.engine.irf},
-            "results": {"maps": {**p, 
-                                 "tau_mean": p['tau1']*p['f'] + p['tau2']*(1-p['f']),
-                                 "photon_count": A
-                                 }},
-            "TR_maps": {"fit_map": fit_map, "residuals_map": obs - fit_map}
+            "results": {
+                "maps": {
+                    "tau1_map":            p['tau1'],
+                    "tau2_map":            p['tau2'],
+                    "alpha1_map":          p['f'],
+                    "A1_map":              p['A1'],
+                    "A2_map":              p['A2'],
+                    "fret_efficiency_map": p['E'],
+                    "tau_mean_map":        p['tau1']*p['f'] + p['tau2']*(1-p['f']),
+                    "photon_count_map":    A,
+                    "mono_map":            p['mono'],
+                },
+                "TR_maps": {"fit_map": fit_map, "residual_map": obs - fit_map}
+            }
         }
 
 class TCSPC_sim:
-    def __init__(self, irf_data, sensor_type='SPAD', **cfg):
+    def __init__(self, irf_data, sensor_type='PHOTON_COUNTER', **cfg):
         self.use_jitter = cfg.get('jitter', True)
         self.use_dcr = cfg.get('dcr_on', True)
         self.use_qe = cfg.get('qe_on', False)
         
         # TCSPC is inherently integer-based, but clipping simulates counter overflow
         self.use_clipping = cfg.get('clip_on', True)
-        
+
         self.sensor_type = sensor_type.upper()
+        # TCSPC counters are 16-bit by default
+        cfg.setdefault('bit', 16)
         self.engine = FLIEngine(irf_data, **cfg)
 
     def __call__(self):
@@ -111,8 +122,8 @@ class TCSPC_sim:
         n_cycles = np.random.randint(1, self.engine.params_cfg['cycles'] + 1)
         mu_per_cycle = 0.01 
         bit_depth = self.engine.params_cfg['bit']
-        max_adc_val = (2**bit_depth) - 1
-        
+        max_bin_count = (2**bit_depth) - 1
+
         effective_mu = mu_per_cycle * ParameterSampler.sample_qe(self.sensor_type) if self.use_qe else mu_per_cycle
         obs = self.engine.simulate_tcspc(p, n_cycles, effective_mu)
         
@@ -133,12 +144,11 @@ class TCSPC_sim:
                 fit = np.concatenate([fit[-shift:], np.zeros(-shift)])
 
         if self.use_dcr:
-            bit_scaling = bit_depth / 8.0
-            obs = NoiseEngine.apply_dcr(obs, self.engine.params_cfg['dcr'] * bit_scaling)
+            # DCR is a detector property (dark counts/bin/cycle) — independent of counter bit depth
+            obs = NoiseEngine.apply_dcr(obs, self.engine.params_cfg['dcr'])
 
-        # --- New: Clipping for TCSPC ---
         if self.use_clipping:
-            obs = np.clip(obs, 0, max_adc_val)
+            obs = np.clip(obs, 0, max_bin_count)
         
         # total_photons_captured = np.sum(obs)
         # if np.sum(fit) > 0:
@@ -148,10 +158,16 @@ class TCSPC_sim:
             "raw_data": {"decay": obs, "irf": self.engine.irf},
             "results": {
                 "maps": {
-                    **p, 
-                    "tau_mean": p['tau1']*p['f'] + p['tau2']*(1-p['f']),
-                    "photon_count": total_photons_expected
-                }
-            },
-            "TR_maps": {"fit_map": fit, "residuals_map": obs - fit}
+                    "tau1_map":            p['tau1'],
+                    "tau2_map":            p['tau2'],
+                    "alpha1_map":          p['f'],
+                    "A1_map":              p['A1'],
+                    "A2_map":              p['A2'],
+                    "fret_efficiency_map": p['E'],
+                    "tau_mean_map":        p['tau1']*p['f'] + p['tau2']*(1-p['f']),
+                    "photon_count_map":    total_photons_expected,
+                    "mono_map":            p['mono'],
+                },
+                "TR_maps": {"fit_map": fit, "residual_map": obs - fit}
+            }
         }

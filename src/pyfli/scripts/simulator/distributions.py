@@ -5,31 +5,35 @@ from scipy.stats import truncnorm
 
 class ParameterSampler:
     @staticmethod
-    def sample_qe(sensor_type='ICCD'):
+    def sample_qe(sensor_type='ICCD', rng=None):
         """Samples QE based on sensor type."""
+        _r = rng or np.random
         if sensor_type.upper() == 'ICCD':
-            return np.random.uniform(0.15, 0.35) # Typical ICCD QE
-        return np.random.uniform(0.70, 0.90)     # Typical SPAD QE
-    
+            return _r.uniform(0.15, 0.35) # Typical ICCD QE
+        return _r.uniform(0.70, 0.90)     # Typical PHOTON_COUNTER QE
+
     @staticmethod
-    def sample_noise_params(bit_depth, sensor_type='ICCD'):
+    def sample_noise_params(bit_depth, sensor_type='ICCD', rng=None):
         """Centralized control for hardware noise levels."""
+        _r = rng or np.random
         if sensor_type.upper() == 'ICCD':
             # Read noise is a fixed electronic property (electrons RMS), independent of bit depth
-            read_sigma = np.random.uniform(1.0, 3.0)
+            read_sigma = _r.uniform(1.0, 3.0)
             return {"read_sigma": read_sigma}
-        return {"read_sigma": 0.0} # SPADs effectively have zero read noise
-    
+        return {"read_sigma": 0.0} # PHOTON_COUNTER sensors effectively have zero read noise
+
     @staticmethod
-    def sample_beta(alpha, beta, scale=1.0, offset=0.0):
+    def sample_beta(alpha, beta, scale=1.0, offset=0.0, rng=None):
         """Standard beta sampling with scale and offset."""
-        val = np.random.beta(alpha, beta)
+        _r = rng or np.random
+        val = _r.beta(alpha, beta)
         return (val * scale) + offset
 
     @staticmethod
-    def beta_sample(alpha, beta, scale=1.0, clip_eps=1e-4):
+    def beta_sample(alpha, beta, scale=1.0, clip_eps=1e-4, rng=None):
         """Your specific photon-count beta sampling logic."""
-        val = np.random.beta(alpha, beta)
+        _r = rng or np.random
+        val = _r.beta(alpha, beta)
         return np.clip(val * scale, clip_eps, scale - clip_eps)
 
     @staticmethod

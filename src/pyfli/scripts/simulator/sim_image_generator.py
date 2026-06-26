@@ -7,18 +7,20 @@ from .main_factory import Macro_sim, TCSPC_sim
 from .sim_helper import irf_picker
 
 class FLIImageGenerator:
-    def __init__(self, 
-                 irf_data, 
-                 intensity_image_path=None, 
-                 roi_mask_path=None, 
-                 roi_params=None, 
-                 image_shape=(32, 32), 
+    def __init__(self,
+                 irf_data,
+                 intensity_image_path=None,
+                 roi_mask_path=None,
+                 roi_params=None,
+                 image_shape=(32, 32),
                  method='ICCD',
-                 verbose = True
+                 verbose=True,
+                 bool_mask=None
                  ):
-        self.method = method.lower()        
+        self.method = method.lower()
         self.irf_data = irf_data
         self.verbose = verbose
+        self.bool_mask = np.asarray(bool_mask, dtype=bool) if bool_mask is not None else None
         
         # Loading the intensity Mask
         if intensity_image_path:
@@ -29,7 +31,7 @@ class FLIImageGenerator:
             self.intensity_mask = np.ones(image_shape)
             self.shape = image_shape
 
-        # loading the ROI Mask (multi-color mask)
+        # loading the ROI Mask (multi-cluster mask)
         if roi_mask_path:
             mask_img = Image.open(roi_mask_path).convert('L')
             self.roi_mask = np.array(mask_img.resize((self.shape[1], self.shape[0]), 
@@ -47,7 +49,7 @@ class FLIImageGenerator:
         
         for roi_val in unique_rois:
             cfg = roi_params[roi_val].copy() if (roi_params and roi_val < len(roi_params)) else {}
-            default_sensor = 'ICCD' if self.method == 'ICCD' else 'SPAD'
+            default_sensor = 'ICCD' if self.method == 'ICCD' else 'PHOTON_COUNTER'
             sensor_type = cfg.pop('sensor_type', default_sensor)
             cfg.pop('method', None) 
             self.roi_sims[roi_val] = SimClass(dummy_irf, sensor_type=sensor_type, **cfg)
@@ -98,7 +100,7 @@ class FLIImageGenerator:
                 m = self.intensity_mask[i, j]
                 
                 decay_cube[i, j, :] = pixel_data["raw_data"]["decay"] * m
-                fit_cube[i, j, :] = pixel_data["TR_maps"]["fit_map"] * m
+                fit_cube[i, j, :] = pixel_data["results"]["TR_maps"]["fit_map"] * m
                 irf_cube[i, j, :] = norm_irf 
                 
                 for k in param_keys:
@@ -107,8 +109,22 @@ class FLIImageGenerator:
                 # Manually update the bar
                 pbar.update(1)
         
+        if self.bool_mask is not None:
+            if self.bool_mask.shape != (h, w):
+                raise ValueError(
+                    f"bool_mask shape {self.bool_mask.shape} does not match image shape {(h, w)}."
+                )
+            m3 = self.bool_mask[:, :, np.newaxis]   # (H, W, 1) for broadcasting over time axis
+            decay_cube   = decay_cube   * m3
+            fit_cube     = fit_cube     * m3
+            irf_cube     = irf_cube     * m3
+            for k in param_maps:
+                param_maps[k] = param_maps[k] * self.bool_mask
+
         return {
-            "raw_data": {"decay": decay_cube, "irf": irf_cube},
-            "results": {"maps": param_maps},
-            "TR_maps": {"fit_map": fit_cube, "residuals_map": decay_cube - fit_cube}
-        }
+            "raw_data": {"decay": decay_cube,
+                         "irf": irf_cube},
+            "results": {"maps": param_maps,
+                        "TR_maps": {"fit_map": fit_cube,
+                        "residual_map": decay_cube - fit_cube}}
+                    }

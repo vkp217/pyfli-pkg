@@ -1,31 +1,33 @@
 # simulator/simulator_engine
 import numpy as np
-from scipy.signal import fftconvolve
+
 from .distributions import ParameterSampler
 from .noise_models import NoiseEngine
 from .sim_helper import irf_picker
 
 class FLIEngine:
-    def __init__(self, 
-                 irf_full, 
-                 tau2=(1, 0.5), 
-                 efficiency = (5, 5), 
-                 f_fraction = (5, 5), 
-                 photo_count = (1.2, 5), 
-                 mono_fraction = 0.2, 
-                 bit = 8, 
-                 n_cycles = 800_000, 
+    def __init__(self,
+                 irf_full,
+                 tau2=(1, 0.5),
+                 efficiency = (5, 5),
+                 A1_fraction = (5, 5),
+                 photo_count = (1.2, 5),
+                 mono_fraction = 0.2,
+                 bit = 8,
+                 n_cycles = 800_000,
                  dcr = 0.05,
-                 laser_feq = 80, 
+                 laser_feq = 80,
+                 seed = None,
                  **kwargs
                  ):
-        
+
         irf = irf_picker(irf_full)
         # Timing and Normalization
         irf_sum = irf.sum()
         if not np.isfinite(irf_sum) or irf_sum <= 0:
             raise ValueError(f"Invalid IRF: sum={irf_sum}. IRF must be non-negative and non-zero.")
         self.irf = irf / irf_sum
+        self.rng = np.random.default_rng(seed)
         self.laser_period = 1000 / laser_feq
         # N bins each of width dt covering [0, laser_period); endpoint-exclusive
         self.dt = self.laser_period / len(self.irf)
@@ -33,35 +35,34 @@ class FLIEngine:
 
         #  Parameters Storage
         self.params_cfg = {
-            'tau2': tau2, 
-            'eff': efficiency, 
-            'f': f_fraction, 
-            'pc': photo_count, 
-            'mono': mono_fraction, 
-            'bit': bit, 
-            'cycles': n_cycles, 
+            'tau2': tau2,
+            'eff': efficiency,
+            'A1': A1_fraction,
+            'pc': photo_count,
+            'mono': mono_fraction,
+            'bit': bit,
+            'cycles': n_cycles,
             'dcr': dcr,
-            **kwargs 
+            **kwargs
         }
 
     def sample_all_params(self):
         """Samples lifetime and fraction parameters for a single pixel."""
         t2 = ParameterSampler.truncated_normal(*self.params_cfg['tau2'])
-        is_mono = np.random.rand() < self.params_cfg['mono']
-        
+        is_mono = self.rng.random() < self.params_cfg['mono']
+
         if is_mono:
-            rng = np.random.default_rng()
-            if rng.random() < 0.9:
-                E, A1 = 0.0, rng.uniform(0.99, 0.9999)
+            if self.rng.random() < 0.9:
+                E, A1 = 0.0, self.rng.uniform(0.99, 0.9999)
             else:
-                E, A1 = rng.uniform(0.99, 1.0), rng.uniform(0.0001, 0.01)
+                E, A1 = self.rng.uniform(0.99, 1.0), self.rng.uniform(0.0001, 0.01)
             t1 = t2 * (1 - E)
             # Steady-state correction for pulse repetition
             f = (A1 * (1-np.exp(-self.laser_period/t1))) / (A1*(1-np.exp(-self.laser_period/t1)) + (1-A1)*(1-np.exp(-self.laser_period/t2)))
             return {"mono": True, "E": E, "f": f, "tau1": t1, "tau2": t2, "A1": A1, "A2": 1.0 - A1}
-        
-        E  = ParameterSampler.sample_beta(*self.params_cfg['eff'], scale=0.9, offset=0.1)
-        A1 = ParameterSampler.sample_beta(*self.params_cfg['f'],   scale=0.9, offset=0.05)
+
+        E  = ParameterSampler.sample_beta(*self.params_cfg['eff'], scale=0.9, offset=0.1, rng=self.rng)
+        A1 = ParameterSampler.sample_beta(*self.params_cfg['A1'],  scale=0.9, offset=0.05, rng=self.rng)
         A2 = 1.0 - A1
         t1 = t2 * (1 - E)
         # Pulsed-repetition correction (same formula as mono mode)
@@ -72,29 +73,34 @@ class FLIEngine:
         return {"mono": False, "E": E, "f": f, "tau1": t1, "tau2": t2, "A1": A1, "A2": A2}
 
     def get_analytical_decay(self, p):
-        """Returns the clean multiexponential decay curve."""
-        return p["A1"] * np.exp(-self.t / p["tau1"]) + p["A2"] * np.exp(-self.t / p["tau2"])
+        T = self.laser_period
+        # steady-state scaling factor per component
+        scaling_factor1 = 1.0 / (1.0 - np.exp(-T / p["tau1"]))
+        scaling_factor2 = 1.0 / (1.0 - np.exp(-T / p["tau2"]))
+        return (p["A1"] * scaling_factor1 * np.exp(-self.t / p["tau1"]) +
+                p["A2"] * scaling_factor2 * np.exp(-self.t / p["tau2"]))
 
     def simulate_tcspc(self, p, n_cycles, mu_per_cycle):
         """Photon-by-photon logic for TCSPC mode."""
-        total_photons = np.random.poisson(mu_per_cycle * n_cycles)
+        total_photons = self.rng.poisson(mu_per_cycle * n_cycles)
         if total_photons == 0: return np.zeros_like(self.t)
 
         # Emission (Inverse Transform Sampling)
-        comp1 = np.random.rand(total_photons) < p["f"]
+        comp1 = self.rng.random(total_photons) < p["f"]
         times = np.empty(total_photons)
-        times[comp1] = np.random.exponential(p["tau1"], size=comp1.sum())
-        times[~comp1] = np.random.exponential(p["tau2"], size=(~comp1).sum())
+        times[comp1]  = self.rng.exponential(p["tau1"], size=comp1.sum())
+        times[~comp1] = self.rng.exponential(p["tau2"], size=(~comp1).sum())
 
         # IRF Convolution (Sampling from the IRF distribution)
         irf_cdf = np.cumsum(self.irf)
-        irf_shifts = np.searchsorted(irf_cdf, np.random.rand(total_photons)) * self.dt
+        irf_cdf[-1] = 1.0  # pin to exactly 1.0 so searchsorted never returns len(irf)
+        irf_shifts = np.searchsorted(irf_cdf, self.rng.random(total_photons)) * self.dt
 
         # Filter for pile-up and repetitive excitation window
         arrival_times = NoiseEngine.tcspc_pileup_filter(times + irf_shifts, self.laser_period)
-        
+
         # Binning
         bins = (arrival_times / self.dt).astype(np.int32)
         hist = np.bincount(bins[bins < len(self.t)], minlength=len(self.t))
-        
+
         return hist.astype(np.float64)
