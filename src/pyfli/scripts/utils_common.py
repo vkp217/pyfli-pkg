@@ -1,8 +1,6 @@
 import numpy as np 
 from scipy.integrate import quad
 import matplotlib.pyplot as plt
-from scipy.io import loadmat
-import random
 from scipy.stats import pearsonr
 import math
 import os
@@ -333,8 +331,8 @@ def save_3d_array_as_tiff_sequence(array_3d, output_folder, prefix="frame"):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
         
-    H, W, T = array_3d.shape
-    
+    _, _, T = array_3d.shape
+
     print(f"Saving {T} frames to '{output_folder}'...")
 
     for t in range(T):
@@ -371,7 +369,7 @@ def save_as_uint16_sequence(data, output_folder, prefix="frame"):
     # This will truncate decimals (e.g., 1.9 becomes 1)
     data_uint16 = data.astype(np.uint16)
 
-    H, W, T = data_uint16.shape
+    _, _, T = data_uint16.shape
     for t in range(T):
         frame = data_uint16[:, :, t]
         file_path = os.path.join(output_folder, f"{prefix}_{t:03d}.tif")
@@ -409,6 +407,7 @@ def save_plot(save_dir, name, fig=None, dpi=300, close=False):
 
 
 from .dataVnP.colorProcess import Colorprocess
+from .dataVnP.MonoBiClassifier import MonoBiClassifier
 
 def plot_pixel_diagnostic(binned_decay, all_fitset, names,
                           pixel=None, mask=None, t=None,
@@ -427,7 +426,11 @@ def plot_pixel_diagnostic(binned_decay, all_fitset, names,
     raw  = np.asarray(binned_decay[x, y, :], dtype=float)
     bins = raw.shape[-1]
     if t is not None:
-        xs = np.asarray(t, dtype=float).ravel()[:bins]
+        xs = np.asarray(t, dtype=float).ravel()
+        if len(xs) != bins:
+            raise ValueError(
+                f"t length ({len(xs)}) does not match decay bins ({bins}); "
+                "x-axis and data would be misaligned.")
         xlabel = "Time (ns)"
     else:
         xs = np.arange(bins)
@@ -440,9 +443,9 @@ def plot_pixel_diagnostic(binned_decay, all_fitset, names,
     ax_map = fig.add_subplot(gs[:, 0])               # full-height left panel
     ax_top = fig.add_subplot(gs[0, 1])
     ax_bot = fig.add_subplot(gs[1, 1], sharex=ax_top)
-    axd = {"map": ax_map, "decay": ax_top, "residual": ax_bot}
     intensity = np.sum(binned_decay, axis=-1)        # (H, W)
-    im = ax_map.imshow(intensity*mask, cmap=jet_m, aspect=map_aspect)
+    display_intensity = intensity if mask is None else intensity * mask
+    im = ax_map.imshow(display_intensity, cmap=jet_m, aspect=map_aspect)
     # imshow's x-axis = columns, y-axis = rows -> mark pixel at (col, row)=(y, x)
     ax_map.scatter(y, x, marker="x", c="red", s=80, linewidths=2)
     ax_map.set_title("Intensity (Summed)")
@@ -493,7 +496,7 @@ import numpy as np
 from scipy.signal import fftconvolve
 
 
-def compute_detailed_results(tau1, tau2, f, freq_acq, binned_irf, binned_decay,
+def compute_detailed_results(tau1, tau2, f, freq_acq, binned_irf, binned_decay=None,
                         data_name="F-BI", model_type="bi-exponential",
                         params=3, eps=1e-8):
     """
@@ -520,10 +523,16 @@ def compute_detailed_results(tau1, tau2, f, freq_acq, binned_irf, binned_decay,
     tau1 = np.asarray(tau1, dtype=np.float32)
     tau2 = np.asarray(tau2, dtype=np.float32)
     f    = np.asarray(f,    dtype=np.float32)
-    binned_decay = np.asarray(binned_decay, dtype=np.float32)
 
     H, W = tau1.shape
     bins = binned_irf.shape[-1]
+
+    # When binned_decay is absent, all decay-dependent outputs (photon count,
+    # scaling, residuals, chi², R²) reduce to zero naturally.
+    if binned_decay is None:
+        binned_decay = np.zeros((H, W, bins), dtype=np.float32)
+    else:
+        binned_decay = np.asarray(binned_decay, dtype=np.float32)
 
     # --- IRF shape handling: make it broadcastable with sdf (H, W, bins) ------
     irf = np.asarray(binned_irf, dtype=np.float32)
@@ -532,6 +541,103 @@ def compute_detailed_results(tau1, tau2, f, freq_acq, binned_irf, binned_decay,
     elif irf.ndim != 3:
         raise ValueError("binned_irf must be 1-D (bins,) or 3-D (H,W,bins); "
                          f"got shape {irf.shape}")
+
+    # ── mono-exponential branch ───────────────────────────────────────────────
+    if model_type == "mono-exponential":
+        photon_count = np.sum(binned_decay, axis=-1)          # (H, W)
+        b_bool_mask  = photon_count > 0
+
+        # Package bi-exp maps into the format MonoBiClassifier expects
+        dataset      = {'alpha1_map': f, 'tau1_map': tau1, 'tau2_map': tau2}
+        all_datasets = [dataset]
+
+        clf = MonoBiClassifier(b_bool_mask,
+                               names=[data_name],
+                               alpha_upper=0.95,
+                               alpha_lower=0.05,
+                               tau_tol=0.05,
+                               coord=None)
+        classes = clf.classify(all_datasets, display=True)
+
+        mono_mask = classes[0]['mono_mask']          # (H, W) bool, ROI-restricted
+
+        # Assign pixelwise single tau guided by classification:
+        #   mono (alpha1 > upper) → component-1 dominates → tau1
+        #   mono (alpha1 < lower) → component-2 dominates → tau2
+        #   mono (tau1 ≈ tau2)   → lifetimes coincide   → tau1
+        #   bi                   → amplitude-weighted mean lifetime
+        tau_mono = np.where(f > clf.alpha_upper, tau1,
+                   np.where(f < clf.alpha_lower, tau2,
+                            tau1))                   # tau1 ≈ tau2 coincidence case
+        tau_bi   = f * tau1 + (1.0 - f) * tau2      # mean lifetime for bi pixels
+        tau_eff  = np.where(mono_mask, tau_mono, tau_bi)
+        tau_eff  = np.where(b_bool_mask, tau_eff, 0.0).astype(np.float32)
+
+        # Pixelwise single-exponential model
+        t      = np.linspace(0, 1000.0 / freq_acq, bins, dtype=np.float32)
+        tau_b  = np.clip(tau_eff[..., np.newaxis], eps, None)   # (H, W, 1)
+        sdf    = np.exp(-t / tau_b)                              # (H, W, bins)
+
+        # Convolve with IRF and scale to measured photon counts
+        convolved_fit = fftconvolve(sdf, irf, mode="full", axes=-1)[..., :bins]
+        fit_sum  = np.sum(convolved_fit, axis=-1, keepdims=True)
+        fit_pdf  = np.zeros_like(convolved_fit)
+        np.divide(convolved_fit, fit_sum, out=fit_pdf, where=fit_sum > eps)
+        scaled_fit = photon_count[..., np.newaxis] * fit_pdf     # (H, W, bins)
+
+        # Goodness of fit
+        variance = scaled_fit.copy()
+        variance[variance <= 0] = 1.0
+        dof        = max(bins - params - 1, 1)
+        residuals  = binned_decay - scaled_fit
+        chi_sq_raw = np.sum((residuals ** 2) / variance, axis=-1)
+        chi_sq_map = chi_sq_raw / dof
+
+        ss_res = np.sum(residuals ** 2, axis=-1)
+        ss_tot = np.sum(
+            (binned_decay - np.mean(binned_decay, axis=-1, keepdims=True)) ** 2,
+            axis=-1)
+        r2_map = np.ones((H, W), dtype=np.float32)
+        np.divide(ss_res, ss_tot, out=r2_map, where=ss_tot > eps)
+        r2_map = 1.0 - r2_map
+
+        health = b_bool_mask.astype(np.float32)
+
+        # Mono-exponential param_maps (solver convention: amp, tau, v_shift, h_shift)
+        param_maps = {
+            'photon_count_map': photon_count.astype(np.float32),
+            'tau_map':          tau_eff,
+            'v_shift_map':      np.zeros((H, W), dtype=np.float32),
+            'h_shift_map':      np.zeros((H, W), dtype=np.float32),
+            'R2_map':           r2_map.astype(np.float32),
+            'chi2_map':         chi_sq_raw.astype(np.float32),
+            'reduced_chi2_map': chi_sq_map.astype(np.float32),
+            'convergence_map':  health.copy(),
+            'pixel_health_map': health,
+        }
+
+        error_maps = np.zeros((H, W, 3), dtype=np.float32)   # amp, tau, v_shift
+
+        tr_maps = {
+            'fit_map':       scaled_fit.astype(np.float32),
+            'residual_map':  residuals.astype(np.float32),
+            'sdf_map':       sdf.astype(np.float32),
+            'convolved_map': convolved_fit.astype(np.float32),
+        }
+
+        mask         = b_bool_mask
+        mean_chi_sq  = float(np.mean(chi_sq_map[mask])) if np.any(mask) else np.nan
+        print(f"Mean Chi-Squared (Active Pixels): {mean_chi_sq:.4f}")
+
+        return {
+            "name":   data_name,
+            "method": "DirectCompute",
+            "results": {
+                "maps":       param_maps,
+                "error_maps": error_maps,
+                "TR_maps":    tr_maps,
+            },
+        }
 
     # --- Model decay (sdf) ----------------------------------------------------
     tau1_b = np.clip(tau1[..., np.newaxis], eps, None)
