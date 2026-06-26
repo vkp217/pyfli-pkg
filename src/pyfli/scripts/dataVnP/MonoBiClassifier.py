@@ -3,6 +3,7 @@ from .mdataViz import DataViewer
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import math
 
 
 class MonoBiClassifier:
@@ -287,3 +288,280 @@ def classify_mono_bi(all_datasets, b_bool_mask, names=None,
                            coord=coord, figsize=figsize)
     clf.classify(all_datasets, display=display)
     return clf.results
+
+
+# ── parameter correlation analysis (no mono/bi classification required) ──────
+class ParamCorrelationMatrix:
+    """
+    Cross-method parameter correlation analysis over a shared ROI mask.
+
+    Works directly on a list of parameter-map dicts (the same format as
+    MonoBiClassifier's all_datasets); no classify() step is required.
+
+    Parameter arrays may be:
+      - 2-D (H, W)    : single scalar per pixel  → plotted as a plain point.
+      - 3-D (H, W, N) : distribution per pixel   → plotted as mean (circle)
+                         with ± std error bars.
+
+    Parameters
+    ----------
+    all_datasets : list of dict
+        Each dict maps parameter name → np.ndarray, either (H, W) or (H, W, N).
+    bool_mask    : np.ndarray (H, W) bool
+        Pixels included in every analysis.
+    names        : list of str, optional
+        Display labels for each dataset.  Defaults to 'Dataset 1', …
+
+    Methods
+    -------
+    scatter_matrix(param, agree, max_points, colors, figsize, rng, show)
+        N × N scatter / histogram grid for ONE parameter across ALL datasets.
+    pairwise_scatter(idx_a, idx_b, params, max_points, colors, figsize, rng, show)
+        Multi-parameter scatter grid comparing exactly TWO datasets.
+    """
+
+    PALETTE = ["#5DADE2", "#EC7063", "#58D68D", "#F4D03F", "#AF7AC5",
+               "#EB984E", "#48C9B0", "#52BE80", "#AAB7B8", "#F1948A",
+               "#BB8FCE", "#7FB3D5", "#76D7C4"]
+
+    def __init__(self, all_datasets, bool_mask, names=None):
+        self.all_datasets = list(all_datasets)
+        self.roi          = np.asarray(bool_mask).astype(bool)
+        N                 = len(self.all_datasets)
+        self.names        = (list(names) if names is not None
+                             else [f"Dataset {i + 1}" for i in range(N)])
+        if len(self.names) != N:
+            raise ValueError(
+                f"names length ({len(self.names)}) must match "
+                f"all_datasets length ({N})")
+
+    # ── internal helpers ──────────────────────────────────────────────────────
+    def _masked_stats(self, dataset_idx, param):
+        """
+        Return (mean, std, is_dist) for one parameter over the ROI.
+
+        2-D (H, W)    → scalar per pixel : is_dist=False, std=None.
+        3-D (H, W, N) → distribution    : is_dist=True,
+                          mean and std computed along the last axis.
+        Missing key   → NaN array, is_dist=False.
+        """
+        ds = self.all_datasets[dataset_idx]
+        n  = int(self.roi.sum())
+        if param not in ds:
+            return np.full(n, np.nan), None, False
+        arr = np.asarray(ds[param], dtype=float)
+        if arr.ndim == 3:                          # (H, W, N) — distribution
+            roi_vals = arr[self.roi]               # (n_pixels, N)
+            return roi_vals.mean(axis=-1), roi_vals.std(axis=-1), True
+        return arr[self.roi].ravel(), None, False  # scalar
+
+    def _resolve_idx(self, ref):
+        """Accept an int index or a dataset name string."""
+        if isinstance(ref, str):
+            return self.names.index(ref)
+        return int(ref)
+
+    @staticmethod
+    def _subsample(rng, max_points, *arrays):
+        """Randomly subsample all arrays to at most max_points rows."""
+        n = arrays[0].size
+        if n <= max_points:
+            return arrays
+        k = rng.choice(n, max_points, replace=False)
+        return tuple(a[k] if a is not None else None for a in arrays)
+
+    @staticmethod
+    def _plot_points(ax, xs, ys, xe, ye, is_dist, color, alpha, ms):
+        """Draw scatter (scalar) or mean±std error bars (distribution)."""
+        if is_dist:
+            ax.errorbar(xs, ys, xerr=xe, yerr=ye,
+                        fmt='o', ms=ms, alpha=alpha, color=color,
+                        elinewidth=0.6, capsize=2.0, ecolor=color, zorder=2)
+        else:
+            ax.scatter(xs, ys, s=ms ** 2, alpha=alpha,
+                       color=color, edgecolors="none", zorder=2)
+
+    # ── Method 1: N × N scatter matrix for one parameter ─────────────────────
+    def scatter_matrix(self, param="tau1_map",
+                       agree="pairwise", max_points=3000,
+                       colors=None, figsize=None, rng=None, show=True):
+        """
+        N × N cross-method scatter matrix for a single parameter.
+
+        Diagonal    : histogram of pixel means within the ROI.
+        Off-diagonal: dataset_i (y) vs dataset_j (x) with identity line + r.
+                      Scalar data → scatter points.
+                      Distribution data → mean circle with ± std error bars.
+
+        Parameters
+        ----------
+        param      : str   Key present in the dataset dicts.
+        agree      : str   'pairwise' — each cell uses pixels finite in both
+                           datasets.  'all' — restricted to pixels finite in
+                           ALL datasets simultaneously.
+        max_points : int   Cap on plotted points (random sub-sample).
+        colors     : list  Per-dataset colours (cycles PALETTE by default).
+        figsize    : tuple Figure size; auto-scaled to N if None.
+        rng        : np.random.Generator  For reproducible sub-sampling.
+        show       : bool  Call plt.show() when True.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+        """
+        N      = len(self.all_datasets)
+        rng    = np.random.default_rng() if rng is None else rng
+        colors = colors or self.PALETTE
+
+        # pre-fetch (mean, std, is_dist) for every dataset
+        stats  = [self._masked_stats(i, param) for i in range(N)]
+        pmeans = [s[0] for s in stats]
+
+        # pixels finite in ALL datasets (used when agree=='all')
+        all_finite = np.ones(pmeans[0].shape, dtype=bool)
+        for v in pmeans:
+            all_finite &= np.isfinite(v)
+
+        fig, axes = plt.subplots(N, N,
+                                 figsize=figsize or (2.3 * N, 2.3 * N),
+                                 squeeze=False)
+
+        for i in range(N):
+            for j in range(N):
+                ax = axes[i, j]
+
+                if i == j:                              # ── diagonal: histogram ──
+                    sel = all_finite if agree == "all" else np.isfinite(pmeans[i])
+                    v   = pmeans[i][sel]
+                    if v.size:
+                        ax.hist(v, bins=40,
+                                color=colors[i % len(colors)], alpha=0.85)
+                    ax.set_facecolor("#f5f5f5")
+
+                else:                                   # ── off-diagonal: scatter ──
+                    ymean, ystd, y_is_dist = stats[i]
+                    xmean, xstd, x_is_dist = stats[j]
+                    sel = (all_finite if agree == "all"
+                           else np.isfinite(xmean) & np.isfinite(ymean))
+                    xm, ym = xmean[sel], ymean[sel]
+                    xs_e = xstd[sel] if xstd is not None else None
+                    ys_e = ystd[sel] if ystd is not None else None
+                    is_dist = x_is_dist or y_is_dist
+
+                    if xm.size:
+                        xm, ym, xs_e, ys_e = self._subsample(
+                            rng, max_points, xm, ym, xs_e, ys_e)
+                        self._plot_points(ax, xm, ym, xs_e, ys_e,
+                                          is_dist, "steelblue", 0.35, 3)
+                        lo = float(min(xm.min(), ym.min()))
+                        hi = float(max(xm.max(), ym.max()))
+                        ax.plot([lo, hi], [lo, hi], "k--", lw=0.8)
+                        r = (np.corrcoef(xm, ym)[0, 1]
+                             if xm.size > 2 else np.nan)
+                        ax.text(0.05, 0.95,
+                                f"r={r:.2f}\nn={xm.size}",
+                                transform=ax.transAxes, fontsize=7, va="top",
+                                bbox=dict(boxstyle="round,pad=0.2",
+                                          fc="white", ec="none", alpha=0.7))
+
+                ax.tick_params(labelsize=6)
+                if i == 0:      ax.set_title(self.names[j], fontsize=8)
+                if j == 0:      ax.set_ylabel(self.names[i], fontsize=8)
+                if i == N - 1:  ax.set_xlabel(self.names[j], fontsize=7)
+
+        fig.suptitle(
+            f"Cross-method correlation — {param}  (agree='{agree}')",
+            fontsize=11)
+        fig.tight_layout(rect=[0, 0, 1, 0.97])
+        if show:
+            plt.show()
+        return fig
+
+    # ── Method 2: multi-parameter scatter between any two datasets ────────────
+    def pairwise_scatter(self, idx_a, idx_b,
+                         params=("tau1_map", "tau2_map", "alpha1_map"),
+                         max_points=3000, colors=None,
+                         figsize=None, rng=None, show=True):
+        """
+        Scatter plots for multiple parameters between exactly two datasets.
+
+        Scalar parameter (H, W)    → plain scatter point per pixel.
+        Distribution parameter (H, W, N) → mean circle with ± std error bars.
+
+        Parameters
+        ----------
+        idx_a, idx_b : int or str
+            Dataset for y-axis (idx_a) and x-axis (idx_b).
+            Accepts integer position or name string.
+        params       : sequence of str
+            Parameter keys to compare; missing keys produce blank panels.
+        max_points   : int   Cap on plotted points (random sub-sample).
+        colors       : list  One colour per parameter panel (cycles PALETTE).
+        figsize      : tuple Figure size; auto-sized to number of params if None.
+        rng          : np.random.Generator  For reproducible sub-sampling.
+        show         : bool  Call plt.show() when True.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+        """
+        ia, ib   = self._resolve_idx(idx_a), self._resolve_idx(idx_b)
+        name_a   = self.names[ia]
+        name_b   = self.names[ib]
+        rng      = np.random.default_rng() if rng is None else rng
+        colors   = colors or self.PALETTE
+        n_params = len(params)
+        cols     = min(n_params, 4)
+        rows     = math.ceil(n_params / cols)
+
+        fig, axes = plt.subplots(rows, cols,
+                                 figsize=figsize or (4.5 * cols, 4.0 * rows),
+                                 squeeze=False)
+        axes = axes.flatten()
+
+        for p_idx, param in enumerate(params):
+            ax                       = axes[p_idx]
+            col                      = colors[p_idx % len(colors)]
+            xmean, xstd, x_is_dist  = self._masked_stats(ib, param)
+            ymean, ystd, y_is_dist  = self._masked_stats(ia, param)
+            sel = np.isfinite(xmean) & np.isfinite(ymean)
+            xm, ym = xmean[sel], ymean[sel]
+            xs_e = xstd[sel] if xstd is not None else None
+            ys_e = ystd[sel] if ystd is not None else None
+            is_dist = x_is_dist or y_is_dist
+
+            if xm.size:
+                xm, ym, xs_e, ys_e = self._subsample(
+                    rng, max_points, xm, ym, xs_e, ys_e)
+                self._plot_points(ax, xm, ym, xs_e, ys_e,
+                                  is_dist, col, 0.45, 4)
+                lo = float(min(xm.min(), ym.min()))
+                hi = float(max(xm.max(), ym.max()))
+                ax.plot([lo, hi], [lo, hi], "k--", lw=1.0)
+                r = np.corrcoef(xm, ym)[0, 1] if xm.size > 2 else np.nan
+                ax.text(0.05, 0.95,
+                        f"r = {r:.3f}\nn = {xm.size}",
+                        transform=ax.transAxes, fontsize=9, va="top",
+                        bbox=dict(boxstyle="round,pad=0.25",
+                                  fc="white", ec="none", alpha=0.8))
+            else:
+                ax.text(0.5, 0.5, "No data", transform=ax.transAxes,
+                        ha="center", va="center", color="gray", fontsize=10)
+
+            ax.set_title(param, fontsize=10)
+            ax.set_xlabel(name_b, fontsize=9)
+            ax.set_ylabel(name_a, fontsize=9)
+            ax.tick_params(labelsize=7)
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+
+        for p_idx in range(n_params, len(axes)):
+            axes[p_idx].axis("off")
+
+        fig.suptitle(
+            f"Pairwise parameter correlation: {name_a}  vs  {name_b}",
+            fontsize=12)
+        fig.tight_layout(rect=[0, 0, 1, 0.96])
+        if show:
+            plt.show()
+        return fig
