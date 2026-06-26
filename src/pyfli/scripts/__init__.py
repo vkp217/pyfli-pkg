@@ -7,7 +7,7 @@ from .dataCC import IRFAligner, DataPreprocessing, Normalization, ROIoperations
 from .dataVnP import (DataViewer, Plotter, DLModelComparator, Colorprocess,
                                PlotConfig, DataProcessor, SourceLoader,
                                PlotKit, SubplotVisualizer, plot_2d_subplots,
-                               MonoBiClassifier)
+                               MonoBiClassifier, ParamCorrelationMatrix)
 from .roiMaker import ROIMaker
 from .solver import (BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, 
                      MLEFLIFitter, GlobalFLIFitter, FittingComparator,
@@ -56,7 +56,7 @@ __all__ = ["DataOperations", "IRFAligner", "DataViewer", "AlliGprocessedImport",
     "FLICalibrator", "FLIValidator", "Normalization", "Msg_display", "FittingComparator",
     "data_masking", "Detector", "BinnedFliFitter", "FliBinner", "ROIoperations",
     "Batch_sim", "DataSaver", "load_flim_data", "collapse_to_xyt", "plot_xyt",
-    "LaguerreFLI", "plot_pixel_diagnostic", "compute_detailed_results", "MonoBiClassifier",
+    "LaguerreFLI", "plot_pixel_diagnostic", "compute_detailed_results", "MonoBiClassifier", "ParamCorrelationMatrix",
     "AcquisitionConfig", "AcquisitionMode",
     "phasor_continuous", "phasor_discrete", "phasor_gated_single", "phasor_gated_N",
     "phasor_truncated", "phasor_offset", "phasor_from_config",
