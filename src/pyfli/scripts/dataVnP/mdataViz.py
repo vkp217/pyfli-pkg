@@ -276,6 +276,12 @@ class DataViewer:
                 img_axes[i].plot(data)
             img_axes[i].set_title(label)
         fig.suptitle(title, fontsize=14)
+
+        if self.save_path:
+            fname = (self.fig_name if self.fig_name else "fli_px_display") + ".png"
+            plt.savefig(os.path.join(self.save_path, fname),
+                        dpi=300, bbox_inches='tight')
+
         plt.show()
         if is_pixel:
             return fig, (ax_log, ax_lin, img_axes)
