@@ -1,6 +1,8 @@
 # solver/comparison.py
 import numpy as np
 import time
+import io
+import contextlib
 import matplotlib.pyplot as plt
 
 class FittingComparator:
@@ -171,10 +173,11 @@ class FittingComparator:
 
         self._print_summary_table(results_table, model_type)
 
+        fig = None
         if plot and plot_data['fits']:
-            self._plot_comparison(plot_data, yscale, model_type)
+            fig = self._plot_comparison(plot_data, yscale, model_type)
 
-        return results_table
+        return results_table, fig
 
     def run_all(self, y_data, irf_data, model_type='bi-exponential', p0=None, bounds=None, yscale='log', plot=True):
         return self.compare_selected(list(self.method_mapping.keys()), y_data, irf_data, 
@@ -213,3 +216,31 @@ class FittingComparator:
         plt.tight_layout()
         plt.show()
         return fig
+
+    def save_results(self, saver, results_table, fig=None,
+                     model_type='bi-exponential', name="fitting_comparison"):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self._print_summary_table(results_table, model_type)
+        for line in buf.getvalue().splitlines():
+            saver.log(line)
+
+        # 2. Save the diagnostic figure if one was produced
+        if fig is not None:
+            saver.save_plot(name, fig=fig, dpi=300, close=False)
+
+        # 3. Serialise the results table to JSON
+        rows_json = []
+        for row in results_table:
+            method, category, success, elapsed, r2, stat, red_stat, popt = row
+            rows_json.append({
+                "method":       method,
+                "category":     category,
+                "success":      success,
+                "elapsed":      elapsed,
+                "r2":           float(r2),
+                "chi2":         float(stat),
+                "reduced_chi2": float(red_stat),
+                "popt":         popt.tolist() if hasattr(popt, "tolist") else popt,
+            })
+        saver.save_json(name, rows_json)
