@@ -1,6 +1,7 @@
 # scripts/simulator/__init__.py
 from .distributions import ParameterSampler
 from .main_factory import Macro_sim, TCSPC_sim
+from .main_factory_gen import ContinousEqSim, PhotonCountSim
 from .noise_models import NoiseEngine
 from .simulator_engine import FLIEngine
 from .sim_image_generator import FLIImageGenerator
