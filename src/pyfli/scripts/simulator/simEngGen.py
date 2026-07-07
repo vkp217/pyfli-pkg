@@ -9,6 +9,8 @@ class FLIModelSim:
     def __init__(self,
                  irf_full,
                  tau2=(1, 0.5),
+                 tau2_dist = 'normal',   # 'normal' -> truncated_normal | 'beta' -> sample_beta
+                 tau2_beta_range = (4.8, 0.2),  # (scale, offset), only used when tau2_dist='beta'
                  efficiency = (5, 5),
                  A1_fraction = (5, 5),
                  photo_count = (1.2, 5),
@@ -36,6 +38,8 @@ class FLIModelSim:
         #  Parameters Storage
         self.params_cfg = {
             'tau2': tau2,
+            'tau2_dist': tau2_dist,
+            'tau2_beta_range': tau2_beta_range,
             'eff': efficiency,
             'A1': A1_fraction,
             'pc': photo_count,
@@ -46,17 +50,30 @@ class FLIModelSim:
             **kwargs
         }
 
+    def _sample_tau2(self):
+        """Draws tau2 from either a truncated normal or a beta prior, per tau2_dist."""
+        if self.params_cfg['tau2_dist'] == 'beta':
+            scale, offset = self.params_cfg['tau2_beta_range']
+            t2 = ParameterSampler.sample_beta(*self.params_cfg['tau2'],
+                                               scale=scale,
+                                               offset=offset,
+                                               rng=self.rng)
+        else:
+            t2 = ParameterSampler.truncated_normal(*self.params_cfg['tau2'])
+        # Guard against a zero (or negative) lifetime, which would blow up any 1/tau2 term downstream
+        return max(t2, 1e-3)
+
     def sample_mono_params(self):
         """Samples the lifetime parameter for a single pixel (pure single-exponential)."""
-        t2 = ParameterSampler.truncated_normal(*self.params_cfg['tau2'])
+        t2 = self._sample_tau2()
         return {"mono": True, "tau": t2}
 
     def sample_bi_params(self):
         """Samples lifetime and fraction parameters for a single pixel."""
-        t2 = ParameterSampler.truncated_normal(*self.params_cfg['tau2'])
+        t2 = self._sample_tau2()
 
-        E  = ParameterSampler.sample_beta(*self.params_cfg['eff'], scale=0.9, offset=0.1, rng=self.rng)
-        A1 = ParameterSampler.sample_beta(*self.params_cfg['A1'],  scale=0.9, offset=0.05, rng=self.rng)
+        E  = ParameterSampler.sample_beta(*self.params_cfg['eff'], scale=0.998, offset=0.001, rng=self.rng)
+        A1 = ParameterSampler.sample_beta(*self.params_cfg['A1'],  scale=0.998, offset=0.001, rng=self.rng)
         A2 = 1.0 - A1
         t1 = t2 * (1 - E)
         # Pulsed-repetition correction (same formula as mono mode)
