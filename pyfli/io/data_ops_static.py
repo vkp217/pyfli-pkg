@@ -1,3 +1,5 @@
+from pyfli import logging
+
 # dataIO/data_ops_static.py
 import numpy as np
 import h5py
@@ -79,7 +81,7 @@ class StaticDataOps:
             mask = mask[..., 0]
         if mask.shape != ref_shape:
             if mask.shape == ref_shape[::-1]:
-                print(
+                logging.info(
                     f"[INFO] Hot pixel mask transposed from {mask.shape} → {ref_shape}."
                 )
                 mask = mask.T
@@ -175,5 +177,5 @@ class StaticDataOps:
         except Exception as e:
             if isinstance(e, ValueError):
                 raise e
-            print(f"HDF5 Load Error: {e}")
+            logging.error(f"HDF5 Load Error: {e}")
             return None

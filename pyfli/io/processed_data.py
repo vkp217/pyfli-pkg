@@ -1,3 +1,4 @@
+from pyfli import logging
 import numpy as np
 import os
 import glob
@@ -12,7 +13,7 @@ class DatasetPlotter:
             or not self.dataset
             or not self.dataset["results"]["maps"]
         ):
-            print("No maps found to plot.")
+            logging.warning("No maps found to plot.")
             return
 
         map_results = self.dataset["results"]["maps"]
@@ -67,7 +68,7 @@ class AlliGprocessedImport(DatasetPlotter):
     def _read_roi_files(self):
         """Processes .roiN files using the provided working logic."""
         if not os.path.exists(self.folder_path):
-            print(f"Error: The path '{self.folder_path}' does not exist.")
+            logging.error(f"Error: The path '{self.folder_path}' does not exist.")
             return None
 
         search_path = os.path.join(self.folder_path, "*.roiN")
@@ -75,7 +76,7 @@ class AlliGprocessedImport(DatasetPlotter):
 
         # Ensure we have a map to get dimensions from
         if not self.dataset["results"]["maps"]:
-            print(
+            logging.warning(
                 "Warning: No maps loaded yet. ROI mask cannot determine dimensions. Load text files first."
             )
             return
@@ -110,14 +111,14 @@ class AlliGprocessedImport(DatasetPlotter):
 
     def _read_text_files(self):
         if not os.path.exists(self.folder_path):
-            print(f"Error: The path '{self.folder_path}' does not exist.")
+            logging.error(f"Error: The path '{self.folder_path}' does not exist.")
             return None
 
         search_path = os.path.join(self.folder_path, "*Map.txt")
         files = glob.glob(search_path)
 
         if not files:
-            print(f"No *Map.txt files found in {self.folder_path}.")
+            logging.info(f"No *Map.txt files found in {self.folder_path}.")
             return None
 
         is_biexp = self._detect_fit_type(files)
@@ -151,7 +152,7 @@ class AlliGprocessedImport(DatasetPlotter):
                         data = np.loadtxt(file_path, delimiter="\t")
                         self.dataset["results"]["maps"][biexp_rename[key_lookup]] = data
                 except Exception as e:
-                    print(f"Could not load {full_name}: {e}")
+                    logging.warning(f"Could not load {full_name}: {e}")
             else:
                 monoexp_rename = {
                     "A Map": "A_map",
@@ -169,18 +170,18 @@ class AlliGprocessedImport(DatasetPlotter):
                             data
                         )
                 except Exception as e:
-                    print(f"Could not load {full_name}: {e}")
+                    logging.warning(f"Could not load {full_name}: {e}")
 
         # Automatically trigger ROI reading AFTER maps are established
         self._read_roi_files()
 
         # Summary Printout
         loaded_keys = list(self.dataset["results"]["maps"].keys())
-        print("--- AlliG Import Summary ---")
-        print(f"Folder: {self.dataset['name']}")
-        print(f"Total Maps Loaded: {len(loaded_keys)}")
-        print(f"Map Names: {', '.join(loaded_keys)}")
-        print("----------------------------")
+        logging.info("--- AlliG Import Summary ---")
+        logging.info(f"Folder: {self.dataset['name']}")
+        logging.info(f"Total Maps Loaded: {len(loaded_keys)}")
+        logging.info(f"Map Names: {', '.join(loaded_keys)}")
+        logging.info("----------------------------")
 
         return self.dataset
 
@@ -204,14 +205,14 @@ class BHprocessedImport(DatasetPlotter):
 
     def _read_ascfiles(self):
         if not os.path.exists(self.folder_path):
-            print(f"Error: The path '{self.folder_path}' does not exist.")
+            logging.error(f"Error: The path '{self.folder_path}' does not exist.")
             return None
 
         search_path = os.path.join(self.folder_path, "*.asc")
         files = glob.glob(search_path)
 
         if not files:
-            print(f"No .asc files found in {self.folder_path}. Aborting import.")
+            logging.info(f"No .asc files found in {self.folder_path}. Aborting import.")
             return None
 
         is_biexp = self._detect_fit_type(files)
@@ -290,15 +291,15 @@ class BHprocessedImport(DatasetPlotter):
                         self.dataset["results"]["irf"] = np.tile(irf_1d, (512, 512, 1))
 
             except Exception as e:
-                print(f"Skipping BH file {full_name} due to error: {e}")
+                logging.warning(f"Skipping BH file {full_name} due to error: {e}")
 
         # Summary Printout
         loaded_keys = list(self.dataset["results"]["maps"].keys())
-        print("--- BH Import Summary ---")
-        print(f"Folder: {self.dataset['name']}")
-        print(f"Total Maps Loaded: {len(loaded_keys)}")
-        print(f"Map Names: {', '.join(loaded_keys)}")
-        print("-------------------------")
+        logging.info("--- BH Import Summary ---")
+        logging.info(f"Folder: {self.dataset['name']}")
+        logging.info(f"Total Maps Loaded: {len(loaded_keys)}")
+        logging.info(f"Map Names: {', '.join(loaded_keys)}")
+        logging.info("-------------------------")
         return self.dataset
 
 

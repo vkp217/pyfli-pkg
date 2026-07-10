@@ -1,3 +1,4 @@
+from pyfli import logging
 import torch
 import numpy as np
 import h5py
@@ -15,7 +16,7 @@ class FLIGPUProcessor:
         self.fitter_class = fitter_class
         self.T_acq = 1000.0 / freq[1]
         self.T_laser = 1000.0 / freq[0]
-        print(f"Using Device: {self.device}")
+        logging.info(f"Using Device: {self.device}")
 
     def _transform_params(self, raw_p, model_type):
 
@@ -125,7 +126,7 @@ class FLIGPUProcessor:
 
         valid_idx = np.where(mask.flatten())[0]
         if len(valid_idx) == 0:
-            print("No valid pixels found.")
+            logging.warning("No valid pixels found.")
             return None
 
         flat_data = torch.tensor(
@@ -185,7 +186,7 @@ class FLIGPUProcessor:
         # a single global Hessian across all pixels, correctly handling the joint space.
         optimizer = torch.optim.Adam([raw_p], lr=kwargs.get("lr", 0.05))
 
-        print(f"--- GPU {mode} Processing ({len(valid_idx)} pixels) ---")
+        logging.info(f"--- GPU {mode} Processing ({len(valid_idx)} pixels) ---")
         pbar = tqdm(total=max_iter, desc=f"Optimizing ({mode})")
 
         prev_loss = float("inf")
@@ -210,7 +211,7 @@ class FLIGPUProcessor:
                     patience_count = 0
                 prev_loss = cur
         except Exception as e:
-            print(f"Optimization interrupted: {e}")
+            logging.warning(f"Optimization interrupted: {e}")
             pixel_health_map[valid_idx] = 0
 
         pbar.close()
@@ -254,7 +255,7 @@ class FLIGPUProcessor:
         full_chi2_red[valid_idx] = chi2_red_flat.detach().cpu().numpy()
         full_r2[valid_idx] = r2_flat.detach().cpu().numpy()
 
-        print(f"Fit Finished in {time.time() - start_time:.2f}s")
+        logging.info(f"Fit Finished in {time.time() - start_time:.2f}s")
 
         health_mask = np.zeros(H * W)
         health_mask[valid_idx] = 1.0
@@ -445,4 +446,4 @@ class FLIGPUProcessor:
             for k, v in dataset["results"]["TR_maps"].items():
                 tr_grp.create_dataset(k, data=v, compression="gzip")
 
-        print(f"Dataset successfully saved to: {h5_path}")
+        logging.info(f"Dataset successfully saved to: {h5_path}")

@@ -59,6 +59,11 @@ def test_subpackages_available():
     assert pyfli.sp_analysis is not None
 
 
+def test_logging_module_is_configured():
+    assert pyfli.logging.logger.name == "pyfli"
+    assert callable(pyfli.logging.info)
+
+
 def test_laguerre_instantiation():
     model = pyfli.LaguerreFLI(n_components=2, alpha=0.85, dt=0.05)
     assert model.n_components == 2

@@ -1,3 +1,5 @@
+from pyfli import logging
+
 # simulator/sim_image_generator.py
 import numpy as np
 from PIL import Image
@@ -81,7 +83,9 @@ class FLIImageGenerator:
         param_maps = {k: np.zeros((h, w), dtype=np.float32) for k in param_keys}
 
         if self.verbose:
-            print(f"Generating {self.method.upper()} FLI Image [{h}x{w}x{t_len}]...")
+            logging.info(
+                f"Generating {self.method.upper()} FLI Image [{h}x{w}x{t_len}]..."
+            )
 
         pixel_iterator = itertools.product(range(h), range(w))
 

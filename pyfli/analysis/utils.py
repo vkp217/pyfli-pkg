@@ -1,3 +1,4 @@
+from pyfli import logging
 import numpy as np
 from scipy.integrate import quad
 from scipy.signal import fftconvolve
@@ -374,7 +375,7 @@ def save_3d_array_as_tiff_sequence(array_3d, output_folder, prefix="frame"):
 
     _, _, T = array_3d.shape
 
-    print(f"Saving {T} frames to '{output_folder}'...")
+    logging.info(f"Saving {T} frames to '{output_folder}'...")
 
     for t in range(T):
         # Extract the 2D slice (X, Y) at time t
@@ -388,7 +389,7 @@ def save_3d_array_as_tiff_sequence(array_3d, output_folder, prefix="frame"):
         # Save the slice
         tifffile.imwrite(file_path, frame.astype(np.float32))
 
-    print("Saving complete.")
+    logging.info("Saving complete.")
 
 
 def save_as_uint16_sequence(data, output_folder, prefix="frame"):
@@ -417,7 +418,7 @@ def save_as_uint16_sequence(data, output_folder, prefix="frame"):
         file_path = os.path.join(output_folder, f"{prefix}_{t:03d}.tif")
         tifffile.imwrite(file_path, frame)
 
-    print(f"Saved {T} files to {output_folder} in uint16 format.")
+    logging.info(f"Saved {T} files to {output_folder} in uint16 format.")
 
 
 def random_true_pixel(bool_array):
@@ -449,7 +450,7 @@ def save_plot(save_dir, name, fig=None, dpi=300, close=False):
     try:
         target.savefig(path, bbox_inches="tight", dpi=dpi)
     except Exception as e:
-        print(f"ERROR saving {name}: {str(e)}")
+        logging.error(f"ERROR saving {name}: {str(e)}")
     if close:
         plt.close(fig) if fig else plt.close()
 
@@ -624,7 +625,7 @@ def compute_detailed_results(
         photon_count = np.sum(binned_decay, axis=-1)  # (H, W)
         b_bool_mask = photon_count > 0
 
-        # Package bi-exp maps into the format mono_bi_classifier expects
+        # Package bi-exp maps into the format MonoBiClassifier expects
         dataset = {"alpha1_map": f, "tau1_map": tau1, "tau2_map": tau2}
         all_datasets = [dataset]
 
@@ -706,7 +707,7 @@ def compute_detailed_results(
 
         mask = b_bool_mask
         mean_chi_sq = float(np.mean(chi_sq_map[mask])) if np.any(mask) else np.nan
-        print(f"Mean Chi-Squared (Active Pixels): {mean_chi_sq:.4f}")
+        logging.info(f"Mean Chi-Squared (Active Pixels): {mean_chi_sq:.4f}")
 
         return {
             "name": data_name,
@@ -791,7 +792,7 @@ def compute_detailed_results(
 
     mask = photon_count > 0
     mean_chi_sq = float(np.mean(chi_sq_map[mask])) if np.any(mask) else np.nan
-    print(f"Mean Chi-Squared (Active Pixels): {mean_chi_sq:.4f}")
+    logging.info(f"Mean Chi-Squared (Active Pixels): {mean_chi_sq:.4f}")
 
     return {
         "name": data_name,

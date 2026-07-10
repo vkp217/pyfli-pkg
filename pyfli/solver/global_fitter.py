@@ -3,6 +3,9 @@ import numpy as np
 import time
 from tqdm import tqdm
 from tabulate import tabulate
+
+from pyfli import logging
+
 from .comparison import FittingComparator
 
 
@@ -56,10 +59,10 @@ class GlobalFLIFitter:
         master_table_data = []
 
         if not self.cluster_data:
-            print("No cluster data found. Run make_clusters first.")
+            logging.warning("No cluster data found. Run make_clusters first.")
             return {}, {}
 
-        print(f"\n--- Fitting Super-Pixels (Strategy: {cluster_strategy}) ---")
+        logging.info(f"\n--- Fitting Super-Pixels (Strategy: {cluster_strategy}) ---")
 
         for c_key, data in tqdm(self.cluster_data.items(), desc="Super-Pixel Progress"):
             decay, irf = data["decay"], data["irf"]
@@ -322,8 +325,10 @@ class GlobalFLIFitter:
             "Red. Chi2",
             "Parameters",
         ]
-        print("\n" + "═" * 165 + "\nCONSOLIDATED CLUSTER BENCHMARK\n" + "═" * 165)
-        print(
+        logging.info(
+            "\n" + "═" * 165 + "\nCONSOLIDATED CLUSTER BENCHMARK\n" + "═" * 165
+        )
+        logging.info(
             tabulate(
                 data,
                 headers=headers,

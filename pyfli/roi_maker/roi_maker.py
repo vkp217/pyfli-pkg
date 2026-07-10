@@ -15,6 +15,8 @@ import cv2  # importing cv2 overwrites QT_QPA_PLATFORM_PLUGIN_PATH
 import os
 import sys
 
+from pyfli import logging
+
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -2446,7 +2448,7 @@ class ROIMaker:
             if self.rois:
                 self.assign_counter = max(r.roi_id for r in self.rois) + 1
         except Exception as exc:
-            print(f"Load mask failed: {exc}")
+            logging.warning(f"Load mask failed: {exc}")
 
     def save_masks(self):
         stem, _ = os.path.splitext(os.path.abspath(self.save_path))
@@ -2454,12 +2456,12 @@ class ROIMaker:
 
         if self.mask_type == "binary":
             np.save(self.save_path, self.get_binary_mask())
-            print(f"Saved binary mask → {self.save_path}")
+            logging.info(f"Saved binary mask → {self.save_path}")
 
         elif self.mask_type == "multi":
             m = self.get_multi_cluster_mask()
             np.save(self.save_path, m)
-            print(
+            logging.info(
                 f"Saved multi-ID mask ({len(np.unique(m)) - 1} region(s)) → {self.save_path}"
             )
 
@@ -2467,10 +2469,10 @@ class ROIMaker:
             binary_path = f"{stem}_binary.npy"
             multi_path = f"{stem}_multi.npy"
             np.save(binary_path, self.get_binary_mask())
-            print(f"Saved binary mask       → {binary_path}")
+            logging.info(f"Saved binary mask       → {binary_path}")
             m = self.get_multi_cluster_mask()
             np.save(multi_path, m)
-            print(
+            logging.info(
                 f"Saved multi-ID mask ({len(np.unique(m)) - 1} region(s)) → {multi_path}"
             )
 
@@ -2478,7 +2480,7 @@ class ROIMaker:
         if self.intensity_active:
             path = f"{stem}_intensity.npy"
             np.save(path, self.get_intensity_mask())
-            print(f"Saved intensity mask    → {path}")
+            logging.info(f"Saved intensity mask    → {path}")
 
     # ── draw ──────────────────────────────────────────────────────────────────
 
@@ -2513,14 +2515,14 @@ if __name__ == "__main__":
         raise FileNotFoundError(
             f"Data not found. Tried: {os.path.abspath(loader.data_path)}"
         )
-    print(f"FLI shape: {fli_cube.shape}")
+    logging.info(f"FLI shape: {fli_cube.shape}")
 
     irf_cube = loader.load_irf()
     if irf_cube is None:
         raise FileNotFoundError(
             f"IRF not found. Tried: {os.path.abspath(loader.irf_path)}"
         )
-    print(f"IRF shape: {irf_cube.shape}")
+    logging.info(f"IRF shape: {irf_cube.shape}")
 
     intensity_proj = np.sum(fli_cube, axis=-1)
     maker = ROIMaker(intensity_proj, save_path="mouseL_mask.npy")

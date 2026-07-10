@@ -2,8 +2,8 @@ from ..data_vnp import (
     DataViewer,
     Plotter,
     ColorProcessor,
+    MonoBiClassifier,
     plot_2d_subplots,
-    mono_bi_classifier,
 )
 from ..data_cc import Normalization
 from ..data_text import MessageDisplay
@@ -322,14 +322,14 @@ def run_mono_bi_classifier(
 
     Returns
     -------
-    clf     : mono_bi_classifier   fully populated instance
+    clf     : MonoBiClassifier   fully populated instance
     classes : list[dict]         per-dataset classification dicts
     df      : pd.DataFrame       agreed-parameter table for 'mono' class
     """
     if scatter_keys is None:
         scatter_keys = ["tau1_map", "tau2_map"]
 
-    clf = mono_bi_classifier(
+    clf = MonoBiClassifier(
         mask,
         names=names,
         alpha_upper=alpha_upper,
@@ -349,7 +349,7 @@ def run_mono_bi_classifier(
 
     if saver:
         saver.log(
-            f"mono_bi_classifier run: alpha_upper={alpha_upper}, "
+            f"MonoBiClassifier run: alpha_upper={alpha_upper}, "
             f"alpha_lower={alpha_lower}, tau_tol={tau_tol}, "
             f"scatter_keys={scatter_keys}"
         )

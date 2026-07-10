@@ -1,3 +1,4 @@
+from pyfli import logging
 import numpy as np
 
 
@@ -9,7 +10,7 @@ class MessageDisplay:
         if self.saver:
             self.saver.log(message)
         else:
-            print(message)
+            logging.info(message)
 
     def disp_params(self, res_px, model_type="bi-exponential"):
         if not res_px:
@@ -109,7 +110,7 @@ class MessageDisplay:
         lines.append(f"  {rule}\n")
 
         output = "\n".join(lines)
-        print(output)
+        logging.info(output)
 
         if self.saver:
             self.saver.log(output)

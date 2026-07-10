@@ -1,3 +1,4 @@
+from pyfli import logging
 # sp_analysis/simulator/reconstructor.py
 
 import numpy as np
@@ -62,7 +63,7 @@ class Reconstructor:
         # Scaled initial guess: pinv-like using A^T normalization
         x0 = np.dot(A.T, y) / M
 
-        print(f"Starting TV Optimization (Alpha={alpha}, maxiter={maxiter})...")
+        logging.info(f"Starting TV Optimization (Alpha={alpha}, maxiter={maxiter})...")
 
         res = minimize(
             self._objective_and_grad,

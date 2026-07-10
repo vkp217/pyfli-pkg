@@ -5,6 +5,8 @@ import io
 import contextlib
 import matplotlib.pyplot as plt
 
+from pyfli import logging
+
 
 class FittingComparator:
     def __init__(self, freq, base_fitter_class, mle_fitter_class):
@@ -70,10 +72,10 @@ class FittingComparator:
         def sep(left, mid, right):
             return left + mid.join("─" * (w + 2) for _, w, _ in cols) + right
 
-        print()
-        print(sep("┌", "┬", "┐"))
-        print(row_str([c[0] for c in cols]))
-        print(sep("├", "┼", "┤"))
+        logging.info("")
+        logging.info(sep("┌", "┬", "┐"))
+        logging.info(row_str([c[0] for c in cols]))
+        logging.info(sep("├", "┼", "┤"))
 
         for method, category, success, elapsed, r2, stat, red_stat, popt in rows:
             if popt is None:
@@ -119,10 +121,10 @@ class FittingComparator:
                     f"{popt[2]:.2f}",
                     f"{popt[3]:.3f}" if len(popt) > 3 else "—",
                 ]
-            print(row_str(cells))
+            logging.info(row_str(cells))
 
-        print(sep("└", "┴", "┘"))
-        print()
+        logging.info(sep("└", "┴", "┘"))
+        logging.info("")
 
     @staticmethod
     def _weighted_residual(method, y, model):
@@ -168,10 +170,10 @@ class FittingComparator:
         n_methods = len([m for m in methods if m in self.method_mapping])
         title = f"FLI Fitting Results  |  {model_type.upper()}"
         subtitle = f"{n_methods} method{'s' if n_methods != 1 else ''} queued"
-        print(f"\n┌{'─' * W}┐")
-        print(f"│  {title:<{W - 2}}│")
-        print(f"│  {subtitle:<{W - 2}}│")
-        print(f"└{'─' * W}┘\n")
+        logging.info(f"\n┌{'─' * W}┐")
+        logging.info(f"│  {title:<{W - 2}}│")
+        logging.info(f"│  {subtitle:<{W - 2}}│")
+        logging.info(f"└{'─' * W}┘\n")
 
         for method in methods:
             if method not in self.method_mapping:

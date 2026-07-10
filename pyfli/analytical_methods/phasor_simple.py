@@ -1,3 +1,4 @@
+from pyfli import logging
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -297,6 +298,6 @@ class PhasorAnalyzer(PhasorPlotsMixin):
                 )
                 hf.attrs["n_harmonics"] = Gc.shape[0]
                 hf.attrs["resolution"] = f"{Gc.shape[1]}x{Gc.shape[2]}"
-            print(f"Successfully saved data to {save_file}")
+            logging.info(f"Successfully saved data to {save_file}")
         except Exception as e:
-            print(f"An error occurred while saving: {e}")
+            logging.error(f"An error occurred while saving: {e}")

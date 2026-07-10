@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pyfli import logging
 from typing import Optional
 import numpy as np
 from scipy.optimize import least_squares, minimize_scalar, nnls
@@ -472,7 +473,7 @@ class LaguerreFLI:
 
         mask = photon_count > 0
         mean_chi_sq = float(chi_sq_reduced[mask].mean()) if mask.any() else float("nan")
-        print(f"Mean Reduced Chi-Squared (Active Pixels): {mean_chi_sq:.4f}")
+        logging.info(f"Mean Reduced Chi-Squared (Active Pixels): {mean_chi_sq:.4f}")
 
         return {
             "name": data_name,
@@ -509,7 +510,7 @@ class LaguerreFLI:
             tr_grp = res_grp.create_group("TR_maps")
             for k, v in dataset["results"]["TR_maps"].items():
                 tr_grp.create_dataset(k, data=v, compression="gzip", compression_opts=4)
-        print(f"Analysis complete. Results saved to: {h5_path}")
+        logging.info(f"Analysis complete. Results saved to: {h5_path}")
 
     def load_map(
         self, h5_path: str, map_name: str = "tau1_map"
@@ -520,7 +521,7 @@ class LaguerreFLI:
             key = f"results/maps/{map_name}"
             if key in f:
                 return f[key][()]
-            print(f"Map '{map_name}' not found in {h5_path}")
+            logging.warning(f"Map '{map_name}' not found in {h5_path}")
             return None
 
     def predict(self) -> np.ndarray:
@@ -571,7 +572,7 @@ if __name__ == "__main__":
     )
     model.fit(y_meas, irf)
     maps = model.get_parameters("SyntheticFLI")["results"]["maps"]
-    print(model)
-    print(f"  mean recovered taus (ns) = {model.taus_.mean(axis=(0, 1))}")
-    print(f"  true taus (ns)           = {tau_true}")
-    print(f"  mean tau_mean            = {maps['tau_mean_map'].mean():.3f} ns")
+    logging.info(model)
+    logging.info(f"  mean recovered taus (ns) = {model.taus_.mean(axis=(0, 1))}")
+    logging.info(f"  true taus (ns)           = {tau_true}")
+    logging.info(f"  mean tau_mean            = {maps['tau_mean_map'].mean():.3f} ns")

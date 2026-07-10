@@ -18,6 +18,8 @@ import argparse
 import pathlib
 from dataclasses import replace
 
+from pyfli import logging
+
 import numpy as np
 import matplotlib
 
@@ -71,7 +73,7 @@ def fig_comparison(outdir: pathlib.Path) -> None:
     )
     path = outdir / "phasor_all_modes.png"
     fig.savefig(path, dpi=150, bbox_inches="tight")
-    print(f"  saved → {path}")
+    logging.info(f"  saved → {path}")
     plt.close(fig)
 
 
@@ -87,7 +89,7 @@ def fig_discrete_sweep(outdir: pathlib.Path) -> None:
     )
     path = outdir / "phasor_discrete_N_sweep.png"
     fig.savefig(path, dpi=150, bbox_inches="tight")
-    print(f"  saved → {path}")
+    logging.info(f"  saved → {path}")
     plt.close(fig)
 
 
@@ -107,7 +109,7 @@ def fig_individual_modes(outdir: pathlib.Path) -> None:
 
     path = outdir / "phasor_individual_modes.png"
     fig.savefig(path, dpi=150, bbox_inches="tight")
-    print(f"  saved → {path}")
+    logging.info(f"  saved → {path}")
     plt.close(fig)
 
 
@@ -117,23 +119,23 @@ def fig_individual_modes(outdir: pathlib.Path) -> None:
 
 
 def print_summary() -> None:
-    print("\n" + "═" * 60)
-    print("  phasor_flim — acquisition mode summary")
-    print("═" * 60)
+    logging.info("\n" + "═" * 60)
+    logging.info("  phasor_flim — acquisition mode summary")
+    logging.info("═" * 60)
     for cfg in make_all_configs():
-        print()
-        print(cfg.describe())
+        logging.info("")
+        logging.info(cfg.describe())
 
-    print("\n" + "═" * 60)
-    print("  Sample phasor coordinates at τ = 2.0 ns")
-    print("═" * 60)
+    logging.info("\n" + "═" * 60)
+    logging.info("  Sample phasor coordinates at τ = 2.0 ns")
+    logging.info("═" * 60)
 
     tau_sample = np.array([2.0])
     for cfg in make_all_configs():
         g, s = phasor_from_config(tau_sample, cfg)
         tau_ph = phase_lifetime(g, s, cfg)
         tau_m = modulus_lifetime(g, s, cfg)
-        print(
+        logging.info(
             f"  {cfg.mode.name:<14}  g={float(np.squeeze(g)):.4f}  s={float(np.squeeze(s)):.4f}"
             f"  τ_φ={float(np.squeeze(tau_ph)):.3f} ns  τ_m={float(np.squeeze(tau_m)):.3f} ns"
         )
@@ -156,11 +158,11 @@ def main() -> None:
 
     print_summary()
 
-    print("\nGenerating figures …")
+    logging.info("\nGenerating figures …")
     fig_comparison(outdir)
     fig_discrete_sweep(outdir)
     fig_individual_modes(outdir)
-    print("\nDone.")
+    logging.info("\nDone.")
 
 
 if __name__ == "__main__":

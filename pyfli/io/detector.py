@@ -1,3 +1,4 @@
+from pyfli import logging
 import os
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
@@ -499,7 +500,7 @@ class Detector:
         if not path:
             return None
         if not os.path.exists(path):
-            print(f"[ERROR] Path not found: {os.path.abspath(path)}")
+            logging.error(f"[ERROR] Path not found: {os.path.abspath(path)}")
             return None
         _exts = valid_exts or (
             ".tif",
@@ -591,9 +592,8 @@ class Detector:
                 if bg_avg.shape == stack[..., i].shape:
                     stack[..., i] -= bg_avg
                 else:
-                    print(
-                        f"[WARN] BG shape {bg_avg.shape} ≠ frame '{files[i]}' "
-                        f"shape {stack[..., i].shape} — subtraction skipped."
+                    logging.warning(
+                        f"[WARN] BG shape {bg_avg.shape} ≠ frame '{files[i]}' shape {stack[..., i].shape} — subtraction skipped."
                     )
             stack = np.maximum(stack, 0)
 
@@ -642,7 +642,7 @@ class Detector:
             }
             loader = loaders.get(ext)
             if loader is None:
-                print(
+                logging.warning(
                     f"[WARN] Unsupported format '{ext}': {os.path.basename(file_path)}"
                 )
                 return None
@@ -655,7 +655,7 @@ class Detector:
             return data
 
         except Exception as e:
-            print(f"[ERROR] {os.path.basename(file_path)}: {e}")
+            logging.error(f"[ERROR] {os.path.basename(file_path)}: {e}")
             return None
 
     # ================================================================= #
@@ -722,9 +722,8 @@ class Detector:
     def _package(self, decay, irf, background, mask, name, source, **processing):
         if decay is not None and irf is not None:
             if decay.shape[-1] != irf.shape[-1]:
-                print(
-                    f"[WARN] Temporal mismatch: decay {decay.shape[-1]} bins, "
-                    f"IRF {irf.shape[-1]} bins."
+                logging.warning(
+                    f"[WARN] Temporal mismatch: decay {decay.shape[-1]} bins, IRF {irf.shape[-1]} bins."
                 )
         return {
             "name": name,

@@ -1,3 +1,5 @@
+from pyfli import logging
+
 # simulator/calibration_engine.py
 import numpy as np
 import json
@@ -61,23 +63,27 @@ class FLICalibrator:
 
     def display_report(self, results):
         if results is None:
-            print("No results to display.")
+            logging.info("No results to display.")
             return
 
-        print("\n" + "=" * 60)
-        print(f"STATISTICAL VALIDATION REPORT (N={results['sample_size']} Pixels)")
-        print("=" * 60)
-        print(f"{'Metric':<25} | {'Value':<15} | {'Target'}")
-        print("-" * 60)
-        print(
+        logging.info("\n" + "=" * 60)
+        logging.info(
+            f"STATISTICAL VALIDATION REPORT (N={results['sample_size']} Pixels)"
+        )
+        logging.info("=" * 60)
+        logging.info(f"{'Metric':<25} | {'Value':<15} | {'Target'}")
+        logging.info("-" * 60)
+        logging.info(
             f"{'Cosine Similarity':<25} | {results['cosine_similarity']:<15.4f} | >0.99"
         )
-        print(f"{'KL Divergence':<25} | {results['kl_divergence']:<15.4f} | <0.01")
-        print(f"{'KS P-Value':<25} | {results['ks_p_value']:<15.4e} | >0.05")
-        print(
+        logging.info(
+            f"{'KL Divergence':<25} | {results['kl_divergence']:<15.4f} | <0.01"
+        )
+        logging.info(f"{'KS P-Value':<25} | {results['ks_p_value']:<15.4e} | >0.05")
+        logging.info(
             f"{'Hist Intersection':<25} | {results['hist_intersection']:<15.4f} | -> 1.0"
         )
-        print("=" * 60 + "\n")
+        logging.info("=" * 60 + "\n")
 
         fig, axes = plt.subplots(1, 2, figsize=(15, 5))
 
@@ -115,7 +121,7 @@ class FLICalibrator:
         plt.show()
 
     def run_calibration(self, exp_decay_cube, base_config, initial_guess=None):
-        print(
+        logging.info(
             f"--- Starting Calibration: {self.method.upper()} (Norm: {self.normalize_stats}) ---"
         )
         self.iteration = 0
@@ -151,7 +157,7 @@ class FLICalibrator:
         final_cfg = base_config.copy()
         final_cfg.update(self.opt_params)
 
-        print("\nGenerating Final Optimized Calibration Report...")
+        logging.info("\nGenerating Final Optimized Calibration Report...")
         gen = FLIImageGenerator(
             self.irf_data,
             image_shape=(32, 32),
@@ -167,7 +173,7 @@ class FLICalibrator:
         return final_cfg
 
     def cross_validate(self, calibrated_cfg, test_exp_cube):
-        print(f"\n--- Cross-Validation (Norm: {self.normalize_stats}) ---")
+        logging.info(f"\n--- Cross-Validation (Norm: {self.normalize_stats}) ---")
         gen = FLIImageGenerator(
             self.irf_data,
             image_shape=test_exp_cube.shape[:2],
@@ -192,7 +198,7 @@ class FLICalibrator:
         }
         with open(filename, "w") as f:
             json.dump(profile, f, indent=4)
-        print(f"Profile saved to {filename}")
+        logging.info(f"Profile saved to {filename}")
 
     @staticmethod
     def load_hardware_profile(filename):
@@ -208,7 +214,7 @@ class FLICalibrator:
         dcr_range=(0.001, 0.1, 10),
         sigma_range=(0.5, 4.0, 10),
     ):
-        print("Generating Sensitivity Surface (Processing...)")
+        logging.info("Generating Sensitivity Surface (Processing...)")
         dcr_vals = np.linspace(*dcr_range)
         sigma_vals = np.linspace(*sigma_range)
         p_matrix = np.zeros((len(dcr_vals), len(sigma_vals)))

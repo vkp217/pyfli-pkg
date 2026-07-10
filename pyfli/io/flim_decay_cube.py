@@ -58,6 +58,7 @@ Notes
 """
 
 from __future__ import annotations
+from pyfli import logging
 
 import struct
 import zlib
@@ -471,7 +472,7 @@ def plot_decay_cube(
 
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"Figure saved to {save_path}")
+        logging.info(f"Figure saved to {save_path}")
     else:
         plt.show()
     return fig
@@ -526,7 +527,7 @@ def plot_derived_images(
 
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"Figure saved to {save_path}")
+        logging.info(f"Figure saved to {save_path}")
     else:
         plt.show()
     return fig
@@ -608,16 +609,15 @@ def load_flim_data(
         cube = None
         try:
             cube = build_decay_cube(flim_img, channel=channel)
-            print(
-                f"[OK] Decoded decay cube: shape={cube.shape}, "
-                f"total photons={cube.sum():,}"
+            logging.info(
+                f"[OK] Decoded decay cube: shape={cube.shape}, total photons={cube.sum():,}"
             )
         except (RuntimeError, ValueError, NotImplementedError) as exc:
             raw_hex = flim_img.memory_block.read()[:64].hex()
-            print(f"[WARN] Could not decode raw TCSPC stream: {exc}")
-            print(f"       Memory block first 64 bytes: {raw_hex}")
-            print("       Using pre-computed derived images instead.")
-            print(f"       Derived keys available: {list(derived.keys())}")
+            logging.warning(f"[WARN] Could not decode raw TCSPC stream: {exc}")
+            logging.info(f"       Memory block first 64 bytes: {raw_hex}")
+            logging.info("       Using pre-computed derived images instead.")
+            logging.info(f"       Derived keys available: {list(derived.keys())}")
 
         return cube, derived, flim_img
 
@@ -759,7 +759,7 @@ def plot_xyt(
 
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"Saved to {save_path}")
+        logging.info(f"Saved to {save_path}")
     else:
         plt.show()
     return fig
@@ -901,7 +901,7 @@ def plot_xyt(  # noqa: F811
 
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"Saved to {save_path}")
+        logging.info(f"Saved to {save_path}")
     else:
         plt.show()
 
@@ -913,7 +913,7 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print(__doc__)
+        logging.info(__doc__)
         sys.exit(0)
 
     lif_path = sys.argv[1]
@@ -922,15 +922,15 @@ if __name__ == "__main__":
     cube, derived, flim_img = load_flim_data(lif_path, series_name)
 
     if cube is not None:
-        print(f"\nDecay cube shape : {cube.shape}  (M, Y, X, H)")
-        print(f"  M = {cube.shape[0]}  mosaic tiles / time frames")
-        print(f"  Y = {cube.shape[1]}  image height (pixels)")
-        print(f"  X = {cube.shape[2]}  image width  (pixels)")
-        print(f"  H = {cube.shape[3]}  TCSPC histogram bins")
-        print(f"Total photon count : {cube.sum():,}")
+        logging.info(f"\nDecay cube shape : {cube.shape}  (M, Y, X, H)")
+        logging.info(f"  M = {cube.shape[0]}  mosaic tiles / time frames")
+        logging.info(f"  Y = {cube.shape[1]}  image height (pixels)")
+        logging.info(f"  X = {cube.shape[2]}  image width  (pixels)")
+        logging.info(f"  H = {cube.shape[3]}  TCSPC histogram bins")
+        logging.info(f"Total photon count : {cube.sum():,}")
         plot_decay_cube(cube, flim_img)
     elif derived:
-        print(f"\nDerived FLIM maps available: {list(derived.keys())}")
+        logging.info(f"\nDerived FLIM maps available: {list(derived.keys())}")
         for k, v in derived.items():
-            print(f"  {k:30s}  shape={v.shape}  dtype={v.dtype}")
+            logging.info(f"  {k:30s}  shape={v.shape}  dtype={v.dtype}")
         plot_derived_images(derived, series_name or "")

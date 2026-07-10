@@ -1,3 +1,4 @@
+from pyfli import logging
 from dataclasses import dataclass
 import numpy as np
 from scipy.optimize import least_squares
@@ -219,9 +220,8 @@ def solve_flim(
     mu1 = cfg.rho1 * D0 / (TV0 + EPS)
     mu2 = cfg.rho2 * D0 / (E_h + EPS)
     if cfg.verbose and cfg.estimate_irf:
-        print(
-            f"[init] data={D0:.3g}  TV0={TV0:.3g}  E_h={E_h:.3g}"
-            f"  ->  mu1={mu1:.4g}  mu2={mu2:.4g}"
+        logging.info(
+            f"[init] data={D0:.3g}  TV0={TV0:.3g}  E_h={E_h:.3g}  ->  mu1={mu1:.4g}  mu2={mu2:.4g}"
         )
 
     idx = np.arange(N)
@@ -240,9 +240,8 @@ def solve_flim(
                 H = pin_barycenter(H, c_target)
         if cfg.verbose:
             misfit = float(np.sum(W * (cyclic_conv(H, F) @ G.T - lam_obs) ** 2))
-            print(
-                f"[iter {it + 1:2d}] weighted misfit = {misfit:.5g}"
-                f"   mean tau = {taus.mean(0)}"
+            logging.info(
+                f"[iter {it + 1:2d}] weighted misfit = {misfit:.5g}   mean tau = {taus.mean(0)}"
             )
         if not cfg.estimate_irf:
             break

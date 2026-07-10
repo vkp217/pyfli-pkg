@@ -355,8 +355,6 @@ class PhasorPlotsMixin:
         plt.tight_layout()
         return fig
 
-    # ── pixel-level decay fits ────────────────────────────────────────────────
-
     def plot_pixel_fit(
         self,
         irf,
@@ -494,8 +492,6 @@ class PhasorPlotsMixin:
             plt.tight_layout()
         return fig
 
-    # ── multi-harmonic & traceable ────────────────────────────────────────────
-
     def plot_phasor_harmonics(
         self,
         G,
@@ -611,7 +607,6 @@ class PhasorPlotsMixin:
         self,
         G,
         S,
-        decay,
         mask=None,
         colormap="viridis",
         figsize=(14, 6),

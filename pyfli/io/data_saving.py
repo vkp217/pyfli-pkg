@@ -1,3 +1,5 @@
+from pyfli import logging
+
 # pyfli/io/data_saving.py
 import json
 import os
@@ -31,7 +33,7 @@ class DataSaver:
 
     def log(self, message):
         formatted_msg = f"{message}"
-        print(formatted_msg)
+        logging.info(formatted_msg)
         with open(self.log_file, "a") as f:
             f.write(formatted_msg + "\n")
 

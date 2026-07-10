@@ -13,6 +13,8 @@ plot_2d_subplots()  Backward-compatible module function
 
 from __future__ import annotations
 
+from pyfli import logging
+
 from dataclasses import dataclass, field, replace as dc_replace
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -1496,7 +1498,7 @@ class DLModelComparator(Plotter):
         """Standalone bar chart of W / Energy / KL for all key × model pairs."""
         metrics = self.compute_distribution_metrics()
         if not metrics:
-            print("No metrics – verify data sources.")
+            logging.info("No metrics – verify data sources.")
             return None
         fig, ax = plt.subplots(figsize=self.config.figsize)
         PlotKit.metrics_bar(ax, metrics, config=self.config, title=title)

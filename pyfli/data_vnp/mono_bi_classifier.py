@@ -1,3 +1,4 @@
+from pyfli import logging
 from .color_processor import ColorProcessor
 from .data_viewer import DataViewer
 import numpy as np
@@ -147,9 +148,8 @@ class MonoBiClassifier:
         self.results = []
         for i, res in enumerate(self.all_datasets):
             r = self.classify_one(res, self.names[i])
-            print(
-                f"{self.names[i]:<18s}  mono: {r['mono_frac']:6.1%}   "
-                f"bi: {r['bi_frac']:6.1%}"
+            logging.info(
+                f"{self.names[i]:<18s}  mono: {r['mono_frac']:6.1%}   bi: {r['bi_frac']:6.1%}"
             )
             if display:
                 self.display_one(r)
@@ -158,9 +158,8 @@ class MonoBiClassifier:
 
     def summary(self):
         for r in self.results:
-            print(
-                f"{r['name']:<18s}  mono: {r['mono_frac']:6.1%}   "
-                f"bi: {r['bi_frac']:6.1%}"
+            logging.info(
+                f"{r['name']:<18s}  mono: {r['mono_frac']:6.1%}   bi: {r['bi_frac']:6.1%}"
             )
         return self.results
 
@@ -373,7 +372,7 @@ class ParamCorrelationMatrix:
     Cross-method parameter correlation analysis over a shared ROI mask.
 
     Works directly on a list of parameter-map dicts (the same format as
-    mono_bi_classifier's all_datasets); no classify() step is required.
+    MonoBiClassifier's all_datasets); no classify() step is required.
 
     Parameter arrays may be:
       - 2-D (H, W)    : single scalar per pixel  → plotted as a plain point.

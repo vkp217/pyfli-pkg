@@ -1,7 +1,17 @@
 """Top-level public API for PyFLI."""
-# ruff: noqa: F401
+# ruff: noqa: E402, F401
 
-from . import phasor, sp_analysis
+
+def setup() -> None:
+    from .logging import configure_logging
+
+    configure_logging()
+
+
+setup()
+del setup
+
+from . import logging, phasor, sp_analysis
 from .analytical_methods.laguerre_deconvolution import LaguerreFLI
 from .data_cc.norm import Normalization
 from .io.data_operations import DataOperations

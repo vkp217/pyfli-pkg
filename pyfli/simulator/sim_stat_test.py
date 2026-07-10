@@ -1,3 +1,5 @@
+from pyfli import logging
+
 # simulator/sim_stat_test .py
 import numpy as np
 import matplotlib.pyplot as plt
@@ -90,17 +92,17 @@ class FLIValidator:
         }
 
     def _print_summary(self, cos_sim, kl_div, ks_stat, p_value, intersection, n):
-        print("\n" + "=" * 60)
-        print(f"STATISTICAL VALIDATION REPORT (N={n} Pixels)")
-        print("=" * 60)
-        print(f"{'Metric':<25} | {'Value':<15} | {'Target'}")
-        print("-" * 60)
-        print(f"{'Cosine Similarity':<25} | {cos_sim:<15.4f} | >0.99")
-        print(f"{'KL Divergence':<25} | {kl_div:<15.6f} | <0.01")
-        print(f"{'KS Statistic':<25} | {ks_stat:<15.4f} | -> 0.0")
-        print(f"{'KS P-Value':<25} | {p_value:<15.4e} | >0.05")
-        print(f"{'Hist Intersection':<25} | {intersection:<15.4f} | -> 1.0")
-        print("=" * 60 + "\n")
+        logging.info("\n" + "=" * 60)
+        logging.info(f"STATISTICAL VALIDATION REPORT (N={n} Pixels)")
+        logging.info("=" * 60)
+        logging.info(f"{'Metric':<25} | {'Value':<15} | {'Target'}")
+        logging.info("-" * 60)
+        logging.info(f"{'Cosine Similarity':<25} | {cos_sim:<15.4f} | >0.99")
+        logging.info(f"{'KL Divergence':<25} | {kl_div:<15.6f} | <0.01")
+        logging.info(f"{'KS Statistic':<25} | {ks_stat:<15.4f} | -> 0.0")
+        logging.info(f"{'KS P-Value':<25} | {p_value:<15.4e} | >0.05")
+        logging.info(f"{'Hist Intersection':<25} | {intersection:<15.4f} | -> 1.0")
+        logging.info("=" * 60 + "\n")
 
     def _plot_results(self, sim_vec, exp_vec, sim_counts, exp_counts):
         fig, ax = plt.subplots(1, 2, figsize=(14, 5))

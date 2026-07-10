@@ -1,3 +1,4 @@
+from pyfli import logging
 import numpy as np
 import h5py
 import os
@@ -76,7 +77,9 @@ class FLICPUProcessor:
             and _GlobalFLIFitter is not None
             and issubclass(self.fitter_class, _GlobalFLIFitter)
         ):
-            print("Multi-label mask detected. Switching to Global Cluster Fitting...")
+            logging.info(
+                "Multi-label mask detected. Switching to Global Cluster Fitting..."
+            )
             g_fitter = self.fitter_class(
                 self.freq, image_cube[0, 0, :], irf_cube[0, 0, :]
             )
@@ -97,7 +100,7 @@ class FLICPUProcessor:
         ]
 
         if not final_coords:
-            print("No valid pixels found in mask.")
+            logging.warning("No valid pixels found in mask.")
             return None
 
         tasks = (
@@ -228,12 +231,12 @@ class FLICPUProcessor:
             for k, v in dataset["results"]["TR_maps"].items():
                 tr_grp.create_dataset(k, data=v, compression="gzip", compression_opts=4)
 
-        print(f"Analysis complete. Results saved to: {h5_path}")
+        logging.info(f"Analysis complete. Results saved to: {h5_path}")
 
     def load_map(self, h5_path, map_name="tau1_map"):
         with h5py.File(h5_path, "r") as f:
             if f"results/maps/{map_name}" in f:
                 return f[f"results/maps/{map_name}"][()]
             else:
-                print(f"Map {map_name} not found in {h5_path}")
+                logging.warning(f"Map {map_name} not found in {h5_path}")
                 return None

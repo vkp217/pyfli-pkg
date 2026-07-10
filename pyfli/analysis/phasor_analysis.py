@@ -1,6 +1,8 @@
 import os
 import numpy as np
 
+from pyfli import logging
+
 from ..analytical_methods import PhasorAnalyzer, AnalyticalHelpers
 from ..data_vnp import ColorProcessor
 
@@ -173,5 +175,5 @@ def save_phasor_result(save_dir, tau_map_ns, saver=None):
     np.save(path, result)
     if saver:
         saver.log("Phasor tau map saved as phasor_tau_map.npy")
-    print(f"Phasor result saved → {path}")
+    logging.info(f"Phasor result saved → {path}")
     return path

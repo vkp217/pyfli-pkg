@@ -1,3 +1,4 @@
+from pyfli import logging
 import os
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
@@ -34,7 +35,7 @@ class DataOperations:
     # --- PUBLIC API ---
 
     def load_data(self, sub_bg=True, pile_up=False, hot_pixel=False):
-        print(f"Initiating DATA load from: {self.data_path}")
+        logging.info(f"Initiating DATA load from: {self.data_path}")
         return self._general_loader(
             self.data_path,
             sub_bg=sub_bg,
@@ -46,7 +47,7 @@ class DataOperations:
     def load_background(self, pile_up=False, hot_pixel=False):
         """Loads background. If folder, returns the mean average of all files."""
         if self.bg_path and os.path.isdir(self.bg_path):
-            print(f"Background FOLDER detected: {self.bg_path}")
+            logging.info(f"Background FOLDER detected: {self.bg_path}")
             return self._load_from_folder(
                 self.bg_path,
                 sub_bg=False,
@@ -57,7 +58,7 @@ class DataOperations:
                 label="BG",
             )
         if self.bg_path:
-            print(f"Background FILE detected: {self.bg_path}")
+            logging.info(f"Background FILE detected: {self.bg_path}")
             return self._general_loader(
                 self.bg_path,
                 sub_bg=False,
@@ -66,11 +67,11 @@ class DataOperations:
                 label="BG",
             )
 
-        print("No background path provided.")
+        logging.info("No background path provided.")
         return None
 
     def load_irf(self, sub_bg=False, pile_up=False, hot_pixel=False):
-        print(f"Initiating IRF load from: {self.irf_path}")
+        logging.info(f"Initiating IRF load from: {self.irf_path}")
         return self._general_loader(
             self.irf_path,
             sub_bg=sub_bg,
@@ -80,7 +81,7 @@ class DataOperations:
         )
 
     def load_all_parallel(self, sub_bg=True, pile_up=False, hot_pixel=False):
-        print("Starting synchronized parallel loading for DATA, IRF, and BG...")
+        logging.info("Starting synchronized parallel loading for DATA, IRF, and BG...")
         with ThreadPoolExecutor(max_workers=3) as executor:
             data_future = executor.submit(
                 self.load_data, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel
@@ -128,7 +129,7 @@ class DataOperations:
 
         if data is not None and irf is not None:
             if data.shape[-1] != irf.shape[-1]:
-                print(
+                logging.warning(
                     f"[WARN] Temporal dimension mismatch! DATA: {data.shape[-1]}, IRF: {irf.shape[-1]}"
                 )
 
@@ -158,7 +159,7 @@ class DataOperations:
     def load_mask(self):
         if not self.mask_path:
             return None
-        print(f"Loading mask from: {self.mask_path}")
+        logging.info(f"Loading mask from: {self.mask_path}")
         mask = self._load_single_file(self.mask_path)
         if mask is None:
             return None
@@ -173,7 +174,7 @@ class DataOperations:
     ):
         if not path or not os.path.exists(path):
             abs_path = os.path.abspath(path) if path else "(None)"
-            print(f"[ERROR] {label} path not found: {abs_path}")
+            logging.error(f"[ERROR] {label} path not found: {abs_path}")
             return None
 
         if os.path.isfile(path):
@@ -189,7 +190,7 @@ class DataOperations:
 
         # Fix 3: Path validation for hot pixel mask
         if hot_pixel and (active_hp is None or not os.path.exists(active_hp)):
-            print(
+            logging.warning(
                 f"[WARN] Hot-pixel correction skipped for {os.path.basename(file_path)}: hp_path invalid."
             )
             hot_pixel = False
@@ -215,7 +216,7 @@ class DataOperations:
                     )
             return data_content
         except Exception as e:
-            print(f"[ERROR] Failed to load {file_path}: {e}")
+            logging.error(f"[ERROR] Failed to load {file_path}: {e}")
             return None
 
     def _load_from_folder(
@@ -241,7 +242,7 @@ class DataOperations:
         # Strict Requirement: HDF5 folders force correction True
         if any(f.lower().endswith((".hdf5", ".h5")) for f in files):
             pile_up, hot_pixel = True, True
-            print("[INFO] HDF5 folder detected. Corrections forced to True.")
+            logging.info("[INFO] HDF5 folder detected. Corrections forced to True.")
 
         full_paths = [os.path.join(folder_path, f) for f in files]
         bg_avg = (

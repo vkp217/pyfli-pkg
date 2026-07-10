@@ -1,3 +1,4 @@
+from pyfli import logging
 import numpy as np
 from detector_weights import ICCDParams, SPADParams, TCSPCParams
 from flim_solver import (
@@ -49,14 +50,14 @@ def report(name, res):
     te = res["taus"].mean(0)
     err = 100 * np.abs(te - tau_true) / tau_true
     am = (res["amps"] / res["amps"].sum(1, keepdims=True)).mean(0)
-    print(
+    logging.info(
         f"  {name:6s}  tau={te.round(3)}  amp={am.round(3)}  |  err% = {err.round(1)}"
     )
 
 
 gate_spec = dict(N=N, n_gates=n_gates, width=width, edge=0.4 * dt)
-print("ground truth: tau =", tau_true, " amp =", amp_true)
-print("\n--- Mode 1: reference-calibrated (IRF known, fit decay) ---")
+logging.info("{} {} {} {}", "ground truth: tau =", tau_true, " amp =", amp_true)
+logging.info("\n--- Mode 1: reference-calibrated (IRF known, fit decay) ---")
 cfg_ref = SolverConfig(
     T=T,
     n_models=2,
@@ -76,7 +77,7 @@ for det, p, budget in detectors:
     res = solve_flim(y, det, p, ny, nx, gate_spec, cfg_ref, h_init=H_true.copy())
     report(det.upper(), res)
 
-print("\n--- Mode 2: blind joint IRF + decay (ICCD), strong spatial prior ---")
+logging.info("\n--- Mode 2: blind joint IRF + decay (ICCD), strong spatial prior ---")
 y = make_counts("iccd", detectors[2][1], detectors[2][2])
 cfg_blind = SolverConfig(
     T=T,
@@ -93,7 +94,6 @@ res = solve_flim(y, "iccd", detectors[2][1], ny, nx, gate_spec, cfg_blind)
 report("ICCD", res)
 cen_t = (H_true * np.arange(N)).sum(1)
 cen_e = (res["irf"] * np.arange(N)).sum(1)
-print(
-    f"  IRF centroid RMSE = {np.sqrt(np.mean((cen_t - cen_e) ** 2)):.2f} bins"
-    f"  (auto mu1={res['mu1']:.3g}, mu2={res['mu2']:.3g})"
+logging.info(
+    f"  IRF centroid RMSE = {np.sqrt(np.mean((cen_t - cen_e) ** 2)):.2f} bins  (auto mu1={res['mu1']:.3g}, mu2={res['mu2']:.3g})"
 )

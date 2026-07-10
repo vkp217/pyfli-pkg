@@ -1,3 +1,5 @@
+from pyfli import logging
+
 import os
 import numpy as np
 
@@ -61,12 +63,12 @@ def scan_session_results(save_dir):
     all_npy = sorted(f for f in os.listdir(save_dir) if f.endswith(".npy"))
     result_files = [f for f in all_npy if f not in _NON_RESULT_FILES]
 
-    print(f"Available fitting results in '{save_dir}':")
+    logging.info(f"Available fitting results in '{save_dir}':")
     if result_files:
         for i, fname in enumerate(result_files):
-            print(f"  [{i}] {fname}")
+            logging.info(f"  [{i}] {fname}")
     else:
-        print("  (none found)")
+        logging.info("  (none found)")
     return result_files
 
 
@@ -107,7 +109,9 @@ def load_fitting_results(save_dir, experiments):
     for file_name, label in experiments.items():
         file_path = os.path.join(save_dir, file_name)
         if not os.path.exists(file_path):
-            print(f"[load_fitting_results] Skipping missing file: {file_name}")
+            logging.warning(
+                f"[load_fitting_results] Skipping missing file: {file_name}"
+            )
             continue
         var = np.load(file_path, allow_pickle=True).item()
         all_datasets.append(var["results"]["maps"])

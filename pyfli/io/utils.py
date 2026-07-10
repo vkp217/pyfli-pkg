@@ -1,3 +1,5 @@
+from pyfli import logging
+
 # dataIO_utils.py
 import os
 import h5py
@@ -106,19 +108,17 @@ class DataIOUtils:
         hot_pixel_map = total_counts > thresh
 
         n_hot = int(np.sum(hot_pixel_map))
-        print(
-            f"Detected {n_hot} hot pixels "
-            f"({100.0 * n_hot / total_counts.size:.3f}% of {total_counts.shape})"
+        logging.info(
+            f"Detected {n_hot} hot pixels ({100.0 * n_hot / total_counts.size:.3f}% of {total_counts.shape})"
         )
-        print(
-            f"Threshold: {thresh:.1f}  "
-            f"(median={median:.1f}, MAD={mad:.1f}, σ={threshold_sigma})"
+        logging.info(
+            f"Threshold: {thresh:.1f}  (median={median:.1f}, MAD={mad:.1f}, σ={threshold_sigma})"
         )
 
         if save_path:
             import matplotlib.pyplot as plt
 
             plt.imsave(save_path, hot_pixel_map.astype(np.uint8) * 255, cmap="gray")
-            print(f"Hot pixel mask saved to: {save_path}")
+            logging.info(f"Hot pixel mask saved to: {save_path}")
 
         return hot_pixel_map, bg_sum, bg_mean, bg_median

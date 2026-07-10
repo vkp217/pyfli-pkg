@@ -1,8 +1,10 @@
+from pyfli import logging
+
 # solver/binned_fitter.py
 import numpy as np
 
 
-class FliBinner:
+class FLIBinner:
     def __init__(self, bin_radius=1):
         """
         Handles the spatial binning logic for FLIM data cubes.
@@ -30,7 +32,7 @@ class FliBinner:
         self.binned_img = np.zeros_like(image_cube, dtype=np.float32)
         self.binned_irf = np.zeros_like(irf_cube, dtype=np.float32)
 
-        print(
+        logging.info(
             f"Applying spatial binning: Radius={n} ({window_size}x{window_size} window)"
         )
 
@@ -74,7 +76,7 @@ class BinnedFLIFitter:
 
         # 2. Dynamic Engine Dispatch
         if hasattr(proc, "process_image"):
-            print(f"Engine: CPU Parallel Processor (via {type(proc).__name__})")
+            logging.info(f"Engine: CPU Parallel Processor (via {type(proc).__name__})")
             kwargs["estimator"] = estimator.lower()
             dataset = proc.process_image(
                 image_cube=b_img,
@@ -85,7 +87,9 @@ class BinnedFLIFitter:
             )
 
         elif hasattr(proc, "fit_image"):
-            print(f"Engine: GPU Vectorized Processor (via {type(proc).__name__})")
+            logging.info(
+                f"Engine: GPU Vectorized Processor (via {type(proc).__name__})"
+            )
             kwargs["mode"] = estimator.upper()
             kwargs.pop("n_jobs", None)  # Clean up CPU-specific args
             dataset = proc.fit_image(
@@ -113,6 +117,6 @@ class BinnedFLIFitter:
     def save_results(self, dataset, folder="results"):
         """Pass-through to the underlying processor's optimized save logic."""
         if dataset is None:
-            print("No dataset provided to save.")
+            logging.warning("No dataset provided to save.")
             return
         self.processor.save_results(dataset, folder)
