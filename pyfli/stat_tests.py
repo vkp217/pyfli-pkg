@@ -1,12 +1,11 @@
 import numpy as np
-from scipy.stats import ks_2samp
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.decomposition import PCA
 from scipy.stats import wasserstein_distance
 from scipy.linalg import sqrtm
 
-class TestStat:
 
+class TestStat:
     def __init__(self, sim_batch, exp_batch, eps=1e-12):
         """
         sim_batch : (B, n_bins)
@@ -26,7 +25,6 @@ class TestStat:
         # CDFs
         self.sim_cdf = np.cumsum(self.sim_pdf, axis=1)
         self.exp_cdf = np.cumsum(self.exp_pdf, axis=1)
-
 
     # Anderson–Darling Test (Shape Sensitive)
 
@@ -48,13 +46,11 @@ class TestStat:
 
         return ad_stats
 
-
     # Kolmogorov–Smirnov Test (CDF-based)
 
     def kolmogorov_smirnov(self):
         ks_stats = np.max(np.abs(self.sim_cdf - self.exp_cdf), axis=1)
         return ks_stats
-
 
     # Likelihood Ratio Test (Mono vs Bi)
 
@@ -78,7 +74,6 @@ class TestStat:
 
         LR = 2 * (LL - LL_null)
         return LR
-
 
     # Bootstrap Confidence Intervals
 
@@ -118,7 +113,6 @@ class TestStat:
 
         return delta_BIC
 
-
     # MASTER FUNCTION
     def run_all_tests(self):
         results = {}
@@ -137,11 +131,7 @@ class TestStat:
         return results
 
 
-
-
-
 class FLIDistributionTest:
-
     def __init__(self, sim_batch, exp_batch, eps=1e-12):
         """
         sim_batch: (N, n_bins)
@@ -152,8 +142,8 @@ class FLIDistributionTest:
         self.eps = eps
 
         # Normalize decays to PDFs
-        self.sim /= (self.sim.sum(axis=1, keepdims=True) + eps)
-        self.exp /= (self.exp.sum(axis=1, keepdims=True) + eps)
+        self.sim /= self.sim.sum(axis=1, keepdims=True) + eps
+        self.exp /= self.exp.sum(axis=1, keepdims=True) + eps
 
         self.N, self.D = self.sim.shape
 
@@ -171,11 +161,7 @@ class FLIDistributionTest:
         Kyy = rbf_kernel(self.exp, self.exp, gamma=gamma)
         Kxy = rbf_kernel(self.sim, self.exp, gamma=gamma)
 
-        mmd_value = (
-            Kxx.mean()
-            + Kyy.mean()
-            - 2 * Kxy.mean()
-        )
+        mmd_value = Kxx.mean() + Kyy.mean() - 2 * Kxy.mean()
 
         return mmd_value
 
@@ -208,9 +194,7 @@ class FLIDistributionTest:
             proj_sim = self.sim @ direction
             proj_exp = self.exp @ direction
 
-            distances.append(
-                wasserstein_distance(proj_sim, proj_exp)
-            )
+            distances.append(wasserstein_distance(proj_sim, proj_exp))
 
         return np.mean(distances)
 
@@ -233,10 +217,7 @@ class FLIDistributionTest:
         if np.iscomplexobj(covmean):
             covmean = covmean.real
 
-        fid = (
-            diff @ diff
-            + np.trace(sigma1 + sigma2 - 2 * covmean)
-        )
+        fid = diff @ diff + np.trace(sigma1 + sigma2 - 2 * covmean)
 
         return fid
 
@@ -255,8 +236,9 @@ class FLIDistributionTest:
         sim_var = np.var(sim_proj, axis=0)
         exp_var = np.var(exp_proj, axis=0)
 
-        overlap = np.mean(np.minimum(sim_var, exp_var) /
-                          (np.maximum(sim_var, exp_var) + self.eps))
+        overlap = np.mean(
+            np.minimum(sim_var, exp_var) / (np.maximum(sim_var, exp_var) + self.eps)
+        )
 
         return overlap
 
@@ -269,5 +251,5 @@ class FLIDistributionTest:
             "EnergyDistance": self.energy_distance(),
             "SlicedWasserstein": self.sliced_wasserstein(),
             "FrechetDistance": self.frechet_distance(),
-            "PCA_Overlap": self.pca_overlap()
+            "PCA_Overlap": self.pca_overlap(),
         }

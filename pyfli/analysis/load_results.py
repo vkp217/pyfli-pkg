@@ -3,18 +3,24 @@ import numpy as np
 
 
 # Files that are NOT fitting results and should be excluded from scan output
-_NON_RESULT_FILES = {'clean_decay.npy', 'clean_irf.npy', 'final_mask.npy',
-                     'decay_raw.npy', 'irf_raw.npy', 'pixel_invariant_irf.npy',
-                     'pf_mask.npy'}
+_NON_RESULT_FILES = {
+    "clean_decay.npy",
+    "clean_irf.npy",
+    "final_mask.npy",
+    "decay_raw.npy",
+    "irf_raw.npy",
+    "pixel_invariant_irf.npy",
+    "pf_mask.npy",
+}
 
 # Expected naming conventions for result files.
 # Use these constants (or save_laguerre_result / compute_fbi_results) to ensure
 # load_fitting_results() and scan_session_results() can find them.
 RESULT_FILENAMES = {
-    'laguerre_mono': 'Laguerre Results_mono-exponential.npy',
-    'laguerre_bi':   'Laguerre Results_bi-exponential.npy',
-    'fbi_bi':        'F-BI Output_bi-exponential.npy',
-    'phasor':        'phasor_tau_map.npy',
+    "laguerre_mono": "Laguerre Results_mono-exponential.npy",
+    "laguerre_bi": "Laguerre Results_bi-exponential.npy",
+    "fbi_bi": "F-BI Output_bi-exponential.npy",
+    "phasor": "phasor_tau_map.npy",
 }
 
 
@@ -27,9 +33,11 @@ def load_session_arrays(save_dir):
     irf   : np.ndarray  (H, W, T)
     mask  : np.ndarray  (H, W)  bool
     """
-    decay = np.load(os.path.join(save_dir, 'clean_decay.npy'), allow_pickle=True)
-    irf   = np.load(os.path.join(save_dir, 'clean_irf.npy'),   allow_pickle=True)
-    mask  = np.load(os.path.join(save_dir, 'final_mask.npy'),  allow_pickle=True).astype(bool)
+    decay = np.load(os.path.join(save_dir, "clean_decay.npy"), allow_pickle=True)
+    irf = np.load(os.path.join(save_dir, "clean_irf.npy"), allow_pickle=True)
+    mask = np.load(os.path.join(save_dir, "final_mask.npy"), allow_pickle=True).astype(
+        bool
+    )
     return decay, irf, mask
 
 
@@ -50,7 +58,7 @@ def scan_session_results(save_dir):
     -------
     list[str]  filenames (not full paths)
     """
-    all_npy = sorted(f for f in os.listdir(save_dir) if f.endswith('.npy'))
+    all_npy = sorted(f for f in os.listdir(save_dir) if f.endswith(".npy"))
     result_files = [f for f in all_npy if f not in _NON_RESULT_FILES]
 
     print(f"Available fitting results in '{save_dir}':")
@@ -102,8 +110,8 @@ def load_fitting_results(save_dir, experiments):
             print(f"[load_fitting_results] Skipping missing file: {file_name}")
             continue
         var = np.load(file_path, allow_pickle=True).item()
-        all_datasets.append(var['results']['maps'])
-        all_fitset.append(var['results']['TR_maps'])
+        all_datasets.append(var["results"]["maps"])
+        all_fitset.append(var["results"]["TR_maps"])
         names.append(label)
 
     if not all_datasets:
@@ -135,16 +143,17 @@ def save_laguerre_result(saver, lag_results, model_type):
         save_laguerre_result(saver, Lag_results, model_type='bi-exponential')
         # → writes 'Laguerre Results_bi-exponential.npy'
     """
-    key = f'laguerre_{model_type.split("-")[0]}'   # 'laguerre_mono' or 'laguerre_bi'
+    key = f"laguerre_{model_type.split('-')[0]}"  # 'laguerre_mono' or 'laguerre_bi'
     if key not in RESULT_FILENAMES:
-        raise ValueError(f"model_type must be 'mono-exponential' or 'bi-exponential', got '{model_type}'")
-    fname = RESULT_FILENAMES[key].replace('.npy', '')
+        raise ValueError(
+            f"model_type must be 'mono-exponential' or 'bi-exponential', got '{model_type}'"
+        )
+    fname = RESULT_FILENAMES[key].replace(".npy", "")
     saver.save_npy(fname, lag_results)
-    saver.log(f'Laguerre {model_type} results saved as {fname}.npy')
+    saver.log(f"Laguerre {model_type} results saved as {fname}.npy")
 
 
-def inject_phasor_result(tau_map_ns, all_datasets, all_fitset, names,
-                         label='Phasor'):
+def inject_phasor_result(tau_map_ns, all_datasets, all_fitset, names, label="Phasor"):
     """Inject a phasor lifetime map directly into existing result lists.
 
     Use this when the phasor tau is already in memory (from compute_phasor)
@@ -168,10 +177,12 @@ def inject_phasor_result(tau_map_ns, all_datasets, all_fitset, names,
         all_datasets, all_fitset, names = load_fitting_results(save_dir, experiments)
         inject_phasor_result(tau_phasor, all_datasets, all_fitset, names)
     """
-    all_datasets.append({
-        'tau_map':       tau_map_ns,
-        'mean_lifetime': tau_map_ns,
-    })
+    all_datasets.append(
+        {
+            "tau_map": tau_map_ns,
+            "mean_lifetime": tau_map_ns,
+        }
+    )
     all_fitset.append({})
     names.append(label)
 
@@ -196,9 +207,13 @@ def add_mean_lifetime(all_datasets):
         # now use map_keys=['mean_lifetime'] in plot_statistical_comparison / plot_2d_analysis
     """
     for ds in all_datasets:
-        if 'mean_lifetime' in ds:
+        if "mean_lifetime" in ds:
             continue
-        if not {'alpha1_map', 'tau1_map', 'tau2_map'}.issubset(ds):
+        if not {"alpha1_map", "tau1_map", "tau2_map"}.issubset(ds):
             continue
-        ds['mean_lifetime'] = ds['alpha1_map'] * ds['tau1_map'] + ds['alpha2_map'] * ds['tau2_map'] \
-            if 'alpha2_map' in ds else ds['alpha1_map'] * ds['tau1_map'] + (1 - ds['alpha1_map']) * ds['tau2_map']
+        ds["mean_lifetime"] = (
+            ds["alpha1_map"] * ds["tau1_map"] + ds["alpha2_map"] * ds["tau2_map"]
+            if "alpha2_map" in ds
+            else ds["alpha1_map"] * ds["tau1_map"]
+            + (1 - ds["alpha1_map"]) * ds["tau2_map"]
+        )

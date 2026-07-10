@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 class Normalization:
     def __init__(self, data):
         if isinstance(data, (list, tuple)):

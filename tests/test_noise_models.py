@@ -24,6 +24,7 @@ def clean_2d():
 # Poisson noise
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestApplyPoisson:
     def test_shape_preserved(self, clean_signal):
         out = NoiseEngine.apply_poisson(clean_signal)
@@ -52,6 +53,7 @@ class TestApplyPoisson:
 # Dark Count Rate (DCR)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestApplyDCR:
     def test_shape_preserved(self, clean_signal):
         out = NoiseEngine.apply_dcr(clean_signal, dcr_level=0.5)
@@ -76,6 +78,7 @@ class TestApplyDCR:
 # ─────────────────────────────────────────────────────────────────────────────
 # Read noise (Gaussian)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestApplyReadNoise:
     def test_shape_preserved(self, clean_signal):
@@ -102,6 +105,7 @@ class TestApplyReadNoise:
 # Timing jitter
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestApplyJitter:
     def test_length_preserved(self, clean_signal):
         out = NoiseEngine.apply_jitter(clean_signal, max_shift=5)
@@ -122,7 +126,9 @@ class TestApplyJitter:
             if out[0] == 0:
                 has_zero = True
                 break
-        assert has_zero, "Expected at least one positive-shift result with leading zeros"
+        assert has_zero, (
+            "Expected at least one positive-shift result with leading zeros"
+        )
 
     def test_total_energy_conserved_modulo_shift(self, clean_signal):
         # Jitter moves photons; the count of non-zero bins changes, but

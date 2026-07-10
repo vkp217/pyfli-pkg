@@ -63,6 +63,7 @@ tf = [
 dev = [
     "pytest",
     "black",
+    "pre-commit",
 ]
 
 [tool.setuptools.packages.find]

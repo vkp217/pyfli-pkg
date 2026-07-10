@@ -1,4 +1,5 @@
 """Top-level public API for PyFLI."""
+# ruff: noqa: F401
 
 from . import phasor, spAnalysis
 from .analytical_methods.laguerre_deconvolution import LaguerreFLI
@@ -33,4 +34,3 @@ from .phasor import (
 )
 from .simulator.main_factory import Macro_sim, TCSPC_sim
 from .spAnalysis import BasisPatterns, MeasurementSimulator, Reconstructor
-

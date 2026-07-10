@@ -1,3 +1,5 @@
+# ruff: noqa: F401
+
 from .load_results import (
     RESULT_FILENAMES,
     load_session_arrays,
@@ -22,6 +24,7 @@ from .fit_analysis import (
     plot_2d_analysis,
     run_mono_bi_classifier,
 )
+
 # FBI module is proprietary and excluded from the public repo.
 # The filename constants are always available so that saved FBI results
 # remain loadable via load_fitting_results() even when the model code is absent.
@@ -34,18 +37,21 @@ try:
         compute_fbi_results,
         plot_fbi_maps,
     )
+
     _FBI_AVAILABLE = True
 except ImportError:
-    FBI_RESULT_FILENAME = 'F-BI Output_bi-exponential.npy'
-    FBI_RAW_FILENAME    = 'F-BI Direct_Output_bi-exponential.npy'
-    _FBI_AVAILABLE      = False
+    FBI_RESULT_FILENAME = "F-BI Output_bi-exponential.npy"
+    FBI_RAW_FILENAME = "F-BI Direct_Output_bi-exponential.npy"
+    _FBI_AVAILABLE = False
 
     def load_fbi_model(*_, **__):
         raise ImportError("FBI model code is not available in this installation.")
+
     def run_fbi_inference(*_, **__):
         raise ImportError("FBI model code is not available in this installation.")
+
     def compute_fbi_results(*_, **__):
         raise ImportError("FBI model code is not available in this installation.")
+
     def plot_fbi_maps(*_, **__):
         raise ImportError("FBI model code is not available in this installation.")
-

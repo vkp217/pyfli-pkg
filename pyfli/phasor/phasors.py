@@ -36,6 +36,7 @@ from .config import AcquisitionConfig, AcquisitionMode
 # 1.  CONTINUOUS  (canonical universal semicircle)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def phasor_continuous(
     tau: ArrayLike,
     cfg: AcquisitionConfig,
@@ -69,13 +70,14 @@ def phasor_continuous(
     tau = np.asarray(tau, dtype=float)
     w = cfg.omega
     wt = w * tau
-    denom = 1.0 + wt ** 2
+    denom = 1.0 + wt**2
     return 1.0 / denom, wt / denom
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 2.  DISCRETE  (binned TCSPC — arc of circle)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def phasor_discrete(
     tau: ArrayLike,
@@ -110,20 +112,20 @@ def phasor_discrete(
 
     T, N, n = cfg.T_ns, cfg.N_bins, cfg.harmonic
     dt = T / N
-    k = np.arange(N, dtype=float)                  # bin indices [0 … N-1]
-    phase = 2.0 * np.pi * n * k / N                # Fourier kernel phases
+    k = np.arange(N, dtype=float)  # bin indices [0 … N-1]
+    phase = 2.0 * np.pi * n * k / N  # Fourier kernel phases
 
     # --- vectorised over tau
     # tau shape: (M,)  →  (M, 1)  × k shape (N,)
     tau2 = tau[:, np.newaxis]
-    e_kdt = np.exp(-k * dt / tau2)                 # (M, N)
-    e_dt  = np.exp(-dt / tau2)                     # (M, 1)
-    I_k   = e_kdt * (1.0 - e_dt)                  # (M, N)
+    e_kdt = np.exp(-k * dt / tau2)  # (M, N)
+    e_dt = np.exp(-dt / tau2)  # (M, 1)
+    I_k = e_kdt * (1.0 - e_dt)  # (M, N)
 
-    cos_k = np.cos(phase)                          # (N,)
-    sin_k = np.sin(phase)                          # (N,)
+    cos_k = np.cos(phase)  # (N,)
+    sin_k = np.sin(phase)  # (N,)
 
-    I_sum = I_k.sum(axis=1)                        # (M,)
+    I_sum = I_k.sum(axis=1)  # (M,)
     g = (I_k * cos_k).sum(axis=1) / I_sum
     s = (I_k * sin_k).sum(axis=1) / I_sum
 
@@ -135,6 +137,7 @@ def phasor_discrete(
 # ══════════════════════════════════════════════════════════════════════════════
 # 3.  GATED_SINGLE  (single square gate, continuous approximation)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def phasor_gated_single(
     tau: ArrayLike,
@@ -172,10 +175,10 @@ def phasor_gated_single(
     T = cfg.T_ns
     W = cfg.gate_width_ns
 
-    wt  = w * tau
-    eW  = np.exp(-W / tau)
-    eT  = np.exp(-T / tau)
-    wW  = w * W
+    wt = w * tau
+    eW = np.exp(-W / tau)
+    eT = np.exp(-T / tau)
+    wW = w * W
 
     # Exact analytical result (derived from Re/Im of ∫₀^W e^{-t/τ} e^{iωt} dt):
     #
@@ -185,7 +188,7 @@ def phasor_gated_single(
     # Denominator (T-period normalisation):  ∫₀^T e^{-t/τ} dt = τ·(1 − e^{-T/τ})
     # The τ factors cancel, giving:
 
-    denom = (1.0 + wt ** 2) * (1.0 - eT)
+    denom = (1.0 + wt**2) * (1.0 - eT)
 
     cos_int = 1.0 - eW * (np.cos(wW) - wt * np.sin(wW))
     sin_int = wt * (1.0 - eW * np.cos(wW)) - eW * np.sin(wW)
@@ -198,6 +201,7 @@ def phasor_gated_single(
 # ══════════════════════════════════════════════════════════════════════════════
 # 4.  GATED_N  (N equidistant square gates)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def phasor_gated_N(
     tau: ArrayLike,
@@ -228,17 +232,17 @@ def phasor_gated_N(
     scalar = tau.ndim == 0
     tau = np.atleast_1d(tau)
 
-    T  = cfg.T_ns
+    T = cfg.T_ns
     Ng = cfg.N_gates
-    W  = cfg.gate_width_ns
-    n  = cfg.harmonic
+    W = cfg.gate_width_ns
+    n = cfg.harmonic
     theta = T / Ng
-    k  = np.arange(Ng, dtype=float)
-    t_k  = k * theta
+    k = np.arange(Ng, dtype=float)
+    t_k = k * theta
     phase = 2.0 * np.pi * n * k / Ng
 
-    tau2  = tau[:, np.newaxis]            # (M, 1)
-    I_k   = np.exp(-t_k / tau2) - np.exp(-(t_k + W) / tau2)   # (M, Ng)
+    tau2 = tau[:, np.newaxis]  # (M, 1)
+    I_k = np.exp(-t_k / tau2) - np.exp(-(t_k + W) / tau2)  # (M, Ng)
 
     I_sum = I_k.sum(axis=1)
     g = (I_k * np.cos(phase)).sum(axis=1) / I_sum
@@ -252,6 +256,7 @@ def phasor_gated_N(
 # ══════════════════════════════════════════════════════════════════════════════
 # 5.  TRUNCATED  (recording window shorter than laser period)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def phasor_truncated(
     tau: ArrayLike,
@@ -284,15 +289,15 @@ def phasor_truncated(
     -------
     g, s : np.ndarray
     """
-    tau  = np.asarray(tau, dtype=float)
-    w    = cfg.omega
+    tau = np.asarray(tau, dtype=float)
+    w = cfg.omega
     Trec = cfg.T_rec_ns
-    wt   = w * tau
-    eTr  = np.exp(-Trec / tau)
-    wTr  = w * Trec
+    wt = w * tau
+    eTr = np.exp(-Trec / tau)
+    wTr = w * Trec
 
-    cos_int = (1.0 - eTr * (np.cos(wTr) + wt * np.sin(wTr))) / (1.0 + wt ** 2)
-    sin_int = (wt  - eTr * (wt * np.cos(wTr) - np.sin(wTr))) / (1.0 + wt ** 2)
+    cos_int = (1.0 - eTr * (np.cos(wTr) + wt * np.sin(wTr))) / (1.0 + wt**2)
+    sin_int = (wt - eTr * (wt * np.cos(wTr) - np.sin(wTr))) / (1.0 + wt**2)
 
     # Numerator integrals already carry the structure of 1/(1+ω²τ²).
     # The τ factors in numerator and denominator cancel, so we normalise
@@ -306,6 +311,7 @@ def phasor_truncated(
 # ══════════════════════════════════════════════════════════════════════════════
 # 6.  OFFSET  (IRF / excitation pulse time-shifted within recording window)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def phasor_offset(
     tau: ArrayLike,
@@ -346,6 +352,7 @@ def phasor_offset(
 # 7.  DISPATCHER
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def phasor_from_config(
     tau: ArrayLike,
     cfg: AcquisitionConfig,
@@ -364,12 +371,12 @@ def phasor_from_config(
     g, s : np.ndarray
     """
     _dispatch: dict = {
-        AcquisitionMode.CONTINUOUS:   phasor_continuous,
-        AcquisitionMode.DISCRETE:     phasor_discrete,
+        AcquisitionMode.CONTINUOUS: phasor_continuous,
+        AcquisitionMode.DISCRETE: phasor_discrete,
         AcquisitionMode.GATED_SINGLE: phasor_gated_single,
-        AcquisitionMode.GATED_N:      phasor_gated_N,
-        AcquisitionMode.TRUNCATED:    phasor_truncated,
-        AcquisitionMode.OFFSET:       phasor_offset,
+        AcquisitionMode.GATED_N: phasor_gated_N,
+        AcquisitionMode.TRUNCATED: phasor_truncated,
+        AcquisitionMode.OFFSET: phasor_offset,
     }
     fn = _dispatch.get(cfg.mode)
     if fn is None:

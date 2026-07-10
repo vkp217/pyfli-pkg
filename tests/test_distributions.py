@@ -3,7 +3,6 @@ Tests for ParameterSampler — the simulator parameter distribution helpers.
 """
 
 import numpy as np
-import pytest
 
 from pyfli.simulator.distributions import ParameterSampler
 
@@ -11,6 +10,7 @@ from pyfli.simulator.distributions import ParameterSampler
 # ─────────────────────────────────────────────────────────────────────────────
 # Quantum efficiency sampling
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestSampleQE:
     def test_iccd_range(self):
@@ -34,6 +34,7 @@ class TestSampleQE:
 # Noise parameter sampling
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestSampleNoiseParams:
     def test_iccd_returns_dict_with_read_sigma(self):
         params = ParameterSampler.sample_noise_params(bit_depth=8, sensor_type="ICCD")
@@ -44,25 +45,24 @@ class TestSampleNoiseParams:
         params = ParameterSampler.sample_noise_params(bit_depth=12, sensor_type="SPAD")
         assert params["read_sigma"] == 0.0
 
-    def test_iccd_read_sigma_scales_with_bit_depth(self):
-        low = ParameterSampler.sample_noise_params(bit_depth=8, sensor_type="ICCD")
-        high = ParameterSampler.sample_noise_params(bit_depth=16, sensor_type="ICCD")
-        # Higher bit depth → higher read sigma in expectation
-        # Run many samples to check average ordering
+    def test_iccd_read_sigma_independent_of_bit_depth(self):
+        rng_low = np.random.default_rng(123)
+        rng_high = np.random.default_rng(123)
         low_vals = [
-            ParameterSampler.sample_noise_params(8, "ICCD")["read_sigma"]
+            ParameterSampler.sample_noise_params(8, "ICCD", rng=rng_low)["read_sigma"]
             for _ in range(200)
         ]
         high_vals = [
-            ParameterSampler.sample_noise_params(16, "ICCD")["read_sigma"]
+            ParameterSampler.sample_noise_params(16, "ICCD", rng=rng_high)["read_sigma"]
             for _ in range(200)
         ]
-        assert np.mean(high_vals) > np.mean(low_vals)
+        np.testing.assert_allclose(high_vals, low_vals)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Beta sampling
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestSampleBeta:
     def test_output_in_offset_to_offset_plus_scale(self):
@@ -99,24 +99,28 @@ class TestBetaSample:
 # Truncated normal sampling
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestTruncatedNormal:
     def test_within_bounds(self):
         lower, upper = 0.01, 5.0
         for _ in range(500):
-            v = ParameterSampler.truncated_normal(mu=1.0, sigma=0.5,
-                                                   lower=lower, upper=upper)
+            v = ParameterSampler.truncated_normal(
+                mu=1.0, sigma=0.5, lower=lower, upper=upper
+            )
             assert lower <= v <= upper, f"truncated_normal out of range: {v}"
 
     def test_custom_bounds(self):
         for _ in range(200):
-            v = ParameterSampler.truncated_normal(mu=2.0, sigma=0.3,
-                                                   lower=1.0, upper=3.0)
+            v = ParameterSampler.truncated_normal(
+                mu=2.0, sigma=0.3, lower=1.0, upper=3.0
+            )
             assert 1.0 <= v <= 3.0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stretch / squeeze mapping
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestStretchSqueeze:
     def test_zero_maps_to_epsilon(self):

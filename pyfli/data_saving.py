@@ -5,8 +5,10 @@ import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
 
+
 def filter_vars(local_vars, keys):
     return {k: local_vars[k] for k in keys if k in local_vars}
+
 
 class DataSaver:
     def __init__(self, path, folder_name="_pyfli_Analysis", new_session=False):
@@ -20,12 +22,12 @@ class DataSaver:
             base_dir = os.path.dirname(path)
         self.save_dir = os.path.join(base_dir, base_name + folder_name)
         os.makedirs(self.save_dir, exist_ok=True)
-        self.log_file = os.path.join(self.save_dir, base_name + "_pyfli_log.txt")        
+        self.log_file = os.path.join(self.save_dir, base_name + "_pyfli_log.txt")
         # only if starting a new session
         if new_session:
-            self.log("="*40)
+            self.log("=" * 40)
             self.log(f"Session Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            self.log("="*40)
+            self.log("=" * 40)
 
     def log(self, message):
         formatted_msg = f"{message}"
@@ -35,13 +37,13 @@ class DataSaver:
 
     def save_plot(self, name, fig=None, dpi=300, close=True):
         path = os.path.join(self.save_dir, f"{name}.png")
-        target = fig if fig is not None else plt        
+        target = fig if fig is not None else plt
         try:
-            target.savefig(path, bbox_inches='tight', dpi=dpi)
+            target.savefig(path, bbox_inches="tight", dpi=dpi)
             self.log(f"IMAGE SAVED >> {name}.png")
         except Exception as e:
             self.log(f"ERROR saving {name}: {str(e)}")
-        
+
         if close:
             plt.close(fig) if fig else plt.close()
 
@@ -61,7 +63,7 @@ class DataSaver:
             self.log(f"Array saved: >> {name}.npy | Shape: {array.shape}")
         else:
             self.log(f"Array saved: >> {name}.npy")
-                     
+
     def save_params(self, **kwargs):
         for key, value in kwargs.items():
             self.log(f"Parameter: >> {key}: {value}")

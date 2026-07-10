@@ -23,6 +23,7 @@ import math
 import numpy as np
 import pytest
 import matplotlib
+
 matplotlib.use("Agg")
 from dataclasses import replace
 
@@ -56,6 +57,7 @@ from pyfli import (
 # Shared fixtures
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def base_cfg():
     return AcquisitionConfig(T_ns=12.5, harmonic=1, tau_min_ns=0.1, tau_max_ns=10.0)
@@ -69,6 +71,7 @@ def tau_arr():
 # ─────────────────────────────────────────────────────────────────────────────
 # AcquisitionConfig
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestAcquisitionConfig:
     def test_default_period(self):
@@ -130,7 +133,14 @@ class TestAcquisitionConfig:
             assert mode.name in text
 
     def test_all_modes_exist(self):
-        expected = {"CONTINUOUS", "DISCRETE", "GATED_SINGLE", "GATED_N", "TRUNCATED", "OFFSET"}
+        expected = {
+            "CONTINUOUS",
+            "DISCRETE",
+            "GATED_SINGLE",
+            "GATED_N",
+            "TRUNCATED",
+            "OFFSET",
+        }
         actual = {m.name for m in AcquisitionMode}
         assert expected == actual
 
@@ -139,10 +149,11 @@ class TestAcquisitionConfig:
 # Continuous phasor
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestPhasorContinuous:
     def test_lies_on_universal_semicircle(self, base_cfg, tau_arr):
         g, s = phasor_continuous(tau_arr, base_cfg)
-        dist2 = (g - 0.5) ** 2 + s ** 2
+        dist2 = (g - 0.5) ** 2 + s**2
         np.testing.assert_allclose(dist2, 0.25, atol=1e-12)
 
     def test_s_non_negative(self, base_cfg, tau_arr):
@@ -162,7 +173,7 @@ class TestPhasorContinuous:
     def test_harmonic2_still_on_semicircle(self, base_cfg, tau_arr):
         cfg2 = replace(base_cfg, harmonic=2)
         g, s = phasor_continuous(tau_arr, cfg2)
-        np.testing.assert_allclose((g - 0.5) ** 2 + s ** 2, 0.25, atol=1e-12)
+        np.testing.assert_allclose((g - 0.5) ** 2 + s**2, 0.25, atol=1e-12)
 
     def test_scalar_input(self, base_cfg):
         g, s = phasor_continuous(2.0, base_cfg)
@@ -177,6 +188,7 @@ class TestPhasorContinuous:
 # ─────────────────────────────────────────────────────────────────────────────
 # Discrete phasor
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestPhasorDiscrete:
     def test_large_N_converges_to_continuous(self, base_cfg, tau_arr):
@@ -214,16 +226,21 @@ class TestPhasorDiscrete:
 # Gated single phasor
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestPhasorGatedSingle:
     def test_full_window_near_continuous(self, base_cfg, tau_arr):
-        cfg_g = replace(base_cfg, mode=AcquisitionMode.GATED_SINGLE, gate_width_frac=0.9999)
+        cfg_g = replace(
+            base_cfg, mode=AcquisitionMode.GATED_SINGLE, gate_width_frac=0.9999
+        )
         g_g, s_g = phasor_gated_single(tau_arr, cfg_g)
         g_c, s_c = phasor_continuous(tau_arr, base_cfg)
         mask = tau_arr >= 1.0
         np.testing.assert_allclose(g_g[mask], g_c[mask], atol=0.01)
 
     def test_output_shapes(self, base_cfg, tau_arr):
-        cfg_g = replace(base_cfg, mode=AcquisitionMode.GATED_SINGLE, gate_width_frac=0.5)
+        cfg_g = replace(
+            base_cfg, mode=AcquisitionMode.GATED_SINGLE, gate_width_frac=0.5
+        )
         g, s = phasor_gated_single(tau_arr, cfg_g)
         assert g.shape == tau_arr.shape
         assert s.shape == tau_arr.shape
@@ -239,30 +256,37 @@ class TestPhasorGatedSingle:
 # Gated N phasor
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestPhasorGatedN:
     def test_output_shapes(self, base_cfg, tau_arr):
-        cfg_gn = replace(base_cfg, mode=AcquisitionMode.GATED_N, N_gates=4, gate_width_frac=0.5)
+        cfg_gn = replace(
+            base_cfg, mode=AcquisitionMode.GATED_N, N_gates=4, gate_width_frac=0.5
+        )
         g, s = phasor_gated_N(tau_arr, cfg_gn)
         assert g.shape == tau_arr.shape
         assert s.shape == tau_arr.shape
 
     def test_output_finite(self, base_cfg, tau_arr):
-        cfg_gn = replace(base_cfg, mode=AcquisitionMode.GATED_N, N_gates=4, gate_width_frac=0.5)
+        cfg_gn = replace(
+            base_cfg, mode=AcquisitionMode.GATED_N, N_gates=4, gate_width_frac=0.5
+        )
         g, s = phasor_gated_N(tau_arr, cfg_gn)
         assert np.all(np.isfinite(g))
         assert np.all(np.isfinite(s))
 
     def test_many_gates_s_non_negative(self, base_cfg, tau_arr):
         # For N_gates=4 with the fundamental harmonic, s should be >= 0
-        cfg_gn = replace(base_cfg, mode=AcquisitionMode.GATED_N,
-                         N_gates=4, gate_width_frac=0.25)
+        cfg_gn = replace(
+            base_cfg, mode=AcquisitionMode.GATED_N, N_gates=4, gate_width_frac=0.25
+        )
         _, s = phasor_gated_N(tau_arr, cfg_gn)
         assert np.all(s >= -1e-10)
 
     @pytest.mark.parametrize("n_gates", [2, 4, 8])
     def test_various_gate_counts(self, base_cfg, tau_arr, n_gates):
-        cfg_gn = replace(base_cfg, mode=AcquisitionMode.GATED_N,
-                         N_gates=n_gates, gate_width_frac=0.4)
+        cfg_gn = replace(
+            base_cfg, mode=AcquisitionMode.GATED_N, N_gates=n_gates, gate_width_frac=0.4
+        )
         g, s = phasor_gated_N(tau_arr, cfg_gn)
         assert g.shape == tau_arr.shape
         assert np.all(np.isfinite(g))
@@ -271,6 +295,7 @@ class TestPhasorGatedN:
 # ─────────────────────────────────────────────────────────────────────────────
 # Truncated phasor
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestPhasorTruncated:
     def test_full_window_matches_continuous(self, base_cfg, tau_arr):
@@ -283,7 +308,7 @@ class TestPhasorTruncated:
     def test_short_window_deviates_from_semicircle(self, base_cfg, tau_arr):
         cfg_tr = replace(base_cfg, T_rec_frac=0.5)
         g_tr, s_tr = phasor_truncated(tau_arr, cfg_tr)
-        dist2 = (g_tr - 0.5) ** 2 + s_tr ** 2
+        dist2 = (g_tr - 0.5) ** 2 + s_tr**2
         assert not np.allclose(dist2, 0.25, atol=0.01)
 
     def test_output_finite(self, base_cfg, tau_arr):
@@ -297,6 +322,7 @@ class TestPhasorTruncated:
 # Offset phasor
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestPhasorOffset:
     def test_zero_offset_equals_continuous(self, base_cfg, tau_arr):
         cfg_off = replace(base_cfg, mode=AcquisitionMode.OFFSET, t0_frac=0.0)
@@ -309,8 +335,8 @@ class TestPhasorOffset:
         cfg_off = replace(base_cfg, t0_frac=0.15)
         g_c, s_c = phasor_continuous(tau_arr, base_cfg)
         g_off, s_off = phasor_offset(tau_arr, cfg_off)
-        m_c = np.sqrt(g_c ** 2 + s_c ** 2)
-        m_off = np.sqrt(g_off ** 2 + s_off ** 2)
+        m_c = np.sqrt(g_c**2 + s_c**2)
+        m_off = np.sqrt(g_off**2 + s_off**2)
         np.testing.assert_allclose(m_off, m_c, atol=1e-12)
 
     @pytest.mark.parametrize("t0", [0.05, 0.1, 0.2, 0.3])
@@ -324,6 +350,7 @@ class TestPhasorOffset:
 # ─────────────────────────────────────────────────────────────────────────────
 # Dispatcher — phasor_from_config
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestPhasorFromConfig:
     def test_all_modes_run_and_finite(self, tau_arr):
@@ -348,7 +375,9 @@ class TestPhasorFromConfig:
         np.testing.assert_allclose(g1, g2)
 
     def test_gated_n_dispatch_matches_direct(self, base_cfg, tau_arr):
-        cfg = replace(base_cfg, mode=AcquisitionMode.GATED_N, N_gates=4, gate_width_frac=0.5)
+        cfg = replace(
+            base_cfg, mode=AcquisitionMode.GATED_N, N_gates=4, gate_width_frac=0.5
+        )
         g1, s1 = phasor_from_config(tau_arr, cfg)
         g2, s2 = phasor_gated_N(tau_arr, cfg)
         np.testing.assert_allclose(g1, g2)
@@ -357,6 +386,7 @@ class TestPhasorFromConfig:
 # ─────────────────────────────────────────────────────────────────────────────
 # Locus builder
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestLocus:
     def test_build_locus_shapes_consistent(self, base_cfg):
@@ -371,7 +401,7 @@ class TestLocus:
     def test_build_locus_continuous_on_semicircle(self, base_cfg):
         cfg = replace(base_cfg, mode=AcquisitionMode.CONTINUOUS)
         g, s, _ = build_locus(cfg)
-        np.testing.assert_allclose((g - 0.5) ** 2 + s ** 2, 0.25, atol=1e-10)
+        np.testing.assert_allclose((g - 0.5) ** 2 + s**2, 0.25, atol=1e-10)
 
     def test_build_loci_returns_list(self, base_cfg):
         cfgs = [
@@ -402,10 +432,11 @@ class TestLocus:
 # Universal semicircle
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestUniversalSemicircle:
     def test_on_circle_equation(self):
         g, s = universal_semicircle(500)
-        dist2 = (g - 0.5) ** 2 + s ** 2
+        dist2 = (g - 0.5) ** 2 + s**2
         np.testing.assert_allclose(dist2, 0.25, atol=1e-12)
 
     def test_s_non_negative(self):
@@ -428,6 +459,7 @@ class TestUniversalSemicircle:
 # ─────────────────────────────────────────────────────────────────────────────
 # Discrete SEPL circle geometry
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestSeplCenterRadiusDiscrete:
     def test_returns_three_floats(self, base_cfg):
@@ -460,6 +492,7 @@ class TestSeplCenterRadiusDiscrete:
 # ─────────────────────────────────────────────────────────────────────────────
 # Lifetime inversion
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestLifetimes:
     def test_phase_lifetime_roundtrip(self, base_cfg, tau_arr):
@@ -503,6 +536,7 @@ class TestLifetimes:
 # Fractional components
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestFractionalComponents:
     def test_two_species_30_70_split(self, base_cfg):
         g1, s1 = phasor_continuous(1.0, base_cfg)
@@ -518,14 +552,18 @@ class TestFractionalComponents:
     def test_pure_species_1_gives_f1_one(self, base_cfg):
         g1, s1 = phasor_continuous(1.0, base_cfg)
         g2, s2 = phasor_continuous(5.0, base_cfg)
-        f1, f2 = fractional_components(g1, s1, float(g1), float(s1), float(g2), float(s2))
+        f1, f2 = fractional_components(
+            g1, s1, float(g1), float(s1), float(g2), float(s2)
+        )
         assert abs(float(f1) - 1.0) < 1e-9
         assert abs(float(f2) - 0.0) < 1e-9
 
     def test_pure_species_2_gives_f2_one(self, base_cfg):
         g1, s1 = phasor_continuous(1.0, base_cfg)
         g2, s2 = phasor_continuous(5.0, base_cfg)
-        f1, f2 = fractional_components(g2, s2, float(g1), float(s1), float(g2), float(s2))
+        f1, f2 = fractional_components(
+            g2, s2, float(g1), float(s1), float(g2), float(s2)
+        )
         assert abs(float(f1) - 0.0) < 1e-9
         assert abs(float(f2) - 1.0) < 1e-9
 
@@ -549,10 +587,13 @@ class TestFractionalComponents:
 # Phase lifetime gated (corrected estimator)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestPhaseLifetimeGated:
     def test_returns_array(self, base_cfg):
         pytest.importorskip("scipy")
-        cfg_g = replace(base_cfg, mode=AcquisitionMode.GATED_SINGLE, gate_width_frac=0.5)
+        cfg_g = replace(
+            base_cfg, mode=AcquisitionMode.GATED_SINGLE, gate_width_frac=0.5
+        )
         tau_input = np.array([1.0, 2.0, 4.0])
         g, s = phasor_gated_single(tau_input, cfg_g)
         tau_corr = phase_lifetime_gated(g, s, cfg_g)
@@ -560,7 +601,9 @@ class TestPhaseLifetimeGated:
 
     def test_corrected_closer_to_truth_than_naive(self, base_cfg):
         pytest.importorskip("scipy")
-        cfg_g = replace(base_cfg, mode=AcquisitionMode.GATED_SINGLE, gate_width_frac=0.5)
+        cfg_g = replace(
+            base_cfg, mode=AcquisitionMode.GATED_SINGLE, gate_width_frac=0.5
+        )
         tau_true = np.array([2.0, 4.0])
         g, s = phasor_gated_single(tau_true, cfg_g)
         tau_naive = phase_lifetime(g, s, cfg_g)
@@ -574,9 +617,11 @@ class TestPhaseLifetimeGated:
 # Plot helpers (smoke tests — verify no crash and correct return type)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestPlotHelpers:
     def test_plot_phasor_returns_fig_ax(self, base_cfg):
         import matplotlib.pyplot as plt
+
         fig, ax = plot_phasor(base_cfg)
         assert fig is not None
         assert ax is not None
@@ -584,6 +629,7 @@ class TestPlotHelpers:
 
     def test_plot_phasor_into_existing_ax(self, base_cfg):
         import matplotlib.pyplot as plt
+
         fig_ext, ax_ext = plt.subplots()
         fig, ax = plot_phasor(base_cfg, ax=ax_ext)
         assert ax is ax_ext
@@ -591,6 +637,7 @@ class TestPlotHelpers:
 
     def test_plot_phasor_all_modes(self):
         import matplotlib.pyplot as plt
+
         for mode in AcquisitionMode:
             cfg = AcquisitionConfig(mode=mode)
             fig, ax = plot_phasor(cfg)
@@ -599,6 +646,7 @@ class TestPlotHelpers:
 
     def test_plot_locus_comparison(self, base_cfg):
         import matplotlib.pyplot as plt
+
         cfgs = [
             replace(base_cfg, mode=AcquisitionMode.CONTINUOUS),
             replace(base_cfg, mode=AcquisitionMode.DISCRETE, N_bins=32),
@@ -610,12 +658,14 @@ class TestPlotHelpers:
 
     def test_plot_discrete_N_sweep(self, base_cfg):
         import matplotlib.pyplot as plt
+
         fig, ax = plot_discrete_N_sweep(base_cfg, N_values=[4, 16, 64])
         assert fig is not None
         plt.close(fig)
 
     def test_plot_phasor_no_universal_no_ticks(self, base_cfg):
         import matplotlib.pyplot as plt
+
         fig, ax = plot_phasor(base_cfg, show_universal=False, show_ticks=False)
         assert fig is not None
         plt.close(fig)

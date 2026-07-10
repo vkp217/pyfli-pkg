@@ -1,5 +1,5 @@
-
 import numpy as np
+
 
 def enforce_tau_ordering(popt, perr=None, pcov=None):
     popt = np.asarray(popt, dtype=float)
@@ -21,20 +21,23 @@ def enforce_tau_ordering(popt, perr=None, pcov=None):
 
     return popt, perr, pcov
 
+
 def compute_fli_stats(final_model, d_fit, n_params):
     residuals = final_model - d_fit
-    ssr = float(np.sum(residuals ** 2))
-    chi_sq = float(np.sum(residuals ** 2 / np.clip(final_model, 1.0, None)))
+    ssr = float(np.sum(residuals**2))
+    chi_sq = float(np.sum(residuals**2 / np.clip(final_model, 1.0, None)))
     dof = max(len(d_fit) - n_params, 1)
     red_chi_sq = chi_sq / dof
     ss_tot = float(np.sum((d_fit - np.mean(d_fit)) ** 2))
     r_sq = 1.0 - ssr / ss_tot if ss_tot > 0 else 0.0
     return ssr, chi_sq, red_chi_sq, r_sq
 
+
 def compute_average_lifetime(popt):
     if len(popt) == 6:
         return float(popt[1] * popt[2] + (1.0 - popt[1]) * popt[3])
     return float(popt[1])
+
 
 def compute_fret_efficiency(popt):
     if len(popt) == 6:

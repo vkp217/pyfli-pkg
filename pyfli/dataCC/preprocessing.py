@@ -22,7 +22,7 @@ class DataPreprocessing:
         """
         Generates a mask based on intensity thresholds.
         If lower and upper are both None, a mask of all ones is returned.
-        
+
         Parameters
         ----------
         lower : float, optional
@@ -33,7 +33,7 @@ class DataPreprocessing:
             Index of the dataset to use for generating the mask.
         """
         arr = self.data[data_index]
-        
+
         # Calculate intensity map
         if arr.ndim == 3:
             intensity = np.sum(arr, axis=-1)
@@ -46,10 +46,10 @@ class DataPreprocessing:
         mask = np.ones(intensity.shape, dtype=bool)
         # Apply lower bound if provided
         if lower is not None:
-            mask &= (intensity >= lower)
+            mask &= intensity >= lower
         # Apply upper bound if provided
         if upper is not None:
-            mask &= (intensity <= upper)
+            mask &= intensity <= upper
         self.mask = mask
         return mask
 
@@ -57,7 +57,9 @@ class DataPreprocessing:
         if mask is None:
             mask = self.mask
         if mask is None:
-            raise ValueError("Mask not provided. Generate one or pass it as an argument.")        
+            raise ValueError(
+                "Mask not provided. Generate one or pass it as an argument."
+            )
         masked_outputs = []
         for arr in self.data:
             if arr.ndim == 3:
@@ -68,5 +70,5 @@ class DataPreprocessing:
                 masked = arr * mask
             else:
                 raise ValueError("Data must be 2D or 3D")
-            masked_outputs.append(masked)            
+            masked_outputs.append(masked)
         return tuple(masked_outputs)

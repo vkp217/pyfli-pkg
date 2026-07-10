@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 class NoiseEngine:
     @staticmethod
     def apply_poisson(clean_signal):
@@ -15,7 +16,7 @@ class NoiseEngine:
         """
         dark_noise = np.random.poisson(dcr_level, size=decay.shape)
         return decay + dark_noise
-    
+
     @staticmethod
     def apply_read_noise(decay, sigma_read=1.5):
         """
@@ -29,10 +30,10 @@ class NoiseEngine:
     def apply_jitter(decay, max_shift=2):
         n = len(decay)
         shift = np.random.randint(-max_shift, max_shift + 1)
-        if shift == 0: 
+        if shift == 0:
             return decay
         if shift > 0:
-            return np.concatenate([np.zeros(shift), decay[:n - shift]])
+            return np.concatenate([np.zeros(shift), decay[: n - shift]])
         return np.concatenate([decay[-shift:], np.zeros(-shift)])
 
     @staticmethod

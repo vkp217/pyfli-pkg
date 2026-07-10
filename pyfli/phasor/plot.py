@@ -15,7 +15,6 @@ from typing import Sequence
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
@@ -28,27 +27,28 @@ from .locus import build_locus, universal_semicircle
 # ──────────────────────────────────────────────────────────────────────────────
 
 PALETTE: dict[AcquisitionMode, str] = {
-    AcquisitionMode.CONTINUOUS:   "#3266ad",   # blue
-    AcquisitionMode.DISCRETE:     "#1d9e75",   # teal
-    AcquisitionMode.GATED_SINGLE: "#d85a30",   # coral
-    AcquisitionMode.GATED_N:      "#ba7517",   # amber
-    AcquisitionMode.TRUNCATED:    "#d4537e",   # pink
-    AcquisitionMode.OFFSET:       "#7f77dd",   # purple
+    AcquisitionMode.CONTINUOUS: "#3266ad",  # blue
+    AcquisitionMode.DISCRETE: "#1d9e75",  # teal
+    AcquisitionMode.GATED_SINGLE: "#d85a30",  # coral
+    AcquisitionMode.GATED_N: "#ba7517",  # amber
+    AcquisitionMode.TRUNCATED: "#d4537e",  # pink
+    AcquisitionMode.OFFSET: "#7f77dd",  # purple
 }
 
 MODE_LABELS: dict[AcquisitionMode, str] = {
-    AcquisitionMode.CONTINUOUS:   "Continuous (universal semicircle)",
-    AcquisitionMode.DISCRETE:     "Discrete N-bins (TCSPC)",
+    AcquisitionMode.CONTINUOUS: "Continuous (universal semicircle)",
+    AcquisitionMode.DISCRETE: "Discrete N-bins (TCSPC)",
     AcquisitionMode.GATED_SINGLE: "Single square gate",
-    AcquisitionMode.GATED_N:      "N equidistant gates",
-    AcquisitionMode.TRUNCATED:    "Truncated decay",
-    AcquisitionMode.OFFSET:       "IRF offset",
+    AcquisitionMode.GATED_N: "N equidistant gates",
+    AcquisitionMode.TRUNCATED: "Truncated decay",
+    AcquisitionMode.OFFSET: "IRF offset",
 }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Internal helpers
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def _setup_axes(ax: Axes, title: str = "") -> None:
     """Apply standard phasor-plot aesthetics to *ax*."""
@@ -71,9 +71,13 @@ def _draw_universal_semicircle(ax: Axes, alpha: float = 0.35) -> None:
     """Overlay the universal semicircle as a dashed grey reference."""
     g_uc, s_uc = universal_semicircle()
     ax.plot(
-        g_uc, s_uc,
-        color="0.5", linewidth=1.2, linestyle="--",
-        alpha=alpha, label="Universal semicircle (∞ bins)",
+        g_uc,
+        s_uc,
+        color="0.5",
+        linewidth=1.2,
+        linestyle="--",
+        alpha=alpha,
+        label="Universal semicircle (∞ bins)",
         zorder=1,
     )
     ax.plot(0.5, 0.0, marker="o", color="0.5", markersize=4, alpha=alpha, zorder=1)
@@ -121,6 +125,7 @@ def _draw_lifetime_ticks(
 # ──────────────────────────────────────────────────────────────────────────────
 # Primary public function
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def plot_phasor(
     cfg: AcquisitionConfig,
@@ -174,9 +179,14 @@ def plot_phasor(
     if show_endpoints:
         for idx, lbl_ep, ha in [(0, "τ→0", "left"), (-1, "τ→∞", "right")]:
             ax.plot(g[idx], s[idx], "o", color=c, markersize=6, zorder=6)
-            ax.annotate(lbl_ep, xy=(g[idx], s[idx]),
-                        xytext=(g[idx] + (0.03 if ha == "left" else -0.03), s[idx] + 0.02),
-                        fontsize=8, color=c, ha=ha)
+            ax.annotate(
+                lbl_ep,
+                xy=(g[idx], s[idx]),
+                xytext=(g[idx] + (0.03 if ha == "left" else -0.03), s[idx] + 0.02),
+                fontsize=8,
+                color=c,
+                ha=ha,
+            )
 
     # Frequency annotation
     freq_str = (
@@ -184,8 +194,16 @@ def plot_phasor(
         f"f = {cfg.frequency_MHz:.1f} MHz  |  "
         f"n = {cfg.harmonic}"
     )
-    ax.text(0.98, 0.03, freq_str, transform=ax.transAxes,
-            fontsize=8, ha="right", va="bottom", color="0.5")
+    ax.text(
+        0.98,
+        0.03,
+        freq_str,
+        transform=ax.transAxes,
+        fontsize=8,
+        ha="right",
+        va="bottom",
+        color="0.5",
+    )
 
     ax.legend(fontsize=9, loc="upper right", framealpha=0.8)
     return fig, ax
@@ -194,6 +212,7 @@ def plot_phasor(
 # ──────────────────────────────────────────────────────────────────────────────
 # Multi-mode comparison
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def plot_locus_comparison(
     cfgs: Sequence[AcquisitionConfig],
@@ -233,8 +252,10 @@ def plot_locus_comparison(
         _draw_universal_semicircle(ax)
 
     for i, cfg in enumerate(cfgs):
-        c   = (colors[i] if colors else None) or PALETTE.get(cfg.mode, "#3266ad")
-        lbl = (labels[i] if labels else None) or MODE_LABELS.get(cfg.mode, cfg.mode.name)
+        c = (colors[i] if colors else None) or PALETTE.get(cfg.mode, "#3266ad")
+        lbl = (labels[i] if labels else None) or MODE_LABELS.get(
+            cfg.mode, cfg.mode.name
+        )
         g, s, tau = build_locus(cfg)
         ax.plot(g, s, color=c, linewidth=1.8, label=lbl, zorder=3 + i)
 
@@ -244,14 +265,20 @@ def plot_locus_comparison(
         ax.plot(g[0], s[0], "o", color=c, markersize=5, zorder=8)
         ax.plot(g[-1], s[-1], "s", color=c, markersize=5, zorder=8)
 
-    ax.legend(fontsize=8.5, loc="upper right", framealpha=0.85,
-              title="Acquisition mode", title_fontsize=8)
+    ax.legend(
+        fontsize=8.5,
+        loc="upper right",
+        framealpha=0.85,
+        title="Acquisition mode",
+        title_fontsize=8,
+    )
     return fig, ax
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Discrete SEPL — N sweep
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def plot_discrete_N_sweep(
     base_cfg: AcquisitionConfig,
@@ -273,7 +300,10 @@ def plot_discrete_N_sweep(
     fig, ax
     """
     fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
-    _setup_axes(ax, title=f"Discrete SEPL convergence  (T={base_cfg.T_ns} ns, n={base_cfg.harmonic})")
+    _setup_axes(
+        ax,
+        title=f"Discrete SEPL convergence  (T={base_cfg.T_ns} ns, n={base_cfg.harmonic})",
+    )
     _draw_universal_semicircle(ax, alpha=0.5)
 
     cmap = plt.cm.viridis
@@ -284,6 +314,7 @@ def plot_discrete_N_sweep(
         g, s, _ = build_locus(cfg_n)
         ax.plot(g, s, color=c, linewidth=1.6, label=f"N = {N}")
 
-    ax.legend(fontsize=9, title="Bins N", title_fontsize=9,
-              loc="upper right", framealpha=0.85)
+    ax.legend(
+        fontsize=9, title="Bins N", title_fontsize=9, loc="upper right", framealpha=0.85
+    )
     return fig, ax

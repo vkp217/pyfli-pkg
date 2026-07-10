@@ -19,12 +19,12 @@ def compute_freq_axis(binned_irf, laser_period_ns=12.5):
     freq_hz      : float
     time_axis_ns : np.ndarray  length T
     """
-    num_gates    = binned_irf.shape[2]
-    gate_delay   = laser_period_ns / num_gates
-    freq         = AnalyticalHelpers(
+    num_gates = binned_irf.shape[2]
+    gate_delay = laser_period_ns / num_gates
+    freq = AnalyticalHelpers(
         laser_period=laser_period_ns, gate_delay=gate_delay, num_gate=num_gates
     ).freq_computation()
-    freq_hz      = freq[1] * 1e6
+    freq_hz = freq[1] * 1e6
     time_axis_ns = np.linspace(0, gate_delay * num_gates, num_gates)
     return freq, freq_hz, time_axis_ns
 
@@ -49,14 +49,15 @@ def compute_phasor(binned_decay, binned_irf, freq_hz, time_axis_ns, n_harmonics=
     phasor_obj = PhasorAnalyzer(
         frequency_hz=freq_hz, time_axis_ns=time_axis_ns, n_harmonics=n_harmonics
     )
-    G, S       = phasor_obj.create_phasor_gpu(binned_decay)
-    Gc, Sc     = phasor_obj.calibrate_pixelwise(G, S, binned_irf)
+    G, S = phasor_obj.create_phasor_gpu(binned_decay)
+    Gc, Sc = phasor_obj.calibrate_pixelwise(G, S, binned_irf)
     tau_map_ns = phasor_obj.compute_lifetime(Gc[0], Sc[0])
     return phasor_obj, Gc, Sc, tau_map_ns
 
 
-def plot_phasor_figures(phasor_obj, Gc, Sc, binned_decay, mask,
-                        colorset='jet', saver=None):
+def plot_phasor_figures(
+    phasor_obj, Gc, Sc, binned_decay, mask, colorset="jet", saver=None
+):
     """Generate all standard phasor figures.
 
     Produces: phasor diagram, overlay subplots, harmonics plot (if ≥ 3 harmonics),
@@ -75,46 +76,51 @@ def plot_phasor_figures(phasor_obj, Gc, Sc, binned_decay, mask,
     -------
     figs : dict[str, Figure]   keyed by figure name
     """
-    plasma_m  = Colorprocess().lowest_zero('plasma')
-    viridis_m = Colorprocess().lowest_zero('viridis')
+    plasma_m = Colorprocess().lowest_zero("plasma")
+    viridis_m = Colorprocess().lowest_zero("viridis")
 
     figs = {}
 
-    figs['phasor_diagram'] = phasor_obj.plot_phasor_diagram(
+    figs["phasor_diagram"] = phasor_obj.plot_phasor_diagram(
         Gc[0], Sc[0], mask=mask, hexbin_color=colorset, half_circle=True
     )
     if saver:
-        saver.save_plot('Phasor_Plot', fig=figs['phasor_diagram'], close=False)
+        saver.save_plot("Phasor_Plot", fig=figs["phasor_diagram"], close=False)
 
-    figs['phasor_subplots'] = phasor_obj.plot_overlay_subplots(
-        binned_decay, Gc[0], Sc[0],
+    figs["phasor_subplots"] = phasor_obj.plot_overlay_subplots(
+        binned_decay,
+        Gc[0],
+        Sc[0],
         mask=mask,
         colormaps=[plasma_m, viridis_m],
-        hexbin_color='jet',
+        hexbin_color="jet",
         noise_removed=True,
-        figsize=(10, 8)
+        figsize=(10, 8),
     )
     if saver:
-        saver.save_plot('Phasor_subplots', fig=figs['phasor_subplots'], close=False)
+        saver.save_plot("Phasor_subplots", fig=figs["phasor_subplots"], close=False)
 
     n_harmonics = Gc.shape[0]
     if n_harmonics >= 2:
-        figs['phasor_harmonics'] = phasor_obj.plot_phasor_harmonics(
-            Gc, Sc,
+        figs["phasor_harmonics"] = phasor_obj.plot_phasor_harmonics(
+            Gc,
+            Sc,
             harmonics=tuple(range(1, n_harmonics + 1)),
             mask=mask,
             hexbin_color=colorset,
-            figsize=(14, 4)
+            figsize=(14, 4),
         )
         if saver:
-            saver.save_plot('phasor_harmonics_Plot', fig=figs['phasor_harmonics'], close=False)
+            saver.save_plot(
+                "phasor_harmonics_Plot", fig=figs["phasor_harmonics"], close=False
+            )
 
-    figs['phasor_pure_map'] = phasor_obj.plot_pure_phasor_map(
-        Gc[0], Sc[0], binned_decay, noise_removed=True, colormap='viridis'
+    figs["phasor_pure_map"] = phasor_obj.plot_pure_phasor_map(
+        Gc[0], Sc[0], binned_decay, noise_removed=True, colormap="viridis"
     )
 
-    figs['phasor_traceable'] = phasor_obj.plot_traceable_analysis(
-        Gc[0], Sc[0], binned_decay, mask=mask, colormap='viridis'
+    figs["phasor_traceable"] = phasor_obj.plot_traceable_analysis(
+        Gc[0], Sc[0], binned_decay, mask=mask, colormap="viridis"
     )
 
     return figs
@@ -155,17 +161,17 @@ def save_phasor_result(save_dir, tau_map_ns, saver=None):
         }
     """
     result = {
-        'results': {
-            'maps': {
-                'tau_map':       tau_map_ns,
-                'mean_lifetime': tau_map_ns,
+        "results": {
+            "maps": {
+                "tau_map": tau_map_ns,
+                "mean_lifetime": tau_map_ns,
             },
-            'TR_maps': {},
+            "TR_maps": {},
         }
     }
-    path = os.path.join(save_dir, 'phasor_tau_map.npy')
+    path = os.path.join(save_dir, "phasor_tau_map.npy")
     np.save(path, result)
     if saver:
-        saver.log('Phasor tau map saved as phasor_tau_map.npy')
+        saver.log("Phasor tau map saved as phasor_tau_map.npy")
     print(f"Phasor result saved → {path}")
     return path

@@ -80,25 +80,25 @@ if TYPE_CHECKING:
 #   bit15=0, bit7=0               → photon record  (7-bit arrival time)
 #   bit15=0, bit7=1               → photon record with extension
 
-_MARKER_BIT      = 0x8000   # bit 15  – set for pixel/line markers
-_LINE_END_MARKER = 0xFFFF   # sentinel used by some firmware versions
-_CLASS_MARKER_ID = 0x0000   # upper nibble == 0  → class/detector marker
+_MARKER_BIT = 0x8000  # bit 15  – set for pixel/line markers
+_LINE_END_MARKER = 0xFFFF  # sentinel used by some firmware versions
+_CLASS_MARKER_ID = 0x0000  # upper nibble == 0  → class/detector marker
 
 # Class marker layout:  [15:0] = [0, detector(4), single_photon(1), ...]
-_CLASS_DET_SHIFT   = 11
-_CLASS_DET_MASK    = 0x0F
-_CLASS_SINGLE_BIT  = 0x0400   # bit 10
+_CLASS_DET_SHIFT = 11
+_CLASS_DET_MASK = 0x0F
+_CLASS_SINGLE_BIT = 0x0400  # bit 10
 
 # Photon record layout: [15:0] = [0, ..., has_ext(1), arrival_low(7)]
-_PHOT_ATIME_MASK   = 0x007F   # bits 6-0
-_PHOT_EXT_BIT      = 0x0080   # bit 7  – if set, next record holds upper bits
+_PHOT_ATIME_MASK = 0x007F  # bits 6-0
+_PHOT_EXT_BIT = 0x0080  # bit 7  – if set, next record holds upper bits
 
 # Extension record:     [15:0] = [0, ..., arrival_high(6), ...]
-_EXT_ATIME_SHIFT   = 7        # upper 6 bits sit at bits 12-7
-_EXT_ATIME_MASK    = 0x1F80
+_EXT_ATIME_SHIFT = 7  # upper 6 bits sit at bits 12-7
+_EXT_ATIME_MASK = 0x1F80
 
 # Pixel-end marker:     [15:0] = [1, ..., run_length(10)]
-_PIXEL_RUN_MASK    = 0x03FF   # bits 9-0
+_PIXEL_RUN_MASK = 0x03FF  # bits 9-0
 
 
 def _decompress_memory_block(flim_image: "lf.LifFlimImage") -> bytes:
@@ -136,7 +136,7 @@ def _decompress_memory_block(flim_image: "lf.LifFlimImage") -> bytes:
             break
         for wbits in (15, -15, 31, 47):
             try:
-                chunks.append(zlib.decompress(raw[pos: pos + sz], wbits=wbits))
+                chunks.append(zlib.decompress(raw[pos : pos + sz], wbits=wbits))
                 break
             except zlib.error:
                 pass
@@ -148,8 +148,6 @@ def _decompress_memory_block(flim_image: "lf.LifFlimImage") -> bytes:
         f"Format={fmt!r}: could not decompress FLIM memory block "
         f"({len(raw):,} bytes).\nFirst 64 bytes: " + raw[:64].hex()
     )
-
-
 
 
 def build_decay_cube(
@@ -190,57 +188,57 @@ def build_decay_cube(
     -------
     cube : np.ndarray, shape (M, Y, X, H)
     """
-    sizes    = flim_image.sizes
+    sizes = flim_image.sizes
     n_frames = sizes.get("M", 1)
-    n_y      = sizes["Y"]
-    n_x      = sizes["X"]
-    n_bins   = sizes["H"]
+    n_y = sizes["Y"]
+    n_x = sizes["X"]
+    n_bins = sizes["H"]
 
-    rd           = flim_image.attrs["RawData"]
-    bidir        = bool(rd.get("BiDirectional",       False))
-    invert_x     = bool(rd.get("InvertImageX",        False))
-    invert_y     = bool(rd.get("InvertImageY",        False))
-    line_start_m = int(rd.get("LineStartMarker",      1))
-    line_end_m   = int(rd.get("LineEndMarker",        2))
-    frame_m      = int(rd.get("FrameMarker",          4))
+    rd = flim_image.attrs["RawData"]
+    bidir = bool(rd.get("BiDirectional", False))
+    invert_x = bool(rd.get("InvertImageX", False))
+    invert_y = bool(rd.get("InvertImageY", False))
+    line_start_m = int(rd.get("LineStartMarker", 1))
+    line_end_m = int(rd.get("LineEndMarker", 2))
+    frame_m = int(rd.get("FrameMarker", 4))
 
     # Exact 16-bit marker values  (low byte always 0xA0)
-    MARKER_LINE_START = (line_start_m << 8) | 0xA0   # 0x01A0
-    MARKER_LINE_END   = (line_end_m   << 8) | 0xA0   # 0x02A0
-    MARKER_FRAME      = (frame_m      << 8) | 0xA0   # 0x04A0
-    PIXEL_CLOCK       = 0x54A0                        # one per pixel dwell
+    MARKER_LINE_START = (line_start_m << 8) | 0xA0  # 0x01A0
+    MARKER_LINE_END = (line_end_m << 8) | 0xA0  # 0x02A0
+    MARKER_FRAME = (frame_m << 8) | 0xA0  # 0x04A0
+    PIXEL_CLOCK = 0x54A0  # one per pixel dwell
 
     # ── Raw record stream (uncompressed uint16 LE) ─────────────────────────
-    raw   = _decompress_memory_block(flim_image)
-    recs  = np.frombuffer(raw[: (len(raw) // 2) * 2], dtype="<u2")
+    raw = _decompress_memory_block(flim_image)
+    recs = np.frombuffer(raw[: (len(raw) // 2) * 2], dtype="<u2")
 
     # ── Output tensor ──────────────────────────────────────────────────────
     cube = np.zeros((n_frames, n_y, n_x, n_bins), dtype=dtype)
 
     # ── Scan state ─────────────────────────────────────────────────────────
     frame_idx = 0
-    line_idx  = 0
-    pixel_idx = -1   # -1 = before first pixel clock in this line
-    in_line   = False
+    line_idx = 0
+    pixel_idx = -1  # -1 = before first pixel clock in this line
+    in_line = False
 
     for rec in recs:
         rec = int(rec)
-        low  = rec & 0xFF
+        low = rec & 0xFF
         high = rec >> 8
 
         # ── PHOTON: low byte bit7 == 0 ────────────────────────────────────
         if not (low & 0x80):
             if not in_line or pixel_idx < 0:
-                continue                     # before first pixel clock
+                continue  # before first pixel clock
             atime = high
-            ch    = (low >> 4) & 0x7
+            ch = (low >> 4) & 0x7
             if ch != channel or atime >= n_bins:
                 continue
 
             # Bidirectional: odd lines are scanned right-to-left
             px = (n_x - 1 - pixel_idx) if (bidir and line_idx & 1) else pixel_idx
-            py = (n_y - 1 - line_idx)  if invert_y                  else line_idx
-            px = (n_x - 1 - px)        if invert_x                  else px
+            py = (n_y - 1 - line_idx) if invert_y else line_idx
+            px = (n_x - 1 - px) if invert_x else px
 
             if 0 <= px < n_x and 0 <= py < n_y and 0 <= frame_idx < n_frames:
                 cube[frame_idx, py, px, atime] += 1
@@ -248,25 +246,25 @@ def build_decay_cube(
 
         # ── SYNC / MARKER: low byte bit7 == 1 ────────────────────────────
         if rec == MARKER_LINE_START:
-            in_line   = True
-            pixel_idx = -1          # reset; first PIXEL_CLOCK sets it to 0
+            in_line = True
+            pixel_idx = -1  # reset; first PIXEL_CLOCK sets it to 0
 
         elif rec == MARKER_LINE_END:
             if in_line:
                 line_idx += 1
                 if line_idx >= n_y:
-                    line_idx  = 0
+                    line_idx = 0
                     frame_idx += 1
                     if frame_idx >= n_frames:
                         break
-            in_line   = False
+            in_line = False
             pixel_idx = -1
 
         elif rec == MARKER_FRAME:
             frame_idx += 1
-            line_idx   = 0
-            pixel_idx  = -1
-            in_line    = False
+            line_idx = 0
+            pixel_idx = -1
+            in_line = False
             if frame_idx >= n_frames:
                 break
 
@@ -275,17 +273,17 @@ def build_decay_cube(
             if in_line:
                 pixel_idx += 1
                 if pixel_idx >= n_x:
-                    pixel_idx = n_x - 1   # clamp; LINE_END will reset
+                    pixel_idx = n_x - 1  # clamp; LINE_END will reset
 
         # else: SYNC_A laser record (0x04XX etc.) — ignored
 
     return cube
 
 
-
 # ---------------------------------------------------------------------------
 # Part 2 – Alternative: read pre-computed FLIM maps (no patent issues)
 # ---------------------------------------------------------------------------
+
 
 def read_derived_images(
     lif_file: "lf.LifFile",
@@ -314,24 +312,24 @@ def read_derived_images(
     'MeanPhotonArrivalTime', 'MeanDecayTime', 'ChiSquare'.
     """
     _name_map = {
-        "Intensity":                              "Intensity",
-        "Fast Flim":                              "FastFlim",
-        "Standard Deviation":                     "StdDev",
-        "Phasor Real":                            "PhasorReal",
-        "Phasor Imaginary":                       "PhasorImaginary",
-        "Phasor Intensity":                       "PhasorIntensity",
-        "Phasor Mask":                            "PhasorMask",
-        "FlimDecayTime 1 ch1":                    "DecayTime",
-        "FlimAmplitude 1 ch1":                    "Amplitude",
-        "FlimTailOffset 1 ch1":                   "TailOffset",
+        "Intensity": "Intensity",
+        "Fast Flim": "FastFlim",
+        "Standard Deviation": "StdDev",
+        "Phasor Real": "PhasorReal",
+        "Phasor Imaginary": "PhasorImaginary",
+        "Phasor Intensity": "PhasorIntensity",
+        "Phasor Mask": "PhasorMask",
+        "FlimDecayTime 1 ch1": "DecayTime",
+        "FlimAmplitude 1 ch1": "Amplitude",
+        "FlimTailOffset 1 ch1": "TailOffset",
         "FlimInstrumentResponseFunctionBackground 1 ch1": "IRFBackground",
-        "FlimInstrumentResponseFunctionShift 1 ch1":      "IRFShift",
-        "FlimIntensity 1 ch1":                    "FlimIntensity",
-        "FlimAmplitudeSum 1 ch1":                 "AmplitudeSum",
-        "FlimIntensitySum 1 ch1":                 "IntensitySum",
-        "FlimMeanPhotonArivalTime 1 ch1":          "MeanPhotonArrivalTime",
-        "FlimMeanDecayTime 1 ch1":                "MeanDecayTime",
-        "ChiSquare 1 ch1":                        "ChiSquare",
+        "FlimInstrumentResponseFunctionShift 1 ch1": "IRFShift",
+        "FlimIntensity 1 ch1": "FlimIntensity",
+        "FlimAmplitudeSum 1 ch1": "AmplitudeSum",
+        "FlimIntensitySum 1 ch1": "IntensitySum",
+        "FlimMeanPhotonArivalTime 1 ch1": "MeanPhotonArrivalTime",
+        "FlimMeanDecayTime 1 ch1": "MeanDecayTime",
+        "ChiSquare 1 ch1": "ChiSquare",
     }
 
     # Normalise: strip trailing /FLIM so 'T23_.../FLIM' and 'T23_...' both work
@@ -353,7 +351,7 @@ def read_derived_images(
         if img.is_flim:
             continue  # skip the LifFlimImage itself (raises NotImplementedError)
         # sub-image name = everything after 'Base/FLIM/'
-        subname = img.path[len(flim_prefix):]
+        subname = img.path[len(flim_prefix) :]
         key = _name_map.get(subname, subname)
         try:
             result[key] = img.asarray()
@@ -366,6 +364,7 @@ def read_derived_images(
 # ---------------------------------------------------------------------------
 # Part 3 – Plotting helpers
 # ---------------------------------------------------------------------------
+
 
 def plot_decay_cube(
     cube: np.ndarray,
@@ -411,51 +410,61 @@ def plot_decay_cube(
         t_ns = np.arange(H)
         xlabel = "TCSPC bin"
 
-    frame_cube = cube[frame]                      # (Y, X, H)
-    intensity   = frame_cube.sum(axis=-1)         # (Y, X)
+    frame_cube = cube[frame]  # (Y, X, H)
+    intensity = frame_cube.sum(axis=-1)  # (Y, X)
 
     # Weighted mean arrival time
     bins = t_ns if flim_image else np.arange(H)
     total = intensity.clip(min=1)
     mean_t = (frame_cube * bins[np.newaxis, np.newaxis, :]).sum(-1) / total
 
-    summed_decay     = frame_cube.sum(axis=(0, 1))  # (H,)
-    singlepix_decay  = frame_cube[py, px]           # (H,)
+    summed_decay = frame_cube.sum(axis=(0, 1))  # (H,)
+    singlepix_decay = frame_cube[py, px]  # (H,)
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle(
-        f"FLIM Decay Cube  |  frame {frame}/{M-1}  |  shape {cube.shape}",
+        f"FLIM Decay Cube  |  frame {frame}/{M - 1}  |  shape {cube.shape}",
         fontsize=13,
     )
 
     # Panel 1 – Intensity
     im1 = axes[0, 0].imshow(intensity, cmap="hot", origin="upper")
     axes[0, 0].set_title("Intensity (photon count)")
-    axes[0, 0].set_xlabel("X (pixels)"); axes[0, 0].set_ylabel("Y (pixels)")
+    axes[0, 0].set_xlabel("X (pixels)")
+    axes[0, 0].set_ylabel("Y (pixels)")
     plt.colorbar(im1, ax=axes[0, 0], shrink=0.85)
 
     # Panel 2 – Mean arrival time
     im2 = axes[0, 1].imshow(mean_t, cmap="RdYlGn_r", origin="upper")
     axes[0, 1].set_title("Mean photon arrival time")
-    axes[0, 1].set_xlabel("X (pixels)"); axes[0, 1].set_ylabel("Y (pixels)")
+    axes[0, 1].set_xlabel("X (pixels)")
+    axes[0, 1].set_ylabel("Y (pixels)")
     cbar2 = plt.colorbar(im2, ax=axes[0, 1], shrink=0.85)
     cbar2.set_label(xlabel)
     # Mark the selected pixel
-    axes[0, 1].plot(px, py, "c+", markersize=12, markeredgewidth=2,
-                    label=f"pixel ({py},{px})")
+    axes[0, 1].plot(
+        px, py, "c+", markersize=12, markeredgewidth=2, label=f"pixel ({py},{px})"
+    )
     axes[0, 1].legend(fontsize=8)
 
     # Panel 3 – Summed decay (log-scale)
     axes[1, 0].semilogy(t_ns, summed_decay + 1, color="steelblue", linewidth=1.5)
     axes[1, 0].set_title("Summed decay (all pixels)")
-    axes[1, 0].set_xlabel(xlabel); axes[1, 0].set_ylabel("Photon count")
+    axes[1, 0].set_xlabel(xlabel)
+    axes[1, 0].set_ylabel("Photon count")
     axes[1, 0].grid(True, which="both", alpha=0.3)
 
     # Panel 4 – Single pixel decay
-    axes[1, 1].bar(t_ns, singlepix_decay, width=(t_ns[1] - t_ns[0]) if len(t_ns) > 1 else 1,
-                   color="salmon", alpha=0.8)
+    axes[1, 1].bar(
+        t_ns,
+        singlepix_decay,
+        width=(t_ns[1] - t_ns[0]) if len(t_ns) > 1 else 1,
+        color="salmon",
+        alpha=0.8,
+    )
     axes[1, 1].set_title(f"Single-pixel decay  (y={py}, x={px})")
-    axes[1, 1].set_xlabel(xlabel); axes[1, 1].set_ylabel("Photon count")
+    axes[1, 1].set_xlabel(xlabel)
+    axes[1, 1].set_ylabel("Photon count")
     axes[1, 1].grid(True, axis="y", alpha=0.3)
 
     plt.tight_layout()
@@ -491,7 +500,7 @@ def plot_derived_images(
     import matplotlib.pyplot as plt
 
     keys = list(derived.keys())
-    n    = len(keys)
+    n = len(keys)
     cols = 4
     rows = (n + cols - 1) // cols
 
@@ -526,6 +535,7 @@ def plot_derived_images(
 # ---------------------------------------------------------------------------
 # Part 4 – Convenience wrapper: try raw cube first, fall back to derived maps
 # ---------------------------------------------------------------------------
+
 
 def load_flim_data(
     lif_path: str,
@@ -617,6 +627,7 @@ def load_flim_data(
 # Part 5 – (X, Y, T) collapse and pixel-wise decay plotting
 # ---------------------------------------------------------------------------
 
+
 def collapse_to_xyt(cube: np.ndarray) -> np.ndarray:
     """
     Sum the M (mosaic/frame) axis to get a single (Y, X, H) image.
@@ -638,7 +649,7 @@ def plot_xyt(
     *,
     pixel_yx: tuple[int, int] | None = None,
     cmap_intensity: str = "hot",
-    cmap_lifetime:  str = "RdYlGn_r",
+    cmap_lifetime: str = "RdYlGn_r",
     save_path: str | None = None,
 ):
     """
@@ -666,60 +677,62 @@ def plot_xyt(
     import matplotlib.gridspec as gridspec
 
     n_y, n_x, n_h = xyt.shape
-    t_ns = np.arange(n_h) * tcspc_resolution_s * 1e9   # time axis in ns
+    t_ns = np.arange(n_h) * tcspc_resolution_s * 1e9  # time axis in ns
 
     if pixel_yx is None:
         pixel_yx = (n_y // 2, n_x // 2)
-    sel = list(pixel_yx)   # mutable so click handler can update it
+    sel = list(pixel_yx)  # mutable so click handler can update it
 
     intensity = xyt.sum(axis=-1).astype(float)
-    denom     = intensity.clip(min=1)
-    mean_t    = (xyt * t_ns[np.newaxis, np.newaxis, :]).sum(-1) / denom
+    denom = intensity.clip(min=1)
+    mean_t = (xyt * t_ns[np.newaxis, np.newaxis, :]).sum(-1) / denom
 
     fig = plt.figure(figsize=(14, 10))
     fig.suptitle(
         f"FLIM (Y={n_y}, X={n_x}, H={n_h})  |  "
-        f"res={tcspc_resolution_s*1e12:.0f} ps/bin  |  "
+        f"res={tcspc_resolution_s * 1e12:.0f} ps/bin  |  "
         f"total photons={int(intensity.sum()):,}",
         fontsize=12,
     )
     gs = gridspec.GridSpec(2, 2, figure=fig, hspace=0.35, wspace=0.35)
 
-    ax_int  = fig.add_subplot(gs[0, 0])
-    ax_tau  = fig.add_subplot(gs[0, 1])
-    ax_sum  = fig.add_subplot(gs[1, 0])
-    ax_pix  = fig.add_subplot(gs[1, 1])
+    ax_int = fig.add_subplot(gs[0, 0])
+    ax_tau = fig.add_subplot(gs[0, 1])
+    ax_sum = fig.add_subplot(gs[1, 0])
+    ax_pix = fig.add_subplot(gs[1, 1])
 
     # ── Panel 1: intensity ────────────────────────────────────────────────
     im1 = ax_int.imshow(intensity, cmap=cmap_intensity, origin="upper")
     ax_int.set_title("Intensity (photon count)")
-    ax_int.set_xlabel("X (pixels)"); ax_int.set_ylabel("Y (pixels)")
+    ax_int.set_xlabel("X (pixels)")
+    ax_int.set_ylabel("Y (pixels)")
     plt.colorbar(im1, ax=ax_int, shrink=0.85)
-    marker_int, = ax_int.plot(*sel[::-1], "c+", ms=12, mew=2)
+    (marker_int,) = ax_int.plot(*sel[::-1], "c+", ms=12, mew=2)
 
     # ── Panel 2: mean arrival time ────────────────────────────────────────
     vmax_t = t_ns[-1]
-    im2 = ax_tau.imshow(mean_t, cmap=cmap_lifetime, origin="upper",
-                        vmin=0, vmax=vmax_t)
+    im2 = ax_tau.imshow(mean_t, cmap=cmap_lifetime, origin="upper", vmin=0, vmax=vmax_t)
     ax_tau.set_title("Mean photon arrival time (ns)")
-    ax_tau.set_xlabel("X (pixels)"); ax_tau.set_ylabel("Y (pixels)")
+    ax_tau.set_xlabel("X (pixels)")
+    ax_tau.set_ylabel("Y (pixels)")
     cb2 = plt.colorbar(im2, ax=ax_tau, shrink=0.85)
     cb2.set_label("ns")
-    marker_tau, = ax_tau.plot(*sel[::-1], "w+", ms=12, mew=2)
+    (marker_tau,) = ax_tau.plot(*sel[::-1], "w+", ms=12, mew=2)
 
     # ── Panel 3: summed decay ─────────────────────────────────────────────
     summed = xyt.sum(axis=(0, 1))
     ax_sum.semilogy(t_ns, summed + 1, color="steelblue", lw=1.5)
     ax_sum.set_title("Summed decay (all pixels, log scale)")
-    ax_sum.set_xlabel("Arrival time (ns)"); ax_sum.set_ylabel("Photon count")
+    ax_sum.set_xlabel("Arrival time (ns)")
+    ax_sum.set_ylabel("Photon count")
     ax_sum.grid(True, which="both", alpha=0.3)
     ax_sum.set_xlim(t_ns[0], t_ns[-1])
 
     # ── Panel 4: single-pixel decay ───────────────────────────────────────
     bw = t_ns[1] - t_ns[0] if n_h > 1 else 1.0
-    bars = ax_pix.bar(t_ns, xyt[sel[0], sel[1]], width=bw,
-                      color="salmon", alpha=0.85)
-    ax_pix.set_xlabel("Arrival time (ns)"); ax_pix.set_ylabel("Photon count")
+    bars = ax_pix.bar(t_ns, xyt[sel[0], sel[1]], width=bw, color="salmon", alpha=0.85)
+    ax_pix.set_xlabel("Arrival time (ns)")
+    ax_pix.set_ylabel("Photon count")
     pix_title = ax_pix.set_title(f"Pixel (y={sel[0]}, x={sel[1]})")
     ax_pix.grid(True, axis="y", alpha=0.3)
     ax_pix.set_xlim(t_ns[0], t_ns[-1])
@@ -737,8 +750,10 @@ def plot_xyt(
 
     def _on_click(event):
         if event.inaxes in (ax_int, ax_tau) and event.xdata is not None:
-            _update_pixel(int(np.clip(event.ydata, 0, n_y-1)),
-                          int(np.clip(event.xdata, 0, n_x-1)))
+            _update_pixel(
+                int(np.clip(event.ydata, 0, n_y - 1)),
+                int(np.clip(event.xdata, 0, n_x - 1)),
+            )
 
     fig.canvas.mpl_connect("button_press_event", _on_click)
 
@@ -754,7 +769,8 @@ def plot_xyt(
 # Part 5 – (X, Y, T) collapse and pixel-wise decay plotting
 # ---------------------------------------------------------------------------
 
-def collapse_to_xyt(cube: np.ndarray) -> np.ndarray:
+
+def collapse_to_xyt(cube: np.ndarray) -> np.ndarray:  # noqa: F811
     """
     Sum the M (mosaic/frame) axis to get a single (Y, X, H) image.
 
@@ -769,13 +785,13 @@ def collapse_to_xyt(cube: np.ndarray) -> np.ndarray:
     return cube.sum(axis=0).astype(np.uint32)
 
 
-def plot_xyt(
+def plot_xyt(  # noqa: F811
     xyt: np.ndarray,
     tcspc_resolution_s: float = 97e-12,
     *,
     pixel_yx: tuple[int, int] | None = None,
     cmap_intensity: str = "hot",
-    cmap_lifetime:  str = "RdYlGn_r",
+    cmap_lifetime: str = "RdYlGn_r",
     save_path: str | None = None,
 ):
     """
@@ -803,60 +819,62 @@ def plot_xyt(
     import matplotlib.gridspec as gridspec
 
     n_y, n_x, n_h = xyt.shape
-    t_ns = np.arange(n_h) * tcspc_resolution_s * 1e9   # time axis in ns
+    t_ns = np.arange(n_h) * tcspc_resolution_s * 1e9  # time axis in ns
 
     if pixel_yx is None:
         pixel_yx = (n_y // 2, n_x // 2)
-    sel = list(pixel_yx)   # mutable so click handler can update it
+    sel = list(pixel_yx)  # mutable so click handler can update it
 
     intensity = xyt.sum(axis=-1).astype(float)
-    denom     = intensity.clip(min=1)
-    mean_t    = (xyt * t_ns[np.newaxis, np.newaxis, :]).sum(-1) / denom
+    denom = intensity.clip(min=1)
+    mean_t = (xyt * t_ns[np.newaxis, np.newaxis, :]).sum(-1) / denom
 
     fig = plt.figure(figsize=(14, 10))
     fig.suptitle(
         f"FLIM (Y={n_y}, X={n_x}, H={n_h})  |  "
-        f"res={tcspc_resolution_s*1e12:.0f} ps/bin  |  "
+        f"res={tcspc_resolution_s * 1e12:.0f} ps/bin  |  "
         f"total photons={int(intensity.sum()):,}",
         fontsize=12,
     )
     gs = gridspec.GridSpec(2, 2, figure=fig, hspace=0.35, wspace=0.35)
 
-    ax_int  = fig.add_subplot(gs[0, 0])
-    ax_tau  = fig.add_subplot(gs[0, 1])
-    ax_sum  = fig.add_subplot(gs[1, 0])
-    ax_pix  = fig.add_subplot(gs[1, 1])
+    ax_int = fig.add_subplot(gs[0, 0])
+    ax_tau = fig.add_subplot(gs[0, 1])
+    ax_sum = fig.add_subplot(gs[1, 0])
+    ax_pix = fig.add_subplot(gs[1, 1])
 
     # ── Panel 1: intensity ────────────────────────────────────────────────
     im1 = ax_int.imshow(intensity, cmap=cmap_intensity, origin="upper")
     ax_int.set_title("Intensity (photon count)")
-    ax_int.set_xlabel("X (pixels)"); ax_int.set_ylabel("Y (pixels)")
+    ax_int.set_xlabel("X (pixels)")
+    ax_int.set_ylabel("Y (pixels)")
     plt.colorbar(im1, ax=ax_int, shrink=0.85)
-    marker_int, = ax_int.plot(*sel[::-1], "c+", ms=12, mew=2)
+    (marker_int,) = ax_int.plot(*sel[::-1], "c+", ms=12, mew=2)
 
     # ── Panel 2: mean arrival time ────────────────────────────────────────
     vmax_t = t_ns[-1]
-    im2 = ax_tau.imshow(mean_t, cmap=cmap_lifetime, origin="upper",
-                        vmin=0, vmax=vmax_t)
+    im2 = ax_tau.imshow(mean_t, cmap=cmap_lifetime, origin="upper", vmin=0, vmax=vmax_t)
     ax_tau.set_title("Mean photon arrival time (ns)")
-    ax_tau.set_xlabel("X (pixels)"); ax_tau.set_ylabel("Y (pixels)")
+    ax_tau.set_xlabel("X (pixels)")
+    ax_tau.set_ylabel("Y (pixels)")
     cb2 = plt.colorbar(im2, ax=ax_tau, shrink=0.85)
     cb2.set_label("ns")
-    marker_tau, = ax_tau.plot(*sel[::-1], "w+", ms=12, mew=2)
+    (marker_tau,) = ax_tau.plot(*sel[::-1], "w+", ms=12, mew=2)
 
     # ── Panel 3: summed decay ─────────────────────────────────────────────
     summed = xyt.sum(axis=(0, 1))
     ax_sum.semilogy(t_ns, summed + 1, color="steelblue", lw=1.5)
     ax_sum.set_title("Summed decay (all pixels, log scale)")
-    ax_sum.set_xlabel("Arrival time (ns)"); ax_sum.set_ylabel("Photon count")
+    ax_sum.set_xlabel("Arrival time (ns)")
+    ax_sum.set_ylabel("Photon count")
     ax_sum.grid(True, which="both", alpha=0.3)
     ax_sum.set_xlim(t_ns[0], t_ns[-1])
 
     # ── Panel 4: single-pixel decay ───────────────────────────────────────
     bw = t_ns[1] - t_ns[0] if n_h > 1 else 1.0
-    bars = ax_pix.bar(t_ns, xyt[sel[0], sel[1]], width=bw,
-                      color="salmon", alpha=0.85)
-    ax_pix.set_xlabel("Arrival time (ns)"); ax_pix.set_ylabel("Photon count")
+    bars = ax_pix.bar(t_ns, xyt[sel[0], sel[1]], width=bw, color="salmon", alpha=0.85)
+    ax_pix.set_xlabel("Arrival time (ns)")
+    ax_pix.set_ylabel("Photon count")
     pix_title = ax_pix.set_title(f"Pixel (y={sel[0]}, x={sel[1]})")
     ax_pix.grid(True, axis="y", alpha=0.3)
     ax_pix.set_xlim(t_ns[0], t_ns[-1])
@@ -874,8 +892,10 @@ def plot_xyt(
 
     def _on_click(event):
         if event.inaxes in (ax_int, ax_tau) and event.xdata is not None:
-            _update_pixel(int(np.clip(event.ydata, 0, n_y-1)),
-                          int(np.clip(event.xdata, 0, n_x-1)))
+            _update_pixel(
+                int(np.clip(event.ydata, 0, n_y - 1)),
+                int(np.clip(event.xdata, 0, n_x - 1)),
+            )
 
     fig.canvas.mpl_connect("button_press_event", _on_click)
 
@@ -896,7 +916,7 @@ if __name__ == "__main__":
         print(__doc__)
         sys.exit(0)
 
-    lif_path    = sys.argv[1]
+    lif_path = sys.argv[1]
     series_name = sys.argv[2] if len(sys.argv) > 2 else None
 
     cube, derived, flim_img = load_flim_data(lif_path, series_name)

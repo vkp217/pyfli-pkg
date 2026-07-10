@@ -24,7 +24,9 @@ class SPADPoissonReconstructor(BaseReconstructor):
     n_workers    : reserved for future parallel execution
     """
 
-    def __init__(self, h, w, t, lam, differential=True, alpha=0.1, maxiter=500, n_workers=None):
+    def __init__(
+        self, h, w, t, lam, differential=True, alpha=0.1, maxiter=500, n_workers=None
+    ):
         super().__init__(h, w, t, lam, differential, n_workers)
         self.alpha = alpha
         self.maxiter = maxiter
@@ -45,16 +47,16 @@ class SPADPoissonReconstructor(BaseReconstructor):
         dx[:, :-1] = np.diff(x, axis=1)
         dy[:-1, :] = np.diff(x, axis=0)
 
-        norm = np.sqrt(dx ** 2 + dy ** 2 + eps)
+        norm = np.sqrt(dx**2 + dy**2 + eps)
         tv = np.sum(norm)
 
         px = dx / norm
         py = dy / norm
         grad_tv = np.zeros_like(x)
         grad_tv[:, :-1] -= px[:, :-1]
-        grad_tv[:, 1:]  += px[:, :-1]
+        grad_tv[:, 1:] += px[:, :-1]
         grad_tv[:-1, :] -= py[:-1, :]
-        grad_tv[1:, :]  += py[:-1, :]
+        grad_tv[1:, :] += py[:-1, :]
 
         return poisson_loss + alpha * tv, grad_poisson + alpha * grad_tv.flatten()
 
@@ -68,10 +70,12 @@ class SPADPoissonReconstructor(BaseReconstructor):
         x0 = np.maximum(x0, 1e-6)
 
         res = minimize(
-            self._objective_and_grad, x0,
+            self._objective_and_grad,
+            x0,
             args=(A, y, self.alpha),
-            method='L-BFGS-B', jac=True,
+            method="L-BFGS-B",
+            jac=True,
             bounds=[(0, None)] * self.n_pixels,
-            options={'maxiter': self.maxiter, 'ftol': 1e-10, 'gtol': 1e-7}
+            options={"maxiter": self.maxiter, "ftol": 1e-10, "gtol": 1e-7},
         )
         return res.x.reshape((self.h, self.w))

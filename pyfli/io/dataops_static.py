@@ -1,12 +1,11 @@
 # dataIO/dataops_static.py
-import os
 import numpy as np
 import h5py
 import tifffile
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from sdtfile import SdtFile
-from pathlib import Path
+
 
 class Staticdataops:
     @staticmethod
@@ -15,7 +14,7 @@ class Staticdataops:
         Applies pileup correction to the photon counting data.
         Formula: corrected = -ln(1 - (measured / max_counts)) * max_counts
         """
-        dynamic_range = 2**bit_size - 1    
+        dynamic_range = 2**bit_size - 1
         # Ensure float32 to prevent precision loss or integer division issues
         safe_data = np.clip(data.astype(np.float32) / dynamic_range, 0, 0.9999)
         return -np.log(1 - safe_data) * dynamic_range
@@ -29,19 +28,21 @@ class Staticdataops:
             SS2 → 'Gate '
         Reads datasets matching gate_prefix, sorts numerically, stacks → (H, W, T) float32.
         """
-        with h5py.File(fname, 'r') as f:
-            gate_grp = f.get('Gate Images')
+        with h5py.File(fname, "r") as f:
+            gate_grp = f.get("Gate Images")
             if gate_grp is None:
                 raise KeyError(f"'Gate Images' group not found in {fname}")
             gate_keys = sorted(
                 (k for k in gate_grp.keys() if k.startswith(gate_prefix)),
-                key=lambda k: int(k.split('Gate ')[-1])
+                key=lambda k: int(k.split("Gate ")[-1]),
             )
             if not gate_keys:
                 raise KeyError(
-                    f"No '{gate_prefix}N' datasets found in 'Gate Images' in {fname}")
+                    f"No '{gate_prefix}N' datasets found in 'Gate Images' in {fname}"
+                )
             tpsfs = np.zeros(
-                (*gate_grp[gate_keys[0]].shape, len(gate_keys)), dtype=np.float32)
+                (*gate_grp[gate_keys[0]].shape, len(gate_keys)), dtype=np.float32
+            )
             for i, key in enumerate(gate_keys):
                 tpsfs[:, :, i] = gate_grp[key][:]
         if pile_up:
@@ -78,12 +79,15 @@ class Staticdataops:
             mask = mask[..., 0]
         if mask.shape != ref_shape:
             if mask.shape == ref_shape[::-1]:
-                print(f"[INFO] Hot pixel mask transposed from {mask.shape} → {ref_shape}.")
+                print(
+                    f"[INFO] Hot pixel mask transposed from {mask.shape} → {ref_shape}."
+                )
                 mask = mask.T
             else:
                 raise ValueError(
                     f"HP mask shape {mask.shape} cannot be matched to "
-                    f"data spatial shape {ref_shape}.")
+                    f"data spatial shape {ref_shape}."
+                )
         return mask > 0
 
     @staticmethod
@@ -101,12 +105,15 @@ class Staticdataops:
             hotpixel_mask = hotpixel_mask[..., 0]
 
         if data_3d.shape[:2] != hotpixel_mask.shape:
-            if (data_3d.shape[0] == hotpixel_mask.shape[1] and
-                    data_3d.shape[1] == hotpixel_mask.shape[0]):
+            if (
+                data_3d.shape[0] == hotpixel_mask.shape[1]
+                and data_3d.shape[1] == hotpixel_mask.shape[0]
+            ):
                 hotpixel_mask = hotpixel_mask.T
             else:
                 raise ValueError(
-                    f"Shape mismatch: data {data_3d.shape[:2]} vs mask {hotpixel_mask.shape}")
+                    f"Shape mismatch: data {data_3d.shape[:2]} vs mask {hotpixel_mask.shape}"
+                )
 
         return Staticdataops.hotpixel_correct(data_3d, hotpixel_mask > 0)
 
@@ -114,14 +121,16 @@ class Staticdataops:
     def load_mat_file(path):
         try:
             data = loadmat(path, squeeze_me=True)
-            keys = [k for k in data.keys() if not k.startswith('__')]
+            keys = [k for k in data.keys() if not k.startswith("__")]
             return np.asarray(data[keys[0]])
-        
+
         except NotImplementedError:
-            with h5py.File(path, 'r') as mat_data:
-                keys = [k for k in mat_data.keys() if k not in ['#refs#', '#subsystem#']]
+            with h5py.File(path, "r") as mat_data:
+                keys = [
+                    k for k in mat_data.keys() if k not in ["#refs#", "#subsystem#"]
+                ]
                 return np.asarray(mat_data[keys[0]])
-        
+
     @staticmethod
     def load_sdt_file(path):
         return np.asarray(SdtFile(path).data[0])
@@ -137,7 +146,7 @@ class Staticdataops:
     @staticmethod
     def load_txt_file(path, target_spatial=(512, 512)):
         data = np.loadtxt(path)
-        if data.ndim == 1: 
+        if data.ndim == 1:
             # Reshape 1D IRF/Trace to 3D and tile across spatial dimensions
             data = np.tile(data.reshape(1, 1, -1), (*target_spatial, 1))
         return data
@@ -158,7 +167,8 @@ class Staticdataops:
             raise ValueError("hp_path must be provided when hot_pixels=True.")
         try:
             tpsfs = Staticdataops.spad_hdf5_read(
-                fname, 'Bottom G2 Gate', pile_up=pileCorr)
+                fname, "Bottom G2 Gate", pile_up=pileCorr
+            )
             if hot_pixels:
                 tpsfs = Staticdataops.apply_interpolation_mask(tpsfs, hp_path=hp_path)
             return tpsfs

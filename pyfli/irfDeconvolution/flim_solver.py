@@ -18,8 +18,10 @@ def cyclic_conv(h, f):
 
 def cyclic_corr(u, f):
     N = u.shape[-1]
-    return np.fft.irfft(np.conj(np.fft.rfft(f, axis=-1)) * np.fft.rfft(u, axis=-1),
-                        n=N, axis=-1)
+    return np.fft.irfft(
+        np.conj(np.fft.rfft(f, axis=-1)) * np.fft.rfft(u, axis=-1), n=N, axis=-1
+    )
+
 
 def decay_basis(taus, t, T):
     taus = np.atleast_1d(np.asarray(taus, float))
@@ -36,10 +38,11 @@ def build_gate_matrix(t, T, n_gates, width, edge=0.0, eta=None):
             rel = (t - t0) % T
             G[g] = ((rel >= 0) & (rel < width)).astype(float)
         else:
-            
-            rel = (t - t0)
-            prof = 0.5 * (erf(rel / (np.sqrt(2) * edge))
-                          - erf((rel - width) / (np.sqrt(2) * edge)))
+            rel = t - t0
+            prof = 0.5 * (
+                erf(rel / (np.sqrt(2) * edge))
+                - erf((rel - width) / (np.sqrt(2) * edge))
+            )
             G[g] = np.clip(prof, 0, 1)
     G *= dt
     if eta is not None:
@@ -68,9 +71,13 @@ def huber_tv_grad(h, delta):
 def spatial_laplacian(H, ny, nx):
     N = H.shape[-1]
     Himg = H.reshape(ny, nx, N)
-    lap = 4 * Himg \
-        - np.roll(Himg, 1, 0) - np.roll(Himg, -1, 0) \
-        - np.roll(Himg, 1, 1) - np.roll(Himg, -1, 1)
+    lap = (
+        4 * Himg
+        - np.roll(Himg, 1, 0)
+        - np.roll(Himg, -1, 0)
+        - np.roll(Himg, 1, 1)
+        - np.roll(Himg, -1, 1)
+    )
     return lap.reshape(ny * nx, N)
 
 
@@ -107,7 +114,7 @@ class SolverConfig:
 def _phi(taus, h, t, T, G):
     B = decay_basis(taus, t, T)
     M = cyclic_conv(h[None, :], B)
-    return (G @ M.T)
+    return G @ M.T
 
 
 def fit_decay_pixel(lam_obs, w, h, t, T, G, cfg):
@@ -121,9 +128,10 @@ def fit_decay_pixel(lam_obs, w, h, t, T, G, cfg):
         A = np.maximum(A, 0.0)
         return sw * (Phi @ A - lam_obs)
 
-    x0 = np.log(np.clip(cfg.tau_init[:cfg.n_models], lo, hi))
-    sol = least_squares(resid, x0, method="trf",
-                        bounds=(np.log(lo), np.log(hi)), max_nfev=200)
+    x0 = np.log(np.clip(cfg.tau_init[: cfg.n_models], lo, hi))
+    sol = least_squares(
+        resid, x0, method="trf", bounds=(np.log(lo), np.log(hi)), max_nfev=200
+    )
     taus = np.sort(np.exp(sol.x))
     Phi = _phi(taus, h, t, T, G)
     A, *_ = np.linalg.lstsq(sw[:, None] * Phi, sw * lam_obs, rcond=None)
@@ -164,13 +172,20 @@ def update_irf(H, F, lam_obs, W, G, mu1, mu2, ny, nx, cfg):
     return H
 
 
-def solve_flim(y, detector, det_params, ny, nx, gate_spec, cfg: SolverConfig,
-               h_init=None):
+def solve_flim(
+    y, detector, det_params, ny, nx, gate_spec, cfg: SolverConfig, h_init=None
+):
     P = y.shape[0]
     N = gate_spec.get("N", 256)
     t = np.linspace(0, cfg.T, N, endpoint=False)
-    G = build_gate_matrix(t, cfg.T, gate_spec["n_gates"], gate_spec["width"],
-                          gate_spec.get("edge", 0.0), gate_spec.get("eta", None))
+    G = build_gate_matrix(
+        t,
+        cfg.T,
+        gate_spec["n_gates"],
+        gate_spec["width"],
+        gate_spec.get("edge", 0.0),
+        gate_spec.get("eta", None),
+    )
 
     lam_obs, W = make_observation(y, detector, det_params)
 
@@ -182,7 +197,7 @@ def solve_flim(y, detector, det_params, ny, nx, gate_spec, cfg: SolverConfig,
     else:
         H = h_init.copy()
 
-    taus = np.tile(cfg.tau_init[:cfg.n_models], (P, 1)).astype(float)
+    taus = np.tile(cfg.tau_init[: cfg.n_models], (P, 1)).astype(float)
     amps = np.zeros((P, cfg.n_models))
     F = np.zeros((P, N))
 
@@ -200,19 +215,22 @@ def solve_flim(y, detector, det_params, ny, nx, gate_spec, cfg: SolverConfig,
     lam_model = cyclic_conv(H, F) @ G.T
     D0 = float(np.sum(W * (lam_model - lam_obs) ** 2))
     TV0 = float(np.sum(np.abs(H - np.roll(H, 1, -1))))
-    E_h = float(np.sum(H ** 2))
+    E_h = float(np.sum(H**2))
     mu1 = cfg.rho1 * D0 / (TV0 + EPS)
     mu2 = cfg.rho2 * D0 / (E_h + EPS)
     if cfg.verbose and cfg.estimate_irf:
-        print(f"[init] data={D0:.3g}  TV0={TV0:.3g}  E_h={E_h:.3g}"
-              f"  ->  mu1={mu1:.4g}  mu2={mu2:.4g}")
+        print(
+            f"[init] data={D0:.3g}  TV0={TV0:.3g}  E_h={E_h:.3g}"
+            f"  ->  mu1={mu1:.4g}  mu2={mu2:.4g}"
+        )
 
     idx = np.arange(N)
     c_target = float(np.mean((H * idx).sum(-1) / np.maximum(H.sum(-1), EPS)))
     for it in range(cfg.outer_iters):
         for k in range(P):
-            taus[k], amps[k], _ = fit_decay_pixel(lam_obs[k], W[k], H[k],
-                                                  t, cfg.T, G, cfg)
+            taus[k], amps[k], _ = fit_decay_pixel(
+                lam_obs[k], W[k], H[k], t, cfg.T, G, cfg
+            )
         F = assemble_F(taus, amps)
         lam_model = cyclic_conv(H, F) @ G.T
         _, W = make_observation(y, detector, det_params)
@@ -222,8 +240,10 @@ def solve_flim(y, detector, det_params, ny, nx, gate_spec, cfg: SolverConfig,
                 H = pin_barycenter(H, c_target)
         if cfg.verbose:
             misfit = float(np.sum(W * (cyclic_conv(H, F) @ G.T - lam_obs) ** 2))
-            print(f"[iter {it+1:2d}] weighted misfit = {misfit:.5g}"
-                  f"   mean tau = {taus.mean(0)}")
+            print(
+                f"[iter {it + 1:2d}] weighted misfit = {misfit:.5g}"
+                f"   mean tau = {taus.mean(0)}"
+            )
         if not cfg.estimate_irf:
             break
 

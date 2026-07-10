@@ -4,6 +4,7 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.fftpack import idct
 
+
 class Reconstructor:
     def __init__(self, resolution=(128, 128)):
         self.res_h, self.res_w = resolution
@@ -15,7 +16,7 @@ class Reconstructor:
         grad_x = np.diff(x, axis=1)
         grad_y = np.diff(x, axis=0)
         return np.sum(np.abs(grad_x)) + np.sum(np.abs(grad_y))
-    
+
     def _objective_and_grad(self, x_flat, A, y, alpha):
         """
         Calculates both the objective value and the gradient.
@@ -44,9 +45,9 @@ class Reconstructor:
         py = dy / norm
         grad_tv = np.zeros_like(x)
         grad_tv[:, :-1] -= px[:, :-1]
-        grad_tv[:, 1:]  += px[:, :-1]
+        grad_tv[:, 1:] += px[:, :-1]
         grad_tv[:-1, :] -= py[:-1, :]
-        grad_tv[1:, :]  += py[:-1, :]
+        grad_tv[1:, :] += py[:-1, :]
 
         total_obj = fidelity + alpha * tv
         total_grad = grad_fidelity + alpha * grad_tv.flatten()
@@ -67,12 +68,12 @@ class Reconstructor:
             self._objective_and_grad,
             x0,
             args=(A, y, alpha),
-            method='L-BFGS-B',
+            method="L-BFGS-B",
             jac=True,
-            options={'maxiter': maxiter, 'ftol': 1e-10, 'gtol': 1e-7, 'disp': True}
+            options={"maxiter": maxiter, "ftol": 1e-10, "gtol": 1e-7, "disp": True},
         )
 
-        return res.x.reshape((self.res_h, self.res_w), order='C')
+        return res.x.reshape((self.res_h, self.res_w), order="C")
 
     def reconstruct_linear(self, measurements, basis_matrix):
         # Standard linear back-projection (Ghost Imaging)
@@ -87,11 +88,11 @@ class Reconstructor:
         # Directly fills the 2D DCT spectrum and performs IDCT.
         freq_map_flat = np.zeros(self.n_pixels)
         # Place measurements back into their frequency locations
-        freq_map_flat[sampling_indices[:len(measurements)]] = measurements
+        freq_map_flat[sampling_indices[: len(measurements)]] = measurements
         freq_map = freq_map_flat.reshape((self.res_h, self.res_w))
-        
+
         # 2D Inverse Discrete Cosine Transform,'norm=ortho' is crucial to match the generation
-        img = idct(idct(freq_map, axis=0, norm='ortho'), axis=1, norm='ortho')
+        img = idct(idct(freq_map, axis=0, norm="ortho"), axis=1, norm="ortho")
         return img
 
     @staticmethod

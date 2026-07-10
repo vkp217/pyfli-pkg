@@ -41,6 +41,7 @@ from pyfli.phasor.lifetimes import fractional_components
 # Fixtures
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def base_cfg():
     return AcquisitionConfig(T_ns=12.5, harmonic=1, tau_min_ns=0.1, tau_max_ns=10.0)
@@ -54,6 +55,7 @@ def tau_arr():
 # ─────────────────────────────────────────────────────────────────────────────
 # AcquisitionConfig validation
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestConfigValidation:
     def test_valid_default(self):
@@ -95,11 +97,12 @@ class TestConfigValidation:
 # Continuous phasor — must lie on the universal semicircle
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestContinuousPhasor:
     def test_on_universal_semicircle(self, base_cfg, tau_arr):
         """Single-exponential phasors must satisfy (g-½)² + s² = ¼."""
         g, s = phasor_continuous(tau_arr, base_cfg)
-        dist2 = (g - 0.5) ** 2 + s ** 2
+        dist2 = (g - 0.5) ** 2 + s**2
         np.testing.assert_allclose(dist2, 0.25, atol=1e-12)
 
     def test_tau_zero_endpoint(self, base_cfg):
@@ -121,7 +124,7 @@ class TestContinuousPhasor:
     def test_harmonic_2_still_on_semicircle(self, base_cfg, tau_arr):
         cfg2 = replace(base_cfg, harmonic=2)
         g, s = phasor_continuous(tau_arr, cfg2)
-        dist2 = (g - 0.5) ** 2 + s ** 2
+        dist2 = (g - 0.5) ** 2 + s**2
         np.testing.assert_allclose(dist2, 0.25, atol=1e-12)
 
     def test_s_non_negative(self, base_cfg, tau_arr):
@@ -132,6 +135,7 @@ class TestContinuousPhasor:
 # ─────────────────────────────────────────────────────────────────────────────
 # Discrete phasor
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestDiscretePhasor:
     def test_converges_to_continuous_for_large_N(self, base_cfg, tau_arr):
@@ -167,26 +171,30 @@ class TestDiscretePhasor:
 # Gated phasors
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestGatedPhasors:
     def test_gated_single_full_window_near_continuous(self, base_cfg, tau_arr):
-        cfg_g = replace(base_cfg, mode=AcquisitionMode.GATED_SINGLE,
-                        gate_width_frac=0.9999)
+        cfg_g = replace(
+            base_cfg, mode=AcquisitionMode.GATED_SINGLE, gate_width_frac=0.9999
+        )
         g_g, s_g = phasor_gated_single(tau_arr, cfg_g)
         g_c, s_c = phasor_continuous(tau_arr, base_cfg)
         mask = tau_arr >= 1.0
         np.testing.assert_allclose(g_g[mask], g_c[mask], atol=0.01)
 
     def test_gated_N_output_shape(self, base_cfg, tau_arr):
-        cfg_gn = replace(base_cfg, mode=AcquisitionMode.GATED_N,
-                         N_gates=4, gate_width_frac=0.5)
+        cfg_gn = replace(
+            base_cfg, mode=AcquisitionMode.GATED_N, N_gates=4, gate_width_frac=0.5
+        )
         g, s = phasor_gated_N(tau_arr, cfg_gn)
         assert g.shape == tau_arr.shape
         assert s.shape == tau_arr.shape
 
     def test_gated_N_output_is_finite(self, base_cfg, tau_arr):
         """phasor_gated_N always returns finite values for positive tau."""
-        cfg_gn = replace(base_cfg, mode=AcquisitionMode.GATED_N,
-                         N_gates=2, gate_width_frac=0.5)
+        cfg_gn = replace(
+            base_cfg, mode=AcquisitionMode.GATED_N, N_gates=2, gate_width_frac=0.5
+        )
         gn, sn = phasor_gated_N(tau_arr, cfg_gn)
         assert np.all(np.isfinite(gn))
         assert np.all(np.isfinite(sn))
@@ -196,18 +204,19 @@ class TestGatedPhasors:
 # Truncated phasor
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestTruncatedPhasor:
     def test_full_window_matches_continuous(self, base_cfg, tau_arr):
         cfg_tr = replace(base_cfg, mode=AcquisitionMode.TRUNCATED, T_rec_frac=1.0)
         g_tr, s_tr = phasor_truncated(tau_arr, cfg_tr)
-        g_c, s_c   = phasor_continuous(tau_arr, base_cfg)
+        g_c, s_c = phasor_continuous(tau_arr, base_cfg)
         np.testing.assert_allclose(g_tr, g_c, atol=1e-6)
         np.testing.assert_allclose(s_tr, s_c, atol=1e-6)
 
     def test_short_window_deviates_from_semicircle(self, base_cfg, tau_arr):
         cfg_tr = replace(base_cfg, T_rec_frac=0.5)
         g_tr, s_tr = phasor_truncated(tau_arr, cfg_tr)
-        dist2 = (g_tr - 0.5) ** 2 + s_tr ** 2
+        dist2 = (g_tr - 0.5) ** 2 + s_tr**2
         assert not np.allclose(dist2, 0.25, atol=0.01)
 
 
@@ -215,26 +224,28 @@ class TestTruncatedPhasor:
 # Offset phasor
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestOffsetPhasor:
     def test_zero_offset_equals_continuous(self, base_cfg, tau_arr):
         cfg_off = replace(base_cfg, mode=AcquisitionMode.OFFSET, t0_frac=0.0)
         g_off, s_off = phasor_offset(tau_arr, cfg_off)
-        g_c, s_c     = phasor_continuous(tau_arr, base_cfg)
+        g_c, s_c = phasor_continuous(tau_arr, base_cfg)
         np.testing.assert_allclose(g_off, g_c, atol=1e-12)
         np.testing.assert_allclose(s_off, s_c, atol=1e-12)
 
     def test_offset_preserves_modulus(self, base_cfg, tau_arr):
         cfg_off = replace(base_cfg, t0_frac=0.1)
-        g_c, s_c     = phasor_continuous(tau_arr, base_cfg)
+        g_c, s_c = phasor_continuous(tau_arr, base_cfg)
         g_off, s_off = phasor_offset(tau_arr, cfg_off)
-        m_c   = np.sqrt(g_c   ** 2 + s_c   ** 2)
-        m_off = np.sqrt(g_off ** 2 + s_off ** 2)
+        m_c = np.sqrt(g_c**2 + s_c**2)
+        m_off = np.sqrt(g_off**2 + s_off**2)
         np.testing.assert_allclose(m_off, m_c, atol=1e-12)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Dispatcher — phasor_from_config
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestDispatcher:
     def test_all_modes_return_finite_arrays(self, tau_arr):
@@ -250,6 +261,7 @@ class TestDispatcher:
 # Locus builder
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestLocus:
     def test_build_locus_shapes_consistent(self, base_cfg):
         g, s, tau = build_locus(base_cfg)
@@ -261,7 +273,7 @@ class TestLocus:
 
     def test_universal_semicircle_on_unit_circle(self):
         g, s = universal_semicircle(500)
-        dist2 = (g - 0.5) ** 2 + s ** 2
+        dist2 = (g - 0.5) ** 2 + s**2
         np.testing.assert_allclose(dist2, 0.25, atol=1e-12)
 
     def test_build_locus_all_finite(self, base_cfg):
@@ -273,6 +285,7 @@ class TestLocus:
 # ─────────────────────────────────────────────────────────────────────────────
 # Lifetime inversion
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestLifetimes:
     def test_phase_lifetime_roundtrip(self, base_cfg, tau_arr):
@@ -288,7 +301,7 @@ class TestLifetimes:
     def test_phase_equals_modulus_on_semicircle(self, base_cfg, tau_arr):
         g, s = phasor_continuous(tau_arr, base_cfg)
         tau_ph = phase_lifetime(g, s, base_cfg)
-        tau_m  = modulus_lifetime(g, s, base_cfg)
+        tau_m = modulus_lifetime(g, s, base_cfg)
         np.testing.assert_allclose(tau_ph, tau_m, rtol=1e-8)
 
     def test_dispatcher_all_methods(self, base_cfg, tau_arr):

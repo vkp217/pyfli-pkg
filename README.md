@@ -59,10 +59,10 @@ Even though the package is installed as `pyfli-lib`, you import it as `pyfli` in
 ```python
 from pyfli import DataOperations
 
-loader = DataOperations(    
+loader = DataOperations(
     data_path = "experimental_data.sdt",
-    irf_path = "instrument_data.txt", 
-    bg_path = "background_data.tif",   
+    irf_path = "instrument_data.txt",
+    bg_path = "background_data.tif",
     mask_path="background_data.png",
     )
 decay_data = loader.load_data()
@@ -101,4 +101,3 @@ If you use the **phasor SEPL analysis** functionality specifically, please also 
 The source code is hosted on GitHub. Please report any bugs or feature requests via the issues tracker.
 * **GitHub:** [https://github.com/vkp217/pyfli-pkg](https://github.com/vkp217/pyfli-pkg)
 * **Contact:** For any queries, reach out at [pyfli4lifetime@gmail.com](mailto:pyfli4lifetime@gmail.com)
-

@@ -21,6 +21,7 @@ from .phasors import phasor_from_config
 # tau grid
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def tau_grid(cfg: AcquisitionConfig, power: float = 1.5) -> NDArray[np.float64]:
     """
     Return a non-uniform τ grid in [tau_min_ns, tau_max_ns].
@@ -39,12 +40,13 @@ def tau_grid(cfg: AcquisitionConfig, power: float = 1.5) -> NDArray[np.float64]:
     tau : 1-D ndarray  (length = cfg.n_tau_pts)
     """
     u = np.linspace(0.0, 1.0, cfg.n_tau_pts)
-    return cfg.tau_min_ns + (cfg.tau_max_ns - cfg.tau_min_ns) * u ** power
+    return cfg.tau_min_ns + (cfg.tau_max_ns - cfg.tau_min_ns) * u**power
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # main builder
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def build_locus(
     cfg: AcquisitionConfig,
@@ -91,6 +93,7 @@ def build_locus(
 # multi-config convenience
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def build_loci(
     cfgs: list[AcquisitionConfig],
     **kwargs,
@@ -115,6 +118,7 @@ def build_loci(
 # ──────────────────────────────────────────────────────────────────────────────
 # circle geometry helpers  (universal semicircle reference)
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def universal_semicircle(n_pts: int = 300) -> tuple[NDArray, NDArray]:
     """
@@ -182,5 +186,5 @@ def sepl_center_radius_discrete(
 
     gc = 0.5
     sc = -0.5 * np.tan(half_phi)
-    r  = np.sqrt(gc ** 2 + sc ** 2)   # = 0.5 / cos(phi/2)
+    r = np.sqrt(gc**2 + sc**2)  # = 0.5 / cos(phi/2)
     return gc, sc, r

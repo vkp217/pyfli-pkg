@@ -1,4 +1,6 @@
 # pyfli/simulator/__init__.py
+# ruff: noqa: F401
+
 from .distributions import ParameterSampler
 from .main_factory import Macro_sim, TCSPC_sim
 from .main_factory_gen import ContinousEqSim, PhotonCountSim
@@ -10,5 +12,5 @@ from .calibration_engine import FLICalibrator
 from .batch_sim import Batch_sim
 
 
-# [FLICalibrator, FLIValidator, ParameterSampler, 
+# [FLICalibrator, FLIValidator, ParameterSampler,
 # NoiseEngine, FLIEngine, Macro_sim, TCSPC_sim, FLIImageGenerator, Batch_sim]

@@ -27,7 +27,9 @@ class TVReconstructor(BaseReconstructor):
     Uses L-BFGS-B with analytic gradient for fast convergence.
     """
 
-    def __init__(self, h, w, t, lam, differential=True, alpha=1.0, maxiter=500, n_workers=None):
+    def __init__(
+        self, h, w, t, lam, differential=True, alpha=1.0, maxiter=500, n_workers=None
+    ):
         super().__init__(h, w, t, lam, differential, n_workers)
         self.alpha = alpha
         self.maxiter = maxiter
@@ -35,7 +37,7 @@ class TVReconstructor(BaseReconstructor):
     def _objective_and_grad(self, x_flat, A, y, alpha):
         # Data fidelity: 0.5 * ||Ax - y||^2
         Ax_minus_y = np.dot(A, x_flat) - y
-        fidelity = 0.5 * np.sum(Ax_minus_y ** 2)
+        fidelity = 0.5 * np.sum(Ax_minus_y**2)
         grad_fidelity = np.dot(A.T, Ax_minus_y)
 
         # Isotropic TV with Neumann (zero-flux) boundary conditions
@@ -46,16 +48,16 @@ class TVReconstructor(BaseReconstructor):
         dx[:, :-1] = np.diff(x, axis=1)
         dy[:-1, :] = np.diff(x, axis=0)
 
-        norm = np.sqrt(dx ** 2 + dy ** 2 + eps)
+        norm = np.sqrt(dx**2 + dy**2 + eps)
         tv = np.sum(norm)
 
         px = dx / norm
         py = dy / norm
         grad_tv = np.zeros_like(x)
         grad_tv[:, :-1] -= px[:, :-1]
-        grad_tv[:, 1:]  += px[:, :-1]
+        grad_tv[:, 1:] += px[:, :-1]
         grad_tv[:-1, :] -= py[:-1, :]
-        grad_tv[1:, :]  += py[:-1, :]
+        grad_tv[1:, :] += py[:-1, :]
 
         return fidelity + alpha * tv, grad_fidelity + alpha * grad_tv.flatten()
 
@@ -65,9 +67,11 @@ class TVReconstructor(BaseReconstructor):
         M = A.shape[0]
         x0 = np.dot(A.T, y) / M
         res = minimize(
-            self._objective_and_grad, x0,
+            self._objective_and_grad,
+            x0,
             args=(A, y, self.alpha),
-            method='L-BFGS-B', jac=True,
-            options={'maxiter': self.maxiter, 'ftol': 1e-10, 'gtol': 1e-7}
+            method="L-BFGS-B",
+            jac=True,
+            options={"maxiter": self.maxiter, "ftol": 1e-10, "gtol": 1e-7},
         )
         return res.x.reshape((self.h, self.w))

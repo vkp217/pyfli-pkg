@@ -1,10 +1,19 @@
-import numpy as np
 from .solvers import LinearReconstructor, TVReconstructor
 from .spad_solvers import SPADPoissonReconstructor
 
 
-def run_reconstruction(measurements, dmd_patterns, h, w, t, lam,
-                       mode='linear', differential=True, alpha=1.0, maxiter=500):
+def run_reconstruction(
+    measurements,
+    dmd_patterns,
+    h,
+    w,
+    t,
+    lam,
+    mode="linear",
+    differential=True,
+    alpha=1.0,
+    maxiter=500,
+):
     """
     Reconstruct a 4D (x, y, T, Lambda) cube from DMD single-pixel measurements.
 
@@ -29,14 +38,16 @@ def run_reconstruction(measurements, dmd_patterns, h, w, t, lam,
     -------
     cube : ndarray (H, W, T, Lambda)
     """
-    if mode == 'linear':
+    if mode == "linear":
         engine = LinearReconstructor(h, w, t, lam, differential=differential)
-    elif mode == 'tv':
-        engine = TVReconstructor(h, w, t, lam, differential=differential,
-                                 alpha=alpha, maxiter=maxiter)
-    elif mode == 'poisson':
-        engine = SPADPoissonReconstructor(h, w, t, lam, differential=differential,
-                                          alpha=alpha, maxiter=maxiter)
+    elif mode == "tv":
+        engine = TVReconstructor(
+            h, w, t, lam, differential=differential, alpha=alpha, maxiter=maxiter
+        )
+    elif mode == "poisson":
+        engine = SPADPoissonReconstructor(
+            h, w, t, lam, differential=differential, alpha=alpha, maxiter=maxiter
+        )
     else:
         raise ValueError(f"Unknown mode '{mode}'. Choose: 'linear', 'tv', 'poisson'")
 

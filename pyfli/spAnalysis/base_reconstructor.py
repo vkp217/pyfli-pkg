@@ -49,7 +49,7 @@ class BaseReconstructor(ABC):
         if differential:
             M = dmd_patterns.shape[0] // 2
             P_pos = dmd_patterns[:M]
-            return (2.0 * P_pos - 1.0)  # {0,1} -> {-1,+1}
+            return 2.0 * P_pos - 1.0  # {0,1} -> {-1,+1}
         return dmd_patterns.astype(np.float64)
 
     @staticmethod
@@ -100,10 +100,10 @@ class BaseReconstructor(ABC):
         _, T, L = y.shape
         out = np.zeros((self.h, self.w, T, L))
 
-        for l in range(L):
+        for wavelength_idx in range(L):
             for t in range(T):
-                y_slice = y[:, t, l]
+                y_slice = y[:, t, wavelength_idx]
                 if np.any(y_slice != 0):
-                    out[:, :, t, l] = self.reconstruct_slice(y_slice, A)
+                    out[:, :, t, wavelength_idx] = self.reconstruct_slice(y_slice, A)
 
         return out

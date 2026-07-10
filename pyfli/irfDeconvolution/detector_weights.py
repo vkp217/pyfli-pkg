@@ -65,14 +65,14 @@ def iccd_lambda_weight(lam, y_adu, p: ICCDParams):
 
 def generalized_anscombe(y_adu, p: ICCDParams):
     alpha = p.G0 * p.F2
-    arg = alpha * np.asarray(y_adu, float) + (3.0 / 8.0) * alpha ** 2 + p.sigma_r ** 2
+    arg = alpha * np.asarray(y_adu, float) + (3.0 / 8.0) * alpha**2 + p.sigma_r**2
     return (2.0 / alpha) * np.sqrt(np.maximum(arg, 0.0))
 
 
 DETECTORS = {
     "tcspc": (tcspc_to_lambda, tcspc_lambda_weight),
-    "spad":  (spad_to_lambda,  spad_lambda_weight),
-    "iccd":  (iccd_to_lambda,  iccd_lambda_weight),
+    "spad": (spad_to_lambda, spad_lambda_weight),
+    "iccd": (iccd_to_lambda, iccd_lambda_weight),
 }
 
 

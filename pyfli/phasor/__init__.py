@@ -16,6 +16,7 @@ Public surface
     lifetimes       – phase / modulus lifetime inversion
     plot            – matplotlib rendering helpers
 """
+# ruff: noqa: F401
 
 from .config import AcquisitionConfig, AcquisitionMode
 from .phasors import (

@@ -14,7 +14,7 @@ Units
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 import math
 
@@ -22,12 +22,14 @@ import math
 class AcquisitionMode(Enum):
     """Acquisition / gating modes described in Michalet 2021."""
 
-    CONTINUOUS  = auto()   # Ideal TCSPC / frequency-domain; canonical universal semicircle
-    DISCRETE    = auto()   # Binned TCSPC with finite number of bins N
+    CONTINUOUS = (
+        auto()
+    )  # Ideal TCSPC / frequency-domain; canonical universal semicircle
+    DISCRETE = auto()  # Binned TCSPC with finite number of bins N
     GATED_SINGLE = auto()  # Single square gate of width W
-    GATED_N     = auto()   # N equidistant square gates of width W
-    TRUNCATED   = auto()   # Decay recording window shorter than laser period
-    OFFSET      = auto()   # IRF / excitation-pulse offset within recording window
+    GATED_N = auto()  # N equidistant square gates of width W
+    TRUNCATED = auto()  # Decay recording window shorter than laser period
+    OFFSET = auto()  # IRF / excitation-pulse offset within recording window
 
 
 @dataclass
@@ -75,27 +77,27 @@ class AcquisitionConfig:
     """
 
     # ------------------------------------------------------------------ core
-    mode:            AcquisitionMode = AcquisitionMode.CONTINUOUS
-    T_ns:            float           = 12.5
-    harmonic:        int             = 1
+    mode: AcquisitionMode = AcquisitionMode.CONTINUOUS
+    T_ns: float = 12.5
+    harmonic: int = 1
 
     # ------------------------------------------------------------------ discrete
-    N_bins:          int             = 64
+    N_bins: int = 64
 
     # ------------------------------------------------------------------ gating
-    gate_width_frac: float           = 0.5
-    N_gates:         int             = 4
+    gate_width_frac: float = 0.5
+    N_gates: int = 4
 
     # ------------------------------------------------------------------ truncation
-    T_rec_frac:      float           = 0.8
+    T_rec_frac: float = 0.8
 
     # ------------------------------------------------------------------ offset
-    t0_frac:         float           = 0.1
+    t0_frac: float = 0.1
 
     # ------------------------------------------------------------------ locus
-    tau_min_ns:      float           = 1e-4
-    tau_max_ns:      float           = 10.0
-    n_tau_pts:       int             = 600
+    tau_min_ns: float = 1e-4
+    tau_max_ns: float = 10.0
+    n_tau_pts: int = 600
 
     # ------------------------------------------------------------------
     def __post_init__(self) -> None:
@@ -110,7 +112,9 @@ class AcquisitionConfig:
         if self.N_bins < 2:
             raise ValueError(f"N_bins must be >= 2, got {self.N_bins}")
         if not (0 < self.gate_width_frac <= 1):
-            raise ValueError(f"gate_width_frac must be in (0,1], got {self.gate_width_frac}")
+            raise ValueError(
+                f"gate_width_frac must be in (0,1], got {self.gate_width_frac}"
+            )
         if self.N_gates < 1:
             raise ValueError(f"N_gates must be >= 1, got {self.N_gates}")
         if not (0 < self.T_rec_frac <= 1):
@@ -153,7 +157,7 @@ class AcquisitionConfig:
     # ------------------------------------------------------------------ helpers
     def describe(self) -> str:
         lines = [
-            f"AcquisitionConfig",
+            "AcquisitionConfig",
             f"  mode          : {self.mode.name}",
             f"  T             : {self.T_ns} ns  →  f = {self.frequency_MHz:.3f} MHz",
             f"  harmonic n    : {self.harmonic}  →  ω = {self.omega:.4f} rad/ns",
@@ -161,12 +165,20 @@ class AcquisitionConfig:
         if self.mode is AcquisitionMode.DISCRETE:
             lines.append(f"  N_bins        : {self.N_bins}")
         if self.mode in (AcquisitionMode.GATED_SINGLE, AcquisitionMode.GATED_N):
-            lines.append(f"  gate width W  : {self.gate_width_ns:.3f} ns  ({self.gate_width_frac:.2f}·T)")
+            lines.append(
+                f"  gate width W  : {self.gate_width_ns:.3f} ns  ({self.gate_width_frac:.2f}·T)"
+            )
         if self.mode is AcquisitionMode.GATED_N:
             lines.append(f"  N_gates       : {self.N_gates}")
         if self.mode is AcquisitionMode.TRUNCATED:
-            lines.append(f"  T_rec         : {self.T_rec_ns:.3f} ns  ({self.T_rec_frac:.2f}·T)")
+            lines.append(
+                f"  T_rec         : {self.T_rec_ns:.3f} ns  ({self.T_rec_frac:.2f}·T)"
+            )
         if self.mode is AcquisitionMode.OFFSET:
-            lines.append(f"  IRF offset t0 : {self.t0_ns:.3f} ns  ({self.t0_frac:.2f}·T)")
-        lines.append(f"  τ range       : {self.tau_min_ns} – {self.tau_max_ns} ns  ({self.n_tau_pts} pts)")
+            lines.append(
+                f"  IRF offset t0 : {self.t0_ns:.3f} ns  ({self.t0_frac:.2f}·T)"
+            )
+        lines.append(
+            f"  τ range       : {self.tau_min_ns} – {self.tau_max_ns} ns  ({self.n_tau_pts} pts)"
+        )
         return "\n".join(lines)

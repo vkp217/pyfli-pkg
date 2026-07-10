@@ -4,6 +4,7 @@ import h5py
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
+
 class SingleShotFLI:
     def __init__(self):
         pass
@@ -21,7 +22,7 @@ class SingleShotFLI:
             Gate width in nanoseconds.
         gate : int
             Gate index to use for decay calculation.
-        
+
         Returns
         -------
         output : np.ndarray
@@ -41,12 +42,9 @@ class SingleShotFLI:
             cal4 = cal1 - cal2
             ratio[i, :] = cal4 / cal3
 
-        with h5py.File(fname, 'r') as f:
-
-            tpsfs1 = np.array(f['/tpsfs1'])
-            inten1 = np.array(f['/inten1'])
-            tpsfs2 = np.array(f['/tpsfs2'])
-            inten2 = np.array(f['/inten2'])
+        with h5py.File(fname, "r") as f:
+            tpsfs1 = np.array(f["/tpsfs1"])
+            tpsfs2 = np.array(f["/tpsfs2"])
 
         # --- Single-shot Lifetime Estimation ---
         ratio_vec1_temp = np.squeeze(tpsfs1[:, :, gate])
@@ -66,7 +64,9 @@ class SingleShotFLI:
         # --- Interpolation ---
         a1, a2 = rratio.shape
         k = int((gate_width - 1) / step) + 1
-        interp_func = interp1d(ratio[k, :], tau, kind='nearest', bounds_error=False, fill_value=np.nan)
+        interp_func = interp1d(
+            ratio[k, :], tau, kind="nearest", bounds_error=False, fill_value=np.nan
+        )
         vq_vec = interp_func(rratio_vec)
         vq = vq_vec.reshape(a1, a2) - (500 * 1e-3)
 

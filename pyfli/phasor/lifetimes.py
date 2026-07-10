@@ -25,6 +25,7 @@ from .config import AcquisitionConfig
 # Standard estimators
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def phase_lifetime(
     g: ArrayLike,
     s: ArrayLike,
@@ -80,7 +81,7 @@ def modulus_lifetime(
     """
     g = np.asarray(g, dtype=float)
     s = np.asarray(s, dtype=float)
-    m2 = g ** 2 + s ** 2
+    m2 = g**2 + s**2
     with np.errstate(invalid="ignore", divide="ignore"):
         ratio = np.where(m2 > 0, (1.0 - m2) / m2, np.nan)
     return np.sqrt(np.maximum(ratio, 0.0)) / cfg.omega
@@ -89,6 +90,7 @@ def modulus_lifetime(
 # ──────────────────────────────────────────────────────────────────────────────
 # Combined / direct inversion
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def lifetime_from_phasor(
     g: ArrayLike,
@@ -119,12 +121,15 @@ def lifetime_from_phasor(
     elif method == "mean":
         return 0.5 * (phase_lifetime(g, s, cfg) + modulus_lifetime(g, s, cfg))
     else:
-        raise ValueError(f"method must be 'phase', 'modulus', or 'mean'. Got: {method!r}")
+        raise ValueError(
+            f"method must be 'phase', 'modulus', or 'mean'. Got: {method!r}"
+        )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Corrected estimators for gated data (Michalet 2021, Sec. VII)
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def phase_lifetime_gated(
     g: ArrayLike,
@@ -163,6 +168,7 @@ def phase_lifetime_gated(
         def residual(tau):
             gg, ss = phasor_gated_single(tau, cfg)
             return np.arctan2(ss, gg) - phi
+
         try:
             return brentq(residual, cfg.tau_min_ns, cfg.tau_max_ns * 10)
         except ValueError:
@@ -174,6 +180,7 @@ def phase_lifetime_gated(
 # ──────────────────────────────────────────────────────────────────────────────
 # Fractional components for two-species mixtures
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def fractional_components(
     g_mix: ArrayLike,
@@ -217,7 +224,7 @@ def fractional_components(
 
     dg = g2 - g1
     ds = s2 - s1
-    norm2 = dg ** 2 + ds ** 2
+    norm2 = dg**2 + ds**2
     if norm2 < 1e-20:
         raise ValueError("Species 1 and 2 are too close in the phasor plot.")
 
