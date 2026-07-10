@@ -368,31 +368,6 @@ class MonoBiClassifier:
         return pd.concat(frames, ignore_index=True)
 
 
-def classify_mono_bi(
-    all_datasets,
-    b_bool_mask,
-    names=None,
-    alpha_upper=0.95,
-    alpha_lower=0.05,
-    tau_tol=0.01,
-    coord=None,
-    display=True,
-    figsize=None,
-):
-    """Drop-in replacement for the original function (delegates to the class)."""
-    clf = MonoBiClassifier(
-        b_bool_mask,
-        names=names,
-        alpha_upper=alpha_upper,
-        alpha_lower=alpha_lower,
-        tau_tol=tau_tol,
-        coord=coord,
-        figsize=figsize,
-    )
-    clf.classify(all_datasets, display=display)
-    return clf.results
-
-
 class ParamCorrelationMatrix:
     """
     Cross-method parameter correlation analysis over a shared ROI mask.
