@@ -7,8 +7,8 @@ import math
 import os
 import tifffile
 
-from .dataVnP.colorProcess import Colorprocess
-from .dataVnP.MonoBiClassifier import MonoBiClassifier
+from ..dataVnP.colorProcess import Colorprocess
+from ..dataVnP.MonoBiClassifier import MonoBiClassifier
 
 
 def circular_convolution_fft(x, h, broadcast_irf=True):

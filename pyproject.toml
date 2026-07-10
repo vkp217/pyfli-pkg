@@ -72,7 +72,7 @@ include = ["pyfli*"]
 exclude = ["notebooks*", "config*", "data*"]
 
 [tool.setuptools.package-data]
-pyfli = ["PyFLI_logo.png"]
+pyfli = ["img/PyFLI_logo.png"]
 
 [project.urls]
 Homepage = "https://github.com/vkp217/pyfli-pkg"

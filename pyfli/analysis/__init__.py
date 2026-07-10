@@ -24,6 +24,7 @@ from .fit_analysis import (
     plot_2d_analysis,
     run_mono_bi_classifier,
 )
+from .stat_tests import TestStat
 
 # FBI module is proprietary and excluded from the public repo.
 # The filename constants are always available so that saved FBI results

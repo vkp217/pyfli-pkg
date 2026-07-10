@@ -6,8 +6,8 @@ from .analytical_methods.laguerre_deconvolution import LaguerreFLI
 from .dataCC.norm import Normalization
 from .io.dataoperations import DataOperations
 from .io.detectorImport import Detector
+from .io.data_saving import DataSaver
 from .io.flim_decay_cube import collapse_to_xyt, load_flim_data, plot_xyt
-from .data_saving import DataSaver
 from .phasor import (
     AcquisitionConfig,
     AcquisitionMode,

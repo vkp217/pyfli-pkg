@@ -2,6 +2,7 @@
 
 from .detectorImport import Detector
 from .dataoperations import DataOperations
+from .data_saving import DataSaver
 from .processed_DataOperation import (
     AlliGprocessedImport,
     BHprocessedImport,

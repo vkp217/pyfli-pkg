@@ -7,7 +7,7 @@ from ..dataVnP import (
 )
 from ..dataCC import Normalization
 from ..data_text import Msg_display
-from ..utils_common import plot_pixel_diagnostic, random_true_pixel
+from .utils import plot_pixel_diagnostic, random_true_pixel
 
 
 # Per-key default thresholds reflecting the physical valid range of each parameter.
