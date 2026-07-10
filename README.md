@@ -4,7 +4,9 @@
 
 # pyfli: A Unified Platform for FLI Data Processing
 
+[![Tests](https://github.com/vkp217/pyfli-pkg/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/vkp217/pyfli-pkg/actions/workflows/tests.yml)
 [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](https://github.com/vkp217/pyfli-pkg/issues)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://img.shields.io/pypi/v/pyfli-lib.svg)](https://pypi.org/project/pyfli-lib/)
 
