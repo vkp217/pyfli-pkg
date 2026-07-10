@@ -5,7 +5,7 @@ Tests for ParameterSampler — the simulator parameter distribution helpers.
 import numpy as np
 import pytest
 
-from pyfli.scripts.simulator.distributions import ParameterSampler
+from pyfli.simulator.distributions import ParameterSampler
 
 
 # ─────────────────────────────────────────────────────────────────────────────

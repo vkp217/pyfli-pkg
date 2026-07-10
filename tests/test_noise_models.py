@@ -5,7 +5,7 @@ Tests for NoiseEngine — the simulator noise model collection.
 import numpy as np
 import pytest
 
-from pyfli.scripts.simulator.noise_models import NoiseEngine
+from pyfli.simulator.noise_models import NoiseEngine
 
 
 @pytest.fixture

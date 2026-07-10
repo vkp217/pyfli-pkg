@@ -9,8 +9,8 @@ parameter recovery assertions are meaningful.
 import numpy as np
 import pytest
 
-from pyfli.scripts.solver.base_fitter import BaseFLIFitter
-from pyfli.scripts.solver.flicpuFitter import Fli_CPUProcessor
+from pyfli.solver.base_fitter import BaseFLIFitter
+from pyfli.solver.flicpuFitter import Fli_CPUProcessor
 
 # ---------------------------------------------------------------------------
 # Constants — 80 MHz system, 256 bins → T_acq = 12.5 ns, dt = 12.5/256 ns/bin

@@ -1,5 +1,5 @@
 """
-Tests for the phasor analysis module (pyfli.scripts.phasor).
+Tests for the phasor analysis module (pyfli.phasor).
 
 Covers: AcquisitionConfig validation, continuous/discrete/gated/truncated/
 offset phasors, locus builders, and lifetime inversion — all using the
@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 from dataclasses import replace
 
-from pyfli.scripts.phasor import (
+from pyfli.phasor import (
     AcquisitionConfig,
     AcquisitionMode,
     phasor_continuous,
@@ -33,8 +33,8 @@ from pyfli.scripts.phasor import (
     modulus_lifetime,
     lifetime_from_phasor,
 )
-from pyfli.scripts.phasor.locus import universal_semicircle, sepl_center_radius_discrete
-from pyfli.scripts.phasor.lifetimes import fractional_components
+from pyfli.phasor.locus import universal_semicircle, sepl_center_radius_discrete
+from pyfli.phasor.lifetimes import fractional_components
 
 
 # ─────────────────────────────────────────────────────────────────────────────

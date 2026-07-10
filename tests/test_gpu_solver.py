@@ -15,10 +15,10 @@ import numpy as np
 import pytest
 import torch
 
-from pyfli.scripts.solver.base_fitter  import BaseFLIFitter
-from pyfli.scripts.solver.mleFitter    import MLEFLIFitter
-from pyfli.scripts.solver.flicpuFitter import Fli_CPUProcessor
-from pyfli.scripts.solver.fligpuFitter import Fli_GPUProcessor
+from pyfli.solver.base_fitter  import BaseFLIFitter
+from pyfli.solver.mleFitter    import MLEFLIFitter
+from pyfli.solver.flicpuFitter import Fli_CPUProcessor
+from pyfli.solver.fligpuFitter import Fli_GPUProcessor
 
 # ---------------------------------------------------------------------------
 # Shared constants
