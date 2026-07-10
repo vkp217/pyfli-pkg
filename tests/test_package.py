@@ -15,8 +15,8 @@ def test_top_level_core_symbols_are_public():
         "LaguerreFLI",
         "Normalization",
         "DataSaver",
-        "Macro_sim",
-        "TCSPC_sim",
+        "MacroSimulator",
+        "TCSPCSimulator",
         "BasisPatterns",
         "MeasurementSimulator",
         "Reconstructor",
@@ -56,7 +56,7 @@ def test_top_level_phasor_helpers_are_public():
 
 def test_subpackages_available():
     assert pyfli.phasor is not None
-    assert pyfli.spAnalysis is not None
+    assert pyfli.sp_analysis is not None
 
 
 def test_laguerre_instantiation():

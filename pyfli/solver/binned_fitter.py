@@ -1,4 +1,4 @@
-# solver/binned_fliFitter.py
+# solver/binned_fitter.py
 import numpy as np
 
 
@@ -48,12 +48,12 @@ class FliBinner:
         return self.binned_img, self.binned_irf
 
 
-class BinnedFliFitter:
+class BinnedFLIFitter:
     def __init__(self, processor_instance, bin_radius=1):
         """
         Wraps an existing CPU or GPU processor.
 
-        processor_instance: An instance of Fli_CPUProcessor or Fli_GPUProcessor.
+        processor_instance: An instance of FLICPUProcessor or FLIGPUProcessor.
         bin_radius: Passed to maintain metadata consistency.
         """
         self.processor = processor_instance

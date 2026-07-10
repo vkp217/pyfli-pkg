@@ -6,7 +6,7 @@ import time
 from tqdm import tqdm
 
 
-class Fli_GPUProcessor:
+class FLIGPUProcessor:
     def __init__(self, freq, fitter_class=None, device=None):
         self.device = (
             device if device else ("cuda" if torch.cuda.is_available() else "cpu")

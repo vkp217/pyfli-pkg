@@ -1,4 +1,4 @@
-# solver/globalFitter.py
+# solver/global_fitter.py
 import numpy as np
 import time
 from tqdm import tqdm

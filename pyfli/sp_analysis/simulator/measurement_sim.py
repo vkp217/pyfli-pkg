@@ -1,4 +1,4 @@
-# spAnalysis/simulator/measurement_sim.py
+# sp_analysis/simulator/measurement_sim.py
 
 import numpy as np
 

@@ -1,12 +1,12 @@
-from ..dataVnP import (
+from ..data_vnp import (
     DataViewer,
     Plotter,
-    Colorprocess,
+    ColorProcessor,
     plot_2d_subplots,
-    MonoBiClassifier,
+    mono_bi_classifier,
 )
-from ..dataCC import Normalization
-from ..data_text import Msg_display
+from ..data_cc import Normalization
+from ..data_text import MessageDisplay
 from .utils import plot_pixel_diagnostic, random_true_pixel
 
 
@@ -65,7 +65,7 @@ def plot_fitting_maps(
     cmap         : colormap — defaults to jet with zero→black
     """
     if cmap is None:
-        cmap = Colorprocess().lowest_zero("jet")
+        cmap = ColorProcessor().lowest_zero("jet")
     n_cols = len(map_keys)
 
     for ds, name in zip(all_datasets, names):
@@ -143,7 +143,7 @@ def plot_pixel_evidence(
         mode2=[0],
         names=["decay", "irf", "fit"],
     )
-    Msg_display().get_pixel_summary(data_maps=maps, px=(x, y))
+    MessageDisplay().get_pixel_summary(data_maps=maps, px=(x, y))
 
 
 def plot_statistical_comparison(
@@ -322,14 +322,14 @@ def run_mono_bi_classifier(
 
     Returns
     -------
-    clf     : MonoBiClassifier   fully populated instance
+    clf     : mono_bi_classifier   fully populated instance
     classes : list[dict]         per-dataset classification dicts
     df      : pd.DataFrame       agreed-parameter table for 'mono' class
     """
     if scatter_keys is None:
         scatter_keys = ["tau1_map", "tau2_map"]
 
-    clf = MonoBiClassifier(
+    clf = mono_bi_classifier(
         mask,
         names=names,
         alpha_upper=alpha_upper,
@@ -349,7 +349,7 @@ def run_mono_bi_classifier(
 
     if saver:
         saver.log(
-            f"MonoBiClassifier run: alpha_upper={alpha_upper}, "
+            f"mono_bi_classifier run: alpha_upper={alpha_upper}, "
             f"alpha_lower={alpha_lower}, tau_tol={tau_tol}, "
             f"scatter_keys={scatter_keys}"
         )

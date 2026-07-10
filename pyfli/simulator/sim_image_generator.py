@@ -3,7 +3,7 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 import itertools
-from .main_factory import Macro_sim, TCSPC_sim
+from .main_factory import MacroSimulator, TCSPCSimulator
 from .sim_helper import irf_picker
 
 
@@ -49,8 +49,8 @@ class FLIImageGenerator:
         # dummy_irf = irf_data[0, 0, :] if irf_data.ndim == 3 else irf_data
         self.roi_sims = {}
         unique_rois = np.unique(self.roi_mask)
-        SimClass = Macro_sim if self.method == "ICCD" else TCSPC_sim
-        # SimClass = TCSPC_sim if self.method == 'tcspc' else Macro_sim
+        SimClass = MacroSimulator if self.method == "ICCD" else TCSPCSimulator
+        # SimClass = TCSPCSimulator if self.method == 'tcspc' else MacroSimulator
 
         for roi_val in unique_rois:
             cfg = (

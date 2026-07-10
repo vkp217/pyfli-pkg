@@ -11,7 +11,7 @@ Usage
 To customise a section without touching the rest, override just that constant
 before constructing ROIApp, then rebuild STYLE:
 
-    import pyfli.roiMaker.roi_style as S
+    import pyfli.roi_maker.roi_style as S
     S.BUTTONS = S.BUTTONS.replace("#1e66f5", "#e94560")  # swap accent colour
     S.STYLE   = S.BASE + S.SIDEBAR + S.BUTTONS + S.SLIDERS + S.DIALOG + S.STATUSBAR
 

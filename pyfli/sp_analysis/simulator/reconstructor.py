@@ -1,4 +1,4 @@
-# spAnalysis/simulator/reconstructor.py
+# sp_analysis/simulator/reconstructor.py
 
 import numpy as np
 from scipy.optimize import minimize

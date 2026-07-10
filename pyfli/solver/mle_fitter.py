@@ -1,4 +1,4 @@
-#  solver/mleFitter.py
+#  solver/mle_fitter.py
 import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import f, chi2

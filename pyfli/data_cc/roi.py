@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class ROIoperations:
+class ROIOperations:
     def __init__(self):
         pass
 

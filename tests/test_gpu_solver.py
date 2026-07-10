@@ -1,11 +1,11 @@
 """
-Performance and correctness tests for Fli_GPUProcessor.
+Performance and correctness tests for FLIGPUProcessor.
 
 All 4 estimation methods are tested on synthetic ground-truth data:
     CPU NLSF  — BaseFLIFitter  / least_squares  (Neyman WLS)
     CPU MLE   — MLEFLIFitter   / minimize        (Poisson C-stat)
-    GPU NLSF  — Fli_GPUProcessor / Adam          (Neyman WLS)
-    GPU MLE   — Fli_GPUProcessor / Adam          (Poisson C-stat)
+    GPU NLSF  — FLIGPUProcessor / Adam          (Neyman WLS)
+    GPU MLE   — FLIGPUProcessor / Adam          (Poisson C-stat)
 
 Both mono-exponential and bi-exponential models are covered.
 No file I/O. GPU falls back to CPU automatically when CUDA is absent.
@@ -15,8 +15,8 @@ import numpy as np
 import pytest
 
 from pyfli.solver.base_fitter import BaseFLIFitter
-from pyfli.solver.mleFitter import MLEFLIFitter
-from pyfli.solver.fligpuFitter import Fli_GPUProcessor
+from pyfli.solver.mle_fitter import MLEFLIFitter
+from pyfli.solver.gpu_processor import FLIGPUProcessor
 
 # ---------------------------------------------------------------------------
 # Shared constants
@@ -140,7 +140,7 @@ def cpu_mle_biexp(biexp_pixel):
 @pytest.fixture(scope="session")
 def gpu_nlsf_mono(mono_cube):
     image_cube, irf_cube = mono_cube
-    proc = Fli_GPUProcessor(_FREQ)
+    proc = FLIGPUProcessor(_FREQ)
     return proc.fit_image(
         image_cube, irf_cube, mode="NLSF", model_type="mono-exponential", max_iter=600
     )
@@ -149,7 +149,7 @@ def gpu_nlsf_mono(mono_cube):
 @pytest.fixture(scope="session")
 def gpu_mle_mono(mono_cube):
     image_cube, irf_cube = mono_cube
-    proc = Fli_GPUProcessor(_FREQ)
+    proc = FLIGPUProcessor(_FREQ)
     return proc.fit_image(
         image_cube, irf_cube, mode="MLE", model_type="mono-exponential", max_iter=600
     )
@@ -158,7 +158,7 @@ def gpu_mle_mono(mono_cube):
 @pytest.fixture(scope="session")
 def gpu_nlsf_biexp(biexp_cube):
     image_cube, irf_cube = biexp_cube
-    proc = Fli_GPUProcessor(_FREQ)
+    proc = FLIGPUProcessor(_FREQ)
     return proc.fit_image(
         image_cube, irf_cube, mode="NLSF", model_type="bi-exponential", max_iter=600
     )
@@ -167,7 +167,7 @@ def gpu_nlsf_biexp(biexp_cube):
 @pytest.fixture(scope="session")
 def gpu_mle_biexp(biexp_cube):
     image_cube, irf_cube = biexp_cube
-    proc = Fli_GPUProcessor(_FREQ)
+    proc = FLIGPUProcessor(_FREQ)
     return proc.fit_image(
         image_cube, irf_cube, mode="MLE", model_type="bi-exponential", max_iter=600
     )

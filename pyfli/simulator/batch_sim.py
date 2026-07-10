@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Batch_sim:
+class BatchSimulator:
     def sim_BI(self, sim_funcs, num_list):
         """
         Generates a simplified batch dictionary with specific parameters.

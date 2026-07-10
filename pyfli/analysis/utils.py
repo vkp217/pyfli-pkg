@@ -7,8 +7,8 @@ import math
 import os
 import tifffile
 
-from ..dataVnP.colorProcess import Colorprocess
-from ..dataVnP.MonoBiClassifier import MonoBiClassifier
+from ..data_vnp.color_processor import ColorProcessor
+from ..data_vnp.mono_bi_classifier import MonoBiClassifier
 
 
 def circular_convolution_fft(x, h, broadcast_irf=True):
@@ -470,7 +470,7 @@ def plot_pixel_diagnostic(
     show_colorbar=True,
     show=True,
 ):
-    jet_m = Colorprocess().lowest_zero("jet")
+    jet_m = ColorProcessor().lowest_zero("jet")
     if pixel is None:
         if mask is None:
             raise ValueError("Provide either pixel=(row, col) or mask.")
@@ -578,7 +578,7 @@ def compute_detailed_results(
     """
     Reconstruct fit curves + goodness-of-fit maps from pre-estimated
     bi-exponential parameter maps (e.g. F-BI output), packaged in the same
-    structure as Fli_CPUProcessor.process_image so it drops straight into
+    structure as FLICPUProcessor.process_image so it drops straight into
     Plotter / DataViewer.
 
     Parameters
@@ -624,7 +624,7 @@ def compute_detailed_results(
         photon_count = np.sum(binned_decay, axis=-1)  # (H, W)
         b_bool_mask = photon_count > 0
 
-        # Package bi-exp maps into the format MonoBiClassifier expects
+        # Package bi-exp maps into the format mono_bi_classifier expects
         dataset = {"alpha1_map": f, "tau1_map": tau1, "tau2_map": tau2}
         all_datasets = [dataset]
 

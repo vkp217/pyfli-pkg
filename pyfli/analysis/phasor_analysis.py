@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 from ..analytical_methods import PhasorAnalyzer, AnalyticalHelpers
-from ..dataVnP import Colorprocess
+from ..data_vnp import ColorProcessor
 
 
 def compute_freq_axis(binned_irf, laser_period_ns=12.5):
@@ -76,8 +76,8 @@ def plot_phasor_figures(
     -------
     figs : dict[str, Figure]   keyed by figure name
     """
-    plasma_m = Colorprocess().lowest_zero("plasma")
-    viridis_m = Colorprocess().lowest_zero("viridis")
+    plasma_m = ColorProcessor().lowest_zero("plasma")
+    viridis_m = ColorProcessor().lowest_zero("viridis")
 
     figs = {}
 

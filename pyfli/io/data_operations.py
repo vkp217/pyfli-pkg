@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 
 # Import the static logic from your utility file
-from .dataops_static import Staticdataops as ds
+from .data_ops_static import StaticDataOps as ds
 
 
 class DataOperations:

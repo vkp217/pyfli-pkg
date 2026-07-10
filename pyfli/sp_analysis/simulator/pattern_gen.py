@@ -1,4 +1,4 @@
-# spAnalysis/simulator/pattern_gen.py
+# sp_analysis/simulator/pattern_gen.py
 
 import numpy as np
 from scipy.linalg import hadamard

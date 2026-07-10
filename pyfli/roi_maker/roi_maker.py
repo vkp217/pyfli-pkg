@@ -1,4 +1,4 @@
-# pyfli/roiMaker/roi_maker.py
+# pyfli/roi_maker/roi_maker.py
 """
 ROI Maker — PySide6-based interactive region-of-interest editor.
 

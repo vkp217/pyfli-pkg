@@ -2,12 +2,12 @@
 # ruff: noqa: F401
 
 from .base_fitter import BaseFLIFitter
-from .flicpuFitter import Fli_CPUProcessor
-from .fligpuFitter import Fli_GPUProcessor
-from .mleFitter import MLEFLIFitter
-from .globalFitter import GlobalFLIFitter
+from .cpu_processor import FLICPUProcessor
+from .gpu_processor import FLIGPUProcessor
+from .mle_fitter import MLEFLIFitter
+from .global_fitter import GlobalFLIFitter
 from .comparison import FittingComparator
-from .binned_fliFitter import BinnedFliFitter, FliBinner
+from .binned_fitter import BinnedFLIFitter, FliBinner
 from .forward_model import decay_kernel, model_numpy
 from .shared_metrics import (
     enforce_tau_ordering,
@@ -16,6 +16,6 @@ from .shared_metrics import (
     compute_fret_efficiency,
 )
 
-# [BaseFLIFitter, Fli_CPUProcessor, Fli_GPUProcessor, MLEFLIFitter, GlobalFLIFitter, FittingComparator,
-# BinnedFliFitter, FliBinner, decay_kernel, model_numpy, enforce_tau_ordering,
+# [BaseFLIFitter, FLICPUProcessor, FLIGPUProcessor, MLEFLIFitter, GlobalFLIFitter, FittingComparator,
+# BinnedFLIFitter, FliBinner, decay_kernel, model_numpy, enforce_tau_ordering,
 # compute_fli_stats, compute_average_lifetime, compute_fret_efficiency]

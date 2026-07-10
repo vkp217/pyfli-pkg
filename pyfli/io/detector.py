@@ -2,7 +2,7 @@ import os
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
-from .dataops_static import Staticdataops as ds
+from .data_ops_static import StaticDataOps as ds
 
 
 class Detector:
@@ -131,9 +131,9 @@ class Detector:
             if make_hp_map:
                 if not self.bg_path:
                     raise ValueError("SS3: bg_path is required when make_hp_map=True.")
-                from .utils import DataIO_utils
+                from .utils import DataIOUtils
 
-                hp_map, _, _, _ = DataIO_utils().detect_hot_pixels(
+                hp_map, _, _, _ = DataIOUtils().detect_hot_pixels(
                     self.bg_path, threshold_sigma=threshold_sigma
                 )
             elif self.hp_path:
@@ -246,9 +246,9 @@ class Detector:
             if make_hp_map:
                 if not self.bg_path:
                     raise ValueError("SS2: bg_path is required when make_hp_map=True.")
-                from .utils import DataIO_utils
+                from .utils import DataIOUtils
 
-                hp_map, _, _, _ = DataIO_utils().detect_hot_pixels(
+                hp_map, _, _, _ = DataIOUtils().detect_hot_pixels(
                     self.bg_path, threshold_sigma=threshold_sigma
                 )
             elif self.hp_path:

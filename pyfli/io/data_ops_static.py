@@ -1,4 +1,4 @@
-# dataIO/dataops_static.py
+# dataIO/data_ops_static.py
 import numpy as np
 import h5py
 import tifffile
@@ -7,7 +7,7 @@ from scipy.io import loadmat
 from sdtfile import SdtFile
 
 
-class Staticdataops:
+class StaticDataOps:
     @staticmethod
     def pileup_correction(data, bit_size=10):
         """
@@ -46,7 +46,7 @@ class Staticdataops:
             for i, key in enumerate(gate_keys):
                 tpsfs[:, :, i] = gate_grp[key][:]
         if pile_up:
-            tpsfs = Staticdataops.pileup_correction(tpsfs, bit_size=bit_size)
+            tpsfs = StaticDataOps.pileup_correction(tpsfs, bit_size=bit_size)
         return tpsfs
 
     @staticmethod
@@ -95,7 +95,7 @@ class Staticdataops:
         """
         Identifies hot pixels from a mask file and replaces them with the
         nanmedian of their 3×3 neighbourhood (excluding the hot pixel itself).
-        Signature unchanged — safe to call from dataoperations.py.
+        Signature unchanged — safe to call from data_operations.py.
         """
         if not hp_path:
             raise ValueError("Hotpixel removal mask path (hp_path) is not provided.")
@@ -115,7 +115,7 @@ class Staticdataops:
                     f"Shape mismatch: data {data_3d.shape[:2]} vs mask {hotpixel_mask.shape}"
                 )
 
-        return Staticdataops.hotpixel_correct(data_3d, hotpixel_mask > 0)
+        return StaticDataOps.hotpixel_correct(data_3d, hotpixel_mask > 0)
 
     @staticmethod
     def load_mat_file(path):
@@ -161,16 +161,16 @@ class Staticdataops:
     def SS3HDF5read(fname, pileCorr=True, hot_pixels=True, hp_path=None):
         """
         Reads SS3 gated HDF5 data, optionally applying pile-up and hot-pixel corrections.
-        Signature unchanged — safe to call from dataoperations.py.
+        Signature unchanged — safe to call from data_operations.py.
         """
         if hot_pixels and hp_path is None:
             raise ValueError("hp_path must be provided when hot_pixels=True.")
         try:
-            tpsfs = Staticdataops.spad_hdf5_read(
+            tpsfs = StaticDataOps.spad_hdf5_read(
                 fname, "Bottom G2 Gate", pile_up=pileCorr
             )
             if hot_pixels:
-                tpsfs = Staticdataops.apply_interpolation_mask(tpsfs, hp_path=hp_path)
+                tpsfs = StaticDataOps.apply_interpolation_mask(tpsfs, hp_path=hp_path)
             return tpsfs
         except Exception as e:
             if isinstance(e, ValueError):

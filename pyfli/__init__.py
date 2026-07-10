@@ -1,11 +1,11 @@
 """Top-level public API for PyFLI."""
 # ruff: noqa: F401
 
-from . import phasor, spAnalysis
+from . import phasor, sp_analysis
 from .analytical_methods.laguerre_deconvolution import LaguerreFLI
-from .dataCC.norm import Normalization
-from .io.dataoperations import DataOperations
-from .io.detectorImport import Detector
+from .data_cc.norm import Normalization
+from .io.data_operations import DataOperations
+from .io.detector import Detector
 from .io.data_saving import DataSaver
 from .io.flim_decay_cube import collapse_to_xyt, load_flim_data, plot_xyt
 from .phasor import (
@@ -32,5 +32,5 @@ from .phasor import (
     tau_grid,
     universal_semicircle,
 )
-from .simulator.main_factory import Macro_sim, TCSPC_sim
-from .spAnalysis import BasisPatterns, MeasurementSimulator, Reconstructor
+from .simulator.main_factory import MacroSimulator, TCSPCSimulator
+from .sp_analysis import BasisPatterns, MeasurementSimulator, Reconstructor

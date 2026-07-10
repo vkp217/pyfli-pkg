@@ -1,5 +1,5 @@
-from .colorProcess import Colorprocess
-from .mdataViz import DataViewer
+from .color_processor import ColorProcessor
+from .data_viewer import DataViewer
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -77,7 +77,7 @@ class MonoBiClassifier:
         self.coord = coord
         self.figsize = figsize
 
-        self.cmaps = [Colorprocess().lowest_zero(n) for n in self.CMAP_NAMES]
+        self.cmaps = [ColorProcessor().lowest_zero(n) for n in self.CMAP_NAMES]
         self.results = []  # per-dataset result dicts
         self.all_datasets = None  # stored by classify() for the analysis methods
 
@@ -368,7 +368,6 @@ class MonoBiClassifier:
         return pd.concat(frames, ignore_index=True)
 
 
-# ── backward-compatible functional wrapper ──────────────────────────────────
 def classify_mono_bi(
     all_datasets,
     b_bool_mask,
@@ -394,13 +393,12 @@ def classify_mono_bi(
     return clf.results
 
 
-# ── parameter correlation analysis (no mono/bi classification required) ──────
 class ParamCorrelationMatrix:
     """
     Cross-method parameter correlation analysis over a shared ROI mask.
 
     Works directly on a list of parameter-map dicts (the same format as
-    MonoBiClassifier's all_datasets); no classify() step is required.
+    mono_bi_classifier's all_datasets); no classify() step is required.
 
     Parameter arrays may be:
       - 2-D (H, W)    : single scalar per pixel  → plotted as a plain point.

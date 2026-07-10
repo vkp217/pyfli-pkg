@@ -6,7 +6,7 @@ from .noise_models import NoiseEngine
 from .sim_helper import irf_picker
 
 
-class FLIModelSim:
+class FLIModelSimulator:
     def __init__(
         self,
         irf_full,

@@ -3,7 +3,7 @@ from matplotlib.colors import ListedColormap
 import numpy as np
 
 
-class Colorprocess:
+class ColorProcessor:
     def __init__(self):
         pass
 

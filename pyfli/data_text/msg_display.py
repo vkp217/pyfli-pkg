@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Msg_display:
+class MessageDisplay:
     def __init__(self, saver=None):
         self.saver = saver
 

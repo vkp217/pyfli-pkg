@@ -1,4 +1,4 @@
-# pyfli/dataCC/norm.py
+# pyfli/data_cc/norm.py
 
 import numpy as np
 

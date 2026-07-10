@@ -5,12 +5,12 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 
 try:
-    from .globalFitter import GlobalFLIFitter as _GlobalFLIFitter
+    from .global_fitter import GlobalFLIFitter as _GlobalFLIFitter
 except ImportError:
     _GlobalFLIFitter = None
 
 
-class Fli_CPUProcessor:
+class FLICPUProcessor:
     def __init__(self, freq, fitter_class):
         self.freq = freq
         self.fitter_class = fitter_class

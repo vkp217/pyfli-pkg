@@ -1,13 +1,13 @@
 # ruff: noqa: F401
 
-from .detectorImport import Detector
-from .dataoperations import DataOperations
+from .detector import Detector
+from .data_operations import DataOperations
 from .data_saving import DataSaver
-from .processed_DataOperation import (
+from .processed_data import (
     AlliGprocessedImport,
     BHprocessedImport,
     DatasetPlotter,
     PyFliprocessedImport,
 )
-from .utils import DataIO_utils
+from .utils import DataIOUtils
 from .flim_decay_cube import load_flim_data, collapse_to_xyt, plot_xyt

@@ -1,5 +1,5 @@
 """
-Tests for BaseFLIFitter and Fli_CPUProcessor (CPU solver pipeline).
+Tests for BaseFLIFitter and FLICPUProcessor (CPU solver pipeline).
 
 All tests use purely synthetic numpy arrays; no file I/O or GPU required.
 Synthetic data is generated using the same model formula as the fitter so
@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from pyfli.solver.base_fitter import BaseFLIFitter
-from pyfli.solver.flicpuFitter import Fli_CPUProcessor
+from pyfli.solver.cpu_processor import FLICPUProcessor
 
 # ---------------------------------------------------------------------------
 # Constants — 80 MHz system, 256 bins → T_acq = 12.5 ns, dt = 12.5/256 ns/bin
@@ -182,7 +182,7 @@ class TestBaseFLIFitterRecovery:
 
 
 # ---------------------------------------------------------------------------
-# Fli_CPUProcessor — image-level integration tests
+# FLICPUProcessor — image-level integration tests
 # ---------------------------------------------------------------------------
 
 
@@ -206,7 +206,7 @@ def small_biexp_image():
 @pytest.fixture(scope="module")
 def biexp_result(small_biexp_image):
     image_cube, irf_cube = small_biexp_image
-    proc = Fli_CPUProcessor(_FREQ, BaseFLIFitter)
+    proc = FLICPUProcessor(_FREQ, BaseFLIFitter)
     return proc.process_image(
         image_cube, irf_cube, model_type="bi-exponential", n_jobs=1
     )
@@ -215,7 +215,7 @@ def biexp_result(small_biexp_image):
 @pytest.fixture(scope="module")
 def mono_result(small_biexp_image):
     image_cube, irf_cube = small_biexp_image
-    proc = Fli_CPUProcessor(_FREQ, BaseFLIFitter)
+    proc = FLICPUProcessor(_FREQ, BaseFLIFitter)
     return proc.process_image(
         image_cube, irf_cube, model_type="mono-exponential", n_jobs=1
     )

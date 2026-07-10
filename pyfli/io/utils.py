@@ -5,7 +5,7 @@ import numpy as np
 import json
 
 
-class DataIO_utils:
+class DataIOUtils:
     def __init__(self):
         pass
 

@@ -1,11 +1,11 @@
 import numpy as np
 from scipy.signal import fftconvolve
-from .simEngGen import FLIModelSim
+from .model_simulator import FLIModelSimulator
 from .noise_models import NoiseEngine
 from .distributions import ParameterSampler
 
 
-class ContinousEqSim:
+class ContinuousSimulator:
     def __init__(self, irf_data, sensor_type="ICCD", **cfg):
         # Toggles
         self.use_jitter = cfg.get("jitter", True)
@@ -17,7 +17,7 @@ class ContinousEqSim:
         self.use_clipping = cfg.get("clip_on", True)
 
         self.sensor_type = sensor_type.upper()
-        self.engine = FLIModelSim(irf_data, **cfg)
+        self.engine = FLIModelSimulator(irf_data, **cfg)
 
     def __call__(self):
         p = self.engine.sample_params()
@@ -120,7 +120,7 @@ class ContinousEqSim:
         }
 
 
-class PhotonCountSim:
+class PhotonCountSimulator:
     def __init__(self, irf_data, sensor_type="PHOTON_COUNTER", **cfg):
         self.use_jitter = cfg.get("jitter", True)
         self.use_dcr = cfg.get("dcr_on", True)
@@ -132,7 +132,7 @@ class PhotonCountSim:
         self.sensor_type = sensor_type.upper()
         # TCSPC counters are 16-bit by default
         cfg.setdefault("bit", 16)
-        self.engine = FLIModelSim(irf_data, **cfg)
+        self.engine = FLIModelSimulator(irf_data, **cfg)
 
     def __call__(self):
         p = self.engine.sample_params()

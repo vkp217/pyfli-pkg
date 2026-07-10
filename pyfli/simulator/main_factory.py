@@ -5,7 +5,7 @@ from .noise_models import NoiseEngine
 from .distributions import ParameterSampler
 
 
-class Macro_sim:
+class MacroSimulator:
     def __init__(self, irf_data, sensor_type="ICCD", **cfg):
         # Toggles
         self.use_jitter = cfg.get("jitter", True)
@@ -111,7 +111,7 @@ class Macro_sim:
         }
 
 
-class TCSPC_sim:
+class TCSPCSimulator:
     def __init__(self, irf_data, sensor_type="PHOTON_COUNTER", **cfg):
         self.use_jitter = cfg.get("jitter", True)
         self.use_dcr = cfg.get("dcr_on", True)
