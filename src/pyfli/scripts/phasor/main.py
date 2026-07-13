@@ -68,6 +68,17 @@ def make_all_configs() -> list[AcquisitionConfig]:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def fig_comparison(outdir: pathlib.Path) -> None:
+    """
+    Render and save the all-modes SEPL comparison figure.
+
+    Builds one AcquisitionConfig per acquisition mode via
+    ``make_all_configs()``, overlays their loci on a single phasor plot
+    using ``plot_locus_comparison``, and saves the result as
+    ``phasor_all_modes.png`` in *outdir*.
+
+    Args:
+        outdir: Directory to save the figure into (must already exist).
+    """
     cfgs = make_all_configs()
     fig, ax = plot_locus_comparison(
         cfgs,
@@ -85,6 +96,17 @@ def fig_comparison(outdir: pathlib.Path) -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def fig_discrete_sweep(outdir: pathlib.Path) -> None:
+    """
+    Render and save the discrete-N convergence sweep figure.
+
+    Uses the module-level ``BASE`` config with DISCRETE mode and sweeps
+    ``N_bins`` over ``[2, 4, 8, 16, 64, 256]`` via ``plot_discrete_N_sweep``
+    to show convergence to the universal semicircle, saving the result as
+    ``phasor_discrete_N_sweep.png`` in *outdir*.
+
+    Args:
+        outdir: Directory to save the figure into (must already exist).
+    """
     fig, ax = plot_discrete_N_sweep(
         BASE,
         N_values=[2, 4, 8, 16, 64, 256],
@@ -100,6 +122,17 @@ def fig_discrete_sweep(outdir: pathlib.Path) -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def fig_individual_modes(outdir: pathlib.Path) -> None:
+    """
+    Render and save a 2x3 grid of individual per-mode SEPL panels.
+
+    Builds one AcquisitionConfig per acquisition mode via
+    ``make_all_configs()`` and draws each on its own subplot (with the
+    universal semicircle and lifetime ticks overlaid) using ``plot_phasor``,
+    saving the result as ``phasor_individual_modes.png`` in *outdir*.
+
+    Args:
+        outdir: Directory to save the figure into (must already exist).
+    """
     cfgs = make_all_configs()
     fig, axes = plt.subplots(2, 3, figsize=(14, 9), constrained_layout=True)
     fig.suptitle(
@@ -120,6 +153,14 @@ def fig_individual_modes(outdir: pathlib.Path) -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def print_summary() -> None:
+    """
+    Print a console summary of all acquisition modes and a sample phasor.
+
+    For each config returned by ``make_all_configs()``, prints its
+    ``describe()`` text. Then, for τ = 2.0 ns, prints the (g, s) phasor
+    coordinates from ``phasor_from_config`` alongside the phase and
+    modulus lifetime estimates for every mode.
+    """
     print("\n" + "═" * 60)
     print("  phasor_flim — acquisition mode summary")
     print("═" * 60)
@@ -147,6 +188,14 @@ def print_summary() -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    """
+    Entry point for the phasor_flim demo script.
+
+    Parses the ``--outdir`` command-line argument (default ``"output"``),
+    creates the output directory if needed, prints the console summary via
+    ``print_summary()``, and generates all three demo figures
+    (``fig_comparison``, ``fig_discrete_sweep``, ``fig_individual_modes``).
+    """
     parser = argparse.ArgumentParser(description="phasor_flim demo")
     parser.add_argument("--outdir", default="output", help="Output directory for figures")
     args = parser.parse_args()

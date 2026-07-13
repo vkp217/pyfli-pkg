@@ -1,3 +1,10 @@
+"""Top-level entry point for 4D single-pixel (SPAD) reconstruction.
+
+Dispatches to the linear, total-variation, or Poisson+TV reconstruction
+engines defined in `solvers.py` and `spad_solvers.py` based on the
+requested mode.
+"""
+
 import numpy as np
 from .solvers import LinearReconstructor, TVReconstructor
 from .spad_solvers import SPADPoissonReconstructor

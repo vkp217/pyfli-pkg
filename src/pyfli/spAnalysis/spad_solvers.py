@@ -1,3 +1,12 @@
+"""Poisson-likelihood reconstruction engine for SPAD photon-count data.
+
+Implements `BaseReconstructor.reconstruct_slice` using a Poisson negative
+log-likelihood data-fidelity term plus isotropic TV regularization,
+appropriate for integer photon-count (TCSPC) measurements from a SPAD
+detector, as opposed to the Gaussian-noise assumption used in
+`solvers.TVReconstructor`.
+"""
+
 import numpy as np
 from scipy.optimize import minimize
 from .base_reconstructor import BaseReconstructor
@@ -59,6 +68,20 @@ class SPADPoissonReconstructor(BaseReconstructor):
         return poisson_loss + alpha * tv, grad_poisson + alpha * grad_tv.flatten()
 
     def reconstruct_slice(self, y_slice, A):
+        """Reconstruct one (H, W) frame via Poisson + TV L-BFGS-B minimization.
+
+        Minimizes the Poisson negative log-likelihood KL(y || Ax) plus
+        alpha * TV(x), subject to a non-negativity constraint (x >= 0).
+        The initial guess is a positive, clipped linear back-projection
+        estimate.
+
+        Args:
+            y_slice: (M,) measurements for one (t, lambda) slice.
+            A: (M, N) sensing matrix (already converted from DMD patterns).
+
+        Returns:
+            Reconstructed (H, W) frame.
+        """
         A = A.astype(np.float64)
         y = y_slice.astype(np.float64)
         M = A.shape[0]

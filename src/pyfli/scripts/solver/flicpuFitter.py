@@ -1,3 +1,9 @@
+"""CPU-based parallel per-pixel FLI/FLIM image fitting.
+
+Defines :class:`Fli_CPUProcessor`, which fits every valid pixel of a FLIM
+image cube in parallel (via joblib) using a supplied per-pixel fitter class,
+assembling the results into parameter/error/fit maps and HDF5 output.
+"""
 import numpy as np
 import h5py
 import os
@@ -10,6 +16,22 @@ except ImportError:
     _GlobalFLIFitter = None
 
 class Fli_CPUProcessor:
+    """Parallel CPU pixel-wise FLI/FLIM image fitter.
+
+    Applies a per-pixel NLSF or MLE fitter (``fitter_class``) across an image
+    cube using joblib-based multiprocessing, assembling per-pixel parameter,
+    error, and fit/residual maps into a results dataset. Optionally delegates
+    to :class:`~pyfli.scripts.solver.globalFitter.GlobalFLIFitter` cluster
+    fitting when a multi-label mask is supplied and ``fitter_class`` is a
+    ``GlobalFLIFitter`` subclass.
+
+    Args:
+        freq: Two-element frequency descriptor ``[laser_freq, acquisition_freq]``
+            (MHz) passed through to each per-pixel fitter instance.
+        fitter_class: The fitter class (e.g. ``BaseFLIFitter``,
+            ``MLEFLIFitter``) to instantiate per pixel.
+    """
+
     def __init__(self, freq, fitter_class):
         self.freq = freq
         self.fitter_class = fitter_class
@@ -58,6 +80,46 @@ class Fli_CPUProcessor:
     def process_image(self, image_cube, irf_cube, mask=None, data_name="FLIM_Dataset", 
                       model_type='bi-exponential', estimator='least_squares', 
                       p0=None, bounds=None, n_jobs=-1, backend='loky', **kwargs):
+        """Fit every valid pixel of a FLIM image cube in parallel across CPU workers.
+
+        Builds a boolean fitting mask (pixels with total counts > 20, unless
+        ``mask`` is provided), and — if a multi-label ``mask`` is supplied
+        together with a ``fitter_class`` that is a ``GlobalFLIFitter``
+        subclass — delegates to cluster-based global fitting instead of
+        independent per-pixel fitting. Otherwise, dispatches one fitting task
+        per valid pixel via ``joblib.Parallel``, then assembles the per-pixel
+        results into parameter, error, fit-curve, residual, and diagnostic
+        maps.
+
+        Args:
+            image_cube: Decay image cube of shape ``(H, W, T)``.
+            irf_cube: Instrument response function cube of shape ``(H, W, T)``.
+            mask: Optional boolean or multi-label mask selecting which pixels
+                to fit. If None, pixels with total counts > 20 are used.
+            data_name: Name recorded in the output dataset (default
+                ``'FLIM_Dataset'``).
+            model_type: Either ``'mono-exponential'`` or ``'bi-exponential'``
+                (default ``'bi-exponential'``).
+            estimator: Name of the estimator to use (e.g.
+                ``'least_squares'``, ``'poisson'``); forwarded to
+                ``fit_with_estimator``.
+            p0: Optional initial parameter guess forwarded to each per-pixel
+                fitter.
+            bounds: Optional parameter bounds forwarded to each per-pixel
+                fitter.
+            n_jobs: Number of parallel worker processes for joblib (default
+                -1, all cores).
+            backend: joblib parallel backend (default ``'loky'``).
+            **kwargs: Additional keyword arguments forwarded to each pixel's
+                ``fit_with_estimator`` call (e.g. ``shift_method``, solver
+                tolerances).
+
+        Returns:
+            dict or None: A results dataset with keys ``'name'``,
+            ``'method'``, and ``'results'`` (containing ``'maps'``,
+            ``'error_maps'``, and ``'TR_maps'``), or None if no valid pixels
+            were found in the mask.
+        """
         H, W, T = image_cube.shape
         
         if mask is not None and np.max(mask) > 1 and _GlobalFLIFitter is not None and issubclass(self.fitter_class, _GlobalFLIFitter):
@@ -147,6 +209,17 @@ class Fli_CPUProcessor:
         }
 
     def save_results(self, dataset, folder="results"):
+        """Save a per-pixel fitting results dataset to a compressed HDF5 file.
+
+        Args:
+            dataset: Results dataset as returned by :meth:`process_image`.
+            folder: Output directory; created if it does not exist (default
+                ``'results'``).
+
+        Writes:
+            ``<folder>/<dataset['name']>_results.h5`` containing groups
+            ``results/maps``, ``results/error_maps``, and ``results/TR_maps``.
+        """
         if dataset is None: return
         if not os.path.exists(folder): os.makedirs(folder)
         
@@ -168,6 +241,18 @@ class Fli_CPUProcessor:
         print(f"Analysis complete. Results saved to: {h5_path}")
 
     def load_map(self, h5_path, map_name='tau1_map'):
+        """Load a single parameter map from a saved HDF5 results file.
+
+        Args:
+            h5_path: Path to an HDF5 file previously written by
+                :meth:`save_results`.
+            map_name: Name of the map dataset to load, under
+                ``results/maps`` (default ``'tau1_map'``).
+
+        Returns:
+            numpy.ndarray or None: The requested map array, or None if it is
+            not found in the file.
+        """
         with h5py.File(h5_path, 'r') as f:
             if f'results/maps/{map_name}' in f:
                 return f[f'results/maps/{map_name}'][()]

@@ -1,11 +1,34 @@
 # spAnalysis/simulator/pattern_gen.py
 
+"""Generation of single-pixel imaging illumination patterns.
+
+Produces the DMD-compatible {0,1} Hadamard patterns and grayscale Fourier
+(DCT) basis patterns used to illuminate a scene during single-pixel
+compressive-sensing acquisition, with optional zigzag ordering for
+undersampled (sampling_ratio < 1) acquisition.
+"""
+
 import numpy as np
 from scipy.linalg import hadamard
 from scipy.fftpack import dct
 
 class BasisPatterns:
+    """Generates orthogonal illumination pattern sets for single-pixel imaging.
+
+    Supports Walsh-Hadamard patterns (split into differential {0,1} pairs
+    for DMD projection) and grayscale Fourier/DCT fringe patterns, both
+    with optional zigzag frequency ordering to prioritize low-frequency
+    patterns when undersampling.
+    """
+
     def __init__(self, resolution=(128, 128), sampling_ratio=1.0):
+        """Initialize the pattern generator for a given scene resolution.
+
+        Args:
+            resolution: (height, width) of the target scene in pixels.
+            sampling_ratio: Fraction of the total `n_total` basis patterns
+                to generate (1.0 = full sampling). Determines `n_patterns`.
+        """
         self.sampling_ratio = sampling_ratio
         self.res_h, self.res_w = resolution
         self.n_total = self.res_h * self.res_w

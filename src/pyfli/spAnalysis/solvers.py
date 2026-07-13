@@ -1,3 +1,11 @@
+"""Gaussian-noise reconstruction engines (linear back-projection and TV).
+
+Implements `BaseReconstructor.reconstruct_slice` for a single (H, W) frame
+using either fast linear back-projection or L-BFGS-B total-variation
+minimization with an L2 data-fidelity term, suitable for Gaussian-noise
+measurements.
+"""
+
 import numpy as np
 from scipy.optimize import minimize
 from .base_reconstructor import BaseReconstructor
@@ -11,9 +19,32 @@ class LinearReconstructor(BaseReconstructor):
     """
 
     def __init__(self, h, w, t, lam, differential=True, n_workers=None):
+        """Initialize the linear back-projection reconstructor.
+
+        Args:
+            h: Image height in pixels.
+            w: Image width in pixels.
+            t: Number of TCSPC time bins.
+            lam: Number of wavelength channels.
+            differential: Whether DMD patterns are differential
+                (Hadamard [P_pos; P_neg]) or single-pass.
+            n_workers: Reserved for future parallel execution.
+        """
         super().__init__(h, w, t, lam, differential, n_workers)
 
     def reconstruct_slice(self, y_slice, A):
+        """Reconstruct one (H, W) frame via linear back-projection.
+
+        Computes x = A^T y / M, i.e. the sensing matrix's transpose applied
+        to the measurements and normalized by the number of measurements.
+
+        Args:
+            y_slice: (M,) measurements for one (t, lambda) slice.
+            A: (M, N) sensing matrix (already converted from DMD patterns).
+
+        Returns:
+            Reconstructed (H, W) frame.
+        """
         A = A.astype(np.float64)
         y = y_slice.astype(np.float64)
         M = A.shape[0]
@@ -28,6 +59,19 @@ class TVReconstructor(BaseReconstructor):
     """
 
     def __init__(self, h, w, t, lam, differential=True, alpha=1.0, maxiter=500, n_workers=None):
+        """Initialize the TV-minimization reconstructor.
+
+        Args:
+            h: Image height in pixels.
+            w: Image width in pixels.
+            t: Number of TCSPC time bins.
+            lam: Number of wavelength channels.
+            differential: Whether DMD patterns are differential
+                (Hadamard [P_pos; P_neg]) or single-pass.
+            alpha: Total-variation regularization weight.
+            maxiter: Maximum L-BFGS-B iterations per (t, lambda) slice.
+            n_workers: Reserved for future parallel execution.
+        """
         super().__init__(h, w, t, lam, differential, n_workers)
         self.alpha = alpha
         self.maxiter = maxiter
@@ -60,6 +104,18 @@ class TVReconstructor(BaseReconstructor):
         return fidelity + alpha * tv, grad_fidelity + alpha * grad_tv.flatten()
 
     def reconstruct_slice(self, y_slice, A):
+        """Reconstruct one (H, W) frame via TV-regularized L-BFGS-B minimization.
+
+        Minimizes 0.5 * ||Ax - y||^2 + alpha * TV(x), starting from the
+        linear back-projection estimate as the initial guess.
+
+        Args:
+            y_slice: (M,) measurements for one (t, lambda) slice.
+            A: (M, N) sensing matrix (already converted from DMD patterns).
+
+        Returns:
+            Reconstructed (H, W) frame.
+        """
         A = A.astype(np.float64)
         y = y_slice.astype(np.float64)
         M = A.shape[0]
