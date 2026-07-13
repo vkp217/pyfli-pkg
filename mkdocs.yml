@@ -1,6 +1,5 @@
 site_name: pyfli
 site_description: Unified Fluorescence Lifetime Imaging (FLI) data processing platform using analytical and deep learning methods.
-site_url: https://vkp217.github.io/pyfli-pkg/
 repo_url: https://github.com/vkp217/pyfli-pkg
 repo_name: vkp217/pyfli-pkg
 edit_uri: edit/main/docs/
