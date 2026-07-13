@@ -1,3 +1,9 @@
+"""IRF-convolved mono-/bi-exponential forward model for FLI/FLIM decay curves.
+
+Provides the analytical decay kernel and its convolution with a normalised
+instrument response function (IRF), used by the NLSF and MLE fitters to
+evaluate the forward model for a given parameter vector.
+"""
 
 import numpy as np
 
@@ -36,6 +42,25 @@ def model_numpy(
     params,
     model_type: str,
 ) -> np.ndarray:
+    """Evaluate the IRF-convolved mono- or bi-exponential decay model.
+
+    Splits ``params`` into the temporal shift (last element) and the decay
+    kernel parameters, evaluates the decay kernel via :func:`decay_kernel`,
+    normalises the IRF to unit area, and convolves the kernel with the
+    normalised IRF (linear/full convolution truncated to the length of ``t``).
+
+    Args:
+        t: Time axis (ns) at which to evaluate the model.
+        irf: Instrument response function samples, same length as the kernel.
+        params: Parameter vector. Last element is the temporal shift
+            (``h_shift``, ns); the preceding elements are the decay-kernel
+            parameters (see :func:`decay_kernel`).
+        model_type: Either ``'mono-exponential'`` or ``'bi-exponential'``.
+
+    Returns:
+        numpy.ndarray: The IRF-convolved decay curve, same length as ``t``,
+        with the vertical offset (``v_shift``) added.
+    """
     params = np.asarray(params, dtype=float)
 
     h_shift       = float(params[-1])

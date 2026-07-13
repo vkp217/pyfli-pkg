@@ -1,3 +1,15 @@
+"""Laguerre-expansion deconvolution and multi-exponential FLI fitting.
+
+Implements the Laguerre Expansion Technique (LET) for fluorescence
+lifetime imaging: the measured decay at every pixel is expressed as a
+linear combination of a discrete Laguerre basis convolved with the
+instrument response function (IRF), the Laguerre coefficients are solved
+by (optionally regularized) least squares, and the resulting
+IRF-deconvolved impulse response is then fit pixel-by-pixel with a sum of
+``n_components`` exponentials to recover per-pixel lifetimes, amplitudes
+and derived maps (mean lifetime, FRET efficiency, goodness-of-fit, etc.).
+"""
+
 from __future__ import annotations
 from typing import Optional
 import numpy as np
@@ -7,6 +19,20 @@ from tqdm.auto import tqdm
 from ..solver.base_static import moment_based_guess
 
 class LaguerreFLI:
+    """Laguerre-expansion deconvolution and multi-exponential lifetime fitting.
+
+    Fits time-resolved fluorescence decay images (X, Y, T) against an
+    instrument response function (IRF) using the discrete Laguerre
+    expansion technique, then decomposes the deconvolved impulse response
+    at each pixel into ``n_components`` exponential decay components.
+
+    Typical usage is ``model = LaguerreFLI(...); model.fit(decay, irf);
+    result = model.get_parameters()``. After `fit` is called, results are
+    also available as instance attributes such as ``taus_``,
+    ``amplitudes_``, ``fractions_``, ``tau_mean_``, ``coeffs_``,
+    ``reconstructed_``, ``fit_curve_``, ``residual_curve_`` and
+    ``converged_``.
+    """
 
     def __init__(
         self,
@@ -22,6 +48,51 @@ class LaguerreFLI:
         nonneg: bool = True,
         verbose: bool = True,
     ):
+        """Configure the Laguerre deconvolution and exponential fitting model.
+
+        Args:
+            n_components: Number of exponential decay components to fit
+                per pixel (N in the amplitude/lifetime maps). Must be
+                >= 1.
+            n_laguerre: Number of discrete Laguerre basis functions used
+                to represent the deconvolved impulse response. Defaults
+                to ``max(4, 2 * n_components)`` if not given. Must be
+                >= ``n_components``.
+            alpha: Laguerre basis scale/decay parameter, strictly between
+                0 and 1. Ignored (recomputed) if ``auto_alpha`` is True.
+            dt: Time-bin width, in the same units as ``laser_period_ns``
+                (nanoseconds), used to convert bin indices to time and to
+                bound lifetime search ranges. Must be positive.
+            auto_alpha: If True, ``alpha`` is optimized automatically from
+                the average decay/IRF during `fit` instead of using the
+                supplied value.
+            taus_init: Optional initial guess for the global lifetimes,
+                shape ``(n_components,)``. If not given (or wrong size), an
+                initial guess is instead derived from the average decay
+                via moment-based estimation.
+            laser_period_ns: Laser repetition period, in nanoseconds. Used
+                as the upper bound for lifetime search ranges and as
+                fallback timing information for the initial-guess
+                heuristic. If None, the acquisition window (``T * dt``)
+                is used instead.
+            reg_strength: Strength of Tikhonov-style regularization
+                applied when solving for Laguerre coefficients. 0 disables
+                regularization (uses plain least squares); values > 0
+                penalize higher-order coefficients according to
+                ``reg_power``.
+            reg_power: Exponent controlling how strongly higher-order
+                Laguerre coefficients are penalized when
+                ``reg_strength > 0``.
+            nonneg: If True, per-pixel exponential amplitudes are
+                constrained to be non-negative via NNLS; otherwise
+                unconstrained least squares is used.
+            verbose: If True, show progress bars during `fit`.
+
+        Raises:
+            ValueError: If ``n_components < 1``, ``alpha`` is not in
+                (0, 1), ``dt <= 0``, ``laser_period_ns <= 0`` (when
+                given), or ``n_laguerre < n_components``.
+        """
         if n_components < 1:
             raise ValueError("n_components must be >= 1.")
         if not (0.0 < alpha < 1.0):
@@ -240,6 +311,54 @@ class LaguerreFLI:
         irf: np.ndarray,
         mask: Optional[np.ndarray] = None,
     ) -> "LaguerreFLI":
+        """Fit the Laguerre-deconvolution and multi-exponential model to decay data.
+
+        Pipeline:
+
+        1. Builds the discrete Laguerre basis (optimizing ``alpha`` first
+           if ``auto_alpha`` is True).
+        2. Solves for per-pixel Laguerre coefficients by (regularized)
+           least squares against the IRF-convolved basis — using a single
+           shared IRF fit if the IRF is 1D or all per-pixel IRFs are
+           identical (after normalization), otherwise grouping pixels by
+           unique (normalized) IRF and fitting each group separately.
+        3. Reconstructs the deconvolved impulse response
+           (``basis.T @ coeffs``) at every pixel.
+        4. Estimates global initial lifetimes from the mask-averaged
+           deconvolved response (moment-based guess refined by nonlinear
+           least squares).
+        5. Fits ``n_components`` exponentials to every pixel's
+           deconvolved response via bounded nonlinear least squares
+           (lifetimes) with NNLS or plain least squares (amplitudes)
+           nested inside the residual function.
+        6. Computes the intensity-weighted mean lifetime per pixel.
+
+        Populates instance attributes including ``basis_``, ``V_``,
+        ``coeffs_``, ``taus_``, ``amplitudes_``, ``fractions_``,
+        ``tau_mean_``, ``converged_``, ``reconstructed_``,
+        ``fit_curve_``, ``residual_curve_``, ``residuals_`` and
+        ``decay_``.
+
+        Args:
+            decay: Time-resolved decay data, shape (T,) for a single
+                trace or (X, Y, T) for an image stack.
+            irf: Instrument response function, either shape (T,) shared
+                across all pixels, or (X, Y, T) matching ``decay`` for a
+                per-pixel IRF.
+            mask: Optional boolean array of shape (X, Y) restricting which
+                pixels contribute to the average decay/IRF used for the
+                global lifetime estimate and per-pixel fitting loop.
+
+        Returns:
+            LaguerreFLI: ``self``, allowing method chaining (e.g.
+            ``LaguerreFLI(...).fit(decay, irf).get_parameters()``).
+
+        Raises:
+            ValueError: If ``decay`` does not have shape (T,) or
+                (X, Y, T), if ``mask`` shape does not match the image
+                shape, or if ``irf`` shape is not (T,) or (X, Y, T)
+                matching ``decay``.
+        """
         decay = np.asarray(decay, dtype=np.float64)
         irf   = np.asarray(irf,   dtype=np.float64)
 
@@ -349,6 +468,34 @@ class LaguerreFLI:
         return self
 
     def get_parameters(self, data_name: str = "LaguerreFLI_Dataset") -> dict:
+        """Assemble fitted maps and diagnostics into a results dictionary.
+
+        Builds per-pixel lifetime and amplitude-fraction maps (one pair
+        per component, or a single ``tau_map``/``alpha_map`` pair when
+        ``n_components == 1``), plus derived diagnostic maps: photon
+        count, intensity-weighted mean lifetime, FRET efficiency (from
+        components 1 and 2 when ``n_components >= 2``), R-squared,
+        chi-squared and reduced chi-squared (computed against the
+        Laguerre-basis fit curve using a Poisson-like variance
+        approximation), convergence flags and pixel-health flags. Also
+        includes the time-resolved fit/residual/deconvolved-response
+        curves. Prints the mean reduced chi-squared over active pixels.
+
+        Args:
+            data_name: Name to store under the ``'name'`` key of the
+                returned dictionary (used e.g. as a dataset identifier).
+
+        Returns:
+            dict: Dictionary with keys ``'name'``, ``'method'`` (e.g.
+            ``'LaguerreFLI_2exp'``) and ``'results'``, where
+            ``results`` contains ``'maps'`` (2D per-pixel maps),
+            ``'error_maps'`` (currently a zero-filled placeholder array)
+            and ``'TR_maps'`` (time-resolved fit/residual/sdf curves).
+
+        Raises:
+            RuntimeError: If `fit` has not been called yet (i.e.
+                ``coeffs_`` is None).
+        """
         if self.coeffs_ is None:
             raise RuntimeError("Call .fit(decay, irf) first.")
 
@@ -442,6 +589,19 @@ class LaguerreFLI:
         }
 
     def save_results(self, dataset: dict, folder: str = "results") -> None:
+        """Write a results dictionary (from `get_parameters`) to an HDF5 file.
+
+        Creates ``folder`` if needed and writes
+        ``{folder}/{dataset['name']}_results.h5`` with the method name as
+        a file attribute, and gzip-compressed datasets for each entry in
+        ``dataset['results']['maps']``, the error-maps array, and each
+        entry in ``dataset['results']['TR_maps']``. Does nothing if
+        ``dataset`` is None.
+
+        Args:
+            dataset: Results dictionary as returned by `get_parameters`.
+            folder: Output directory for the HDF5 file.
+        """
         import h5py, os
         if dataset is None:
             return
@@ -462,6 +622,18 @@ class LaguerreFLI:
         print(f"Analysis complete. Results saved to: {h5_path}")
 
     def load_map(self, h5_path: str, map_name: str = "tau1_map") -> Optional[np.ndarray]:
+        """Load a single named map from an HDF5 results file written by `save_results`.
+
+        Args:
+            h5_path: Path to the HDF5 results file.
+            map_name: Name of the map dataset under ``results/maps`` to
+                load (e.g. "tau1_map", "alpha_map", "tau_mean_map").
+
+        Returns:
+            Optional[np.ndarray]: The requested map array, or None if
+            ``map_name`` is not found (a message is printed in that
+            case).
+        """
         import h5py
         with h5py.File(h5_path, "r") as f:
             key = f"results/maps/{map_name}"
@@ -471,11 +643,23 @@ class LaguerreFLI:
             return None
 
     def predict(self) -> np.ndarray:
+        """Return the deconvolved impulse-response stack computed during `fit`.
+
+        Returns:
+            np.ndarray: The reconstructed (deconvolved) response stack,
+            shape (X, Y, T), i.e. ``basis_.T @ coeffs_`` reshaped per
+            pixel.
+
+        Raises:
+            RuntimeError: If `fit` has not been called yet (i.e.
+                ``reconstructed_`` is None).
+        """
         if self.reconstructed_ is None:
             raise RuntimeError("Call .fit(decay, irf) first.")
         return self.reconstructed_
 
     def __repr__(self) -> str:
+        """Return a concise string summary of the model's configuration."""
         period = f"{self.laser_period_ns} ns" if self.laser_period_ns is not None else "not set"
         return (
             f"LaguerreFLI(n_components={self.n_components}, "

@@ -1,9 +1,23 @@
 #  simulator/distributions.py
 
+"""Random-variable sampling helpers used to draw simulated FLI pixel parameters.
+
+Provides static helpers for sampling quantum efficiency, hardware read-noise
+levels, and lifetime/amplitude parameters (beta and truncated-normal
+distributions) used throughout the simulator package.
+"""
+
 import numpy as np
 from scipy.stats import truncnorm
 
 class ParameterSampler:
+    """Collection of static methods for sampling simulator parameters.
+
+    All methods are stateless (``@staticmethod``) and accept an optional
+    ``rng`` (a NumPy ``Generator`` or ``RandomState``-like object exposing
+    ``.uniform``/``.beta``); when ``rng`` is None, ``numpy.random`` is used.
+    """
+
     @staticmethod
     def sample_qe(sensor_type='ICCD', rng=None):
         """Samples QE based on sensor type."""

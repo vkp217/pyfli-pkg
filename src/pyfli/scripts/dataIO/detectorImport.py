@@ -1,3 +1,4 @@
+"""Detector-specific FLIM data loading pipelines (SS3, SS2, ICCD, BH-TCSPC, generic)."""
 import os
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
@@ -26,6 +27,19 @@ class Detector:
                  mask_path=None,
                  hp_path=None,
                  bit_size=10):
+        """Initialize the Detector with paths and correction settings.
+
+        Args:
+            data_path: Path to the decay data file or folder.
+            irf_path: Path to the instrument response function file or
+                folder.
+            bg_path: Path to the background file or folder.
+            mask_path: Path to a mask image/file.
+            hp_path: Path to a hot-pixel mask image (PNG/JPEG/TIFF).
+            bit_size: Photon counter depth (SS3/SS2) or ADC bit depth
+                (ICCD) used in pile-up correction. Dynamic range is
+                ``2**bit_size - 1``.
+        """
         self.data_path = data_path
         self.irf_path  = irf_path
         self.bg_path   = bg_path

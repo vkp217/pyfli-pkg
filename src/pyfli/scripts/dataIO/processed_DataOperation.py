@@ -1,3 +1,4 @@
+"""Importers and plotting helpers for pre-processed FLIM analysis outputs (AlliG, BH, PyFli)."""
 import numpy as np
 import os
 import glob
@@ -5,6 +6,12 @@ import matplotlib.pyplot as plt
 import json
 
 class DatasetPlotter:
+    """Mixin providing a standard plotting routine for imported dataset maps.
+
+    Expects the including class to expose a ``self.dataset`` dict with a
+    ``dataset['results']['maps']`` mapping of map name to array, as built by
+    :class:`AlliGprocessedImport` and :class:`BHprocessedImport`.
+    """
     def _plotting_maps(self):
         if not hasattr(self, 'dataset') or not self.dataset or not self.dataset['results']['maps']:
             print("No maps found to plot.")
@@ -42,7 +49,19 @@ class DatasetPlotter:
         return fig
 
 class AlliGprocessedImport(DatasetPlotter):
+    """Imports pre-processed AlliG fit-result maps (``*Map.txt``) and ROI masks from a folder.
+
+    Populates ``self.dataset['results']['maps']`` with mono- or bi-exponential
+    fit parameter maps, and applies any ``*.roiN`` ROI mask files found in
+    the same folder.
+    """
     def __init__(self, folder_path):
+        """Set up the dataset structure for a given AlliG output folder.
+
+        Args:
+            folder_path: Path to the folder containing AlliG ``*Map.txt``
+                and ``*.roiN`` files.
+        """
         self.folder_path = os.path.abspath(folder_path)
         self.dataset = {
             "name": os.path.basename(self.folder_path),
@@ -149,7 +168,19 @@ class AlliGprocessedImport(DatasetPlotter):
 
 
 class BHprocessedImport(DatasetPlotter):
+    """Imports pre-processed Becker & Hickl (BH) fit-result maps from ``.asc`` files.
+
+    Populates ``self.dataset['results']['maps']`` with mono- or bi-exponential
+    fit parameter maps, the phasor map, IRF, and the raw binned decay cube
+    (from a ``binned_raw_data`` file), parsed from ``.asc`` files in the
+    given folder.
+    """
     def __init__(self, folder_path):
+        """Set up the dataset structure for a given BH output folder.
+
+        Args:
+            folder_path: Path to the folder containing BH ``.asc`` files.
+        """
         self.folder_path = os.path.abspath(folder_path)
         self.dataset = {
             "name": os.path.basename(self.folder_path),
@@ -233,4 +264,9 @@ class BHprocessedImport(DatasetPlotter):
         return self.dataset
 
 class PyFliprocessedImport(DatasetPlotter):
+    """Placeholder importer for pyfli-native processed datasets.
+
+    Reserved for a future importer of pyfli's own processed output format;
+    currently defines no additional behavior beyond :class:`DatasetPlotter`.
+    """
     pass

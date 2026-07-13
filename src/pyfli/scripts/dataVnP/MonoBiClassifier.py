@@ -1,3 +1,11 @@
+"""Mono- vs bi-exponential pixel classification and cross-method parameter
+correlation analysis for FLI/FLIM fit results.
+
+Provides `MonoBiClassifier` for classifying pixels of one or more fitted
+datasets as mono- or bi-exponential and comparing agreement between
+methods, and `ParamCorrelationMatrix` for correlating fitted parameters
+across datasets without requiring a classification step.
+"""
 from .colorProcess import Colorprocess
 from .mdataViz import DataViewer
 import numpy as np
@@ -50,6 +58,27 @@ class MonoBiClassifier:
                  alpha_upper=0.95, alpha_lower=0.05,
                  tau_tol=0.01,
                  coord=None, figsize=None):
+        """Create a MonoBiClassifier.
+
+        See the class docstring for the meaning of `alpha_upper`,
+        `alpha_lower`, and `tau_tol`.
+
+        Args:
+            b_bool_mask (np.ndarray): Boolean (or 0/1) ROI mask; only pixels
+                where this is truthy are included in classification.
+            names (list[str], optional): Default dataset names, used by
+                `classify()` when it is not given its own `names` argument.
+            alpha_upper (float): Upper alpha1 saturation threshold. Defaults
+                to 0.95.
+            alpha_lower (float): Lower alpha1 saturation threshold. Defaults
+                to 0.05.
+            tau_tol (float): Lifetime coincidence tolerance in ns. Defaults
+                to 0.01.
+            coord (tuple[int, int], optional): Pixel to mark/plot in
+                `display_one`.
+            figsize (tuple, optional): Figure size passed through to
+                `display_one`.
+        """
         self.roi         = np.asarray(b_bool_mask).astype(int)
         self.n_roi       = int(self.roi.sum())
         self.names       = names
@@ -65,6 +94,25 @@ class MonoBiClassifier:
 
     # ════════════════════════════ classification ═══════════════════════════
     def classify_one(self, res, name="Dataset"):
+        """Classify the pixels of a single fitted dataset as mono or bi.
+
+        Applies the alpha-saturation and tau-coincidence rules described in
+        the class docstring, restricted to the ROI in `self.roi`.
+
+        Args:
+            res (dict): Fit-result dict for one dataset. Must contain
+                'alpha1_map', 'tau1_map', and 'tau2_map' arrays (same shape
+                as `self.roi`).
+            name (str): Label to store under the 'name' key of the result.
+                Defaults to "Dataset".
+
+        Returns:
+            dict: Keys 'name', 'mono' (int array, 1 where classified mono),
+            'bi' (int array, 1 where classified bi), 'combined'
+            (0=outside ROI, 1=mono, 2=bi), 'mono_mask' (ROI-restricted
+            boolean mono mask), 'mono_frac' and 'bi_frac' (fraction of ROI
+            pixels classified mono/bi, NaN if the ROI is empty).
+        """
         # Lifetime coincidence: use tolerance instead of exact float equality.
         # tau1 == tau2 almost never holds for fitted floats even when both
         # optimisers converge to the same value (e.g. 1.2000000001 != 1.2).
@@ -93,6 +141,20 @@ class MonoBiClassifier:
                 'mono_frac': mono_frac, 'bi_frac': bi_frac}
 
     def display_one(self, result):
+        """Display the combined/mono/bi maps for one classification result.
+
+        Delegates to `DataViewer.display_data` to render a 1x3 panel of the
+        combined, mono, and bi maps side by side, using `self.cmaps`,
+        `self.coord`, and `self.figsize`.
+
+        Args:
+            result (dict): A per-dataset result dict as returned by
+                `classify_one`, containing 'name', 'combined', 'mono', and
+                'bi' keys.
+
+        Returns:
+            None
+        """
         name = result['name']
         DataViewer().display_data(
             [result['combined'], result['mono'], result['bi']],
@@ -119,6 +181,15 @@ class MonoBiClassifier:
         return self.results
 
     def summary(self):
+        """Print and return the mono/bi fraction summary for each dataset.
+
+        Requires `classify()` to have been run first (otherwise `self.results`
+        is empty and nothing is printed).
+
+        Returns:
+            list[dict]: `self.results`, the per-dataset classification
+            result dicts.
+        """
         for r in self.results:
             print(f"{r['name']:<18s}  mono: {r['mono_frac']:6.1%}   "
                   f"bi: {r['bi_frac']:6.1%}")
@@ -325,6 +396,20 @@ class ParamCorrelationMatrix:
                "#BB8FCE", "#7FB3D5", "#76D7C4"]
 
     def __init__(self, all_datasets, bool_mask, names=None):
+        """Create a ParamCorrelationMatrix.
+
+        Args:
+            all_datasets (list[dict]): Per-method parameter-map dicts (each
+                maps parameter name to a (H, W) or (H, W, N) array).
+            bool_mask (np.ndarray): (H, W) boolean ROI mask; pixels included
+                in every analysis.
+            names (list[str], optional): Display labels for each dataset.
+                Defaults to "Dataset 1", "Dataset 2", ...
+
+        Raises:
+            ValueError: If `names` is given and its length does not match
+                `len(all_datasets)`.
+        """
         self.all_datasets = list(all_datasets)
         self.roi          = np.asarray(bool_mask).astype(bool)
         N                 = len(self.all_datasets)

@@ -64,6 +64,11 @@ dev = [
     "pytest",
     "black",
 ]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings[python]",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

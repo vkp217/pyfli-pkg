@@ -1,3 +1,9 @@
+"""High-level loader for FLIM data, IRF, background, and mask files.
+
+Dispatches to format-specific readers in ``dataops_static`` based on file
+extension, and supports single files or folders of files (loaded and
+optionally corrected/aggregated in parallel).
+"""
 import os
 import numpy as np
 import tifffile
@@ -10,6 +16,14 @@ from tqdm import tqdm
 from .dataops_static import Staticdataops as ds
 
 class DataOperations:
+    """Loads and assembles FLIM decay, IRF, background, and mask data.
+
+    Given paths to a data file/folder, IRF file/folder, background
+    file/folder, and mask file, this class handles format dispatch (via a
+    ``loader_registry`` keyed by extension), optional pile-up and hot-pixel
+    correction, background subtraction, and packaging of the results into a
+    dataset dictionary consumed by downstream analysis code.
+    """
     def __init__(self, data_path=None, irf_path=None, bg_path=None, mask_path=None, hp_path=None):
         """
         Initializes the DataOperations class with paths to relevant data files.
@@ -34,6 +48,19 @@ class DataOperations:
     # --- PUBLIC API ---
 
     def load_data(self, sub_bg=True, pile_up=False, hot_pixel=False):
+        """Load the main decay data from ``self.data_path``.
+
+        Args:
+            sub_bg: If True, subtract the loaded background from the data
+                (only applied when loading from a folder).
+            pile_up: If True, apply pile-up correction to each frame.
+            hot_pixel: If True, apply hot-pixel interpolation correction.
+
+        Returns:
+            numpy.ndarray or None: The loaded (and optionally corrected)
+            data array, or ``None`` if ``self.data_path`` is not set or does
+            not exist.
+        """
         print(f"Initiating DATA load from: {self.data_path}")
         return self._general_loader(self.data_path, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel, label="DATA")
 
@@ -60,10 +87,35 @@ class DataOperations:
         return None
 
     def load_irf(self, sub_bg=False, pile_up=False, hot_pixel=False):
+        """Load the instrument response function (IRF) from ``self.irf_path``.
+
+        Args:
+            sub_bg: If True, subtract the loaded background from the IRF
+                (only applied when loading from a folder).
+            pile_up: If True, apply pile-up correction to each frame.
+            hot_pixel: If True, apply hot-pixel interpolation correction.
+
+        Returns:
+            numpy.ndarray or None: The loaded (and optionally corrected) IRF
+            array, or ``None`` if ``self.irf_path`` is not set or does not
+            exist.
+        """
         print(f"Initiating IRF load from: {self.irf_path}")
         return self._general_loader(self.irf_path, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel, label="IRF")
 
     def load_all_parallel(self, sub_bg=True, pile_up=False, hot_pixel=False):
+        """Load DATA, IRF, and background concurrently in separate threads.
+
+        Args:
+            sub_bg: If True, subtract background from the data and IRF.
+            pile_up: If True, apply pile-up correction to each frame.
+            hot_pixel: If True, apply hot-pixel interpolation correction.
+
+        Returns:
+            tuple: ``(data, irf, background)`` as returned by
+            :meth:`load_data`, :meth:`load_irf`, and :meth:`load_background`
+            respectively.
+        """
         print("Starting synchronized parallel loading for DATA, IRF, and BG...")
         with ThreadPoolExecutor(max_workers=3) as executor:
             data_future = executor.submit(self.load_data, sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel)
@@ -73,6 +125,27 @@ class DataOperations:
             return data_future.result(), irf_future.result(), bg_future.result()
 
     def make_dataset(self, name="Experiment_1", source="ICCD", sub_bg=True, pile_up=False, hot_pixel=False):
+        """Load data, IRF, background, and mask, and assemble them into a dataset dict.
+
+        Loads DATA/IRF/BG in parallel if all three paths are set, otherwise
+        loads each sequentially as available. Prints a warning if the
+        temporal dimension of the data and IRF do not match.
+
+        Args:
+            name: Name to store under the ``"name"`` key of the dataset.
+            source: Source label to store under the ``"source"`` key of the
+                dataset (e.g. detector type).
+            sub_bg: If True, subtract background from the data and IRF.
+            pile_up: If True, apply pile-up correction to each frame.
+            hot_pixel: If True, apply hot-pixel interpolation correction.
+
+        Returns:
+            dict: A dataset dictionary with ``"name"``, ``"source"``,
+            ``"raw_data"`` (decay, irf, background, mask), ``"metadata"``
+            (shape and processing flags), and an empty ``"result"``
+            structure (maps and TR_maps) to be filled in by downstream
+            fitting code.
+        """
         # Fix 2: Check for dimension consistency
         if all([self.data_path, self.irf_path, self.bg_path]):
             data, irf, background = self.load_all_parallel(sub_bg=sub_bg, 
@@ -114,6 +187,16 @@ class DataOperations:
         }
 
     def load_mask(self):
+        """Load a boolean mask from ``self.mask_path``.
+
+        If the loaded mask is 3D, it is averaged over the last axis before
+        thresholding.
+
+        Returns:
+            numpy.ndarray or None: Boolean mask array (values greater than
+            the array minimum are True), or ``None`` if ``self.mask_path``
+            is not set or the file could not be loaded.
+        """
         if not self.mask_path: return None
         print(f"Loading mask from: {self.mask_path}")
         mask = self._load_single_file(self.mask_path)

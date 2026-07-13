@@ -1,4 +1,10 @@
 # solver/comparison.py
+"""Utilities for benchmarking and visually comparing multiple FLI fitting estimators.
+
+Defines :class:`FittingComparator`, which runs NLSF and MLE estimators on the
+same decay/IRF trace, prints a formatted comparison table, and produces a
+diagnostic overlay-and-residuals plot.
+"""
 import numpy as np
 import time
 import io
@@ -6,6 +12,23 @@ import contextlib
 import matplotlib.pyplot as plt
 
 class FittingComparator:
+    """Runs and compares multiple NLSF/MLE fitting estimators on a single decay trace.
+
+    Dispatches to either the NLSF base fitter class or the MLE fitter class
+    depending on the requested estimator, prints a formatted comparison
+    table, optionally plots overlaid fits and residuals, and can persist the
+    results.
+
+    Args:
+        freq: Two-element frequency descriptor ``[laser_freq, acquisition_freq]``
+            (MHz) passed through to the fitter classes.
+        base_fitter_class: NLSF fitter class (e.g. ``BaseFLIFitter``) used for
+            the ``'least_squares'``, ``'trust_region'``, and ``'unconstrained'``
+            estimators.
+        mle_fitter_class: MLE fitter class (e.g. ``MLEFLIFitter``) used for the
+            ``'poisson'``, ``'pearson'``, and ``'neyman'`` estimators.
+    """
+
     def __init__(self, freq, base_fitter_class, mle_fitter_class):
         self.freq = freq
         self.BaseClass = base_fitter_class
@@ -112,6 +135,40 @@ class FittingComparator:
 
     def compare_selected(self, methods, y_data, irf_data, model_type='bi-exponential',
                          p0=None, bounds=None, yscale='log', plot=True):
+        """Fit a decay/IRF pair with each of the requested estimators and print/plot a comparison.
+
+        For every method in ``methods`` that is present in
+        ``self.method_mapping``, instantiates the appropriate fitter class,
+        runs ``fit_with_estimator``, computes per-method normalised residuals
+        over the fitted range, prints a formatted summary table, and
+        (optionally) builds a diagnostic comparison figure. Fitting failures
+        for an individual method are caught and recorded as "FAIL" rows
+        rather than aborting the whole comparison.
+
+        Args:
+            methods: Iterable of estimator names to run (subset of
+                ``self.method_mapping`` keys: ``'least_squares'``,
+                ``'trust_region'``, ``'unconstrained'``, ``'poisson'``,
+                ``'pearson'``, ``'neyman'``).
+            y_data: 1D measured decay trace.
+            irf_data: 1D instrument response function trace.
+            model_type: Either ``'mono-exponential'`` or ``'bi-exponential'``
+                (default ``'bi-exponential'``).
+            p0: Optional initial parameter guess forwarded to each fitter.
+            bounds: Optional parameter bounds forwarded to each fitter.
+            yscale: Matplotlib y-axis scale for the raw-data/fit plot
+                (default ``'log'``).
+            plot: If True, build and display a diagnostic comparison figure.
+
+        Returns:
+            tuple: ``(results_table, fig)`` where ``results_table`` is a list
+            of rows ``[method, category, success, elapsed, r2, chi_sq,
+            red_chi_sq, popt]`` and ``fig`` is the matplotlib Figure (or None
+            if ``plot`` is False or no method produced a plottable fit).
+
+        Raises:
+            ValueError: If ``y_data`` or ``irf_data`` is not 1-dimensional.
+        """
         results_table = []
         if y_data.ndim != 1 or irf_data.ndim != 1:
             raise ValueError("compare_selected expects 1D decay and IRF traces")
@@ -180,6 +237,22 @@ class FittingComparator:
         return results_table, fig
 
     def run_all(self, y_data, irf_data, model_type='bi-exponential', p0=None, bounds=None, yscale='log', plot=True):
+        """Run :meth:`compare_selected` using every estimator registered in ``method_mapping``.
+
+        Args:
+            y_data: 1D measured decay trace.
+            irf_data: 1D instrument response function trace.
+            model_type: Either ``'mono-exponential'`` or ``'bi-exponential'``
+                (default ``'bi-exponential'``).
+            p0: Optional initial parameter guess forwarded to each fitter.
+            bounds: Optional parameter bounds forwarded to each fitter.
+            yscale: Matplotlib y-axis scale for the raw-data/fit plot
+                (default ``'log'``).
+            plot: If True, build and display a diagnostic comparison figure.
+
+        Returns:
+            tuple: Same as :meth:`compare_selected` — ``(results_table, fig)``.
+        """
         return self.compare_selected(list(self.method_mapping.keys()), y_data, irf_data, 
                                      model_type, p0, bounds, yscale=yscale, plot=plot)
 
@@ -219,6 +292,21 @@ class FittingComparator:
 
     def save_results(self, saver, results_table, fig=None,
                      model_type='bi-exponential', name="fitting_comparison"):
+        """Persist a comparison run's summary table, figure, and results as JSON.
+
+        Args:
+            saver: An object exposing ``log(line)``, ``save_plot(name,
+                fig=..., dpi=..., close=...)``, and ``save_json(name, data)``
+                methods (e.g. a project results-saver helper).
+            results_table: The results table produced by
+                :meth:`compare_selected` or :meth:`run_all`.
+            fig: Optional matplotlib Figure to save via ``saver.save_plot``.
+            model_type: Either ``'mono-exponential'`` or ``'bi-exponential'``,
+                used to format the printed summary table (default
+                ``'bi-exponential'``).
+            name: Base filename used for the saved plot and JSON files
+                (default ``'fitting_comparison'``).
+        """
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             self._print_summary_table(results_table, model_type)
