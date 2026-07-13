@@ -1,9 +1,36 @@
 # scripts/dataCC/norm.py
 
+"""Normalization routines for 1D decay traces and 3D decay data cubes.
+
+This module provides :class:`Normalization`, which offers several
+normalization schemes (0-1 scaling, min-max scaling, rescaling to a
+reference's peak, global peak scaling, and conversion to a probability
+density) for one or more 1D or 3D arrays, gated by a total-intensity
+threshold.
+"""
+
 import numpy as np
 
 class Normalization:
+    """Applies threshold-gated normalization schemes to 1D or 3D arrays.
+
+    Each public method operates on every array passed to the constructor
+    and skips (returns unchanged) any array whose total intensity does not
+    exceed ``threshold``.
+
+    Attributes:
+        data (list[np.ndarray]): The input array(s), each converted to a
+            ``np.ndarray`` via ``np.asarray``.
+    """
+
     def __init__(self, data):
+        """Initializes the normalizer with one or more arrays.
+
+        Args:
+            data (np.ndarray or list[np.ndarray] or tuple[np.ndarray]): A
+                single array, or a list/tuple of arrays, each either 1D
+                (a single trace) or 3D (a data cube of shape ``(H, W, T)``).
+        """
         if isinstance(data, (list, tuple)):
             self.data = [np.asarray(d) for d in data]
         else:
@@ -26,6 +53,23 @@ class Normalization:
             return np.sum(arr, axis=2, keepdims=True) > threshold
 
     def zerone(self, threshold=0):
+        """Rescales each array to the ``[0, 1]`` range.
+
+        For each array, subtracts the per-trace (1D) or per-pixel (3D,
+        along the last axis) minimum and divides by the min-max range.
+        Arrays/pixels whose total intensity does not exceed ``threshold``
+        are left unchanged.
+
+        Args:
+            threshold (float): Minimum total intensity (summed over the
+                trace/time axis) required for normalization to be applied.
+                Defaults to 0.
+
+        Returns:
+            np.ndarray or list[np.ndarray]: The normalized array if only
+            one was supplied at construction, otherwise a list of
+            normalized arrays in the same order as ``self.data``.
+        """
         normalized = []
         for arr in self.data:
             mask = self._threshold_mask(arr, threshold)
@@ -46,6 +90,23 @@ class Normalization:
         return normalized if len(normalized) > 1 else normalized[0]
 
     def minmax(self, threshold=0):
+        """Rescales each array by dividing by its own peak value.
+
+        Unlike :meth:`zerone`, this does not subtract the minimum first —
+        it only divides by the per-trace (1D) or per-pixel (3D) maximum.
+        Arrays/pixels whose total intensity does not exceed ``threshold``
+        are left unchanged.
+
+        Args:
+            threshold (float): Minimum total intensity (summed over the
+                trace/time axis) required for normalization to be applied.
+                Defaults to 0.
+
+        Returns:
+            np.ndarray or list[np.ndarray]: The normalized array if only
+            one was supplied at construction, otherwise a list of
+            normalized arrays in the same order as ``self.data``.
+        """
         normalized = []
         for arr in self.data:
             mask = self._threshold_mask(arr, threshold)
@@ -63,6 +124,27 @@ class Normalization:
         return normalized if len(normalized) > 1 else normalized[0]
 
     def norm_scale(self, ref_data, threshold=0):
+        """Zero-one normalizes each array, then rescales it to a reference peak.
+
+        Each array in ``self.data`` is first normalized to ``[0, 1]`` via
+        :meth:`zerone`, then multiplied by the peak value of ``ref_data``
+        (per-pixel peak, along the last axis, if ``ref_data`` is 3D).
+
+        Args:
+            ref_data (np.ndarray): Reference array (1D or 3D) whose peak
+                value is used to rescale the zero-one-normalized data.
+            threshold (float): Minimum total intensity required, passed
+                through to :meth:`zerone` and used to gate the final
+                rescaling. Defaults to 0.
+
+        Returns:
+            np.ndarray or list[np.ndarray]: The rescaled array if only one
+            was supplied at construction, otherwise a list of rescaled
+            arrays in the same order as ``self.data``.
+
+        Raises:
+            ValueError: If ``ref_data`` is neither 1D nor 3D.
+        """
         ref_data = np.asarray(ref_data)
         if ref_data.ndim == 1:
             ref_max = np.max(ref_data)
@@ -89,6 +171,25 @@ class Normalization:
         return scaled if len(scaled) > 1 else scaled[0]
 
     def global_peak_norm_3d(self, threshold=0):
+        """Rescales each 3D array by its single global peak value.
+
+        Unlike :meth:`minmax`, which divides by the per-pixel peak, this
+        divides the whole cube by one scalar: the maximum over all pixels
+        and time bins.
+
+        Args:
+            threshold (float): Minimum total intensity (per pixel, summed
+                over the time axis) required for normalization to be
+                applied to that pixel. Defaults to 0.
+
+        Returns:
+            np.ndarray or list[np.ndarray]: The normalized array if only
+            one was supplied at construction, otherwise a list of
+            normalized arrays in the same order as ``self.data``.
+
+        Raises:
+            ValueError: If any array in ``self.data`` is not 3D.
+        """
         normalized = []
         for arr in self.data:
             if arr.ndim != 3:
@@ -102,6 +203,26 @@ class Normalization:
         return normalized if len(normalized) > 1 else normalized[0]
 
     def to_pdf(self, threshold=0):
+        """Converts each array into a probability density by normalizing its sum to 1.
+
+        Divides each trace (1D) or each pixel's time series (3D, along the
+        last axis) by its own total sum, so the result sums to 1.
+        Arrays/pixels whose total intensity does not exceed ``threshold``
+        are left unchanged.
+
+        Args:
+            threshold (float): Minimum total intensity (summed over the
+                trace/time axis) required for normalization to be applied.
+                Defaults to 0.
+
+        Returns:
+            np.ndarray or list[np.ndarray]: The normalized array if only
+            one was supplied at construction, otherwise a list of
+            normalized arrays in the same order as ``self.data``.
+
+        Raises:
+            ValueError: If an array is neither 1D nor 3D.
+        """
         pdf_data = []
         for arr in self.data:
             mask = self._threshold_mask(arr, threshold)

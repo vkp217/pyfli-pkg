@@ -1,3 +1,12 @@
+"""Discovery and loading of saved FLI/FLIM fitting results.
+
+Provides helpers to scan a pf_Analysis session directory for saved fitting
+result files (NLSF, MLE, Laguerre, FBI, phasor), load them into
+comparison-ready lists keyed by a user-chosen label, and save/inject
+individual results (Laguerre, phasor, derived mean lifetime) using the
+standardised filenames in ``RESULT_FILENAMES``.
+"""
+
 import os
 import numpy as np
 

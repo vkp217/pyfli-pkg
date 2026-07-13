@@ -1,10 +1,51 @@
+"""Alignment of an instrument response function (IRF) to a decay dataset.
+
+This module provides :class:`IRFAligner`, which background-subtracts a
+decay/IRF pair and estimates and applies a per-pixel temporal shift so the
+IRF's rising edge lines up with the decay's rising edge, either via a
+sub-pixel Fourier phase shift or an integer circular shift.
+"""
+
 import warnings
 import numpy as np
 from scipy.fft import fft, ifft, fftfreq, fftshift
 
 
 class IRFAligner:
+    """Aligns an IRF data cube to a decay data cube along the time axis.
+
+    On construction, both the decay and IRF cubes are background-subtracted
+    using the mean of their first ``noise_bins`` time bins, and a warning is
+    raised if the estimated noise baseline is large relative to the peak
+    signal (suggesting ``noise_bins`` may include real signal).
+
+    Attributes:
+        H (int): Height (first spatial dimension) of the data cubes.
+        W (int): Width (second spatial dimension) of the data cubes.
+        T (int): Number of time bins.
+        dt (float): Time-bin width, computed as ``12.5 / T``.
+        decay (np.ndarray): Background-subtracted, non-negative decay cube
+            of shape ``(H, W, T)``.
+        irf (np.ndarray): Background-subtracted, non-negative IRF cube of
+            shape ``(H, W, T)``.
+    """
+
     def __init__(self, decay, irf, noise_bins=5):
+        """Initializes the aligner and background-subtracts both inputs.
+
+        Args:
+            decay (np.ndarray): Decay data cube of shape ``(H, W, T)``.
+            irf (np.ndarray): IRF data cube of shape ``(H, W, T)``, matching
+                the shape of ``decay``.
+            noise_bins (int): Number of leading time bins averaged to
+                estimate and subtract the per-pixel noise baseline from both
+                ``decay`` and ``irf``. Defaults to 5.
+
+        Warns:
+            UserWarning: If the mean noise baseline of ``decay`` or ``irf``
+                exceeds 5% of that array's peak value, indicating the
+                ``noise_bins`` window may be contaminated by real signal.
+        """
         self.H, self.W, self.T = decay.shape
         self.dt = 12.5 / self.T
         
@@ -76,8 +117,22 @@ class IRFAligner:
         # Shift = Target - Source
         return t_decay - t_irf
 
-    def apply_fourier_shift(self, shifts):   
-        
+    def apply_fourier_shift(self, shifts):
+        """Applies a per-pixel sub-pixel shift to the IRF in the frequency domain.
+
+        Uses the FFT shift theorem to apply a fractional (sub-bin) time
+        shift to ``self.irf`` for every pixel, then clips negative values
+        introduced by the Fourier interpolation.
+
+        Args:
+            shifts (np.ndarray): Per-pixel shift amounts of shape
+                ``(H, W)``, in units of time bins, as returned by
+                :meth:`estimate_shift`.
+
+        Returns:
+            np.ndarray: The shifted, non-negative IRF cube of shape
+            ``(H, W, T)``.
+        """
         freqs = fftfreq(self.T)
         # Apply the fractional shift in the frequency domain
         phase = np.exp(-2j * np.pi * freqs[None, None, :] * shifts[:, :, None])

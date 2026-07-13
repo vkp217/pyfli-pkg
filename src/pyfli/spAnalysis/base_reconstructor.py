@@ -1,3 +1,12 @@
+"""Abstract base class for 4D single-pixel (SPAD) reconstruction engines.
+
+Defines the shared machinery for converting DMD {0,1} patterns into a
+sensing matrix, applying differential subtraction to raw measurements, and
+looping the per-slice reconstruction over the (T, Lambda) axes of a 4D
+(x, y, T, Lambda) data cube. Concrete solvers (linear back-projection, TV,
+Poisson) subclass this and implement ``reconstruct_slice``.
+"""
+
 import numpy as np
 from abc import ABC, abstractmethod
 

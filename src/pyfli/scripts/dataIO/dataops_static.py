@@ -1,4 +1,5 @@
 # dataIO/dataops_static.py
+"""Static (stateless) file-format readers and correction routines used by DataOperations and Detector."""
 import os
 import numpy as np
 import h5py
@@ -9,6 +10,12 @@ from sdtfile import SdtFile
 from pathlib import Path
 
 class Staticdataops:
+    """Namespace of static helper methods for reading FLIM file formats and applying corrections.
+
+    All methods are ``@staticmethod`` and operate purely on their arguments,
+    making them safe to call from both :class:`~pyfli.scripts.dataIO.dataoperations.DataOperations`
+    and :class:`~pyfli.scripts.dataIO.detectorImport.Detector`.
+    """
     @staticmethod
     def pileup_correction(data, bit_size=10):
         """
@@ -112,6 +119,18 @@ class Staticdataops:
 
     @staticmethod
     def load_mat_file(path):
+        """Load an array from a MATLAB ``.mat`` file.
+
+        Tries ``scipy.io.loadmat`` first (for MATLAB v5-v7 files); falls
+        back to ``h5py`` for v7.3 (HDF5-based) files, which raise
+        ``NotImplementedError`` in ``loadmat``.
+
+        Args:
+            path: Path to the ``.mat`` file.
+
+        Returns:
+            numpy.ndarray: The first non-dunder variable found in the file.
+        """
         try:
             data = loadmat(path, squeeze_me=True)
             keys = [k for k in data.keys() if not k.startswith('__')]
@@ -124,26 +143,77 @@ class Staticdataops:
         
     @staticmethod
     def load_sdt_file(path):
+        """Load the first measurement block from a Becker & Hickl / PicoQuant ``.sdt`` file.
+
+        Args:
+            path: Path to the ``.sdt`` file.
+
+        Returns:
+            numpy.ndarray: Data of the first measurement block (index 0).
+        """
         return np.asarray(SdtFile(path).data[0])
 
     @staticmethod
     def load_tiff_file(path):
+        """Load a TIFF image file.
+
+        Args:
+            path: Path to the ``.tif``/``.tiff`` file.
+
+        Returns:
+            numpy.ndarray: The image data.
+        """
         return np.asarray(tifffile.imread(path))
 
     @staticmethod
     def load_npy_file(path):
+        """Load a NumPy ``.npy`` file.
+
+        Args:
+            path: Path to the ``.npy`` file.
+
+        Returns:
+            numpy.ndarray: The loaded array.
+        """
         return np.load(path)
 
     @staticmethod
     def load_txt_file(path, target_spatial=(512, 512)):
+        """Load a whitespace-delimited text file as an array.
+
+        If the loaded data is 1D (e.g. a single IRF/trace curve), it is
+        reshaped to ``(1, 1, N)`` and tiled across ``target_spatial`` to
+        produce a pixel-variant cube.
+
+        Args:
+            path: Path to the ``.txt`` file.
+            target_spatial: ``(H, W)`` spatial shape to tile a 1D trace
+                across.
+
+        Returns:
+            numpy.ndarray: The loaded (and possibly tiled) array.
+        """
         data = np.loadtxt(path)
-        if data.ndim == 1: 
+        if data.ndim == 1:
             # Reshape 1D IRF/Trace to 3D and tile across spatial dimensions
             data = np.tile(data.reshape(1, 1, -1), (*target_spatial, 1))
         return data
 
     @staticmethod
     def load_asc_file(path, target_spatial=(512, 512)):
+        """Load a PicoQuant-style ``.asc`` file (time column 0, counts column 1).
+
+        The counts column is extracted, reshaped to ``(1, 1, N)``, and tiled
+        across ``target_spatial`` to produce a pixel-variant cube.
+
+        Args:
+            path: Path to the ``.asc`` file.
+            target_spatial: ``(H, W)`` spatial shape to tile the trace
+                across.
+
+        Returns:
+            numpy.ndarray: Array of shape ``(*target_spatial, N)``.
+        """
         data_read = np.genfromtxt(path)
         data_1d = data_read[:, 1] if data_read.ndim == 2 else data_read.flatten()
         return np.tile(data_1d.reshape(1, 1, -1), (*target_spatial, 1))

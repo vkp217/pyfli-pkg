@@ -1,6 +1,22 @@
+"""Batch generation of simulated FLI pixel samples into stacked arrays.
+
+Provides ``Batch_sim``, which repeatedly calls one or more single-pixel
+simulator callables (e.g. instances of ``Macro_sim`` / ``TCSPC_sim``) and
+stacks the resulting per-pixel dictionaries into batched NumPy arrays
+suitable for downstream ML or bulk analysis.
+"""
+
 import numpy as np
 
 class Batch_sim:
+    """Aggregates repeated single-pixel simulator calls into batched arrays.
+
+    Each method accepts one or more simulator callables (zero-argument
+    functions returning the per-pixel result dict produced by simulators
+    such as ``Macro_sim``/``TCSPC_sim``) together with a matching count of
+    how many times to call each, and stacks the results into NumPy arrays.
+    """
+
     def sim_BI(self, sim_funcs, num_list):
         """
         Generates a simplified batch dictionary with specific parameters.
@@ -25,6 +41,28 @@ class Batch_sim:
         return batch_data
 
     def generate_batch(self, sim_func_list, num_list):
+        """Generates a flat (1-D) batch preserving the full result structure.
+
+        Calls each simulator function the requested number of times, then
+        stacks the raw decay/IRF traces and all parameter maps and
+        temporal-residual maps found in the per-pixel results, keeping the
+        nested ``raw_data`` / ``results`` dictionary layout intact.
+
+        Args:
+            sim_func_list: Sequence of zero-argument simulator callables,
+                each returning a per-pixel result dict with
+                ``raw_data`` (``decay``, ``irf``) and
+                ``results`` (``maps``, ``TR_maps``) keys.
+            num_list: Sequence of counts, one per entry in
+                ``sim_func_list``, giving how many samples to draw from
+                that simulator.
+
+        Returns:
+            dict: Empty dict if no samples were generated; otherwise a
+            dict with the same nested ``raw_data``/``results`` shape as a
+            single sample, but with an added leading batch dimension on
+            every array (parameter maps reshaped to ``(-1, 1)``).
+        """
         samples = []
         for sim_func, n in zip(sim_func_list, num_list):
             samples.extend([sim_func() for _ in range(n)])
@@ -51,6 +89,28 @@ class Batch_sim:
         return batch_data
     
     def generate_batch2D(self, sim_funcs, num_list, shape=(10, 10)):
+        """Generates a batch and reshapes it into a synthetic 2-D image grid.
+
+        Like ``generate_batch``, but reshapes the stacked results into a
+        ``(rows, cols)`` grid, e.g. to synthesize a pseudo-image where each
+        "pixel" is an independently simulated decay.
+
+        Args:
+            sim_funcs: Sequence of zero-argument simulator callables.
+            num_list: Sequence of per-simulator sample counts; must sum to
+                ``rows * cols``.
+            shape: ``(rows, cols)`` target grid shape.
+
+        Returns:
+            dict: Empty dict if no samples were generated; otherwise a
+            dict with the same nested ``raw_data``/``results`` shape as
+            ``generate_batch``, with decay/IRF traces reshaped to
+            ``(rows, cols, T)`` and parameter maps reshaped to
+            ``(rows, cols)``.
+
+        Raises:
+            ValueError: If ``sum(num_list)`` does not equal ``rows * cols``.
+        """
         rows, cols = shape
         if sum(num_list) != rows * cols:
             raise ValueError(f"Sum of num_list must match shape product {rows * cols}")

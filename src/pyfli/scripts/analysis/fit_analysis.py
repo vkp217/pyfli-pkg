@@ -1,3 +1,12 @@
+"""Plotting and statistical comparison utilities for fitting results.
+
+Includes helpers to plot per-method parameter maps, pixel-level fit
+diagnostics and evidence plots, multi-method statistical comparisons
+(box/violin/KDE), 2D summary panels (map + histogram + violin + boxplot +
+KDE + qq + CDF), and mono- vs bi-exponential pixel classification across
+fitting results loaded via ``load_fitting_results``.
+"""
+
 import numpy as np
 
 from ..dataVnP import DataViewer, Plotter, Colorprocess, plot_2d_subplots, MonoBiClassifier

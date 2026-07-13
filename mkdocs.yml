@@ -1,0 +1,105 @@
+site_name: pyfli
+site_description: Unified Fluorescence Lifetime Imaging (FLI) data processing platform using analytical and deep learning methods.
+repo_url: https://github.com/vkp217/pyfli-pkg
+repo_name: vkp217/pyfli-pkg
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; Vikas Pandey
+
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+      - Supported Data Formats: getting-started/data-formats.md
+  - API Reference:
+      - Overview: api/index.md
+      - Data I/O: api/data_io.md
+      - Preprocessing & Calibration: api/preprocessing.md
+      - Analytical Methods: api/analytical_methods.md
+      - Solvers & Fitters: api/solvers.md
+      - Simulator: api/simulator.md
+      - IRF Deconvolution: api/irf_deconvolution.md
+      - Phasor Analysis: api/phasor.md
+      - Session & Results Analysis: api/analysis.md
+      - Visualization: api/visualization.md
+      - ROI Tools: api/roi.md
+      - Single-Pixel (SPAD) Analysis: api/sp_analysis.md
+      - Utilities: api/utilities.md
+  - Citing pyfli: citing.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            docstring_section_style: list
+            merge_init_into_class: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_source: true
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            filters: ["!^_"]
+            heading_level: 2
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+  - tables
+  - attr_list
+  - md_in_html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/vkp217/pyfli-pkg
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/pyfli-lib/

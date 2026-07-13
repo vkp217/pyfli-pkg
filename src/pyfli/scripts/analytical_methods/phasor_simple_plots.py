@@ -1,3 +1,14 @@
+"""Plotting and color-mapping mixin for phasor-based FLI analysis.
+
+Contains all matplotlib visualization methods (phasor diagrams, lifetime
+maps, colored overlays and per-pixel decay fit plots) used by
+`PhasorAnalyzer`. Intended to be mixed into `PhasorAnalyzer` rather than
+instantiated directly, since its methods rely on attributes such as
+``self.eps``, ``self.frequency``, ``self.device`` and helper methods like
+``self.lifetime_to_phasor`` / ``self.compute_lifetime`` defined on that
+class.
+"""
+
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -14,9 +25,33 @@ from .phasor_simple_utils import (
 
 
 class PhasorPlotsMixin:
-    # Plotting and color-mapping methods for PhasorAnalyzer.
-  
+    """Mixin providing plotting and color-mapping methods for `PhasorAnalyzer`.
+
+    All methods assume they are mixed into a class (namely
+    `PhasorAnalyzer`) that defines ``self.eps``, ``self.frequency``,
+    ``self.device``, ``self.time_axis_ns`` and phasor/lifetime conversion
+    helpers.
+    """
+
     def phasor_colormap(self, G, S, intensity=None, colormap="viridis"):
+        """Map phasor magnitude to RGB colors, optionally scaled by intensity.
+
+        Uses the first-harmonic G/S maps (or the maps directly if 2D) to
+        compute the phasor magnitude ``sqrt(G**2 + S**2)``, min-max
+        normalizes it, and looks it up in ``colormap``. If ``intensity``
+        is given, the resulting colors are scaled by the min-max
+        normalized intensity so low-intensity pixels appear dimmer.
+
+        Args:
+            G: G phasor map, shape (H, W) or (n_harmonics, H, W).
+            S: S phasor map, shape (H, W) or (n_harmonics, H, W).
+            intensity: Optional intensity image, shape (H, W), used to
+                scale the brightness of the returned colors.
+            colormap: Name of a matplotlib colormap to sample.
+
+        Returns:
+            np.ndarray: RGB image of shape (H, W, 3) with values in [0, 1].
+        """
         G_col = G[0] if G.ndim == 3 else G
         S_col = S[0] if S.ndim == 3 else S
         phasor_val = np.sqrt(G_col ** 2 + S_col ** 2)
@@ -31,6 +66,29 @@ class PhasorPlotsMixin:
 
     def phasor_radial_color(self, G, S, colormap="viridis",
                             norm_color=False, half_circle=True):
+        """Color pixels by their angle and radius relative to the universal circle.
+
+        Computes each pixel's angle ``phi`` and radial distance ``r``
+        relative to the universal-circle center (0.5, 0), maps ``phi`` to
+        a hue via ``colormap`` and uses ``r`` to control value/brightness:
+        pixels inside the circle are dimmed toward the center, pixels
+        outside are desaturated (blended toward white) the farther out
+        they are. NaN phasor values are mapped to black.
+
+        Args:
+            G: G phasor map, shape (H, W) or (n_harmonics, H, W) (first
+                harmonic is used if 3D).
+            S: S phasor map, same shape convention as ``G``.
+            colormap: Name of a matplotlib colormap used for the hue.
+            norm_color: If True, normalize the angle range to the data's
+                own [min, max] before color lookup; otherwise use a fixed
+                angular range (0 to pi for half circle, else -pi to pi).
+            half_circle: Selects the fixed angular range used when
+                ``norm_color`` is False.
+
+        Returns:
+            np.ndarray: RGB image of shape (H, W, 3) with values in [0, 1].
+        """
 
         G_col = G[0] if G.ndim == 3 else np.asarray(G)
         S_col = S[0] if S.ndim == 3 else np.asarray(S)
@@ -80,6 +138,38 @@ class PhasorPlotsMixin:
                             hexbin_color=None, ax=None, figsize=(8, 3),
                             half_circle=True, title="Phasor Diagram",
                             xlim=(-0.1, 1.1), ylim=(0.0, 0.6)):
+        """Draw a G/S phasor scatter/hexbin diagram with the universal circle.
+
+        Plots the universal (semi)circle, then the pixel-wise (G, S)
+        points either as a hexbin density plot (default, or when
+        ``hexbin_color`` is set and ``colors`` is None), as a scatter
+        colored by a named colormap (``colors`` is a string), or as a
+        scatter with explicit per-point RGB colors (``colors`` is an
+        array). NaN and masked-out points are excluded. Reference
+        lifetime ticks are drawn on top via ``_draw_lifetime_ticks``.
+
+        Args:
+            G: G phasor map, shape (H, W) or (n_harmonics, H, W) (first
+                harmonic used if 3D).
+            S: S phasor map, same shape convention as ``G``.
+            mask: Optional boolean mask selecting which pixels to plot.
+            colors: Either None (use hexbin), a colormap name (scatter
+                colored by G value), or an (H, W, 3) / flattened RGB array
+                (scatter with explicit colors).
+            hexbin_color: Colormap name for the hexbin density plot; used
+                only when ``colors`` is None.
+            ax: Existing matplotlib axis to draw on; a new figure/axis is
+                created if None.
+            figsize: Figure size used when ``ax`` is None.
+            half_circle: If True, draw only the upper half of the
+                universal circle.
+            title: Axis title.
+            xlim: G-axis limits.
+            ylim: S-axis limits.
+
+        Returns:
+            matplotlib.figure.Figure: The figure the diagram was drawn on.
+        """
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
@@ -136,6 +226,23 @@ class PhasorPlotsMixin:
 
     
     def plot_map(self, image, scales=[0, 2], title="", ax=None, figsize=(8, 6)):
+        """Display a 2D image (e.g. a lifetime map) with a colorbar.
+
+        Clips ``image`` to ``scales`` and renders it with the "viridis"
+        colormap.
+
+        Args:
+            image: 2D array to display.
+            scales: Two-element [vmin, vmax] used to clip the image before
+                display.
+            title: Axis title.
+            ax: Existing matplotlib axis to draw on; a new figure/axis is
+                created if None.
+            figsize: Figure size used when ``ax`` is None.
+
+        Returns:
+            matplotlib.figure.Figure: The figure the image was drawn on.
+        """
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
@@ -154,6 +261,27 @@ class PhasorPlotsMixin:
 
     def plot_phasor_overlay(self, decay, G, S, colormap="viridis",
                             ax=None, figsize=(8, 8)):
+        """Overlay phasor-derived colors on the intensity image.
+
+        Combines the intensity image (from `generate_intensity_image`,
+        min-max normalized) with the phasor colormap (from
+        `phasor_colormap`) by multiplying them channel-wise, so brighter
+        pixels show more saturated phasor color.
+
+        Args:
+            decay: Time-resolved decay stack, shape (H, W, T), used to
+                derive the intensity image.
+            G: G phasor map passed to `phasor_colormap`.
+            S: S phasor map passed to `phasor_colormap`.
+            colormap: Name of the matplotlib colormap used for phasor
+                colors.
+            ax: Existing matplotlib axis to draw on; a new figure/axis is
+                created if None.
+            figsize: Figure size used when ``ax`` is None.
+
+        Returns:
+            matplotlib.figure.Figure: The figure the overlay was drawn on.
+        """
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
@@ -173,6 +301,28 @@ class PhasorPlotsMixin:
 
     def plot_pure_phasor_map(self, G, S, decay, noise_removed=True,
                              colormap="viridis", ax=None, figsize=(4, 4)):
+        """Show phasor colors alone, optionally masking low-intensity pixels.
+
+        Computes phasor colors via `phasor_colormap` and, if
+        ``noise_removed`` is True, zeroes out pixels whose normalized
+        intensity (from `generate_intensity_image`) is below 0.1 so noisy
+        background pixels are suppressed.
+
+        Args:
+            G: G phasor map passed to `phasor_colormap`.
+            S: S phasor map passed to `phasor_colormap`.
+            decay: Time-resolved decay stack, shape (H, W, T), used to
+                derive the intensity mask when ``noise_removed`` is True.
+            noise_removed: If True, mask out low-intensity pixels.
+            colormap: Name of the matplotlib colormap used for phasor
+                colors.
+            ax: Existing matplotlib axis to draw on; a new figure/axis is
+                created if None.
+            figsize: Figure size used when ``ax`` is None.
+
+        Returns:
+            matplotlib.figure.Figure: The figure the map was drawn on.
+        """
         phasor_colors = self.phasor_colormap(G, S, colormap=colormap)
         if phasor_colors.shape[-1] == 4:
             phasor_colors = phasor_colors[..., :3]
@@ -207,7 +357,38 @@ class PhasorPlotsMixin:
                               half_circle=True,
                               xlim=(-0.1, 1.1), ylim=(0.0, 0.6),
                               bg_color="black", transpose=False):
-       
+        """Render a 2x3 grid of intensity, lifetime and phasor diagnostic panels.
+
+        Builds a figure with: intensity image, radial-colored phasor
+        projection, lifetime map (`compute_lifetime`), intensity-weighted
+        phasor overlay, a colored phasor scatter, and a phasor hexbin
+        density plot. Pixels are restricted to ``mask`` if given, else to
+        an intensity-derived active mask when ``noise_removed`` is True.
+
+        Args:
+            decay: Time-resolved decay stack, shape (H, W, T).
+            G: G phasor map, shape (H, W) or (n_harmonics, H, W).
+            S: S phasor map, same shape convention as ``G``.
+            mask: Optional boolean mask of active pixels; overrides the
+                intensity-derived mask when given.
+            colormaps: Four colormap names/specs used for
+                [intensity panel, lifetime panel, radial-color hue,
+                hexbin density panel].
+            noise_removed: If True (and ``mask`` is None), derive an
+                active-pixel mask from normalized intensity > 0.1.
+            figsize: Overall figure size.
+            half_circle: If True, draw only the upper half of the
+                universal circle in the phasor panels.
+            xlim: G-axis limits for the phasor scatter/hexbin panels.
+            ylim: S-axis limits for the phasor scatter/hexbin panels.
+            bg_color: Background color ("black" or any other value,
+                treated as white) used for masked-out pixels.
+            transpose: If True, swap the first two axes of each 2D image
+                before display.
+
+        Returns:
+            matplotlib.figure.Figure: The assembled figure.
+        """
         _t = (lambda a: np.swapaxes(a, 0, 1)) if transpose else (lambda a: a)
 
         G_2d          = G[0] if G.ndim == 3 else G
@@ -320,6 +501,29 @@ class PhasorPlotsMixin:
 
     def plot_pixel_fit(self, irf, decay, reconstructed_decay, x, y,
                        log_scale=True, ax=None, figsize=(10, 6)):
+        """Plot IRF, raw decay and reconstructed fit for a single pixel.
+
+        Extracts the (x, y) trace from ``irf`` (if per-pixel), ``decay``
+        and ``reconstructed_decay``, normalizes each trace by its own max
+        (via a GPU/CPU tensor on ``self.device``), and plots them together
+        against ``self.time_axis_ns``.
+
+        Args:
+            irf: Instrument response function, shape (H, W, T) for a
+                per-pixel IRF or (T,) for a single shared IRF.
+            decay: Raw decay stack, shape (H, W, T).
+            reconstructed_decay: Fitted/reconstructed decay stack, shape
+                (H, W, T).
+            x: Pixel column index.
+            y: Pixel row index.
+            log_scale: If True, use a log y-axis (clipped to [1e-3, 1.2]).
+            ax: Existing matplotlib axis to draw on; a new figure/axis is
+                created if None.
+            figsize: Figure size used when ``ax`` is None.
+
+        Returns:
+            matplotlib.figure.Figure: The figure the traces were drawn on.
+        """
         irf_trace = irf[y, x, :] if irf.ndim == 3 else np.asarray(irf)
         raw_trace = decay[y, x, :]
         fit_trace = reconstructed_decay[y, x, :]
@@ -361,6 +565,30 @@ class PhasorPlotsMixin:
 
     def plot_pixel_fit_single_exp(self, irf, decay, tau_ns, x, y,
                                   log_scale=True, ax=None, figsize=(10, 6)):
+        """Plot IRF, raw decay and a single-exponential fit for one pixel.
+
+        Builds a mono-exponential model ``exp(-t/tau_ns)``, convolves it
+        with the (normalized) IRF via `_convolve_batch`, and plots the
+        result alongside the normalized IRF and raw decay traces for
+        pixel (x, y).
+
+        Args:
+            irf: Instrument response function, shape (H, W, T) for a
+                per-pixel IRF or (T,) for a single shared IRF.
+            decay: Raw decay stack, shape (H, W, T).
+            tau_ns: Lifetime in nanoseconds; either a scalar, or a
+                (H, W)+ array/tensor from which the value at (y, x) is
+                taken.
+            x: Pixel column index.
+            y: Pixel row index.
+            log_scale: If True, use a log y-axis (clipped to [1e-3, 1.2]).
+            ax: Existing matplotlib axis to draw on; a new figure/axis is
+                created if None.
+            figsize: Figure size used when ``ax`` is None.
+
+        Returns:
+            matplotlib.figure.Figure: The figure the traces were drawn on.
+        """
         if isinstance(tau_ns, (torch.Tensor, np.ndarray)):
             if tau_ns.ndim >= 2:
                 tau_val = tau_ns[y, x]
@@ -431,6 +659,36 @@ class PhasorPlotsMixin:
                               colors=None, hexbin_color=None, figsize=(22, 5),
                               axes=None, half_circle=True,
                               xlim=(-0.1, 1.1), ylim=(0.0, 0.6)):
+        """Draw one phasor diagram panel per requested harmonic.
+
+        For each harmonic index in ``harmonics``, plots the corresponding
+        (G, S) slice (falling back to the first harmonic/2D map if the
+        requested index is unavailable) as a hexbin or scatter, with
+        harmonic-specific reference lifetime ticks.
+
+        Args:
+            G: G phasor map, shape (H, W) or (n_harmonics, H, W).
+            S: S phasor map, same shape convention as ``G``.
+            harmonics: Sequence of 1-based harmonic indices to plot, one
+                panel each.
+            mask: Optional boolean mask selecting which pixels to plot.
+            colors: Either None (use hexbin), a colormap name (scatter
+                colored by G value), or an RGB array (optionally with a
+                leading harmonic axis) for explicit per-point colors.
+            hexbin_color: Colormap name for the hexbin density plot; used
+                only when ``colors`` is None.
+            figsize: Overall figure size used when ``axes`` is None.
+            axes: Existing sequence of matplotlib axes (one per harmonic)
+                to draw on; a new figure/axes is created if None.
+            half_circle: If True, draw only the upper half of the
+                universal circle.
+            xlim: G-axis limits.
+            ylim: S-axis limits.
+
+        Returns:
+            matplotlib.figure.Figure: The figure containing all harmonic
+            panels.
+        """
         G = np.asarray(G)
         S = np.asarray(S)
         n_panels = len(harmonics)
@@ -512,6 +770,36 @@ class PhasorPlotsMixin:
                                 colormap="viridis", figsize=(14, 6),
                                 axes=None, half_circle=True,
                                 xlim=(-0.1, 1.1), ylim=(0.0, 0.6)):
+        """Draw a two-panel view: radial-colored phasor map plus scatter distribution.
+
+        The left panel shows the phasor-radial-colored projection
+        (`phasor_radial_color`) restricted to ``mask``, with a colorbar
+        approximating the lifetime range spanned by the first-quadrant
+        phase angles. The right panel shows a scatter of (G, S) points
+        colored the same way, over the universal circle with reference
+        lifetime ticks.
+
+        Args:
+            G: G phasor map, shape (H, W) or (n_harmonics, H, W) (first
+                harmonic used if 3D).
+            S: S phasor map, same shape convention as ``G``.
+            decay: Unused directly by this method; present for interface
+                consistency with related plotting methods.
+            mask: Optional boolean mask of active pixels; if None, all
+                pixels are considered active.
+            colormap: Name of the matplotlib colormap used for the
+                lifetime colorbar in the left panel.
+            figsize: Overall figure size used when ``axes`` is None.
+            axes: Existing pair of matplotlib axes to draw on; a new
+                figure/axes is created if None.
+            half_circle: If True, draw only the upper half of the
+                universal circle.
+            xlim: G-axis limits for the scatter panel.
+            ylim: S-axis limits for the scatter panel.
+
+        Returns:
+            matplotlib.figure.Figure: The figure containing both panels.
+        """
         G_2d = G[0] if G.ndim == 3 else G
         S_2d = S[0] if S.ndim == 3 else S
 

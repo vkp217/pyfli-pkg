@@ -1,12 +1,22 @@
-#pyfli/scripts/dataCC/dataCC.utils.py 
+#pyfli/scripts/dataCC/dataCC.utils.py
+
+"""Utilities for pre-processing FLI/FLIM datasets prior to fitting.
+
+This module provides :class:`DataPreprocessing`, which generates and
+applies intensity-based binary masks over one or more 2D or 3D datasets
+(e.g. decay, IRF, background) sharing the same spatial dimensions.
+"""
 
 import numpy as np
 
 class DataPreprocessing:
-    # Supports:
-    # - 2D data  : (H, W)
-    # - 3D data  : (H, W, T)
-    # - multiple inputs (decay, irf, background, etc.)
+    """Generates and applies intensity-based masks to 2D/3D datasets.
+
+    Supports:
+        - 2D data  : (H, W)
+        - 3D data  : (H, W, T)
+        - multiple inputs (decay, irf, background, etc.)
+    """
     def __init__(self, *data, mask=None):
         """
         Parameters
@@ -55,6 +65,24 @@ class DataPreprocessing:
         return mask
 
     def apply_mask(self, mask=None):
+        """Applies a binary mask to every dataset passed at construction.
+
+        For 3D datasets the ``(H, W)`` mask is broadcast across the time
+        axis before multiplication.
+
+        Args:
+            mask (np.ndarray, optional): Binary mask of shape ``(H, W)``.
+                If not provided, falls back to ``self.mask`` (set via the
+                constructor or :meth:`threshold_masking`).
+
+        Returns:
+            tuple: The masked version of each dataset in ``self.data``, in
+            the same order, each multiplied element-wise by the mask.
+
+        Raises:
+            ValueError: If no mask is available (neither ``mask`` nor
+                ``self.mask`` is set), or if a dataset is neither 2D nor 3D.
+        """
         if mask is None:
             mask = self.mask
         if mask is None:

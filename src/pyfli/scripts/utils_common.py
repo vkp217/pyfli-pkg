@@ -1,4 +1,13 @@
-import numpy as np 
+"""General-purpose utilities for FLI/FLIM simulation, masking, and plotting.
+
+This module collects a mix of standalone helper functions used across the
+pyfli package: FFT-based circular convolution, synthetic single/bi-
+exponential decay generation, TCSPC gate-integration helpers, ground-
+truth-vs-estimate recovery plots, intensity/mask-based array masking,
+TIFF sequence export, diagnostic plotting for per-pixel fits, and
+direct (non-fitting) reconstruction of bi-exponential fit maps.
+"""
+import numpy as np
 from scipy.integrate import quad
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
@@ -7,6 +16,25 @@ import os
 import tifffile
 
 def circular_convolution_fft(x, h, broadcast_irf=True):
+        """Compute circular convolution of two signals along their last axis via FFT.
+
+        Args:
+            x: 3-D array of shape (H, W, T) to convolve.
+            h: 3-D array of shape (H, W, T) (or broadcastable to it) used
+                as the convolution kernel, typically an IRF.
+            broadcast_irf: If True and `h`'s first two dimensions don't
+                match `x`'s, `h` is broadcast to `x`'s shape (useful for
+                a single shared IRF applied to every pixel).
+
+        Returns:
+            np.ndarray: Real-valued circular convolution of `x` and `h`,
+            same shape as `x`, computed as
+            `ifft(fft(x, axis=2) * fft(h, axis=2), axis=2).real`.
+
+        Raises:
+            ValueError: If `x` or `h` is not 3-dimensional, or if their
+                last (time) dimensions do not match.
+        """
         x = np.asarray(x)
         h = np.asarray(h)
 
@@ -43,7 +71,36 @@ def single_ex_decay_summed_overtime(
     laser_period=12.5,
     seed=None,
 ):
-   
+    """Simulate a single-exponential fluorescence decay convolved with an IRF.
+
+    Builds a per-pixel theoretical single-exponential survival/decay
+    function from `tau`, circularly convolves it with a per-pixel
+    normalized IRF (`irf_data`), blends in Gaussian (or user-supplied)
+    noise weighted by `alpha`, and clips the result to be non-negative.
+
+    Args:
+        tau: Lifetime value(s) (ns), broadcastable to `irf_data`'s
+            (M, N) pixel grid. Non-positive or non-finite entries are
+            treated as tau=0 (decay forced to zero).
+        irf_data: Instrument response function, shape (M, N, T).
+        alpha: Weight (0-1) mixing the convolved signal (`alpha`) with
+            noise (`1 - alpha`).
+        err: Standard deviation of the Gaussian noise added when a
+            scalar, or a pre-computed noise array matching the signal
+            shape.
+        laser_period: Laser repetition period (ns) spanning the time axis.
+        seed: Optional seed for `numpy.random`, for reproducibility.
+
+    Returns:
+        tuple: `(f_t, s_t, I_t, t)` where `f_t` is the theoretical decay
+        (M, N, T), `s_t` is the noisy convolved signal (M, N, T), `I_t`
+        is the per-pixel normalized IRF (M, N, T), and `t` is the time
+        vector (1, 1, T).
+
+    Raises:
+        ValueError: If any IRF pixel sums to zero (cannot normalize), or
+            if a supplied `err` array's shape does not match the signal.
+    """
     if seed is not None:
         np.random.seed(seed)
     M, N, T = irf_data.shape
@@ -92,6 +149,16 @@ def single_ex_decay_summed_overtime(
     return f_t, s_t, I_t, t
 
 def gate_j(m: int, T: float):
+    """Compute the (start, end) time boundaries of `m` equal-width gates.
+
+    Args:
+        m: Number of gates.
+        T: Total period (e.g. laser period) to divide into gates.
+
+    Returns:
+        list[tuple[float, float]]: `m` `(a, b)` boundary pairs, where
+        gate `j` (1-indexed) spans `a = (j-1)*T/m` to `b = j*T/m`.
+    """
     buckets = []
     for j in range(1, m + 1):
         a = (j - 1) * T / m
@@ -100,6 +167,23 @@ def gate_j(m: int, T: float):
     return buckets
 
 def Pj_continuous_mono(f, m: int, T: float, epsabs=1e-8, epsrel=1e-8):
+    """Numerically integrate a continuous decay function over each gate.
+
+    Divides the period `T` into `m` gates via `gate_j` and integrates
+    the callable `f` over each gate interval using
+    `scipy.integrate.quad`.
+
+    Args:
+        f: A univariate function of time to integrate (e.g. a
+            theoretical decay function).
+        m: Number of gates.
+        T: Total period to divide into gates.
+        epsabs: Absolute error tolerance passed to `quad`.
+        epsrel: Relative error tolerance passed to `quad`.
+
+    Returns:
+        np.ndarray: Shape `(m,)` array of integrated (per-gate) values.
+    """
     gates = np.array(gate_j(m, T))          # list-of-tuples → 2D array for slicing
     a_vals, b_vals = gates[:, 0], gates[:, 1]
 
@@ -114,6 +198,30 @@ def Pj_continuous_mono(f, m: int, T: float, epsabs=1e-8, epsrel=1e-8):
 
 
 def Pj_from_samples_mono(t_samples: np.ndarray, y_samples: np.ndarray, m: int, T: float):
+        """Integrate sampled decay data over each gate to get a per-pixel PDF.
+
+        For each of `m` gates (from `gate_j`), selects the time samples
+        falling within the gate, linearly interpolates the exact gate
+        edges when they fall between samples, integrates via the
+        trapezoidal rule, and normalizes the resulting per-pixel values
+        across gates to sum to 1.
+
+        Args:
+            t_samples: 1-D array of sample times, shape (Tn,), matching
+                the last axis of `y_samples`.
+            y_samples: Sampled decay data, shape (H, W, Tn).
+            m: Number of gates to integrate over.
+            T: Total period to divide into gates.
+
+        Returns:
+            np.ndarray: Shape (H, W, m) array of per-pixel, per-gate
+            integrated values, normalized to a probability distribution
+            along the gate axis.
+
+        Raises:
+            ValueError: If `t_samples`'s length does not match the last
+                dimension of `y_samples`.
+        """
         H, W, Tn = y_samples.shape
         gates = gate_j(m, T)
 
@@ -159,6 +267,36 @@ def Pj_from_samples_mono(t_samples: np.ndarray, y_samples: np.ndarray, m: int, T
         return Pj
 
 def multimodal_normal(n_samples=10000, mus=None, sigma=None, weights=None, seed=None):
+    """Draw samples from a mixture of Gaussian modes, folded to be non-negative.
+
+    Splits `n_samples` across modes according to `weights` (via a
+    multinomial draw), samples each mode from a normal distribution
+    with its corresponding mean (`mus`) and standard deviation
+    (`sigma`), reflects any negative values to be positive
+    (`abs`), and returns both the flattened pooled samples and a
+    per-mode 2-D array.
+
+    Args:
+        n_samples: Total number of samples to draw across all modes.
+        mus: List/array of mode means; required (raises if None).
+        sigma: Standard deviation(s) for the modes. A single number
+            is broadcast to all modes; None defaults to 1.0 for every
+            mode; otherwise must have one entry per mode.
+        weights: Relative weights for the modes; normalized to sum to
+            1. Defaults to equal weighting across modes.
+        seed: Seed for `numpy.random.seed`, for reproducibility.
+
+    Returns:
+        tuple: `(samples, samples_2d)` where `samples` is a 1-D array of
+        length `n_samples` pooling all modes, and `samples_2d` is an
+        `(n_modes, n_samples)` array with each mode's samples in its own
+        row (zero-padded beyond that mode's sample count).
+
+    Raises:
+        ValueError: If `mus` is None.
+        AssertionError: If a `sigma` array's length doesn't match the
+            number of modes.
+    """
     np.random.seed(seed)
 
     if mus is None:
@@ -281,6 +419,26 @@ def recovery_plot(gt_dict,
     return fig
 
 def threshold_masking(fli, irf, threshold=100):
+        """Zero out pixels whose summed intensity falls below a threshold.
+
+        Sums `fli` along its last axis to get a per-pixel intensity map,
+        builds a boolean mask of pixels exceeding `threshold`, and
+        applies that mask (broadcast over the time axis, if present) to
+        both `fli` and `irf`.
+
+        Args:
+            fli: Decay data array whose last axis is summed for
+                intensity (e.g. shape (H, W, T)).
+            irf: Array to mask identically to `fli` (e.g. an IRF stack).
+            threshold: Minimum summed intensity for a pixel to be kept.
+
+        Returns:
+            tuple: `(masked_fli, masked_irf)`, both the same shape as
+            the inputs, with below-threshold pixels zeroed.
+
+        Raises:
+            ValueError: If `threshold` is None.
+        """
         if threshold is None:
             raise ValueError('no thershold value provided')
         else:
@@ -299,6 +457,30 @@ def threshold_masking(fli, irf, threshold=100):
         return masked_fli, masked_irf
 
 def data_masking(*arrays, mask, return_list=False):
+    """Apply a shared boolean mask to one or more NumPy arrays.
+
+    Each array in `arrays` is element-wise multiplied by `mask`,
+    expanding `mask` with trailing singleton dimensions if it has fewer
+    dimensions than the array (so a 2-D pixel mask can be broadcast over
+    an extra trailing axis such as time).
+
+    Args:
+        *arrays: One or more NumPy arrays to mask; all must share
+            broadcast-compatible leading dimensions with `mask`.
+        mask: Boolean (or boolean-convertible) array applied to every
+            array in `arrays`.
+        return_list: If True and multiple arrays were passed, returns a
+            list instead of a tuple.
+
+    Returns:
+        The masked array directly if only one array was passed;
+        otherwise a tuple (or list, if `return_list=True`) of masked
+        arrays in the same order as `arrays`.
+
+    Raises:
+        TypeError: If any element of `arrays` is not a NumPy array.
+        ValueError: If `mask` is not broadcastable to an array's shape.
+    """
     mask = mask.astype(bool)
     results = []
     for arr in arrays:
@@ -379,7 +561,17 @@ def save_as_uint16_sequence(data, output_folder, prefix="frame"):
 
 
 def random_true_pixel(bool_array):
-    true_indices = np.flatnonzero(bool_array)    
+    """Pick a random pixel coordinate where a boolean array is True.
+
+    Args:
+        bool_array: Boolean (or truthy-convertible) array to sample from.
+
+    Returns:
+        tuple[int, int] | None: `(x, y)` coordinates of a uniformly
+        random True element, or None if `bool_array` has no True
+        elements.
+    """
+    true_indices = np.flatnonzero(bool_array)
     if true_indices.size == 0:
         return None
     random_linear_idx = np.random.choice(true_indices)
@@ -387,6 +579,21 @@ def random_true_pixel(bool_array):
     return int(pix_x), int(pix_y)
 
 def PhasorFreqComputaion(laser_period = 12.5, gate_delay = None, num_gates = None): # all the units in ns
+    """Compute the effective phasor frequency (MHz) for phasor analysis.
+
+    If both `gate_delay` and `num_gates` are provided, the effective
+    frequency is derived from the total gated acquisition window
+    (`num_gates * gate_delay`); otherwise it falls back to the laser
+    repetition frequency.
+
+    Args:
+        laser_period: Laser repetition period, in nanoseconds.
+        gate_delay: Delay between gates, in nanoseconds.
+        num_gates: Number of gates spanning the acquisition window.
+
+    Returns:
+        float: Effective frequency in MHz.
+    """
     freq = 1000.0/laser_period
     if  gate_delay is None or num_gates is None:
         effective_freq = freq
@@ -395,6 +602,21 @@ def PhasorFreqComputaion(laser_period = 12.5, gate_delay = None, num_gates = Non
     return effective_freq
 
 def save_plot(save_dir, name, fig=None, dpi=300, close=False):
+    """Save a matplotlib figure as a PNG file.
+
+    Args:
+        save_dir: Directory to save the image into.
+        name: Base filename (without extension) for the saved image.
+        fig: Matplotlib figure to save. If None, the current pyplot
+            figure (`plt`) is used instead.
+        dpi: Resolution (dots per inch) for the saved image.
+        close: If True, closes the figure (or the current pyplot
+            figure) after saving.
+
+    Note:
+        Any exception raised while saving is caught and printed rather
+        than propagated.
+    """
     # Saves a plot. Handles subplots (pass fig) or direct plots (uses current)
     path = os.path.join(save_dir, f"{name}.png")
     target = fig if fig is not None else plt    
@@ -415,6 +637,44 @@ def plot_pixel_diagnostic(binned_decay, all_fitset, names,
                           colors=None, figsize=(12, 6),
                           raw_style="bar", map_aspect="equal",
                           show_colorbar=True, show=True):
+    """Plot a per-pixel fit diagnostic: intensity map, raw/fit decay, and residuals.
+
+    Builds a 3-panel figure: a summed-intensity map with the selected
+    pixel marked, an overlay of the raw decay against one or more fitted
+    decay curves (`all_fitset[i]['fit_map']`), and the corresponding
+    fit residuals (`all_fitset[i]['residual_map']`).
+
+    Args:
+        binned_decay: Raw decay histogram, shape (H, W, bins).
+        all_fitset: List of fit-result dictionaries, each containing at
+            least `'fit_map'` and `'residual_map'` arrays of shape
+            (H, W, bins).
+        names: Labels for each entry in `all_fitset`, used in the
+            legend; if shorter than `all_fitset`, remaining entries are
+            labeled `"Fit {i+1}"`.
+        pixel: `(row, col)` pixel to plot. If None, a random pixel is
+            chosen from `mask` via `random_true_pixel`.
+        mask: Boolean mask used to pick a random pixel when `pixel` is
+            None, and to mask the displayed intensity map.
+        t: Optional time axis values (length must equal the number of
+            decay bins) used for the x-axis instead of gate indices.
+        yscale: Y-axis scale for the decay panel, e.g. "log" or "linear".
+        model_type: Label used in the fit-diagnostics panel title.
+        colors: Optional list of colors, one per `all_fitset` entry.
+            Defaults to the "tab10" colormap cycled as needed.
+        figsize: Figure size passed to `plt.figure`.
+        raw_style: How to draw the raw decay: "bar", "step", or "line".
+        map_aspect: Aspect ratio passed to the intensity `imshow` call.
+        show_colorbar: If True, adds a colorbar to the intensity map.
+        show: If True, calls `plt.show()` before returning.
+
+    Returns:
+        matplotlib.figure.Figure: The assembled diagnostic figure.
+
+    Raises:
+        ValueError: If neither `pixel` nor `mask` is provided, or if a
+            supplied `t` does not match the number of decay bins.
+    """
     jet_m = Colorprocess().lowest_zero('jet')
     if pixel is None:
         if mask is None:
