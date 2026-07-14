@@ -1,3 +1,13 @@
+"""
+Fit FLIM image cubes with Torch-based GPU optimization and optional CRLB estimates.
+
+This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
+likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+classes :class:`FLIGPUProcessor`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 import torch
 import numpy as np
@@ -8,7 +18,24 @@ from tqdm import tqdm
 
 
 class FLIGPUProcessor:
-    def __init__(self, freq, fitter_class=None, device=None):
+    """
+    Fit FLIM image cubes with Torch on GPU or CPU fallback. It vectorizes parameter
+    transforms, model evaluation, optimization, CRLB estimation, reconstruction, and
+    result saving.
+
+    Parameters
+    ----------
+    freq : float
+        Acquisition frequency information used to derive timing constants.
+    fitter_class : Any | None
+        Fitter class instantiated by the processor.
+    device : Any | None
+        Execution device, such as a Torch device or device string.
+    """
+
+    def __init__(
+        self, freq: float, fitter_class: Any | None = None, device: Any | None = None
+    ) -> None:
         self.device = (
             device if device else ("cuda" if torch.cuda.is_available() else "cpu")
         )
@@ -18,8 +45,22 @@ class FLIGPUProcessor:
         self.T_laser = 1000.0 / freq[0]
         logging.info(f"Using Device: {self.device}")
 
-    def _transform_params(self, raw_p, model_type):
+    def _transform_params(self, raw_p: np.ndarray, model_type: str) -> Any:
+        """
+        Handle transform params.
 
+        Parameters
+        ----------
+        raw_p : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         shift_bound = self.T_acq / 4.0
         S = torch.exp(raw_p[:, 0:1])
         b = torch.exp(raw_p[:, -2:-1])
@@ -34,7 +75,28 @@ class FLIGPUProcessor:
             tau = torch.exp(raw_p[:, 1:2])
             return torch.cat([S, tau, b, h_shift], dim=1)
 
-    def _model_kernel(self, params, t, irf, model_type):
+    def _model_kernel(
+        self, params: Any, t: np.ndarray, irf: np.ndarray, model_type: str
+    ) -> Any:
+        """
+        Handle model kernel.
+
+        Parameters
+        ----------
+        params : Any
+            Input value.
+        t : np.ndarray
+            Input value.
+        irf : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if model_type == "mono-exponential":
             S, tau, b, h_shift = (
                 params[:, 0:1],
@@ -68,10 +130,44 @@ class FLIGPUProcessor:
         convolved = torch.fft.irfft(decay_fft * irf_fft, n=n_fft)[..., :T]
         return convolved + b
 
-    def _compute_crlb_errors(self, p_phys, t, irf, model_type):
+    def _compute_crlb_errors(
+        self, p_phys: np.ndarray, t: np.ndarray, irf: np.ndarray, model_type: str
+    ) -> Any:
+        """
+        Compute crlb errors.
+
+        Parameters
+        ----------
+        p_phys : np.ndarray
+            Input value.
+        t : np.ndarray
+            Input value.
+        irf : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         p_phys = p_phys.detach().clone().requires_grad_(True)
 
-        def model_func(p):
+        def model_func(p: Any) -> Any:
+            """
+            Handle model func.
+
+            Parameters
+            ----------
+            p : Any
+                Input value.
+
+            Returns
+            -------
+            Any
+                Return value.
+            """
             return self._model_kernel(p, t, irf, model_type)
 
         jac = torch.autograd.functional.jacobian(model_func, p_phys, vectorize=True)
@@ -98,18 +194,49 @@ class FLIGPUProcessor:
 
     def fit_image(
         self,
-        image_cube,
-        irf_cube,
-        mask=None,
-        mode="MLE",
-        model_type="bi-exponential",
-        max_iter=500,
-        CRLB=False,
-        data_name="Torch_Fit",
-        p0=None,
-        **kwargs,
-    ):
+        image_cube: np.ndarray,
+        irf_cube: np.ndarray,
+        mask: np.ndarray | None = None,
+        mode: str = "MLE",
+        model_type: str = "bi-exponential",
+        max_iter: int = 500,
+        CRLB: bool = False,
+        data_name: str = "Torch_Fit",
+        p0: Any | None = None,
+        **kwargs: Any,
+    ) -> Any:
         # Normalise mode tag: NLSF/LSE variants → 'NLSF', everything else → 'MLE'
+        """
+        Fit image.
+
+        Parameters
+        ----------
+        image_cube : np.ndarray
+            Input value.
+        irf_cube : np.ndarray
+            Input value.
+        mask : np.ndarray | None
+            Input value.
+        mode : str
+            Input value.
+        model_type : str
+            Input value.
+        max_iter : int
+            Input value.
+        CRLB : bool
+            Input value.
+        data_name : str
+            Input value.
+        p0 : Any | None
+            Input value.
+        **kwargs : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         _NLSF_MODES = {"NLSF", "LSE", "WLS", "NEYMAN"}
         mode = "NLSF" if mode.upper() in _NLSF_MODES else "MLE"
 
@@ -162,7 +289,20 @@ class FLIGPUProcessor:
 
         if mode == "NLSF":
             # Neyman chi-squared: weights by measured data — matches CPU BaseFLIFitter
-            def objective_fn(p_raw):
+            def objective_fn(p_raw: np.ndarray) -> Any:
+                """
+                Handle objective fn.
+
+                Parameters
+                ----------
+                p_raw : np.ndarray
+                    Input value.
+
+                Returns
+                -------
+                Any
+                    Return value.
+                """
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
                 data_safe = torch.clamp(flat_data, min=1.0)
@@ -170,7 +310,20 @@ class FLIGPUProcessor:
                 return per_px[torch.isfinite(per_px)].sum()
         else:
             # Poisson MLE (C-statistic): matches CPU MLEFLIFitter
-            def objective_fn(p_raw):
+            def objective_fn(p_raw: np.ndarray) -> Any:
+                """
+                Handle objective fn.
+
+                Parameters
+                ----------
+                p_raw : np.ndarray
+                    Input value.
+
+                Returns
+                -------
+                Any
+                    Return value.
+                """
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
                 pred_safe = torch.clamp(pred, min=1.0)
@@ -290,18 +443,51 @@ class FLIGPUProcessor:
 
     def _reconstruct_dataset(
         self,
-        p_maps,
-        e_maps,
-        fit_map,
-        res_map,
-        chi2_raw,
-        chi2_reduced,
-        r2_map,
-        health_map,
-        model_type,
-        mode,
-        name,
-    ):
+        p_maps: np.ndarray,
+        e_maps: np.ndarray,
+        fit_map: np.ndarray,
+        res_map: np.ndarray,
+        chi2_raw: np.ndarray,
+        chi2_reduced: np.ndarray,
+        r2_map: np.ndarray,
+        health_map: np.ndarray,
+        model_type: str,
+        mode: str,
+        name: str,
+    ) -> dict[Any, Any]:
+        """
+        Handle reconstruct dataset.
+
+        Parameters
+        ----------
+        p_maps : np.ndarray
+            Input value.
+        e_maps : np.ndarray
+            Input value.
+        fit_map : np.ndarray
+            Input value.
+        res_map : np.ndarray
+            Input value.
+        chi2_raw : np.ndarray
+            Input value.
+        chi2_reduced : np.ndarray
+            Input value.
+        r2_map : np.ndarray
+            Input value.
+        health_map : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+        mode : str
+            Input value.
+        name : str
+            Input value.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         S = p_maps[..., 0]
         common = {
             "chi2_map": chi2_raw,
@@ -355,7 +541,24 @@ class FLIGPUProcessor:
             },
         }
 
-    def _p0_to_tensor(self, p0, n_pixels, model_type):
+    def _p0_to_tensor(self, p0: Any, n_pixels: int, model_type: str) -> Any:
+        """
+        Handle p0 to tensor.
+
+        Parameters
+        ----------
+        p0 : Any
+            Input value.
+        n_pixels : int
+            Input value.
+        model_type : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if isinstance(p0, dict):
             if model_type == "bi-exponential":
                 vals = [
@@ -379,7 +582,26 @@ class FLIGPUProcessor:
             arr = np.tile(row, (n_pixels, 1))
         return torch.tensor(arr, device=self.device, dtype=torch.float32)
 
-    def _get_sophisticated_guess(self, data, irf, model_type):
+    def _get_sophisticated_guess(
+        self, data: np.ndarray, irf: np.ndarray, model_type: str
+    ) -> Any:
+        """
+        Return sophisticated guess.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Input value.
+        irf : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         cpu_data = data.detach().cpu().numpy().astype(np.float64)
         P, T = cpu_data.shape
         t_axis = np.linspace(0, self.T_acq, T, endpoint=False)
@@ -422,7 +644,22 @@ class FLIGPUProcessor:
 
         return torch.tensor(guesses.astype(np.float32), device=self.device)
 
-    def save_results(self, dataset, folder="results"):
+    def save_results(self, dataset: np.ndarray, folder: str = "results") -> None:
+        """
+        Save results.
+
+        Parameters
+        ----------
+        dataset : np.ndarray
+            Input value.
+        folder : str
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if not os.path.exists(folder):
             os.makedirs(folder)
         h5_path = os.path.join(folder, f"{dataset['name']}_GPU_results.h5")

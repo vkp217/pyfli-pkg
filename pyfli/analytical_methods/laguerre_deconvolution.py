@@ -1,4 +1,13 @@
+"""
+Implement Laguerre-basis deconvolution for FLIM decay reconstruction.
+
+This module belongs to :mod:`pyfli.analytical_methods` and is part of PyFLI analytical
+FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
+estimation. Public API includes classes :class:`LaguerreFLI`.
+"""
+
 from __future__ import annotations
+from typing import Any
 from pyfli import logging
 from typing import Optional
 import numpy as np
@@ -9,6 +18,37 @@ from ..solver.base_static import moment_based_guess
 
 
 class LaguerreFLI:
+    """
+    Fit FLIM decays with a Laguerre-basis deconvolution model. The class precomputes the
+    Laguerre basis, projects decays into coefficient space, reconstructs denoised
+    decays, and supports lifetime estimation from the reconstructed signal.
+
+    Parameters
+    ----------
+    n_components : int
+        Number of items used by this workflow.
+    n_laguerre : Optional[int]
+        Number of items used by this workflow.
+    alpha : float
+        Regularization strength or statistical threshold value, depending on context.
+    dt : float
+        Configuration value used by the class.
+    auto_alpha : bool
+        Configuration value used by the class.
+    taus_init : Optional[np.ndarray]
+        Configuration value used by the class.
+    laser_period_ns : Optional[float]
+        Configuration value used by the class.
+    reg_strength : float
+        Configuration value used by the class.
+    reg_power : float
+        Configuration value used by the class.
+    nonneg : bool
+        Configuration value used by the class.
+    verbose : bool
+        Configuration value used by the class.
+    """
+
     def __init__(
         self,
         n_components: int = 2,
@@ -22,7 +62,7 @@ class LaguerreFLI:
         reg_power: float = 2.0,
         nonneg: bool = True,
         verbose: bool = True,
-    ):
+    ) -> None:
         if n_components < 1:
             raise ValueError("n_components must be >= 1.")
         if not (0.0 < alpha < 1.0):
@@ -68,6 +108,23 @@ class LaguerreFLI:
 
     @staticmethod
     def _discrete_laguerre_basis(T: int, alpha: float, L: int) -> np.ndarray:
+        """
+        Handle discrete laguerre basis.
+
+        Parameters
+        ----------
+        T : int
+            Input value.
+        alpha : float
+            Input value.
+        L : int
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         b = np.zeros((L, T), dtype=np.float64)
         n = np.arange(T)
         b[0] = np.sqrt(1.0 - alpha) * alpha ** (n / 2.0)
@@ -84,6 +141,21 @@ class LaguerreFLI:
 
     @staticmethod
     def _convolve_with_irf(basis: np.ndarray, irf: np.ndarray) -> np.ndarray:
+        """
+        Handle convolve with irf.
+
+        Parameters
+        ----------
+        basis : np.ndarray
+            Input value.
+        irf : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         _, T = basis.shape
         irf = np.asarray(irf, float).ravel()
         s = irf.sum()
@@ -93,7 +165,22 @@ class LaguerreFLI:
         return full[:, :T].T
 
     @staticmethod
-    def _unique_irf_groups(irf_2d: np.ndarray, decimals: int = 6):
+    def _unique_irf_groups(irf_2d: np.ndarray, decimals: int = 6) -> tuple[Any, ...]:
+        """
+        Handle unique irf groups.
+
+        Parameters
+        ----------
+        irf_2d : np.ndarray
+            Input value.
+        decimals : int
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         _, _ = irf_2d.shape
         s = irf_2d.sum(axis=1, keepdims=True)
         norm = np.divide(irf_2d, s, out=np.zeros_like(irf_2d), where=s > 0)
@@ -106,9 +193,37 @@ class LaguerreFLI:
         return inverse, rep_idx
 
     def _penalty(self, L: int) -> np.ndarray:
+        """
+        Handle penalty.
+
+        Parameters
+        ----------
+        L : int
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         return (np.arange(L, dtype=float) + 1.0) ** self.reg_power
 
     def _solve_coefficients(self, V: np.ndarray, Y2d: np.ndarray) -> np.ndarray:
+        """
+        Handle solve coefficients.
+
+        Parameters
+        ----------
+        V : np.ndarray
+            Input value.
+        Y2d : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         if self.reg_strength > 0.0:
             L = V.shape[1]
             lam = self.reg_strength * float(np.mean(np.diag(V.T @ V)))
@@ -120,7 +235,38 @@ class LaguerreFLI:
     def _optimize_alpha(
         self, avg_decay: np.ndarray, avg_irf: np.ndarray, T: int
     ) -> float:
-        def obj(a):
+        """
+        Handle optimize alpha.
+
+        Parameters
+        ----------
+        avg_decay : np.ndarray
+            Input value.
+        avg_irf : np.ndarray
+            Input value.
+        T : int
+            Input value.
+
+        Returns
+        -------
+        float
+            Return value.
+        """
+
+        def obj(a: np.ndarray) -> float:
+            """
+            Handle obj.
+
+            Parameters
+            ----------
+            a : np.ndarray
+                Input value.
+
+            Returns
+            -------
+            float
+                Return value.
+            """
             if not (1e-3 < a < 0.999):
                 return 1e30
             B = self._discrete_laguerre_basis(T, float(a), self.n_laguerre)
@@ -135,6 +281,23 @@ class LaguerreFLI:
 
     @staticmethod
     def _nnls_safe(E: np.ndarray, h: np.ndarray, maxiter: int) -> np.ndarray:
+        """
+        Handle nnls safe.
+
+        Parameters
+        ----------
+        E : np.ndarray
+            Input value.
+        h : np.ndarray
+            Input value.
+        maxiter : int
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         try:
             a, _ = nnls(E, h, maxiter=maxiter)
             return a
@@ -143,12 +306,42 @@ class LaguerreFLI:
             return np.clip(a, 0.0, None)
 
     def _solve_amps(self, E: np.ndarray, h: np.ndarray, maxiter: int) -> np.ndarray:
+        """
+        Handle solve amps.
+
+        Parameters
+        ----------
+        E : np.ndarray
+            Input value.
+        h : np.ndarray
+            Input value.
+        maxiter : int
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         if self.nonneg:
             return self._nnls_safe(E, h, maxiter)
         a, *_ = np.linalg.lstsq(E, h, rcond=None)
         return a
 
-    def _tau_bounds(self, T: int):
+    def _tau_bounds(self, T: int) -> tuple[Any, ...]:
+        """
+        Handle tau bounds.
+
+        Parameters
+        ----------
+        T : int
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         tau_lo = self.dt
         tau_hi = (
             self.laser_period_ns if self.laser_period_ns is not None else T * self.dt
@@ -157,9 +350,39 @@ class LaguerreFLI:
         return tau_lo, tau_hi
 
     def _safe_tau0(self, tau0: np.ndarray, tau_lo: float, tau_hi: float) -> np.ndarray:
+        """
+        Handle safe tau0.
+
+        Parameters
+        ----------
+        tau0 : np.ndarray
+            Input value.
+        tau_lo : float
+            Input value.
+        tau_hi : float
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         return np.clip(tau0, tau_lo + 1e-7, tau_hi - 1e-7)
 
     def _estimate_global_taus(self, h_avg: np.ndarray) -> np.ndarray:
+        """
+        Estimate global taus.
+
+        Parameters
+        ----------
+        h_avg : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         T = h_avg.shape[0]
         n = np.arange(T)
         N = self.n_components
@@ -188,7 +411,20 @@ class LaguerreFLI:
                 )
             tau0 = self._safe_tau0(tau0, tau_lo, tau_hi)
 
-        def residual(params):
+        def residual(params: Any) -> Any:
+            """
+            Handle residual.
+
+            Parameters
+            ----------
+            params : Any
+                Input value.
+
+            Returns
+            -------
+            Any
+                Return value.
+            """
             E = np.exp(-n[:, None] * self.dt / params[None, :])
             a = self._solve_amps(E, h_avg, 200 * N)
             return E @ a - h_avg
@@ -208,6 +444,23 @@ class LaguerreFLI:
         tau_init: np.ndarray,
         mask: Optional[np.ndarray] = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Fit pixel exponentials.
+
+        Parameters
+        ----------
+        h_stack : np.ndarray
+            Input value.
+        tau_init : np.ndarray
+            Input value.
+        mask : Optional[np.ndarray]
+            Input value.
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray, np.ndarray]
+            Return value.
+        """
         X, Y, T = h_stack.shape
         N = self.n_components
         n = np.arange(T)
@@ -235,7 +488,22 @@ class LaguerreFLI:
                     h = h_stack[x, y, :]
                     if h.sum() >= 1e-10:
 
-                        def residual(params, h=h):
+                        def residual(params: Any, h: np.ndarray = h) -> Any:
+                            """
+                            Handle residual.
+
+                            Parameters
+                            ----------
+                            params : Any
+                                Input value.
+                            h : np.ndarray
+                                Input value.
+
+                            Returns
+                            -------
+                            Any
+                                Return value.
+                            """
                             E = np.exp(-n[:, None] * self.dt / params[None, :])
                             a = self._solve_amps(E, h, 200 * N)
                             return E @ a - h
@@ -267,6 +535,23 @@ class LaguerreFLI:
         irf: np.ndarray,
         mask: Optional[np.ndarray] = None,
     ) -> "LaguerreFLI":
+        """
+        Handle fit.
+
+        Parameters
+        ----------
+        decay : np.ndarray
+            Input value.
+        irf : np.ndarray
+            Input value.
+        mask : Optional[np.ndarray]
+            Input value.
+
+        Returns
+        -------
+        'LaguerreFLI'
+            Return value.
+        """
         decay = np.asarray(decay, dtype=np.float64)
         irf = np.asarray(irf, dtype=np.float64)
 
@@ -376,6 +661,19 @@ class LaguerreFLI:
         return self
 
     def get_parameters(self, data_name: str = "LaguerreFLI_Dataset") -> dict:
+        """
+        Return parameters.
+
+        Parameters
+        ----------
+        data_name : str
+            Input value.
+
+        Returns
+        -------
+        dict
+            Return value.
+        """
         if self.coeffs_ is None:
             raise RuntimeError("Call .fit(decay, irf) first.")
 
@@ -486,6 +784,21 @@ class LaguerreFLI:
         }
 
     def save_results(self, dataset: dict, folder: str = "results") -> None:
+        """
+        Save results.
+
+        Parameters
+        ----------
+        dataset : dict
+            Input value.
+        folder : str
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         import h5py
         import os
 
@@ -515,6 +828,21 @@ class LaguerreFLI:
     def load_map(
         self, h5_path: str, map_name: str = "tau1_map"
     ) -> Optional[np.ndarray]:
+        """
+        Load map.
+
+        Parameters
+        ----------
+        h5_path : str
+            Input value.
+        map_name : str
+            Input value.
+
+        Returns
+        -------
+        Optional[np.ndarray]
+            Return value.
+        """
         import h5py
 
         with h5py.File(h5_path, "r") as f:
@@ -525,11 +853,27 @@ class LaguerreFLI:
             return None
 
     def predict(self) -> np.ndarray:
+        """
+        Handle predict.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         if self.reconstructed_ is None:
             raise RuntimeError("Call .fit(decay, irf) first.")
         return self.reconstructed_
 
     def __repr__(self) -> str:
+        """
+        Return the representation.
+
+        Returns
+        -------
+        str
+            Return value.
+        """
         period = (
             f"{self.laser_period_ns} ns"
             if self.laser_period_ns is not None

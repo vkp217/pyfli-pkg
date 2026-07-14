@@ -1,8 +1,31 @@
+"""
+Provide sim helper tools for PyFLI synthetic FLIM data generation, hardware noise
+modeling, calibration, and validation tools.
+
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
+generation, hardware noise modeling, calibration, and validation tools. Public API
+includes functions :func:`irf_picker`.
+"""
+
+from __future__ import annotations
 import numpy as np
 
 
-def irf_picker(irf_full):
+def irf_picker(irf_full: np.ndarray) -> np.ndarray:
     # IRF Selection Logic
+    """
+    Handle irf picker.
+
+    Parameters
+    ----------
+    irf_full : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    np.ndarray
+        Return value.
+    """
     if irf_full.ndim == 3:
         H, W, T = irf_full.shape
         max_attempts = 1000

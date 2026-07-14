@@ -1,3 +1,13 @@
+"""
+Build generalized continuous and photon-counting simulation workflows.
+
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
+generation, hardware noise modeling, calibration, and validation tools. Public API
+includes classes :class:`ContinuousSimulator` and :class:`PhotonCountSimulator`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 from scipy.signal import fftconvolve
 from .model_simulator import FLIModelSimulator
@@ -6,7 +16,24 @@ from .distributions import ParameterSampler
 
 
 class ContinuousSimulator:
-    def __init__(self, irf_data, sensor_type="ICCD", **cfg):
+    """
+    Generate continuous/intensity-style FLIM simulations using the generalized simulator
+    factory. It mirrors the macro simulator interface while separating continuous
+    detector assumptions.
+
+    Parameters
+    ----------
+    irf_data : np.ndarray
+        Instrument response data used to convolve or simulate decays.
+    sensor_type : str
+        Detector family or hardware profile name.
+    **cfg : Any
+        Additional configuration values forwarded to the simulator or solver.
+    """
+
+    def __init__(
+        self, irf_data: np.ndarray, sensor_type: str = "ICCD", **cfg: Any
+    ) -> None:
         # Toggles
         self.use_jitter = cfg.get("jitter", True)
         self.use_dcr = cfg.get("dcr_on", True)
@@ -19,7 +46,15 @@ class ContinuousSimulator:
         self.sensor_type = sensor_type.upper()
         self.engine = FLIModelSimulator(irf_data, **cfg)
 
-    def __call__(self):
+    def __call__(self) -> dict[Any, Any]:
+        """
+        Run the instance as a callable.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         p = self.engine.sample_params()
 
         # 1. Determine target intensity (A) based on bit-depth
@@ -121,7 +156,24 @@ class ContinuousSimulator:
 
 
 class PhotonCountSimulator:
-    def __init__(self, irf_data, sensor_type="PHOTON_COUNTER", **cfg):
+    """
+    Generate photon-counting simulations using the generalized simulator factory. It
+    packages photon counter settings and returns simulated decays with associated
+    parameters.
+
+    Parameters
+    ----------
+    irf_data : np.ndarray
+        Instrument response data used to convolve or simulate decays.
+    sensor_type : str
+        Detector family or hardware profile name.
+    **cfg : Any
+        Additional configuration values forwarded to the simulator or solver.
+    """
+
+    def __init__(
+        self, irf_data: np.ndarray, sensor_type: str = "PHOTON_COUNTER", **cfg: Any
+    ) -> None:
         self.use_jitter = cfg.get("jitter", True)
         self.use_dcr = cfg.get("dcr_on", True)
         self.use_qe = cfg.get("qe_on", False)
@@ -134,7 +186,15 @@ class PhotonCountSimulator:
         cfg.setdefault("bit", 16)
         self.engine = FLIModelSimulator(irf_data, **cfg)
 
-    def __call__(self):
+    def __call__(self) -> dict[Any, Any]:
+        """
+        Run the instance as a callable.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         p = self.engine.sample_params()
         n_cycles = np.random.randint(1, self.engine.params_cfg["cycles"] + 1)
         mu_per_cycle = 0.01

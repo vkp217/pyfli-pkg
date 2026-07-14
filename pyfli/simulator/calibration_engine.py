@@ -1,3 +1,13 @@
+"""
+Calibrate simulator hardware parameters against experimental decay cubes.
+
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
+generation, hardware noise modeling, calibration, and validation tools. Public API
+includes classes :class:`FLICalibrator`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 
 # simulator/calibration_engine.py
@@ -12,9 +22,30 @@ from .sim_stat_test import FLIValidator
 
 
 class FLICalibrator:
+    """
+    Estimate simulator hardware parameters from experimental decay cubes. It optimizes
+    noise and detector settings, reports calibration quality, cross-validates results,
+    and can save reusable hardware profiles.
+
+    Parameters
+    ----------
+    irf_data : np.ndarray
+        Instrument response data used to convolve or simulate decays.
+    method : str
+        Algorithm or model-selection method to use.
+    threshold : int
+        Threshold applied to counts, masks, or statistics.
+    normalize_stats : bool
+        Whether calibration statistics are normalized before comparison.
+    """
+
     def __init__(
-        self, irf_data, method="analytical", threshold=10, normalize_stats=False
-    ):
+        self,
+        irf_data: np.ndarray,
+        method: str = "analytical",
+        threshold: int = 10,
+        normalize_stats: bool = False,
+    ) -> None:
         self.irf_data = irf_data
         self.method = method.lower()
         self.threshold = threshold
@@ -23,11 +54,43 @@ class FLICalibrator:
         self.iteration = 0
         self.opt_params = None
 
-    def _get_valid_counts(self, data_cube):
+    def _get_valid_counts(self, data_cube: np.ndarray) -> np.ndarray:
+        """
+        Return valid counts.
+
+        Parameters
+        ----------
+        data_cube : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         _, counts = self.validator._preprocess_cube(data_cube)
         return counts
 
-    def objective_function(self, x, exp_decay_cube, base_cfg):
+    def objective_function(
+        self, x: np.ndarray, exp_decay_cube: np.ndarray, base_cfg: np.ndarray
+    ) -> Any:
+        """
+        Handle objective function.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Input value.
+        exp_decay_cube : np.ndarray
+            Input value.
+        base_cfg : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         self.iteration += 1
         current_cfg = base_cfg.copy()
 
@@ -61,7 +124,20 @@ class FLICalibrator:
         except Exception:
             return 2.0
 
-    def display_report(self, results):
+    def display_report(self, results: Any) -> None:
+        """
+        Display report.
+
+        Parameters
+        ----------
+        results : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if results is None:
             logging.info("No results to display.")
             return
@@ -120,7 +196,29 @@ class FLICalibrator:
         plt.tight_layout()
         plt.show()
 
-    def run_calibration(self, exp_decay_cube, base_config, initial_guess=None):
+    def run_calibration(
+        self,
+        exp_decay_cube: np.ndarray,
+        base_config: np.ndarray,
+        initial_guess: np.ndarray | None = None,
+    ) -> np.ndarray:
+        """
+        Run calibration.
+
+        Parameters
+        ----------
+        exp_decay_cube : np.ndarray
+            Input value.
+        base_config : np.ndarray
+            Input value.
+        initial_guess : np.ndarray | None
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         logging.info(
             f"--- Starting Calibration: {self.method.upper()} (Norm: {self.normalize_stats}) ---"
         )
@@ -172,7 +270,24 @@ class FLICalibrator:
 
         return final_cfg
 
-    def cross_validate(self, calibrated_cfg, test_exp_cube):
+    def cross_validate(
+        self, calibrated_cfg: np.ndarray, test_exp_cube: np.ndarray
+    ) -> np.ndarray:
+        """
+        Handle cross validate.
+
+        Parameters
+        ----------
+        calibrated_cfg : np.ndarray
+            Input value.
+        test_exp_cube : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         logging.info(f"\n--- Cross-Validation (Norm: {self.normalize_stats}) ---")
         gen = FLIImageGenerator(
             self.irf_data,
@@ -187,7 +302,20 @@ class FLICalibrator:
         self.display_report(metrics)
         return metrics
 
-    def save_hardware_profile(self, filename="hw_profile.json"):
+    def save_hardware_profile(self, filename: str = "hw_profile.json") -> None:
+        """
+        Save hardware profile.
+
+        Parameters
+        ----------
+        filename : str
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if self.opt_params is None:
             return
         profile = {
@@ -201,7 +329,20 @@ class FLICalibrator:
         logging.info(f"Profile saved to {filename}")
 
     @staticmethod
-    def load_hardware_profile(filename):
+    def load_hardware_profile(filename: str) -> Any:
+        """
+        Load hardware profile.
+
+        Parameters
+        ----------
+        filename : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if not os.path.exists(filename):
             return None
         with open(filename, "r") as f:
@@ -209,11 +350,30 @@ class FLICalibrator:
 
     def plot_noise_sensitivity(
         self,
-        train_exp_cube,
-        base_config,
-        dcr_range=(0.001, 0.1, 10),
-        sigma_range=(0.5, 4.0, 10),
-    ):
+        train_exp_cube: np.ndarray,
+        base_config: np.ndarray,
+        dcr_range: tuple[float, float, int] = (0.001, 0.1, 10),
+        sigma_range: tuple[float, float, int] = (0.5, 4.0, 10),
+    ) -> tuple[Any, ...]:
+        """
+        Plot noise sensitivity.
+
+        Parameters
+        ----------
+        train_exp_cube : np.ndarray
+            Input value.
+        base_config : np.ndarray
+            Input value.
+        dcr_range : tuple[float, float, int]
+            Input value.
+        sigma_range : tuple[float, float, int]
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         logging.info("Generating Sensitivity Surface (Processing...)")
         dcr_vals = np.linspace(*dcr_range)
         sigma_vals = np.linspace(*sigma_range)

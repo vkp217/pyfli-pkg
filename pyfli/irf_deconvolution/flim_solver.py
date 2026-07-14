@@ -1,3 +1,16 @@
+"""
+Solve FLIM lifetimes and instrument response functions with detector-aware weighting.
+
+This module belongs to :mod:`pyfli.irf_deconvolution` and is part of PyFLI detector-
+aware IRF deconvolution and joint FLIM fitting utilities. Public API includes classes
+:class:`SolverConfig`; functions :func:`cyclic_conv`, :func:`cyclic_corr`,
+:func:`decay_basis`, :func:`build_gate_matrix`, :func:`project_simplex`,
+:func:`huber_tv_grad`, :func:`spatial_laplacian`, :func:`fourier_shift`,
+:func:`pin_barycenter`, and :func:`fit_decay_pixel`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 from dataclasses import dataclass
 import numpy as np
@@ -12,24 +25,101 @@ except ImportError:
 EPS = 1e-9
 
 
-def cyclic_conv(h, f):
+def cyclic_conv(h: np.ndarray, f: np.ndarray) -> Any:
+    """
+    Handle cyclic conv.
+
+    Parameters
+    ----------
+    h : np.ndarray
+        Input value.
+    f : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     N = h.shape[-1]
     return np.fft.irfft(np.fft.rfft(h, axis=-1) * np.fft.rfft(f, axis=-1), n=N, axis=-1)
 
 
-def cyclic_corr(u, f):
+def cyclic_corr(u: np.ndarray, f: np.ndarray) -> Any:
+    """
+    Handle cyclic corr.
+
+    Parameters
+    ----------
+    u : np.ndarray
+        Input value.
+    f : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     N = u.shape[-1]
     return np.fft.irfft(
         np.conj(np.fft.rfft(f, axis=-1)) * np.fft.rfft(u, axis=-1), n=N, axis=-1
     )
 
 
-def decay_basis(taus, t, T):
+def decay_basis(taus: np.ndarray, t: np.ndarray, T: np.ndarray) -> np.ndarray:
+    """
+    Handle decay basis.
+
+    Parameters
+    ----------
+    taus : np.ndarray
+        Input value.
+    t : np.ndarray
+        Input value.
+    T : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    np.ndarray
+        Return value.
+    """
     taus = np.atleast_1d(np.asarray(taus, float))
     return np.stack([np.exp(-t / tau) / (1.0 - np.exp(-T / tau)) for tau in taus], 0)
 
 
-def build_gate_matrix(t, T, n_gates, width, edge=0.0, eta=None):
+def build_gate_matrix(
+    t: np.ndarray,
+    T: np.ndarray,
+    n_gates: int,
+    width: float,
+    edge: float = 0.0,
+    eta: float | None = None,
+) -> np.ndarray:
+    """
+    Build gate matrix.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        Input value.
+    T : np.ndarray
+        Input value.
+    n_gates : int
+        Input value.
+    width : float
+        Input value.
+    edge : float
+        Input value.
+    eta : float | None
+        Input value.
+
+    Returns
+    -------
+    np.ndarray
+        Return value.
+    """
     N = t.size
     dt = T / N
     centers = np.linspace(0, T, n_gates, endpoint=False)
@@ -51,7 +141,20 @@ def build_gate_matrix(t, T, n_gates, width, edge=0.0, eta=None):
     return G
 
 
-def project_simplex(V):
+def project_simplex(V: np.ndarray) -> Any:
+    """
+    Handle project simplex.
+
+    Parameters
+    ----------
+    V : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     V = np.atleast_2d(V)
     n = V.shape[1]
     U = np.sort(V, axis=1)[:, ::-1]
@@ -63,13 +166,45 @@ def project_simplex(V):
     return np.maximum(V - theta[:, None], 0.0)
 
 
-def huber_tv_grad(h, delta):
+def huber_tv_grad(h: np.ndarray, delta: np.ndarray) -> Any:
+    """
+    Handle huber tv grad.
+
+    Parameters
+    ----------
+    h : np.ndarray
+        Input value.
+    delta : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     d = h - np.roll(h, 1, axis=-1)
     psi = np.where(np.abs(d) <= delta, d / delta, np.sign(d))
     return psi - np.roll(psi, -1, axis=-1)
 
 
-def spatial_laplacian(H, ny, nx):
+def spatial_laplacian(H: np.ndarray, ny: np.ndarray, nx: np.ndarray) -> Any:
+    """
+    Handle spatial laplacian.
+
+    Parameters
+    ----------
+    H : np.ndarray
+        Input value.
+    ny : np.ndarray
+        Input value.
+    nx : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     N = H.shape[-1]
     Himg = H.reshape(ny, nx, N)
     lap = (
@@ -82,14 +217,44 @@ def spatial_laplacian(H, ny, nx):
     return lap.reshape(ny * nx, N)
 
 
-def fourier_shift(H, s):
+def fourier_shift(H: np.ndarray, s: np.ndarray) -> Any:
+    """
+    Handle fourier shift.
+
+    Parameters
+    ----------
+    H : np.ndarray
+        Input value.
+    s : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     N = H.shape[-1]
     k = np.fft.rfftfreq(N, d=1.0 / N)
     phase = np.exp(-2j * np.pi * k * s / N)
     return np.fft.irfft(np.fft.rfft(H, axis=-1) * phase, n=N, axis=-1)
 
 
-def pin_barycenter(H, c_target):
+def pin_barycenter(H: np.ndarray, c_target: np.ndarray) -> Any:
+    """
+    Handle pin barycenter.
+
+    Parameters
+    ----------
+    H : np.ndarray
+        Input value.
+    c_target : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     idx = np.arange(H.shape[-1])
     cbar = float(np.mean((H * idx).sum(-1) / np.maximum(H.sum(-1), EPS)))
     return np.maximum(fourier_shift(H, c_target - cbar), 0.0)
@@ -97,6 +262,41 @@ def pin_barycenter(H, c_target):
 
 @dataclass
 class SolverConfig:
+    """
+    Collect optimization settings for detector-aware FLIM and IRF fitting. The dataclass
+    controls model count, lifetime bounds, regularization, IRF update iterations, and
+    logging behavior.
+
+    Parameters
+    ----------
+    T : float
+        Configuration value used by the class.
+    n_models : int
+        Number of items used by this workflow.
+    tau_init : tuple
+        Configuration value used by the class.
+    tau_bounds : tuple
+        Configuration value used by the class.
+    tau_sep : float
+        Configuration value used by the class.
+    rho1 : float
+        Configuration value used by the class.
+    rho2 : float
+        Configuration value used by the class.
+    outer_iters : int
+        Configuration value used by the class.
+    irf_inner_iters : int
+        Configuration value used by the class.
+    irf_step : float
+        Configuration value used by the class.
+    estimate_irf : bool
+        Configuration value used by the class.
+    pin_global_shift : bool
+        Configuration value used by the class.
+    verbose : bool
+        Configuration value used by the class.
+    """
+
     T: float = 12.5
     n_models: int = 2
     tau_init: tuple = (0.5, 2.0)
@@ -112,17 +312,86 @@ class SolverConfig:
     verbose: bool = True
 
 
-def _phi(taus, h, t, T, G):
+def _phi(
+    taus: np.ndarray, h: np.ndarray, t: np.ndarray, T: np.ndarray, G: np.ndarray
+) -> Any:
+    """
+    Handle phi.
+
+    Parameters
+    ----------
+    taus : np.ndarray
+        Input value.
+    h : np.ndarray
+        Input value.
+    t : np.ndarray
+        Input value.
+    T : np.ndarray
+        Input value.
+    G : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     B = decay_basis(taus, t, T)
     M = cyclic_conv(h[None, :], B)
     return G @ M.T
 
 
-def fit_decay_pixel(lam_obs, w, h, t, T, G, cfg):
+def fit_decay_pixel(
+    lam_obs: np.ndarray,
+    w: np.ndarray,
+    h: np.ndarray,
+    t: np.ndarray,
+    T: np.ndarray,
+    G: np.ndarray,
+    cfg: Any,
+) -> Any:
+    """
+    Fit decay pixel.
+
+    Parameters
+    ----------
+    lam_obs : np.ndarray
+        Input value.
+    w : np.ndarray
+        Input value.
+    h : np.ndarray
+        Input value.
+    t : np.ndarray
+        Input value.
+    T : np.ndarray
+        Input value.
+    G : np.ndarray
+        Input value.
+    cfg : Any
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     sw = np.sqrt(w)
     lo, hi = cfg.tau_bounds
 
-    def resid(log_taus):
+    def resid(log_taus: np.ndarray) -> Any:
+        """
+        Handle resid.
+
+        Parameters
+        ----------
+        log_taus : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         taus = np.exp(log_taus)
         Phi = _phi(taus, h, t, T, G)
         A, *_ = np.linalg.lstsq(sw[:, None] * Phi, sw * lam_obs, rcond=None)
@@ -140,16 +409,84 @@ def fit_decay_pixel(lam_obs, w, h, t, T, G, cfg):
     return taus, A, Phi @ A
 
 
-def update_irf(H, F, lam_obs, W, G, mu1, mu2, ny, nx, cfg):
+def update_irf(
+    H: np.ndarray,
+    F: np.ndarray,
+    lam_obs: np.ndarray,
+    W: np.ndarray,
+    G: np.ndarray,
+    mu1: np.ndarray,
+    mu2: np.ndarray,
+    ny: np.ndarray,
+    nx: np.ndarray,
+    cfg: Any,
+) -> Any:
+    """
+    Update irf.
+
+    Parameters
+    ----------
+    H : np.ndarray
+        Input value.
+    F : np.ndarray
+        Input value.
+    lam_obs : np.ndarray
+        Input value.
+    W : np.ndarray
+        Input value.
+    G : np.ndarray
+        Input value.
+    mu1 : np.ndarray
+        Input value.
+    mu2 : np.ndarray
+        Input value.
+    ny : np.ndarray
+        Input value.
+    nx : np.ndarray
+        Input value.
+    cfg : Any
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     P, N = H.shape
 
-    def data_grad(Hx):
+    def data_grad(Hx: np.ndarray) -> Any:
+        """
+        Handle data grad.
+
+        Parameters
+        ----------
+        Hx : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         lam = cyclic_conv(Hx, F) @ G.T
         resid = W * (lam - lam_obs)
         back = resid @ G
         return 2.0 * cyclic_corr(back, F)
 
-    def data_hess(V):
+    def data_hess(V: np.ndarray) -> Any:
+        """
+        Handle data hess.
+
+        Parameters
+        ----------
+        V : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         lam = cyclic_conv(V, F) @ G.T
         return 2.0 * cyclic_corr((W * lam) @ G, F)
 
@@ -174,8 +511,42 @@ def update_irf(H, F, lam_obs, W, G, mu1, mu2, ny, nx, cfg):
 
 
 def solve_flim(
-    y, detector, det_params, ny, nx, gate_spec, cfg: SolverConfig, h_init=None
-):
+    y: np.ndarray,
+    detector: str,
+    det_params: np.ndarray,
+    ny: np.ndarray,
+    nx: np.ndarray,
+    gate_spec: np.ndarray,
+    cfg: SolverConfig,
+    h_init: np.ndarray | None = None,
+) -> Any:
+    """
+    Handle solve flim.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        Input value.
+    detector : str
+        Input value.
+    det_params : np.ndarray
+        Input value.
+    ny : np.ndarray
+        Input value.
+    nx : np.ndarray
+        Input value.
+    gate_spec : np.ndarray
+        Input value.
+    cfg : SolverConfig
+        Input value.
+    h_init : np.ndarray | None
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     P = y.shape[0]
     N = gate_spec.get("N", 256)
     t = np.linspace(0, cfg.T, N, endpoint=False)
@@ -202,7 +573,22 @@ def solve_flim(
     amps = np.zeros((P, cfg.n_models))
     F = np.zeros((P, N))
 
-    def assemble_F(taus, amps):
+    def assemble_F(taus: np.ndarray, amps: np.ndarray) -> np.ndarray:
+        """
+        Handle assemble  f.
+
+        Parameters
+        ----------
+        taus : np.ndarray
+            Input value.
+        amps : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         out = np.zeros((P, N))
         for k in range(P):
             Bk = decay_basis(taus[k], t, cfg.T)

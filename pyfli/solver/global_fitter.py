@@ -1,4 +1,14 @@
 # solver/global_fitter.py
+"""
+Fit cluster-level super-pixels and stitch global FLIM fit results back into image maps.
+
+This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
+likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+classes :class:`GlobalFLIFitter`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 import time
 from tqdm import tqdm
@@ -10,9 +20,30 @@ from .comparison import FittingComparator
 
 
 class GlobalFLIFitter:
+    """
+    Fit clusters or super-pixels before stitching parameters back into image maps. It
+    supports SNR-weighted cluster fitting, local refinement, and result reconstruction
+    for global workflows.
+
+    Parameters
+    ----------
+    freq : float
+        Acquisition frequency information used to derive timing constants.
+    base_fitter_class : Any
+        Least-squares fitter class used as a fitting backend.
+    mle_fitter_class : Any
+        Maximum-likelihood fitter class used as a fitting backend.
+    processor_instance : Any | None
+        Optional processor reused for pixel-level fitting or reconstruction.
+    """
+
     def __init__(
-        self, freq, base_fitter_class, mle_fitter_class, processor_instance=None
-    ):
+        self,
+        freq: float,
+        base_fitter_class: Any,
+        mle_fitter_class: Any,
+        processor_instance: Any | None = None,
+    ) -> None:
         self.freq = freq
         self.BaseClass = base_fitter_class
         self.MLEClass = mle_fitter_class
@@ -27,7 +58,13 @@ class GlobalFLIFitter:
         self.T_acq = 1000.0 / freq[1]
         self.cluster_data = {}
 
-    def make_clusters(self, image_cube, irf_cube, cluster_mask, min_cluster_size=10):
+    def make_clusters(
+        self,
+        image_cube: np.ndarray,
+        irf_cube: np.ndarray,
+        cluster_mask: np.ndarray,
+        min_cluster_size: int = 10,
+    ) -> Any:
         """Extracts cluster-specific data and stores spatial coordinates for reconstruction."""
         self.cluster_data = {}
         cluster_ids = np.unique(cluster_mask)[np.unique(cluster_mask) != 0]
@@ -47,12 +84,12 @@ class GlobalFLIFitter:
 
     def super_pixel_fitting(
         self,
-        cluster_strategy="snr_weighted",
-        estimator="least_squares",
-        model_type="bi-exponential",
-        p0=None,
-        bounds=None,
-    ):
+        cluster_strategy: str = "snr_weighted",
+        estimator: str = "least_squares",
+        model_type: str = "bi-exponential",
+        p0: Any | None = None,
+        bounds: np.ndarray | None = None,
+    ) -> tuple[Any, ...]:
         """Performs high-SNR super-pixel fitting and triggers comparison plots."""
         super_pixel_data = {}
         super_pixel_params = {}
@@ -135,7 +172,14 @@ class GlobalFLIFitter:
         self._print_master_table(master_table_data)
         return super_pixel_data, super_pixel_params
 
-    def process_clusters(self, image_cube, irf_cube, mask=None, gi_tol=0.2, **kwargs):
+    def process_clusters(
+        self,
+        image_cube: np.ndarray,
+        irf_cube: np.ndarray,
+        mask: np.ndarray | None = None,
+        gi_tol: float = 0.2,
+        **kwargs: Any,
+    ) -> tuple[Any, ...]:
         """
         global_inference=True: Super-pixel values are seeds (p0), bounds are wide.
         global_inference=False: Super-pixel values are seeds (p0), lifetimes constrained +/- gi_tol.
@@ -250,10 +294,25 @@ class GlobalFLIFitter:
 
         return results, sp_data, sp_params
 
-    def stitch_results(self, cluster_results, H, W, T, model_type="bi-exponential"):
+    def stitch_results(
+        self,
+        cluster_results: np.ndarray,
+        H: np.ndarray,
+        W: np.ndarray,
+        T: np.ndarray,
+        model_type: str = "bi-exponential",
+    ) -> Any:
         """Combines cluster-wise datasets into global maps with corrected TR naming."""
 
-        def _z2():
+        def _z2() -> np.ndarray:
+            """
+            Handle z2.
+
+            Returns
+            -------
+            np.ndarray
+                Return value.
+            """
             return np.zeros((H, W), dtype=np.float32)
 
         stitched_maps = {
@@ -313,7 +372,20 @@ class GlobalFLIFitter:
             },
         }
 
-    def _print_master_table(self, data):
+    def _print_master_table(self, data: np.ndarray) -> None:
+        """
+        Handle print master table.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         headers = [
             "Cluster",
             "Method",

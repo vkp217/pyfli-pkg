@@ -1,4 +1,13 @@
 # pyfli/singleshot/singleshot.py
+"""
+Provide singleshot tools for PyFLI single-shot FLIM convenience entry points.
+
+This module belongs to :mod:`pyfli.singleshot` and is part of PyFLI single-shot FLIM
+convenience entry points. Public API includes classes :class:`SingleShotFLI`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
@@ -6,10 +15,17 @@ from scipy.interpolate import interp1d
 
 
 class SingleShotFLI:
-    def __init__(self):
+    """
+    Provide a compact single-shot FLIM API. The class groups the minimal state needed
+    for single-shot lifetime estimation workflows.
+    """
+
+    def __init__(self) -> None:
         pass
 
-    def compute_lifetime(step, fname, gate_width, gate):
+    def compute_lifetime(
+        step: np.ndarray, fname: str, gate_width: np.ndarray, gate: np.ndarray
+    ) -> tuple[Any, ...]:
         """
         Single-shot fluorescence lifetime estimation using lookup table and HDF5 TPSF data.
         Parameters

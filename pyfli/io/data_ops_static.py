@@ -1,3 +1,13 @@
+"""
+Provide static readers and corrections for SPAD, TIFF, MAT, SDT, NumPy, and text data.
+
+This module belongs to :mod:`pyfli.io` and is part of PyFLI detector importers, file
+readers, saving helpers, and processed-data loaders. Public API includes classes
+:class:`StaticDataOps`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 
 # dataIO/data_ops_static.py
@@ -10,8 +20,14 @@ from sdtfile import SdtFile
 
 
 class StaticDataOps:
+    """
+    Group static low-level readers and correction routines for detector files. The
+    methods cover pile-up correction, hot-pixel interpolation, and MAT, SDT, TIFF,
+    NumPy, text, ASC, and SPAD HDF5 loading.
+    """
+
     @staticmethod
-    def pileup_correction(data, bit_size=10):
+    def pileup_correction(data: np.ndarray, bit_size: int = 10) -> Any:
         """
         Applies pileup correction to the photon counting data.
         Formula: corrected = -ln(1 - (measured / max_counts)) * max_counts
@@ -22,7 +38,9 @@ class StaticDataOps:
         return -np.log(1 - safe_data) * dynamic_range
 
     @staticmethod
-    def spad_hdf5_read(fname, gate_prefix, pile_up=True, bit_size=10):
+    def spad_hdf5_read(
+        fname: str, gate_prefix: np.ndarray, pile_up: bool = True, bit_size: int = 10
+    ) -> np.ndarray:
         """
         Generic SPAD HDF5 reader shared by SS2 and SS3.
         gate_prefix : key prefix used to identify gate datasets inside 'Gate Images'
@@ -52,7 +70,7 @@ class StaticDataOps:
         return tpsfs
 
     @staticmethod
-    def hotpixel_correct(data_3d, hp_map):
+    def hotpixel_correct(data_3d: np.ndarray, hp_map: np.ndarray) -> Any:
         """
         Replace each pixel flagged in hp_map with the nanmedian of its 3×3
         spatial neighbourhood per time gate.
@@ -70,7 +88,7 @@ class StaticDataOps:
         return cleaned
 
     @staticmethod
-    def load_hp_image(hp_path, ref_shape):
+    def load_hp_image(hp_path: str, ref_shape: np.ndarray) -> Any:
         """
         Load a hot pixel mask image (PNG / JPEG / TIFF) → bool (H, W).
         Auto-rotated if image is (W, H) instead of (H, W).
@@ -93,7 +111,9 @@ class StaticDataOps:
         return mask > 0
 
     @staticmethod
-    def apply_interpolation_mask(data_3d, hp_path=None):
+    def apply_interpolation_mask(
+        data_3d: np.ndarray, hp_path: str | None = None
+    ) -> Any:
         """
         Identifies hot pixels from a mask file and replaces them with the
         nanmedian of their 3×3 neighbourhood (excluding the hot pixel itself).
@@ -120,7 +140,20 @@ class StaticDataOps:
         return StaticDataOps.hotpixel_correct(data_3d, hotpixel_mask > 0)
 
     @staticmethod
-    def load_mat_file(path):
+    def load_mat_file(path: str) -> np.ndarray:
+        """
+        Load mat file.
+
+        Parameters
+        ----------
+        path : str
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         try:
             data = loadmat(path, squeeze_me=True)
             keys = [k for k in data.keys() if not k.startswith("__")]
@@ -134,19 +167,75 @@ class StaticDataOps:
                 return np.asarray(mat_data[keys[0]])
 
     @staticmethod
-    def load_sdt_file(path):
+    def load_sdt_file(path: str) -> np.ndarray:
+        """
+        Load sdt file.
+
+        Parameters
+        ----------
+        path : str
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         return np.asarray(SdtFile(path).data[0])
 
     @staticmethod
-    def load_tiff_file(path):
+    def load_tiff_file(path: str) -> np.ndarray:
+        """
+        Load tiff file.
+
+        Parameters
+        ----------
+        path : str
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         return np.asarray(tifffile.imread(path))
 
     @staticmethod
-    def load_npy_file(path):
+    def load_npy_file(path: str) -> Any:
+        """
+        Load npy file.
+
+        Parameters
+        ----------
+        path : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return np.load(path)
 
     @staticmethod
-    def load_txt_file(path, target_spatial=(512, 512)):
+    def load_txt_file(
+        path: str, target_spatial: tuple[int, ...] = (512, 512)
+    ) -> np.ndarray:
+        """
+        Load txt file.
+
+        Parameters
+        ----------
+        path : str
+            Input value.
+        target_spatial : tuple[int, ...]
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         data = np.loadtxt(path)
         if data.ndim == 1:
             # Reshape 1D IRF/Trace to 3D and tile across spatial dimensions
@@ -154,13 +243,33 @@ class StaticDataOps:
         return data
 
     @staticmethod
-    def load_asc_file(path, target_spatial=(512, 512)):
+    def load_asc_file(path: str, target_spatial: tuple[int, ...] = (512, 512)) -> Any:
+        """
+        Load asc file.
+
+        Parameters
+        ----------
+        path : str
+            Input value.
+        target_spatial : tuple[int, ...]
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         data_read = np.genfromtxt(path)
         data_1d = data_read[:, 1] if data_read.ndim == 2 else data_read.flatten()
         return np.tile(data_1d.reshape(1, 1, -1), (*target_spatial, 1))
 
     @staticmethod
-    def SS3HDF5read(fname, pileCorr=True, hot_pixels=True, hp_path=None):
+    def SS3HDF5read(
+        fname: str,
+        pileCorr: bool = True,
+        hot_pixels: bool = True,
+        hp_path: str | None = None,
+    ) -> Any:
         """
         Reads SS3 gated HDF5 data, optionally applying pile-up and hot-pixel corrections.
         Signature unchanged — safe to call from data_operations.py.

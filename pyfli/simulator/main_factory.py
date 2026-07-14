@@ -1,3 +1,13 @@
+"""
+Build macro and TCSPC simulation workflows from IRF data and hardware configuration.
+
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
+generation, hardware noise modeling, calibration, and validation tools. Public API
+includes classes :class:`MacroSimulator` and :class:`TCSPCSimulator`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 from scipy.signal import fftconvolve
 from .simulator_engine import FLIEngine
@@ -6,7 +16,24 @@ from .distributions import ParameterSampler
 
 
 class MacroSimulator:
-    def __init__(self, irf_data, sensor_type="ICCD", **cfg):
+    """
+    Generate macro-time style synthetic FLIM decays from IRF data and sensor
+    configuration. The callable factory samples lifetimes, amplitudes, noise, and
+    detector response for ICCD-like workflows.
+
+    Parameters
+    ----------
+    irf_data : np.ndarray
+        Instrument response data used to convolve or simulate decays.
+    sensor_type : str
+        Detector family or hardware profile name.
+    **cfg : Any
+        Additional configuration values forwarded to the simulator or solver.
+    """
+
+    def __init__(
+        self, irf_data: np.ndarray, sensor_type: str = "ICCD", **cfg: Any
+    ) -> None:
         # Toggles
         self.use_jitter = cfg.get("jitter", True)
         self.use_dcr = cfg.get("dcr_on", True)
@@ -19,7 +46,15 @@ class MacroSimulator:
         self.sensor_type = sensor_type.upper()
         self.engine = FLIEngine(irf_data, **cfg)
 
-    def __call__(self):
+    def __call__(self) -> dict[Any, Any]:
+        """
+        Run the instance as a callable.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         p = self.engine.sample_all_params()
 
         # 1. Determine target intensity (A) based on bit-depth
@@ -112,7 +147,23 @@ class MacroSimulator:
 
 
 class TCSPCSimulator:
-    def __init__(self, irf_data, sensor_type="PHOTON_COUNTER", **cfg):
+    """
+    Generate photon-counting TCSPC simulations from IRF data and sensor configuration.
+    The callable factory emphasizes photon-counter behavior and count statistics.
+
+    Parameters
+    ----------
+    irf_data : np.ndarray
+        Instrument response data used to convolve or simulate decays.
+    sensor_type : str
+        Detector family or hardware profile name.
+    **cfg : Any
+        Additional configuration values forwarded to the simulator or solver.
+    """
+
+    def __init__(
+        self, irf_data: np.ndarray, sensor_type: str = "PHOTON_COUNTER", **cfg: Any
+    ) -> None:
         self.use_jitter = cfg.get("jitter", True)
         self.use_dcr = cfg.get("dcr_on", True)
         self.use_qe = cfg.get("qe_on", False)
@@ -125,7 +176,15 @@ class TCSPCSimulator:
         cfg.setdefault("bit", 16)
         self.engine = FLIEngine(irf_data, **cfg)
 
-    def __call__(self):
+    def __call__(self) -> dict[Any, Any]:
+        """
+        Run the instance as a callable.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         p = self.engine.sample_all_params()
         n_cycles = np.random.randint(1, self.engine.params_cfg["cycles"] + 1)
         mu_per_cycle = 0.01

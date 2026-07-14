@@ -1,3 +1,13 @@
+"""
+Generate FLIM image cubes from intensity images, ROI masks, and simulator settings.
+
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
+generation, hardware noise modeling, calibration, and validation tools. Public API
+includes classes :class:`FLIImageGenerator`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 
 # simulator/sim_image_generator.py
@@ -10,17 +20,42 @@ from .sim_helper import irf_picker
 
 
 class FLIImageGenerator:
+    """
+    Generate full FLIM image cubes from masks, intensity images, ROI parameters, and
+    simulator settings. It bridges pixel-level simulation with image-shaped datasets
+    used by solvers and visualizers.
+
+    Parameters
+    ----------
+    irf_data : np.ndarray
+        Instrument response data used to convolve or simulate decays.
+    intensity_image_path : str | None
+        Filesystem path used by this workflow.
+    roi_mask_path : str | None
+        Filesystem path used by this workflow.
+    roi_params : Any | None
+        Configuration value used by the class.
+    image_shape : tuple[int, ...]
+        Configuration value used by the class.
+    method : str
+        Algorithm or model-selection method to use.
+    verbose : bool
+        Configuration value used by the class.
+    bool_mask : np.ndarray | None
+        Boolean mask selecting pixels included in the analysis.
+    """
+
     def __init__(
         self,
-        irf_data,
-        intensity_image_path=None,
-        roi_mask_path=None,
-        roi_params=None,
-        image_shape=(32, 32),
-        method="ICCD",
-        verbose=True,
-        bool_mask=None,
-    ):
+        irf_data: np.ndarray,
+        intensity_image_path: str | None = None,
+        roi_mask_path: str | None = None,
+        roi_params: Any | None = None,
+        image_shape: tuple[int, ...] = (32, 32),
+        method: str = "ICCD",
+        verbose: bool = True,
+        bool_mask: np.ndarray | None = None,
+    ) -> None:
         self.method = method.lower()
         self.irf_data = irf_data
         self.verbose = verbose
@@ -65,7 +100,15 @@ class FLIImageGenerator:
             cfg.pop("method", None)
             self.roi_sims[roi_val] = SimClass(dummy_irf, sensor_type=sensor_type, **cfg)
 
-    def generate_image(self):
+    def generate_image(self) -> dict[Any, Any]:
+        """
+        Generate image.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         h, w = self.shape
         total_pixels = h * w
 

@@ -1,5 +1,18 @@
 # ruff: noqa: F401
 
+"""
+Provide analysis tools for PyFLI post-processing, diagnostics, statistical comparison,
+and result-loading utilities for fitted FLIM datasets.
+
+This module belongs to :mod:`pyfli.analysis` and is part of PyFLI post-processing,
+diagnostics, statistical comparison, and result-loading utilities for fitted FLIM
+datasets. The module primarily re-exports package symbols or constants for downstream
+imports.
+"""
+
+from __future__ import annotations
+from typing import Any
+
 from .load_results import (
     RESULT_FILENAMES,
     load_session_arrays,
@@ -45,14 +58,74 @@ except ImportError:
     FBI_RAW_FILENAME = "F-BI Direct_Output_bi-exponential.npy"
     _FBI_AVAILABLE = False
 
-    def load_fbi_model(*_, **__):
+    def load_fbi_model(*_: Any, **__: Any) -> None:
+        """
+        Load fbi model.
+
+        Parameters
+        ----------
+        *_ : Any
+            Input value.
+        **__ : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         raise ImportError("FBI model code is not available in this installation.")
 
-    def run_fbi_inference(*_, **__):
+    def run_fbi_inference(*_: Any, **__: Any) -> None:
+        """
+        Run fbi inference.
+
+        Parameters
+        ----------
+        *_ : Any
+            Input value.
+        **__ : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         raise ImportError("FBI model code is not available in this installation.")
 
-    def compute_fbi_results(*_, **__):
+    def compute_fbi_results(*_: Any, **__: Any) -> None:
+        """
+        Compute fbi results.
+
+        Parameters
+        ----------
+        *_ : Any
+            Input value.
+        **__ : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         raise ImportError("FBI model code is not available in this installation.")
 
-    def plot_fbi_maps(*_, **__):
+    def plot_fbi_maps(*_: Any, **__: Any) -> None:
+        """
+        Plot fbi maps.
+
+        Parameters
+        ----------
+        *_ : Any
+            Input value.
+        **__ : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         raise ImportError("FBI model code is not available in this installation.")

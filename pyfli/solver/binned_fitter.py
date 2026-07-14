@@ -1,3 +1,13 @@
+"""
+Bin image cubes spatially and fit the binned FLIM data.
+
+This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
+likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+classes :class:`FLIBinner` and :class:`BinnedFLIFitter`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 
 # solver/binned_fitter.py
@@ -5,16 +15,24 @@ import numpy as np
 
 
 class FLIBinner:
-    def __init__(self, bin_radius=1):
-        """
-        Handles the spatial binning logic for FLIM data cubes.
-        bin_radius: n surrounding pixels (bin=1 -> 3x3 window, bin=2 -> 5x5).
-        """
+    """
+    Apply spatial binning to FLIM image and IRF cubes. It reduces noise by aggregating
+    neighboring pixels before fitting.
+
+    Parameters
+    ----------
+    bin_radius : int
+        Radius of the spatial binning neighborhood in pixels.
+    """
+
+    def __init__(self, bin_radius: int = 1) -> None:
         self.bin_radius = bin_radius
         self.binned_img = None
         self.binned_irf = None
 
-    def apply_binning(self, image_cube, irf_cube):
+    def apply_binning(
+        self, image_cube: np.ndarray, irf_cube: np.ndarray
+    ) -> tuple[Any, ...]:
         """
         Performs spatial binning using constant padding to maintain
         original image dimensions.
@@ -45,24 +63,37 @@ class FLIBinner:
 
         return self.binned_img, self.binned_irf
 
-    def get_binned_data(self):
+    def get_binned_data(self) -> tuple[Any, ...]:
         """Returns the binned cubes for manual inspection."""
         return self.binned_img, self.binned_irf
 
 
 class BinnedFLIFitter:
-    def __init__(self, processor_instance, bin_radius=1):
-        """
-        Wraps an existing CPU or GPU processor.
+    """
+    Fit spatially binned FLIM data with an existing processor. It wraps binning, mask
+    propagation, processor dispatch, and result saving for binned datasets.
 
-        processor_instance: An instance of FLICPUProcessor or FLIGPUProcessor.
-        bin_radius: Passed to maintain metadata consistency.
-        """
+    Parameters
+    ----------
+    processor_instance : Any
+        Optional processor reused for pixel-level fitting or reconstruction.
+    bin_radius : int
+        Radius of the spatial binning neighborhood in pixels.
+    """
+
+    def __init__(self, processor_instance: Any, bin_radius: int = 1) -> None:
         self.processor = processor_instance
         self.bin_radius = bin_radius
         self.freq = processor_instance.freq
 
-    def fit(self, b_img, b_irf, mask=None, data_name="Binned_Dataset", **kwargs):
+    def fit(
+        self,
+        b_img: np.ndarray,
+        b_irf: np.ndarray,
+        mask: np.ndarray | None = None,
+        data_name: str = "Binned_Dataset",
+        **kwargs: Any,
+    ) -> np.ndarray:
         """
         Unified entry point using Duck-Typing.
         Accepts PRE-BINNED data cubes.
@@ -114,7 +145,7 @@ class BinnedFLIFitter:
 
         return dataset
 
-    def save_results(self, dataset, folder="results"):
+    def save_results(self, dataset: np.ndarray, folder: str = "results") -> None:
         """Pass-through to the underlying processor's optimized save logic."""
         if dataset is None:
             logging.warning("No dataset provided to save.")

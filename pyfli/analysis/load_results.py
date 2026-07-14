@@ -1,3 +1,16 @@
+"""
+Load saved PyFLI fitting sessions and inject derived analysis results.
+
+This module belongs to :mod:`pyfli.analysis` and is part of PyFLI post-processing,
+diagnostics, statistical comparison, and result-loading utilities for fitted FLIM
+datasets. Public API includes functions :func:`load_session_arrays`,
+:func:`scan_session_results`, :func:`load_fitting_results`,
+:func:`save_laguerre_result`, :func:`inject_phasor_result`, and
+:func:`add_mean_lifetime`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 
 import os
@@ -26,7 +39,7 @@ RESULT_FILENAMES = {
 }
 
 
-def load_session_arrays(save_dir):
+def load_session_arrays(save_dir: str) -> tuple[Any, ...]:
     """Load clean_decay, clean_irf, and final_mask from a pf_Analysis session directory.
 
     Returns
@@ -43,22 +56,19 @@ def load_session_arrays(save_dir):
     return decay, irf, mask
 
 
-def scan_session_results(save_dir):
-    """Print and return all fitting result .npy files found in the session directory.
+def scan_session_results(save_dir: str) -> np.ndarray:
+    """
+    Scan session results.
 
-    Use this to discover available files before building your own experiments dict.
-
-    Example
-    -------
-    >>> scan_session_results(saver.save_dir)
-    Available fitting results in '.../_bin_2_pf_Analysis':
-      [0] CPU_NLSF_least_squares_mono-exponential.npy
-      [1] CPU_MLE_poisson_mono-exponential.npy
-      [2] Laguerre Results_bi-exponential.npy
+    Parameters
+    ----------
+    save_dir : str
+        Input value.
 
     Returns
     -------
-    list[str]  filenames (not full paths)
+    np.ndarray
+        Return value.
     """
     all_npy = sorted(f for f in os.listdir(save_dir) if f.endswith(".npy"))
     result_files = [f for f in all_npy if f not in _NON_RESULT_FILES]
@@ -72,7 +82,7 @@ def scan_session_results(save_dir):
     return result_files
 
 
-def load_fitting_results(save_dir, experiments):
+def load_fitting_results(save_dir: str, experiments: np.ndarray) -> tuple[Any, ...]:
     """Load fitting results using a user-defined filename → label mapping.
 
     Parameters
@@ -126,26 +136,23 @@ def load_fitting_results(save_dir, experiments):
     return all_datasets, all_fitset, names
 
 
-def save_laguerre_result(saver, lag_results, model_type):
-    """Save Laguerre results with model-type suffix for unambiguous reloading.
-
-    Uses the standardised filename from RESULT_FILENAMES so the file is
-    immediately discoverable by scan_session_results() and loadable by
-    load_fitting_results().
+def save_laguerre_result(saver: Any, lag_results: np.ndarray, model_type: str) -> None:
+    """
+    Save laguerre result.
 
     Parameters
     ----------
-    saver      : DataSaver
-    lag_results: dict   returned by LaguerreFLI.fit().get_parameters()
-    model_type : str    'mono-exponential' or 'bi-exponential'
+    saver : Any
+        Input value.
+    lag_results : np.ndarray
+        Input value.
+    model_type : str
+        Input value.
 
-    Example
+    Returns
     -------
-    ::
-
-        Lag_results = Lag_model.fit(binned_decay, binned_irf).get_parameters(...)
-        save_laguerre_result(saver, Lag_results, model_type='bi-exponential')
-        # → writes 'Laguerre Results_bi-exponential.npy'
+    None
+        Return value.
     """
     key = f"laguerre_{model_type.split('-')[0]}"  # 'laguerre_mono' or 'laguerre_bi'
     if key not in RESULT_FILENAMES:
@@ -157,29 +164,33 @@ def save_laguerre_result(saver, lag_results, model_type):
     saver.log(f"Laguerre {model_type} results saved as {fname}.npy")
 
 
-def inject_phasor_result(tau_map_ns, all_datasets, all_fitset, names, label="Phasor"):
-    """Inject a phasor lifetime map directly into existing result lists.
-
-    Use this when the phasor tau is already in memory (from compute_phasor)
-    and you want to include it in comparisons without writing to disk first.
-    The map is added under both ``'tau_map'`` and ``'mean_lifetime'`` keys so
-    it aligns with mono-exponential and bi-exponential comparison keys.
+def inject_phasor_result(
+    tau_map_ns: np.ndarray,
+    all_datasets: np.ndarray,
+    all_fitset: np.ndarray,
+    names: Any,
+    label: str = "Phasor",
+) -> None:
+    """
+    Inject phasor result.
 
     Parameters
     ----------
-    tau_map_ns   : np.ndarray  (H, W)  from compute_phasor()
-    all_datasets : list[dict]   modified in-place
-    all_fitset   : list[dict]   modified in-place
-    names        : list[str]    modified in-place
-    label        : str          display label (default 'Phasor')
+    tau_map_ns : np.ndarray
+        Input value.
+    all_datasets : np.ndarray
+        Input value.
+    all_fitset : np.ndarray
+        Input value.
+    names : Any
+        Input value.
+    label : str
+        Input value.
 
-    Example
+    Returns
     -------
-    ::
-
-        _, _, _, tau_phasor = compute_phasor(decay, irf, freq_hz, time_axis_ns)
-        all_datasets, all_fitset, names = load_fitting_results(save_dir, experiments)
-        inject_phasor_result(tau_phasor, all_datasets, all_fitset, names)
+    None
+        Return value.
     """
     all_datasets.append(
         {
@@ -191,24 +202,19 @@ def inject_phasor_result(tau_map_ns, all_datasets, all_fitset, names, label="Pha
     names.append(label)
 
 
-def add_mean_lifetime(all_datasets):
-    """Compute and insert ``mean_lifetime`` into each bi-exponential dataset dict.
-
-    Mean lifetime is defined as ``alpha1_map * tau1_map + alpha2_map * tau2_map``.
-    Datasets that already contain ``'mean_lifetime'`` or that lack bi-exponential
-    keys are left unchanged.
+def add_mean_lifetime(all_datasets: np.ndarray) -> None:
+    """
+    Add mean lifetime.
 
     Parameters
     ----------
-    all_datasets : list[dict]   modified in-place
+    all_datasets : np.ndarray
+        Input value.
 
-    Example
+    Returns
     -------
-    ::
-
-        all_datasets, all_fitset, names = load_fitting_results(save_dir, experiments)
-        add_mean_lifetime(all_datasets)
-        # now use map_keys=['mean_lifetime'] in plot_statistical_comparison / plot_2d_analysis
+    None
+        Return value.
     """
     for ds in all_datasets:
         if "mean_lifetime" in ds:

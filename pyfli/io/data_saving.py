@@ -1,3 +1,13 @@
+"""
+Save fitted maps, metadata, figures, and session artifacts to disk.
+
+This module belongs to :mod:`pyfli.io` and is part of PyFLI detector importers, file
+readers, saving helpers, and processed-data loaders. Public API includes classes
+:class:`DataSaver`; functions :func:`filter_vars`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 
 # pyfli/io/data_saving.py
@@ -8,12 +18,44 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 
-def filter_vars(local_vars, keys):
+def filter_vars(local_vars: np.ndarray, keys: np.ndarray) -> Any:
+    """
+    Handle filter vars.
+
+    Parameters
+    ----------
+    local_vars : np.ndarray
+        Input value.
+    keys : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     return {k: local_vars[k] for k in keys if k in local_vars}
 
 
 class DataSaver:
-    def __init__(self, path, folder_name="_pyfli_Analysis", new_session=False):
+    """
+    Persist PyFLI fitting outputs and analysis artifacts. The class creates a session
+    directory and writes arrays, metadata, figures, and tabular summaries in a
+    consistent layout.
+
+    Parameters
+    ----------
+    path : str
+        Configuration value used by the class.
+    folder_name : str
+        Configuration value used by the class.
+    new_session : bool
+        Configuration value used by the class.
+    """
+
+    def __init__(
+        self, path: str, folder_name: str = "_pyfli_Analysis", new_session: bool = False
+    ) -> None:
         #  base directory
         path = os.path.normpath(path)
         if os.path.isdir(path):
@@ -31,13 +73,47 @@ class DataSaver:
             self.log(f"Session Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             self.log("=" * 40)
 
-    def log(self, message):
+    def log(self, message: Any) -> None:
+        """
+        Handle log.
+
+        Parameters
+        ----------
+        message : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         formatted_msg = f"{message}"
         logging.info(formatted_msg)
         with open(self.log_file, "a") as f:
             f.write(formatted_msg + "\n")
 
-    def save_plot(self, name, fig=None, dpi=300, close=True):
+    def save_plot(
+        self, name: str, fig: Any | None = None, dpi: int = 300, close: bool = True
+    ) -> None:
+        """
+        Save plot.
+
+        Parameters
+        ----------
+        name : str
+            Input value.
+        fig : Any | None
+            Input value.
+        dpi : int
+            Input value.
+        close : bool
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         path = os.path.join(self.save_dir, f"{name}.png")
         target = fig if fig is not None else plt
         try:
@@ -49,14 +125,29 @@ class DataSaver:
         if close:
             plt.close(fig) if fig else plt.close()
 
-    def save_json(self, name, data_dict):
+    def save_json(self, name: str, data_dict: np.ndarray) -> None:
         """Saves settings/dictionaries as JSON."""
         path = os.path.join(self.save_dir, f"{name}.json")
         with open(path, "w") as f:
             json.dump(data_dict, f, indent=4)
         self.log(f"JSON saved: >> {name}.json")
 
-    def save_npy(self, name, array):
+    def save_npy(self, name: str, array: np.ndarray) -> None:
+        """
+        Save npy.
+
+        Parameters
+        ----------
+        name : str
+            Input value.
+        array : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         path = os.path.join(self.save_dir, f"{name}.npy")
         np.save(path, array)
         if isinstance(array, dict):
@@ -66,11 +157,41 @@ class DataSaver:
         else:
             self.log(f"Array saved: >> {name}.npy")
 
-    def save_params(self, **kwargs):
+    def save_params(self, **kwargs: Any) -> None:
+        """
+        Save params.
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         for key, value in kwargs.items():
             self.log(f"Parameter: >> {key}: {value}")
 
-    def save_config(self, config_dict, name="fitting_config"):
+    def save_config(
+        self, config_dict: np.ndarray, name: str = "fitting_config"
+    ) -> None:
+        """
+        Save config.
+
+        Parameters
+        ----------
+        config_dict : np.ndarray
+            Input value.
+        name : str
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self.log(f"--- Configuration: {name} ---")
         serializable_config = {}
         for k, v in config_dict.items():

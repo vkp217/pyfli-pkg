@@ -1,3 +1,14 @@
+"""
+Provide shared phasor plotting geometry and axis styling helpers.
+
+This module belongs to :mod:`pyfli.analytical_methods` and is part of PyFLI analytical
+FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
+estimation. The module primarily re-exports package symbols or constants for downstream
+imports.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 
 _TAU_MARKS_NS = np.array(
@@ -7,7 +18,24 @@ _UNIVERSAL_CIRCLE_CENTER = (0.5, 0.0)
 _UNIVERSAL_CIRCLE_RADIUS = 0.5
 
 
-def _universal_circle_xy(n_points: int = 500, half_circle: bool = False):
+def _universal_circle_xy(
+    n_points: int = 500, half_circle: bool = False
+) -> tuple[Any, ...]:
+    """
+    Handle universal circle xy.
+
+    Parameters
+    ----------
+    n_points : int
+        Input value.
+    half_circle : bool
+        Input value.
+
+    Returns
+    -------
+    tuple[Any, ...]
+        Return value.
+    """
     theta = np.linspace(0, np.pi if half_circle else 2 * np.pi, n_points)
     cx, cy = _UNIVERSAL_CIRCLE_CENTER
     r = _UNIVERSAL_CIRCLE_RADIUS
@@ -15,16 +43,45 @@ def _universal_circle_xy(n_points: int = 500, half_circle: bool = False):
 
 
 def _draw_lifetime_ticks(
-    ax,
-    G_mark,
-    S_mark,
+    ax: Any,
+    G_mark: Any,
+    S_mark: Any,
     tick_length: float = 0.02,
     text_offset: float = 0.035,
     color: str = "black",
     lw: float = 2,
     fontsize: int = 7,
     show_units: bool = False,
-):
+) -> None:
+    """
+    Handle draw lifetime ticks.
+
+    Parameters
+    ----------
+    ax : Any
+        Input value.
+    G_mark : Any
+        Input value.
+    S_mark : Any
+        Input value.
+    tick_length : float
+        Input value.
+    text_offset : float
+        Input value.
+    color : str
+        Input value.
+    lw : float
+        Input value.
+    fontsize : int
+        Input value.
+    show_units : bool
+        Input value.
+
+    Returns
+    -------
+    None
+        Return value.
+    """
     cx, cy = _UNIVERSAL_CIRCLE_CENTER
     for tau, Gm, Sm in zip(_TAU_MARKS_NS, G_mark, S_mark):
         normal = np.array([Gm - cx, Sm - cy])
@@ -50,12 +107,33 @@ def _draw_lifetime_ticks(
 
 
 def _style_phasor_ax(
-    ax,
+    ax: Any,
     title: str = "Phasor Diagram",
-    xlim=(-0.1, 1.1),
-    ylim=(0.0, 0.6),
+    xlim: tuple[float, ...] = (-0.1, 1.1),
+    ylim: tuple[float, ...] = (0.0, 0.6),
     half_circle: bool = True,
-):
+) -> None:
+    """
+    Handle style phasor ax.
+
+    Parameters
+    ----------
+    ax : Any
+        Input value.
+    title : str
+        Input value.
+    xlim : tuple[float, ...]
+        Input value.
+    ylim : tuple[float, ...]
+        Input value.
+    half_circle : bool
+        Input value.
+
+    Returns
+    -------
+    None
+        Return value.
+    """
     ax.set_xlabel("G")
     ax.set_ylabel("S")
     ax.set_title(title)

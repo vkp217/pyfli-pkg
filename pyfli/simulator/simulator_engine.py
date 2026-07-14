@@ -1,4 +1,14 @@
 # simulator/simulator_engine
+"""
+Drive the main FLI parameter sampler and TCSPC simulation engine.
+
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
+generation, hardware noise modeling, calibration, and validation tools. Public API
+includes classes :class:`FLIEngine`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 
 from .distributions import ParameterSampler
@@ -7,21 +17,53 @@ from .sim_helper import irf_picker
 
 
 class FLIEngine:
+    """
+    Drive the main non-image FLIM simulation engine. It samples parameters, creates
+    analytical decays, and simulates TCSPC counts from a shared IRF and configuration.
+
+    Parameters
+    ----------
+    irf_full : np.ndarray
+        Configuration value used by the class.
+    tau2 : tuple[int, float]
+        Configuration value used by the class.
+    efficiency : tuple[int, ...]
+        Configuration value used by the class.
+    A1_fraction : tuple[int, ...]
+        Configuration value used by the class.
+    photo_count : tuple[float, int]
+        Configuration value used by the class.
+    mono_fraction : float
+        Configuration value used by the class.
+    bit : int
+        Configuration value used by the class.
+    n_cycles : int
+        Number of items used by this workflow.
+    dcr : float
+        Configuration value used by the class.
+    laser_feq : int
+        Configuration value used by the class.
+    seed : int | None
+        Configuration value used by the class.
+    **kwargs : Any
+        Additional keyword arguments forwarded to the underlying implementation.
+    """
+
     def __init__(
         self,
-        irf_full,
-        tau2=(1, 0.5),
-        efficiency=(5, 5),
-        A1_fraction=(5, 5),
-        photo_count=(1.2, 5),
-        mono_fraction=0.2,
-        bit=8,
-        n_cycles=800_000,
-        dcr=0.05,
-        laser_feq=80,
-        seed=None,
-        **kwargs,
-    ):
+        irf_full: np.ndarray,
+        tau2: tuple[int, float] = (1, 0.5),
+        efficiency: tuple[int, ...] = (5, 5),
+        A1_fraction: tuple[int, ...] = (5, 5),
+        photo_count: tuple[float, int] = (1.2, 5),
+        mono_fraction: float = 0.2,
+        bit: int = 8,
+        n_cycles: int = 800_000,
+        dcr: float = 0.05,
+        laser_feq: int = 80,
+        seed: int | None = None,
+        **kwargs: Any,
+    ) -> None:
 
         irf = irf_picker(irf_full)
         # Timing and Normalization
@@ -50,7 +92,7 @@ class FLIEngine:
             **kwargs,
         }
 
-    def sample_all_params(self):
+    def sample_all_params(self) -> dict[Any, Any]:
         """Samples lifetime and fraction parameters for a single pixel."""
         t2 = ParameterSampler.truncated_normal(*self.params_cfg["tau2"])
         is_mono = self.rng.random() < self.params_cfg["mono"]
@@ -99,7 +141,20 @@ class FLIEngine:
             "A2": A2,
         }
 
-    def get_analytical_decay(self, p):
+    def get_analytical_decay(self, p: Any) -> Any:
+        """
+        Return analytical decay.
+
+        Parameters
+        ----------
+        p : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         T = self.laser_period
         # steady-state scaling factor per component
         scaling_factor1 = 1.0 / (1.0 - np.exp(-T / p["tau1"]))
@@ -108,7 +163,7 @@ class FLIEngine:
             "A2"
         ] * scaling_factor2 * np.exp(-self.t / p["tau2"])
 
-    def simulate_tcspc(self, p, n_cycles, mu_per_cycle):
+    def simulate_tcspc(self, p: Any, n_cycles: int, mu_per_cycle: np.ndarray) -> Any:
         """Photon-by-photon logic for TCSPC mode."""
         total_photons = self.rng.poisson(mu_per_cycle * n_cycles)
         if total_photons == 0:

@@ -1,19 +1,29 @@
+"""
+Provide high-level single-pixel simulation and reconstruction orchestration.
+
+This module belongs to :mod:`pyfli.sp_analysis` and is part of PyFLI single-pixel camera
+basis generation, acquisition simulation, and reconstruction solvers. Public API
+includes functions :func:`run_reconstruction`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from .solvers import LinearReconstructor, TVReconstructor
 from .spad_solvers import SPADPoissonReconstructor
 
 
 def run_reconstruction(
-    measurements,
-    dmd_patterns,
-    h,
-    w,
-    t,
-    lam,
-    mode="linear",
-    differential=True,
-    alpha=1.0,
-    maxiter=500,
-):
+    measurements: Any,
+    dmd_patterns: Any,
+    h: Any,
+    w: Any,
+    t: Any,
+    lam: Any,
+    mode: str = "linear",
+    differential: bool = True,
+    alpha: float = 1.0,
+    maxiter: int = 500,
+) -> Any:
     """
     Reconstruct a 4D (x, y, T, Lambda) cube from DMD single-pixel measurements.
 

@@ -1,3 +1,18 @@
+"""
+Plot fitted parameter maps, diagnostics, classifier summaries, and two-dimensional
+comparisons.
+
+This module belongs to :mod:`pyfli.analysis` and is part of PyFLI post-processing,
+diagnostics, statistical comparison, and result-loading utilities for fitted FLIM
+datasets. Public API includes functions :func:`plot_fitting_maps`,
+:func:`plot_diagnostics`, :func:`plot_pixel_evidence`,
+:func:`plot_statistical_comparison`, :func:`plot_2d_analysis`, and
+:func:`run_mono_bi_classifier`.
+"""
+
+from __future__ import annotations
+from typing import Any
+
 from ..data_vnp import (
     DataViewer,
     Plotter,
@@ -40,7 +55,7 @@ _DEFAULT_COLORS = [
 ]
 
 
-def _resolve_threshold(map_key, per_key_thresholds):
+def _resolve_threshold(map_key: str, per_key_thresholds: Any) -> Any:
     """Return the threshold for map_key, checking user overrides first."""
     if per_key_thresholds and map_key in per_key_thresholds:
         return per_key_thresholds[map_key]
@@ -48,8 +63,13 @@ def _resolve_threshold(map_key, per_key_thresholds):
 
 
 def plot_fitting_maps(
-    all_datasets, names, map_keys, v_ranges=None, saver=None, cmap=None
-):
+    all_datasets: Any,
+    names: Any,
+    map_keys: Any,
+    v_ranges: Any | None = None,
+    saver: Any | None = None,
+    cmap: str | None = None,
+) -> None:
     """Plot parameter maps for every fitting result.
 
     Parameters
@@ -85,7 +105,9 @@ def plot_fitting_maps(
         )
 
 
-def plot_diagnostics(binned_decay, all_fitset, names, mask, saver=None):
+def plot_diagnostics(
+    binned_decay: Any, all_fitset: Any, names: Any, mask: Any, saver: Any | None = None
+) -> tuple[Any, ...]:
     """Pixel diagnostic overlays for all fitting results (log and linear scale).
 
     Returns
@@ -117,8 +139,15 @@ def plot_diagnostics(binned_decay, all_fitset, names, mask, saver=None):
 
 
 def plot_pixel_evidence(
-    binned_decay, binned_irf, all_fitset, all_datasets, names, mask, saver=None, num=0
-):
+    binned_decay: Any,
+    binned_irf: Any,
+    all_fitset: Any,
+    all_datasets: Any,
+    names: Any,
+    mask: Any,
+    saver: Any | None = None,
+    num: int = 0,
+) -> None:
     """Single-pixel fit evidence plot for a randomly selected valid pixel.
 
     Parameters
@@ -147,17 +176,17 @@ def plot_pixel_evidence(
 
 
 def plot_statistical_comparison(
-    all_datasets,
-    names,
-    map_keys,
-    mask,
-    saver=None,
-    graph_type="box",
-    colors_list=None,
-    test_type="none",
-    per_key_thresholds=None,
-    percentile_clip=(1, 99),
-):
+    all_datasets: Any,
+    names: Any,
+    map_keys: Any,
+    mask: Any,
+    saver: Any | None = None,
+    graph_type: str = "box",
+    colors_list: Any | None = None,
+    test_type: str = "none",
+    per_key_thresholds: Any | None = None,
+    percentile_clip: tuple[int, ...] = (1, 99),
+) -> Any:
     """Comparative statistical plot per parameter key (box / violin / KDE / ...).
 
     One figure is produced per key so that each parameter is filtered by its
@@ -230,8 +259,14 @@ def plot_statistical_comparison(
 
 
 def plot_2d_analysis(
-    all_datasets, names, map_keys, mask, per_key_thresholds=None, saver=None, cmap="jet"
-):
+    all_datasets: Any,
+    names: Any,
+    map_keys: Any,
+    mask: Any,
+    per_key_thresholds: Any | None = None,
+    saver: Any | None = None,
+    cmap: str = "jet",
+) -> None:
     """2D subplot analysis (map + histogram + violin + boxplot + KDE + qq + CDF)
     per parameter map, for every fitting result.
 
@@ -278,53 +313,41 @@ def plot_2d_analysis(
 
 
 def run_mono_bi_classifier(
-    all_datasets,
-    names,
-    mask,
-    alpha_upper=0.95,
-    alpha_lower=0.05,
-    tau_tol=0.01,
-    scatter_keys=None,
-    saver=None,
-):
-    """Classify bi-exponential pixels as mono- or bi-exponential and compare methods.
-
-    Only meaningful for bi-exponential fitting results that contain
-    ``alpha1_map``, ``tau1_map``, and ``tau2_map``.
-
-    Steps
-    -----
-    1. Classify each dataset (display combined / mono / bi maps).
-    2. Agreement heatmaps between methods (Jaccard and count).
-    3. Per-key scatter matrices across methods for ``scatter_keys``.
-    4. Build agreed-parameter table for 'mono' pixels.
+    all_datasets: Any,
+    names: Any,
+    mask: Any,
+    alpha_upper: float = 0.95,
+    alpha_lower: float = 0.05,
+    tau_tol: float = 0.01,
+    scatter_keys: Any | None = None,
+    saver: Any | None = None,
+) -> tuple[Any, ...]:
+    """
+    Run mono bi classifier.
 
     Parameters
     ----------
-    all_datasets  : list[dict]   from load_fitting_results()
-    names         : list[str]
-    mask          : np.ndarray   (H, W) bool
-    alpha_upper   : float        pixels with alpha1 > alpha_upper → mono
-                                 (component 1 overwhelmingly dominates)
-    alpha_lower   : float        pixels with alpha1 < alpha_lower → mono
-                                 (component 2 overwhelmingly dominates).
-                                 Default 0.05 — only 11 % of alpha space is
-                                 mono at the low end. Avoid 0.5 which labels
-                                 55 % of the space mono.
-    tau_tol       : float        lifetime coincidence tolerance in ns (default
-                                 0.01). Pixels where |tau1-tau2| <= tau_tol are
-                                 treated as mono. Replaces exact float equality
-                                 which almost never fires for fitted values.
-    scatter_keys  : list[str] or None
-                    Parameter keys for scatter-matrix plots.
-                    Defaults to ['tau1_map', 'tau2_map'].
-    saver         : DataSaver or None
+    all_datasets : Any
+        Input value.
+    names : Any
+        Input value.
+    mask : Any
+        Input value.
+    alpha_upper : float
+        Input value.
+    alpha_lower : float
+        Input value.
+    tau_tol : float
+        Input value.
+    scatter_keys : Any | None
+        Input value.
+    saver : Any | None
+        Input value.
 
     Returns
     -------
-    clf     : MonoBiClassifier   fully populated instance
-    classes : list[dict]         per-dataset classification dicts
-    df      : pd.DataFrame       agreed-parameter table for 'mono' class
+    tuple[Any, ...]
+        Return value.
     """
     if scatter_keys is None:
         scatter_keys = ["tau1_map", "tau2_map"]

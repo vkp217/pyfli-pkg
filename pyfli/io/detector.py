@@ -1,3 +1,14 @@
+"""
+Coordinate detector-specific loading workflows for SS2, SS3, ICCD, TCSPC, and generic
+data.
+
+This module belongs to :mod:`pyfli.io` and is part of PyFLI detector importers, file
+readers, saving helpers, and processed-data loaders. Public API includes classes
+:class:`Detector`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 import os
 import numpy as np
@@ -8,27 +19,35 @@ from .data_ops_static import StaticDataOps as ds
 
 class Detector:
     """
-    Detector-specific FLIM data loader.
-        det = Detector(data_path=..., irf_path=..., bg_path=..., hp_path=..., bit_size=10)
-        dataset = det.SS3()      # SwissSPAD3 SPAD array — HDF5 (file or folder)
-        dataset = det.ICCD()     # Intensified CCD — folder of TIFF files
-        dataset = det.BH_TCSPC() # Becker & Hickl TCSPC — SDT / ASC / MAT
-        dataset = det.generic()  # any format, all corrections opt-in
+    Provide detector-specific loading workflows for PyFLI experiments. Use this high-
+    level loader for SS3, SS2, ICCD, BH TCSPC, and generic data sources with optional
+    background subtraction, pile-up correction, masks, and hot-pixel handling.
 
+    Parameters
+    ----------
+    data_path : str | None
+        Path to the primary decay data source.
+    irf_path : str | None
+        Path to the instrument response data source.
+    bg_path : str | None
+        Path to the background measurement used for subtraction or correction.
+    mask_path : str | None
+        Path to a binary or labeled mask used to select valid pixels.
+    hp_path : str | None
+        Path to a hot-pixel mask or image used for interpolation.
     bit_size : int
-        Photon counter depth (SS3) or ADC bit depth (ICCD) used in pile-up
-        correction.  Dynamic range N = 2^bit_size − 1.  Default 10.
+        Detector digitization bit depth used for pile-up correction.
     """
 
     def __init__(
         self,
-        data_path=None,
-        irf_path=None,
-        bg_path=None,
-        mask_path=None,
-        hp_path=None,
-        bit_size=10,
-    ):
+        data_path: str | None = None,
+        irf_path: str | None = None,
+        bg_path: str | None = None,
+        mask_path: str | None = None,
+        hp_path: str | None = None,
+        bit_size: int = 10,
+    ) -> None:
         self.data_path = data_path
         self.irf_path = irf_path
         self.bg_path = bg_path
@@ -42,13 +61,13 @@ class Detector:
 
     def SS3(
         self,
-        name="Experiment_1",
-        sub_bg=True,
-        pile_up=True,
-        hot_pixel=True,
-        make_hp_map=True,
-        threshold_sigma=5.0,
-    ):
+        name: str = "Experiment_1",
+        sub_bg: bool = True,
+        pile_up: bool = True,
+        hot_pixel: bool = True,
+        make_hp_map: bool = True,
+        threshold_sigma: float = 5.0,
+    ) -> Any:
         """
         SwissSPAD3 SPAD array detector.
 
@@ -177,13 +196,13 @@ class Detector:
 
     def SS2(
         self,
-        name="Experiment_1",
-        sub_bg=True,
-        pile_up=True,
-        hot_pixel=True,
-        make_hp_map=True,
-        threshold_sigma=5.0,
-    ):
+        name: str = "Experiment_1",
+        sub_bg: bool = True,
+        pile_up: bool = True,
+        hot_pixel: bool = True,
+        make_hp_map: bool = True,
+        threshold_sigma: float = 5.0,
+    ) -> Any:
         """
         SwissSPAD2 SPAD array detector.
 
@@ -288,7 +307,7 @@ class Detector:
             threshold_sigma=threshold_sigma,
         )
 
-    def ICCD(self, name="Experiment_1"):
+    def ICCD(self, name: str = "Experiment_1") -> Any:
         """
         Intensified CCD detector.
 
@@ -321,7 +340,9 @@ class Detector:
 
         return self._package(decay, irf, None, mask, name, source="ICCD")
 
-    def BH_TCSPC(self, name="Experiment_1", sub_bg=True, channel=0):
+    def BH_TCSPC(
+        self, name: str = "Experiment_1", sub_bg: bool = True, channel: int = 0
+    ) -> Any:
         """
         Time-Correlated Single Photon Counting detectors.
 
@@ -359,7 +380,13 @@ class Detector:
             channel=channel,
         )
 
-    def generic(self, name="Experiment_1", sub_bg=True, pile_up=False, hot_pixel=False):
+    def generic(
+        self,
+        name: str = "Experiment_1",
+        sub_bg: bool = True,
+        pile_up: bool = False,
+        hot_pixel: bool = False,
+    ) -> Any:
         """
         Generic loader: TIFF / NPY / MAT / TXT / HDF5.
         All corrections opt-in.
@@ -389,7 +416,7 @@ class Detector:
     #  ICCD-SPECIFIC LOADERS
     # ================================================================= #
 
-    def _load_iccd_folder(self, folder_path):
+    def _load_iccd_folder(self, folder_path: str) -> Any:
         """
         Loads sorted TIFF files as gate images → (H, W, N_gates) float32.
         No corrections applied.
@@ -409,7 +436,20 @@ class Detector:
         stack = np.zeros((H, W, len(files)), dtype=np.float32)
         stack[:, :, 0] = first
 
-        def _read_gate(args):
+        def _read_gate(args: Any) -> tuple[Any, ...]:
+            """
+            Read gate.
+
+            Parameters
+            ----------
+            args : Any
+                Input value.
+
+            Returns
+            -------
+            tuple[Any, ...]
+                Return value.
+            """
             idx, path = args
             raw = ds.load_tiff_file(path).astype(np.float32)
             return idx, raw.mean(axis=-1) if raw.ndim == 3 else raw
@@ -432,7 +472,9 @@ class Detector:
     #  SPAD PIPELINE HELPERS  (shared by SS2 and SS3)
     # ================================================================= #
 
-    def _load_ss_folder(self, folder_path, reader_fn, mode="mean"):
+    def _load_ss_folder(
+        self, folder_path: str, reader_fn: np.ndarray, mode: str = "mean"
+    ) -> Any:
         """Load all HDF5 files via reader_fn, stack (n,H,W,T), return mean or sum."""
         files = sorted(
             f for f in os.listdir(folder_path) if f.lower().endswith((".h5", ".hdf5"))
@@ -455,8 +497,14 @@ class Detector:
         )
 
     def _process_ss_folder(
-        self, folder_path, reader_fn, hp_map, pile_up, sub_bg, bg_cube
-    ):
+        self,
+        folder_path: str,
+        reader_fn: np.ndarray,
+        hp_map: np.ndarray,
+        pile_up: bool,
+        sub_bg: bool,
+        bg_cube: np.ndarray,
+    ) -> np.ndarray:
         """
         Sequential per-file SPAD processing: hot_pixel → pile_up → sub_bg.
         Accumulates processed frames and returns their sum → (H, W, T).
@@ -482,7 +530,7 @@ class Detector:
 
         return np.sum(np.stack(accumulated, axis=0), axis=0)  # (H, W, T)
 
-    def _ss_first_frame_shape(self, folder_path, reader_fn):
+    def _ss_first_frame_shape(self, folder_path: str, reader_fn: np.ndarray) -> Any:
         """Return (H, W) spatial shape from the first HDF5 file using reader_fn."""
         files = sorted(
             f for f in os.listdir(folder_path) if f.lower().endswith((".h5", ".hdf5"))
@@ -496,7 +544,38 @@ class Detector:
     #  GENERIC ROUTING  (SS3, TCSPC, generic)
     # ================================================================= #
 
-    def _dispatch(self, path, sub_bg, pile_up, hot_pixel, valid_exts=None, **kw):
+    def _dispatch(
+        self,
+        path: str,
+        sub_bg: bool,
+        pile_up: bool,
+        hot_pixel: bool,
+        valid_exts: np.ndarray | None = None,
+        **kw: Any,
+    ) -> Any:
+        """
+        Handle dispatch.
+
+        Parameters
+        ----------
+        path : str
+            Input value.
+        sub_bg : bool
+            Input value.
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+        valid_exts : np.ndarray | None
+            Input value.
+        **kw : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if not path:
             return None
         if not os.path.exists(path):
@@ -530,12 +609,12 @@ class Detector:
 
     def _load_folder(
         self,
-        folder_path,
-        sub_bg=True,
-        pile_up=False,
-        hot_pixel=False,
-        mode="sum",
-        valid_exts=(
+        folder_path: str,
+        sub_bg: bool = True,
+        pile_up: bool = False,
+        hot_pixel: bool = False,
+        mode: str = "sum",
+        valid_exts: tuple[str, ...] = (
             ".tif",
             ".tiff",
             ".hdf5",
@@ -546,8 +625,33 @@ class Detector:
             ".txt",
             ".asc",
         ),
-        **kw,
-    ):
+        **kw: Any,
+    ) -> Any:
+        """
+        Load folder.
+
+        Parameters
+        ----------
+        folder_path : str
+            Input value.
+        sub_bg : bool
+            Input value.
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+        mode : str
+            Input value.
+        valid_exts : tuple[str, ...]
+            Input value.
+        **kw : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         files = sorted(
             f for f in os.listdir(folder_path) if f.lower().endswith(valid_exts)
         )
@@ -603,7 +707,20 @@ class Detector:
             return np.sum(stack, axis=-1) if mode == "sum" else np.mean(stack, axis=-1)
         return stack
 
-    def _file_task(self, args):
+    def _file_task(self, args: Any) -> tuple[Any, ...]:
+        """
+        Handle file task.
+
+        Parameters
+        ----------
+        args : Any
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         idx, path, pile_up, hot_pixel, kw = args
         return idx, self._load_file(path, pile_up=pile_up, hot_pixel=hot_pixel, **kw)
 
@@ -611,7 +728,35 @@ class Detector:
     #  SINGLE FILE LOADING
     # ================================================================= #
 
-    def _load_file(self, file_path, pile_up=False, hot_pixel=False, channel=0, **_):
+    def _load_file(
+        self,
+        file_path: str,
+        pile_up: bool = False,
+        hot_pixel: bool = False,
+        channel: int = 0,
+        **_: Any,
+    ) -> Any:
+        """
+        Load file.
+
+        Parameters
+        ----------
+        file_path : str
+            Input value.
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+        channel : int
+            Input value.
+        **_ : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if not file_path or not os.path.exists(file_path):
             return None
         ext = os.path.splitext(file_path)[-1].lower()
@@ -662,25 +807,96 @@ class Detector:
     #  SwissSPAD3 HDF5 READER
     # ================================================================= #
 
-    def _read_ss3_hdf5(self, fname, pile_up=True, hot_pixel=False):
+    def _read_ss3_hdf5(
+        self, fname: str, pile_up: bool = True, hot_pixel: bool = False
+    ) -> Any:
         # hot_pixel ignored — applied externally via ds.hotpixel_correct
+        """
+        Read ss3 hdf5.
+
+        Parameters
+        ----------
+        fname : str
+            Input value.
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return ds.spad_hdf5_read(
             fname, "Bottom G2 Gate", pile_up=pile_up, bit_size=self.bit_size
         )
 
-    def _read_ss2_hdf5(self, fname, pile_up=True):
+    def _read_ss2_hdf5(self, fname: str, pile_up: bool = True) -> Any:
+        """
+        Read ss2 hdf5.
+
+        Parameters
+        ----------
+        fname : str
+            Input value.
+        pile_up : bool
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return ds.spad_hdf5_read(
             fname, "Gate ", pile_up=pile_up, bit_size=self.bit_size
         )
 
-    def _correct_hotpixels(self, data_3d, hot_pixel_map):
+    def _correct_hotpixels(self, data_3d: np.ndarray, hot_pixel_map: np.ndarray) -> Any:
+        """
+        Handle correct hotpixels.
+
+        Parameters
+        ----------
+        data_3d : np.ndarray
+            Input value.
+        hot_pixel_map : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return ds.hotpixel_correct(data_3d, hot_pixel_map)
 
     # ================================================================= #
     #  BACKGROUND AND MASK
     # ================================================================= #
 
-    def _load_background(self, pile_up=False, hot_pixel=False, valid_exts=None):
+    def _load_background(
+        self,
+        pile_up: bool = False,
+        hot_pixel: bool = False,
+        valid_exts: np.ndarray | None = None,
+    ) -> Any:
+        """
+        Load background.
+
+        Parameters
+        ----------
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+        valid_exts : np.ndarray | None
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if not self.bg_path:
             return None
         _exts = valid_exts or (
@@ -705,7 +921,15 @@ class Detector:
             )
         return self._load_file(self.bg_path, pile_up=pile_up, hot_pixel=hot_pixel)
 
-    def _load_mask(self):
+    def _load_mask(self) -> Any:
+        """
+        Load mask.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if not self.mask_path:
             return None
         raw = self._load_file(self.mask_path)
@@ -719,7 +943,41 @@ class Detector:
     #  DATASET PACKAGING
     # ================================================================= #
 
-    def _package(self, decay, irf, background, mask, name, source, **processing):
+    def _package(
+        self,
+        decay: np.ndarray,
+        irf: np.ndarray,
+        background: np.ndarray,
+        mask: np.ndarray,
+        name: str,
+        source: str,
+        **processing: Any,
+    ) -> dict[Any, Any]:
+        """
+        Handle package.
+
+        Parameters
+        ----------
+        decay : np.ndarray
+            Input value.
+        irf : np.ndarray
+            Input value.
+        background : np.ndarray
+            Input value.
+        mask : np.ndarray
+            Input value.
+        name : str
+            Input value.
+        source : str
+            Input value.
+        **processing : Any
+            Input value.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         if decay is not None and irf is not None:
             if decay.shape[-1] != irf.shape[-1]:
                 logging.warning(

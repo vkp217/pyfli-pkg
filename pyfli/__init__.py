@@ -1,8 +1,18 @@
 """Top-level public API for PyFLI."""
 # ruff: noqa: E402, F401
 
+from __future__ import annotations
+
 
 def setup() -> None:
+    """
+    Handle setup.
+
+    Returns
+    -------
+    None
+        Return value.
+    """
     from .logging import configure_logging
 
     configure_logging()

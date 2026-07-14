@@ -1,4 +1,15 @@
 # solver/base_fitter.py
+"""
+Implement the shared least-squares FLIM fitter used by CPU, GPU, and model-comparison
+workflows.
+
+This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
+likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+classes :class:`BaseFLIFitter`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import warnings
 import numpy as np
 from scipy.optimize import curve_fit, least_squares, OptimizeWarning
@@ -14,20 +25,39 @@ from .shared_metrics import (
 
 
 class BaseFLIFitter:
+    """
+    Fit mono- and bi-exponential FLIM decays with shared least-squares machinery. The
+    base class handles model construction, fit ranges, parameter guesses, bounds, post-
+    processing, and model comparison support.
+
+    Parameters
+    ----------
+    freq : float
+        Acquisition frequency information used to derive timing constants.
+    decay_px : np.ndarray
+        Configuration value used by the class.
+    irf_px : np.ndarray
+        Configuration value used by the class.
+    white_noise : float
+        Configuration value used by the class.
+    guess_plugin : np.ndarray
+        Configuration value used by the class.
+    custom_funcs : np.ndarray | None
+        Configuration value used by the class.
+    shift_method : str
+        Configuration value used by the class.
+    """
+
     def __init__(
         self,
-        freq,
-        decay_px,
-        irf_px,
-        white_noise=0.1,
-        guess_plugin=moment_based_guess,
-        custom_funcs=None,
-        shift_method="zero_pad",
-    ):
-        """
-        Base Fitter for Non-Linear Least Squares (NLSF).
-        Includes dynamic registry for solvers and a validation layer for parameters.
-        """
+        freq: float,
+        decay_px: np.ndarray,
+        irf_px: np.ndarray,
+        white_noise: float = 0.1,
+        guess_plugin: np.ndarray = moment_based_guess,
+        custom_funcs: np.ndarray | None = None,
+        shift_method: str = "zero_pad",
+    ) -> None:
         self.decay = np.asarray(decay_px)
         self.irf = np.asarray(irf_px)
         self.white_noise = white_noise
@@ -52,12 +82,12 @@ class BaseFLIFitter:
 
     def fit_with_estimator(
         self,
-        estimator_type="least_squares",
-        model_type="bi-exponential",
-        p0=None,
-        bounds=None,
-        **kwargs,
-    ):
+        estimator_type: str = "least_squares",
+        model_type: str = "bi-exponential",
+        p0: Any | None = None,
+        bounds: np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> Any:
         """Unified entry point for all NLSF estimators."""
         # Now calls the external static logic from base_static.py
         p0_safe, bounds_safe = resolve_params_and_bounds(
@@ -78,7 +108,35 @@ class BaseFLIFitter:
         else:
             raise ValueError(f"Estimator '{estimator_type}' not found in registry.")
 
-    def least_squares_fit(self, p0, bounds, model_type, use_weights=True, **kwargs):
+    def least_squares_fit(
+        self,
+        p0: Any,
+        bounds: np.ndarray,
+        model_type: str,
+        use_weights: bool = True,
+        **kwargs: Any,
+    ) -> Any:
+        """
+        Handle least squares fit.
+
+        Parameters
+        ----------
+        p0 : Any
+            Input value.
+        bounds : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+        use_weights : bool
+            Input value.
+        **kwargs : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         d_fit = self.decay[self.fit_indices]
         weights = (
             1.0 / np.sqrt(np.clip(d_fit, 1, None))
@@ -86,7 +144,20 @@ class BaseFLIFitter:
             else np.ones_like(d_fit)
         )
 
-        def residuals(params):
+        def residuals(params: Any) -> Any:
+            """
+            Handle residuals.
+
+            Parameters
+            ----------
+            params : Any
+                Input value.
+
+            Returns
+            -------
+            Any
+                Return value.
+            """
             full_model = self.model_fit(self.t, params, model_type=model_type)
             return (full_model[self.fit_indices] - d_fit) * weights
 
@@ -101,10 +172,46 @@ class BaseFLIFitter:
         )
         return self._post_process(res.x, res.jac, res.status, model_type)
 
-    def trust_region(self, p0, bounds, model_type, **kwargs):
+    def trust_region(
+        self, p0: Any, bounds: np.ndarray, model_type: str, **kwargs: Any
+    ) -> Any:
+        """
+        Handle trust region.
+
+        Parameters
+        ----------
+        p0 : Any
+            Input value.
+        bounds : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+        **kwargs : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         max_nfev = kwargs.get("max_iter", kwargs.get("maxiter", 2000))
 
-        def wrapper(t_sub, *p):
+        def wrapper(t_sub: np.ndarray, *p: Any) -> Any:
+            """
+            Handle wrapper.
+
+            Parameters
+            ----------
+            t_sub : np.ndarray
+                Input value.
+            *p : Any
+                Input value.
+
+            Returns
+            -------
+            Any
+                Return value.
+            """
             return self.model_fit(self.t, p, model_type=model_type)[self.fit_indices]
 
         try:
@@ -122,10 +229,46 @@ class BaseFLIFitter:
             popt, pcov, status = p0, None, 0
         return self._post_process(popt, None, status, model_type, pcov=pcov)
 
-    def unconstrained(self, p0, bounds, model_type, **kwargs):
+    def unconstrained(
+        self, p0: Any, bounds: np.ndarray, model_type: str, **kwargs: Any
+    ) -> Any:
+        """
+        Handle unconstrained.
+
+        Parameters
+        ----------
+        p0 : Any
+            Input value.
+        bounds : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+        **kwargs : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         max_nfev = kwargs.get("max_iter", kwargs.get("maxiter", 2000))
 
-        def wrapper(t_sub, *p):
+        def wrapper(t_sub: np.ndarray, *p: Any) -> Any:
+            """
+            Handle wrapper.
+
+            Parameters
+            ----------
+            t_sub : np.ndarray
+                Input value.
+            *p : Any
+                Input value.
+
+            Returns
+            -------
+            Any
+                Return value.
+            """
             return self.model_fit(self.t, p, model_type=model_type)[self.fit_indices]
 
         try:
@@ -146,10 +289,57 @@ class BaseFLIFitter:
             )
         return self._post_process(popt, None, status, model_type, pcov=pcov)
 
-    def model_fit(self, t, params, model_type="mono-exponential"):
+    def model_fit(
+        self, t: np.ndarray, params: Any, model_type: str = "mono-exponential"
+    ) -> Any:
+        """
+        Handle model fit.
+
+        Parameters
+        ----------
+        t : np.ndarray
+            Input value.
+        params : Any
+            Input value.
+        model_type : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return model_numpy(t, self.irf, params, model_type)
 
-    def _post_process(self, popt, jac, status, model_type, pcov=None):
+    def _post_process(
+        self,
+        popt: np.ndarray,
+        jac: Any,
+        status: np.ndarray,
+        model_type: str,
+        pcov: np.ndarray | None = None,
+    ) -> tuple[Any, ...]:
+        """
+        Handle post process.
+
+        Parameters
+        ----------
+        popt : np.ndarray
+            Input value.
+        jac : Any
+            Input value.
+        status : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+        pcov : np.ndarray | None
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         if model_type == "bi-exponential":
             popt, _, pcov = enforce_tau_ordering(popt, pcov=pcov)
 
@@ -168,7 +358,28 @@ class BaseFLIFitter:
 
         return popt, perr, r_sq, chi_sq, red_chi_sq, ssr, (1 if status > 0 else 0)
 
-    def calculate_uncertainties(self, jacobian, chi_sq, n_data, n_params):
+    def calculate_uncertainties(
+        self, jacobian: Any, chi_sq: np.ndarray, n_data: int, n_params: int
+    ) -> Any:
+        """
+        Calculate uncertainties.
+
+        Parameters
+        ----------
+        jacobian : Any
+            Input value.
+        chi_sq : np.ndarray
+            Input value.
+        n_data : int
+            Input value.
+        n_params : int
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         try:
             dof = n_data - n_params
             if dof <= 0 or chi_sq <= 0:
@@ -179,7 +390,20 @@ class BaseFLIFitter:
         except Exception:
             return np.full(n_params, np.nan)
 
-    def compare_models(self, alpha=0.05):
+    def compare_models(self, alpha: float = 0.05) -> tuple[Any, ...]:
+        """
+        Handle compare models.
+
+        Parameters
+        ----------
+        alpha : float
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         res_m = self.fit_with_estimator(model_type="mono-exponential")
         res_b = self.fit_with_estimator(model_type="bi-exponential")
         n, p_m, p_b = len(self.fit_indices), 4, 6
@@ -196,13 +420,54 @@ class BaseFLIFitter:
             p_val,
         )
 
-    def get_average_lifetime(self, popt):
+    def get_average_lifetime(self, popt: np.ndarray) -> Any:
+        """
+        Return average lifetime.
+
+        Parameters
+        ----------
+        popt : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return compute_average_lifetime(popt)
 
-    def get_fret_efficiency(self, popt):
+    def get_fret_efficiency(self, popt: np.ndarray) -> Any:
+        """
+        Return fret efficiency.
+
+        Parameters
+        ----------
+        popt : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return compute_fret_efficiency(popt)
 
-    def set_fit_range(self, start_pct=0, end_pct=100):
+    def set_fit_range(self, start_pct: int = 0, end_pct: int = 100) -> None:
+        """
+        Set fit range.
+
+        Parameters
+        ----------
+        start_pct : int
+            Input value.
+        end_pct : int
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         start_idx = int((start_pct / 100.0) * self.N)
         end_idx = int((end_pct / 100.0) * self.N)
         self.fit_indices = np.arange(start_idx, min(end_idx, self.N))

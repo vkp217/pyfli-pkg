@@ -1,8 +1,24 @@
+"""
+Provide batch sim tools for PyFLI synthetic FLIM data generation, hardware noise
+modeling, calibration, and validation tools.
+
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
+generation, hardware noise modeling, calibration, and validation tools. Public API
+includes classes :class:`BatchSimulator`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 
 
 class BatchSimulator:
-    def sim_BI(self, sim_funcs, num_list):
+    """
+    Run repeated FLIM simulations across parameter sets. The class is a convenience
+    layer for generating batches of synthetic datasets for validation or model training.
+    """
+
+    def sim_BI(self, sim_funcs: np.ndarray, num_list: int) -> Any:
         """
         Generates a simplified batch dictionary with specific parameters.
         Returns data as a dictionary of NumPy arrays.
@@ -33,7 +49,22 @@ class BatchSimulator:
         }
         return batch_data
 
-    def generate_batch(self, sim_func_list, num_list):
+    def generate_batch(self, sim_func_list: np.ndarray, num_list: int) -> Any:
+        """
+        Generate batch.
+
+        Parameters
+        ----------
+        sim_func_list : np.ndarray
+            Input value.
+        num_list : int
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         samples = []
         for sim_func, n in zip(sim_func_list, num_list):
             samples.extend([sim_func() for _ in range(n)])
@@ -66,7 +97,26 @@ class BatchSimulator:
         }
         return batch_data
 
-    def generate_batch2D(self, sim_funcs, num_list, shape=(10, 10)):
+    def generate_batch2D(
+        self, sim_funcs: np.ndarray, num_list: int, shape: tuple[int, ...] = (10, 10)
+    ) -> Any:
+        """
+        Generate batch2 d.
+
+        Parameters
+        ----------
+        sim_funcs : np.ndarray
+            Input value.
+        num_list : int
+            Input value.
+        shape : tuple[int, ...]
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         rows, cols = shape
         if sum(num_list) != rows * cols:
             raise ValueError(f"Sum of num_list must match shape product {rows * cols}")

@@ -10,6 +10,8 @@ Public API (unchanged):
     maker.get_binary_mask()
 """
 
+from __future__ import annotations
+from typing import Any
 import numpy as np
 import cv2  # importing cv2 overwrites QT_QPA_PLATFORM_PLUGIN_PATH
 import os
@@ -66,24 +68,77 @@ except ImportError:
 
 
 class ROIObject:
-    def __init__(self, pts, roi_id=0):
+    """
+    Store one polygonal ROI and its assigned integer label. It keeps the editable
+    vertex list and provides geometry operations used by the ROI GUI.
+
+    Parameters
+    ----------
+    pts : np.ndarray
+        Configuration value used by the class.
+    roi_id : int
+        Configuration value used by the class.
+    """
+
+    def __init__(self, pts: np.ndarray, roi_id: int = 0) -> None:
         self.pts = np.array(pts, dtype=np.int32)
         self.roi_id = int(roi_id)
         self.assigned = False  # True once the user explicitly assigns an ID
         self.center = np.mean(self.pts, axis=0)
 
-    def move(self, dx, dy):
+    def move(self, dx: np.ndarray, dy: np.ndarray) -> None:
+        """
+        Handle move.
+
+        Parameters
+        ----------
+        dx : np.ndarray
+            Input value.
+        dy : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self.pts += [int(dx), int(dy)]
         self.center = np.mean(self.pts, axis=0)
 
-    def rotate(self, angle_deg):
+    def rotate(self, angle_deg: Any) -> None:
+        """
+        Handle rotate.
+
+        Parameters
+        ----------
+        angle_deg : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         rad = np.radians(angle_deg)
         c, s = np.cos(rad), np.sin(rad)
         M = np.array([[c, -s], [s, c]])
         self.pts = ((self.pts - self.center) @ M.T + self.center).astype(np.int32)
         self.center = np.mean(self.pts, axis=0)
 
-    def scale(self, factor):
+    def scale(self, factor: np.ndarray) -> None:
+        """
+        Handle scale.
+
+        Parameters
+        ----------
+        factor : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self.pts = ((self.pts - self.center) * factor + self.center).astype(np.int32)
         self.center = np.mean(self.pts, axis=0)
 
@@ -105,6 +160,19 @@ _PALETTE = [
 
 
 def _roi_color(roi_id: int) -> QColor:
+    """
+    Handle roi color.
+
+    Parameters
+    ----------
+    roi_id : int
+        Input value.
+
+    Returns
+    -------
+    QColor
+        Return value.
+    """
     return _PALETTE[(roi_id - 1) % len(_PALETTE)]
 
 
@@ -114,9 +182,19 @@ def _roi_color(roi_id: int) -> QColor:
 
 
 class IDAssignDialog(QDialog):  # noqa: F811
-    """Let the user rename/reorder ROI IDs before the final save."""
+    """
+    Let users rename and reorder ROI IDs before masks are saved. The dialog keeps
+    interactive ROI editing separate from final label assignment.
 
-    def __init__(self, rois: list, parent=None):
+    Parameters
+    ----------
+    rois : list
+        ROI objects or label definitions managed by the dialog.
+    parent : np.ndarray | None
+        Optional parent GUI widget.
+    """
+
+    def __init__(self, rois: list, parent: np.ndarray | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Assign Region IDs")
         self.setMinimumWidth(360)
@@ -207,9 +285,21 @@ _MIN_BOX = 6
 
 
 class ImageCanvas(QWidget):  # noqa: F811
+    """
+    Display images and handle interactive ROI drawing, editing, thresholding, and mask
+    previews. It is the central canvas widget used by the ROI application.
+
+    Parameters
+    ----------
+    rm : Any
+        ROI maker or ROI application state object.
+    parent : np.ndarray | None
+        Optional parent GUI widget.
+    """
+
     roi_changed = Signal()
 
-    def __init__(self, rm, parent=None):
+    def __init__(self, rm: Any, parent: np.ndarray | None = None) -> None:
         super().__init__(parent)
         self.rm = rm
         self.selected_idx = -1
@@ -257,32 +347,96 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     # ── transform ─────────────────────────────────────────────────────────────
 
-    def _recompute_transform(self):
+    def _recompute_transform(self) -> None:
+        """
+        Handle recompute transform.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         cw, ch = self.width(), self.height()
         iw, ih = self._pixmap.width(), self._pixmap.height()
         self._scale = min(cw / iw, ch / ih)
         self._offset_x = (cw - iw * self._scale) / 2
         self._offset_y = (ch - ih * self._scale) / 2
 
-    def _w2i(self, wx, wy):
+    def _w2i(self, wx: np.ndarray, wy: np.ndarray) -> tuple[Any, ...]:
+        """
+        Handle w2i.
+
+        Parameters
+        ----------
+        wx : np.ndarray
+            Input value.
+        wy : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         return (
             (wx - self._offset_x) / self._scale,
             (wy - self._offset_y) / self._scale,
         )
 
-    def _i2w(self, ix, iy):
+    def _i2w(self, ix: np.ndarray, iy: np.ndarray) -> tuple[Any, ...]:
+        """
+        Handle i2w.
+
+        Parameters
+        ----------
+        ix : np.ndarray
+            Input value.
+        iy : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         return (ix * self._scale + self._offset_x, iy * self._scale + self._offset_y)
 
-    def _qpt_w2i(self, q):
+    def _qpt_w2i(self, q: Any) -> Any:
+        """
+        Handle qpt w2i.
+
+        Parameters
+        ----------
+        q : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         x, y = self._w2i(q.x(), q.y())
         return QPointF(x, y)
 
-    def _pts_to_poly_w(self, pts):
+    def _pts_to_poly_w(self, pts: np.ndarray) -> Any:
+        """
+        Handle pts to poly w.
+
+        Parameters
+        ----------
+        pts : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return QPolygonF([QPointF(*self._i2w(float(p[0]), float(p[1]))) for p in pts])
 
     # ── intensity overlay ──────────────────────────────────────────────────────
 
-    def update_intensity_overlay(self):
+    def update_intensity_overlay(self) -> None:
         """Recompute the RGBA overlay array for out-of-range pixels.
 
         We store the raw numpy array rather than a QPixmap so that paintEvent
@@ -312,7 +466,20 @@ class ImageCanvas(QWidget):  # noqa: F811
     # ── bounding-box handles ───────────────────────────────────────────────────
 
     @staticmethod
-    def _bbox(pts):
+    def _bbox(pts: np.ndarray) -> tuple[Any, ...]:
+        """
+        Handle bbox.
+
+        Parameters
+        ----------
+        pts : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         return (
             float(pts[:, 0].min()),
             float(pts[:, 1].min()),
@@ -320,7 +487,20 @@ class ImageCanvas(QWidget):  # noqa: F811
             float(pts[:, 1].max()),
         )
 
-    def _handle_pos_i(self, pts):
+    def _handle_pos_i(self, pts: np.ndarray) -> list[Any]:
+        """
+        Handle handle pos i.
+
+        Parameters
+        ----------
+        pts : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        list[Any]
+            Return value.
+        """
         x0, y0, x1, y1 = self._bbox(pts)
         mx, my = (x0 + x1) / 2, (y0 + y1) / 2
         return [
@@ -334,7 +514,22 @@ class ImageCanvas(QWidget):  # noqa: F811
             (x0, my),
         ]
 
-    def _hit_handle(self, wpt, roi):
+    def _hit_handle(self, wpt: np.ndarray, roi: Any) -> Any:
+        """
+        Handle hit handle.
+
+        Parameters
+        ----------
+        wpt : np.ndarray
+            Input value.
+        roi : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         thresh2 = (_HANDLE_R + 3) ** 2
         for i, (ix, iy) in enumerate(self._handle_pos_i(roi.pts)):
             wx, wy = self._i2w(ix, iy)
@@ -342,7 +537,20 @@ class ImageCanvas(QWidget):  # noqa: F811
                 return i
         return -1
 
-    def _hit_roi(self, wpt):
+    def _hit_roi(self, wpt: np.ndarray) -> Any:
+        """
+        Handle hit roi.
+
+        Parameters
+        ----------
+        wpt : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         ix, iy = self._w2i(wpt.x(), wpt.y())
         for i, roi in enumerate(self.rm.rois):
             if (
@@ -356,7 +564,20 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     # ── painting ───────────────────────────────────────────────────────────────
 
-    def paintEvent(self, _):
+    def paintEvent(self, _: Any) -> None:
+        """
+        Handle paint event.
+
+        Parameters
+        ----------
+        _ : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self._recompute_transform()
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -390,7 +611,24 @@ class ImageCanvas(QWidget):  # noqa: F811
 
         p.end()
 
-    def _paint_roi(self, p, roi, selected):
+    def _paint_roi(self, p: Any, roi: Any, selected: np.ndarray) -> None:
+        """
+        Handle paint roi.
+
+        Parameters
+        ----------
+        p : Any
+            Input value.
+        roi : Any
+            Input value.
+        selected : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if not roi.assigned:
             color = QColor(0, 220, 100) if selected else QColor(140, 140, 155)
             line_style = Qt.PenStyle.DashLine
@@ -417,7 +655,22 @@ class ImageCanvas(QWidget):  # noqa: F811
         if selected:
             self._paint_handles(p, roi)
 
-    def _paint_handles(self, p, roi):
+    def _paint_handles(self, p: Any, roi: Any) -> None:
+        """
+        Handle paint handles.
+
+        Parameters
+        ----------
+        p : Any
+            Input value.
+        roi : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         for ix, iy in self._handle_pos_i(roi.pts):
             wx, wy = self._i2w(ix, iy)
             r = _HANDLE_R
@@ -425,7 +678,20 @@ class ImageCanvas(QWidget):  # noqa: F811
             p.setPen(QPen(QColor(30, 100, 220), 1.5))
             p.drawEllipse(QRectF(wx - r, wy - r, r * 2, r * 2))
 
-    def _paint_preview(self, p):
+    def _paint_preview(self, p: Any) -> None:
+        """
+        Handle paint preview.
+
+        Parameters
+        ----------
+        p : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         pts = self._preview_pts()
         if len(pts) < 3:
             return
@@ -436,7 +702,15 @@ class ImageCanvas(QWidget):  # noqa: F811
         p.setPen(QPen(QColor(255, 255, 255, 160), 1.2, Qt.PenStyle.DashLine))
         p.drawPolygon(poly)
 
-    def _preview_pts(self):
+    def _preview_pts(self) -> Any:
+        """
+        Handle preview pts.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if self._start_i is None:
             return []
         ix, iy = self._start_i
@@ -450,7 +724,20 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     # ── mouse ──────────────────────────────────────────────────────────────────
 
-    def mousePressEvent(self, e):
+    def mousePressEvent(self, e: Any) -> None:
+        """
+        Handle mouse press event.
+
+        Parameters
+        ----------
+        e : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if e.button() != Qt.MouseButton.LeftButton:
             return
         wpt = e.position()
@@ -505,7 +792,20 @@ class ImageCanvas(QWidget):  # noqa: F811
         self.update()
         self.roi_changed.emit()
 
-    def mouseMoveEvent(self, e):
+    def mouseMoveEvent(self, e: Any) -> None:
+        """
+        Handle mouse move event.
+
+        Parameters
+        ----------
+        e : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         wpt = e.position()
         self._cur_mw = wpt
 
@@ -555,7 +855,20 @@ class ImageCanvas(QWidget):  # noqa: F811
 
         self.update()
 
-    def mouseReleaseEvent(self, e):
+    def mouseReleaseEvent(self, e: Any) -> None:
+        """
+        Handle mouse release event.
+
+        Parameters
+        ----------
+        e : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if e.button() != Qt.MouseButton.LeftButton:
             return
         if self._resizing:
@@ -578,7 +891,22 @@ class ImageCanvas(QWidget):  # noqa: F811
             self.roi_changed.emit()
         self.update()
 
-    def _finalise_pts(self, mx, my):
+    def _finalise_pts(self, mx: np.ndarray, my: np.ndarray) -> Any:
+        """
+        Handle finalise pts.
+
+        Parameters
+        ----------
+        mx : np.ndarray
+            Input value.
+        my : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if self._start_i is None:
             return []
         ix, iy = self._start_i
@@ -590,7 +918,20 @@ class ImageCanvas(QWidget):  # noqa: F811
         pts = np.array(self._free_i)
         return pts if len(pts) >= 3 else []
 
-    def _apply_resize(self, wpt):
+    def _apply_resize(self, wpt: np.ndarray) -> None:
+        """
+        Apply resize.
+
+        Parameters
+        ----------
+        wpt : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         roi = self.rm.rois[self.selected_idx]
         dix = (wpt.x() - self._rz_start_mw.x()) / self._scale
         diy = (wpt.y() - self._rz_start_mw.y()) / self._scale
@@ -617,11 +958,32 @@ class ImageCanvas(QWidget):  # noqa: F811
         roi.pts = np.clip(pts, 0, None).astype(np.int32)
         roi.center = np.mean(roi.pts, axis=0)
 
-    def keyPressEvent(self, e):
+    def keyPressEvent(self, e: Any) -> None:
+        """
+        Handle key press event.
+
+        Parameters
+        ----------
+        e : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if e.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
             self._delete_selected()
 
-    def _delete_selected(self):
+    def _delete_selected(self) -> None:
+        """
+        Handle delete selected.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if 0 <= self.selected_idx < len(self.rm.rois):
             self.rm.rois.pop(self.selected_idx)
             self.selected_idx = -1
@@ -638,7 +1000,18 @@ class ImageCanvas(QWidget):  # noqa: F811
 
 
 class ROIApp(QMainWindow):  # noqa: F811
-    def __init__(self, rm):
+    """
+    Host the full interactive ROI maker interface. The widget wires image display,
+    threshold controls, ROI editing actions, ID assignment, and mask saving into one
+    application window.
+
+    Parameters
+    ----------
+    rm : Any
+        ROI maker or ROI application state object.
+    """
+
+    def __init__(self, rm: Any) -> None:
         super().__init__()
         self.rm = rm
         self.setWindowTitle("ROI Maker")
@@ -664,7 +1037,15 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     # ── sidebar ───────────────────────────────────────────────────────────────
 
-    def _build_sidebar(self):
+    def _build_sidebar(self) -> Any:
+        """
+        Build sidebar.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -886,19 +1267,57 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     # ── widget helpers ────────────────────────────────────────────────────────
 
-    def _divider(self):
+    def _divider(self) -> Any:
+        """
+        Handle divider.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         line = QFrame()
         line.setObjectName("divider")
         line.setFrameShape(QFrame.Shape.HLine)
         return line
 
-    def _section_label(self, text):
+    def _section_label(self, text: np.ndarray) -> Any:
+        """
+        Handle section label.
+
+        Parameters
+        ----------
+        text : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         lbl = QLabel(text)
         lbl.setObjectName("section_lbl")
         lbl.setContentsMargins(2, 6, 2, 2)
         return lbl
 
-    def _tool_button(self, icon, label, shortcut):
+    def _tool_button(self, icon: Any, label: str, shortcut: np.ndarray) -> np.ndarray:
+        """
+        Handle tool button.
+
+        Parameters
+        ----------
+        icon : Any
+            Input value.
+        label : str
+            Input value.
+        shortcut : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         btn = QPushButton(f"{icon}  {label}")
         btn.setObjectName("tool_btn")
         btn.setCheckable(True)
@@ -907,14 +1326,39 @@ class ROIApp(QMainWindow):  # noqa: F811
         btn.setToolTip(f"{label}  [{shortcut}]")
         return btn
 
-    def _action_button(self, icon, label, shortcut):
+    def _action_button(self, icon: Any, label: str, shortcut: np.ndarray) -> np.ndarray:
+        """
+        Handle action button.
+
+        Parameters
+        ----------
+        icon : Any
+            Input value.
+        label : str
+            Input value.
+        shortcut : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         btn = QPushButton(f"{icon}  {label}")
         btn.setObjectName("action_btn")
         btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         btn.setToolTip(f"{label}  [{shortcut}]")
         return btn
 
-    def _refresh_below_color_btn(self):
+    def _refresh_below_color_btn(self) -> None:
+        """
+        Handle refresh below color btn.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         r, g, b = self.rm.mask_below_color
         luma = 0.299 * r + 0.587 * g + 0.114 * b
         fg = "#000" if luma > 128 else "#fff"
@@ -925,7 +1369,15 @@ class ROIApp(QMainWindow):  # noqa: F811
             f"QPushButton#action_btn:hover {{ background-color: rgb({min(r + 20, 255)},{min(g + 20, 255)},{min(b + 20, 255)}); }}"
         )
 
-    def _refresh_above_color_btn(self):
+    def _refresh_above_color_btn(self) -> None:
+        """
+        Handle refresh above color btn.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         r, g, b = self.rm.mask_above_color
         luma = 0.299 * r + 0.587 * g + 0.114 * b
         fg = "#000" if luma > 128 else "#fff"
@@ -938,19 +1390,55 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     # ── actions ───────────────────────────────────────────────────────────────
 
-    def _on_tool_toggled(self, key, on):
+    def _on_tool_toggled(self, key: str, on: Any) -> None:
+        """
+        Handle on tool toggled.
+
+        Parameters
+        ----------
+        key : str
+            Input value.
+        on : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if on:
             self.canvas.mode = key
             self.canvas.selected_idx = -1
             self.canvas.update()
             self._refresh_status()
 
-    def _on_mask_type_btn(self, btn):
+    def _on_mask_type_btn(self, btn: np.ndarray) -> None:
+        """
+        Handle on mask type btn.
+
+        Parameters
+        ----------
+        btn : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         labels = {"◻  Binary": "binary", "◼  Multi-ID": "multi", "⊞  Both": "both"}
         self.rm.mask_type = labels.get(btn.text(), "multi")
         self._refresh_status()
 
-    def _toggle_bg(self):
+    def _toggle_bg(self) -> None:
+        """
+        Handle toggle bg.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self.rm.show_bg = not self.rm.show_bg
         self._bg_btn.setStyleSheet(
             ""
@@ -960,16 +1448,50 @@ class ROIApp(QMainWindow):  # noqa: F811
         )
         self.canvas.update()
 
-    def _delete_selected(self):
+    def _delete_selected(self) -> None:
+        """
+        Handle delete selected.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self.canvas._delete_selected()
 
-    def _on_intensity_toggled(self, active):
+    def _on_intensity_toggled(self, active: np.ndarray) -> None:
+        """
+        Handle on intensity toggled.
+
+        Parameters
+        ----------
+        active : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self.rm.intensity_active = active
         self.canvas.update_intensity_overlay()
         self.canvas.update()
         self._refresh_status()
 
-    def _on_lo_changed(self, val):
+    def _on_lo_changed(self, val: np.ndarray) -> None:
+        """
+        Handle on lo changed.
+
+        Parameters
+        ----------
+        val : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         val = min(val, self.rm.intensity_high)
         self._lo_slider.blockSignals(True)
         self._lo_slider.setValue(val)
@@ -981,10 +1503,36 @@ class ROIApp(QMainWindow):  # noqa: F811
         self.canvas.update_intensity_overlay()
         self.canvas.update()
 
-    def _on_lo_spin_changed(self, val):
+    def _on_lo_spin_changed(self, val: np.ndarray) -> None:
+        """
+        Handle on lo spin changed.
+
+        Parameters
+        ----------
+        val : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self._lo_slider.setValue(val)
 
-    def _on_hi_changed(self, val):
+    def _on_hi_changed(self, val: np.ndarray) -> None:
+        """
+        Handle on hi changed.
+
+        Parameters
+        ----------
+        val : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         val = max(val, self.rm.intensity_low)
         self._hi_slider.blockSignals(True)
         self._hi_slider.setValue(val)
@@ -996,10 +1544,31 @@ class ROIApp(QMainWindow):  # noqa: F811
         self.canvas.update_intensity_overlay()
         self.canvas.update()
 
-    def _on_hi_spin_changed(self, val):
+    def _on_hi_spin_changed(self, val: np.ndarray) -> None:
+        """
+        Handle on hi spin changed.
+
+        Parameters
+        ----------
+        val : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self._hi_slider.setValue(val)
 
-    def _pick_below_color(self):
+    def _pick_below_color(self) -> None:
+        """
+        Handle pick below color.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         r, g, b = self.rm.mask_below_color
         chosen = QColorDialog.getColor(
             QColor(r, g, b), self, "Pick color for below-threshold pixels"
@@ -1010,7 +1579,15 @@ class ROIApp(QMainWindow):  # noqa: F811
             self.canvas.update_intensity_overlay()
             self.canvas.update()
 
-    def _pick_above_color(self):
+    def _pick_above_color(self) -> None:
+        """
+        Handle pick above color.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         r, g, b = self.rm.mask_above_color
         chosen = QColorDialog.getColor(
             QColor(r, g, b), self, "Pick color for above-threshold pixels"
@@ -1021,7 +1598,7 @@ class ROIApp(QMainWindow):  # noqa: F811
             self.canvas.update_intensity_overlay()
             self.canvas.update()
 
-    def _create_threshold_rois(self):
+    def _create_threshold_rois(self) -> None:
         """Convert the current intensity threshold mask into ROIObject(s).
 
         Each contiguous region in the threshold mask becomes an unassigned ROI,
@@ -1043,7 +1620,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         self.canvas.update()
         self._refresh_status()
 
-    def _save_threshold_mask(self):
+    def _save_threshold_mask(self) -> None:
         """Save a binary mask built purely from intensity thresholds (no ROI polygons)."""
         if not self.rm.intensity_active:
             self.statusBar().showMessage("  Enable the intensity filter first.", 3000)
@@ -1051,7 +1628,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         path = self.rm.save_threshold_binary_mask()
         self.statusBar().showMessage(f"  Saved threshold binary mask → {path}", 5000)
 
-    def _reset_ids(self):
+    def _reset_ids(self) -> None:
         """Clear all ID assignments — every ROI returns to unassigned state."""
         for roi in self.rm.rois:
             roi.roi_id = 0
@@ -1060,7 +1637,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         self.canvas.update()
         self._refresh_status()
 
-    def _delete_all(self):
+    def _delete_all(self) -> None:
         """Remove every ROI and reset the assign counter."""
         if not self.rm.rois:
             self.statusBar().showMessage("  No ROIs to delete.", 2000)
@@ -1073,7 +1650,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         self._refresh_status()
         self.statusBar().showMessage(f"  Deleted {n} ROI(s).", 2000)
 
-    def _auto_assign_ids(self):
+    def _auto_assign_ids(self) -> None:
         """Assign sequential IDs to all unassigned ROIs without showing a dialog."""
         pending = [r for r in self.rm.rois if not r.assigned]
         if not pending:
@@ -1102,7 +1679,15 @@ class ROIApp(QMainWindow):  # noqa: F811
             return True
         return False
 
-    def _save_close(self):
+    def _save_close(self) -> None:
+        """
+        Save close.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if self.rm.mask_type in ("multi", "both") and self.rm.rois:
             unassigned = [r for r in self.rm.rois if not r.assigned]
             if unassigned:
@@ -1112,10 +1697,26 @@ class ROIApp(QMainWindow):  # noqa: F811
         self.rm.save_masks()
         self.close()
 
-    def _cancel(self):
+    def _cancel(self) -> None:
+        """
+        Handle cancel.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self.close()
 
-    def _refresh_status(self):
+    def _refresh_status(self) -> None:
+        """
+        Handle refresh status.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         n = len(self.rm.rois)
         n_assigned = sum(1 for r in self.rm.rois if r.assigned)
         n_pending = n - n_assigned
@@ -1151,7 +1752,20 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     # ── keyboard ──────────────────────────────────────────────────────────────
 
-    def keyPressEvent(self, e):
+    def keyPressEvent(self, e: Any) -> None:
+        """
+        Handle key press event.
+
+        Parameters
+        ----------
+        e : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         key_map = {
             Qt.Key.Key_S: "select",
             Qt.Key.Key_R: "rect",
@@ -1195,6 +1809,19 @@ _PALETTE = [
 
 
 def _roi_color(roi_id: int) -> QColor:
+    """
+    Handle roi color.
+
+    Parameters
+    ----------
+    roi_id : int
+        Input value.
+
+    Returns
+    -------
+    QColor
+        Return value.
+    """
     return _PALETTE[(roi_id - 1) % len(_PALETTE)]
 
 
@@ -1204,9 +1831,19 @@ def _roi_color(roi_id: int) -> QColor:
 
 
 class IDAssignDialog(QDialog):  # noqa: F811
-    """Let the user rename/reorder ROI IDs before the final save."""
+    """
+    Let users rename and reorder ROI IDs before masks are saved. The dialog keeps
+    interactive ROI editing separate from final label assignment.
 
-    def __init__(self, rois: list, parent=None):
+    Parameters
+    ----------
+    rois : list
+        ROI objects or label definitions managed by the dialog.
+    parent : np.ndarray | None
+        Optional parent GUI widget.
+    """
+
+    def __init__(self, rois: list, parent: np.ndarray | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Assign Region IDs")
         self.setMinimumWidth(360)
@@ -1289,9 +1926,21 @@ _MIN_BOX = 6
 
 
 class ImageCanvas(QWidget):  # noqa: F811
+    """
+    Display images and handle interactive ROI drawing, editing, thresholding, and mask
+    previews. It is the central canvas widget used by the ROI application.
+
+    Parameters
+    ----------
+    rm : Any
+        ROI maker or ROI application state object.
+    parent : np.ndarray | None
+        Optional parent GUI widget.
+    """
+
     roi_changed = Signal()
 
-    def __init__(self, rm, parent=None):
+    def __init__(self, rm: Any, parent: np.ndarray | None = None) -> None:
         super().__init__(parent)
         self.rm = rm
         self.selected_idx = -1
@@ -1349,7 +1998,15 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     # ── transform ─────────────────────────────────────────────────────────────
 
-    def _recompute_transform(self):
+    def _recompute_transform(self) -> None:
+        """
+        Handle recompute transform.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         cw, ch = self.width(), self.height()
         iw, ih = self._pixmap.width(), self._pixmap.height()
         self._fit_scale = min(cw / iw, ch / ih)
@@ -1357,7 +2014,20 @@ class ImageCanvas(QWidget):  # noqa: F811
         self._offset_x = (cw - iw * self._scale) / 2 + self._pan_x
         self._offset_y = (ch - ih * self._scale) / 2 + self._pan_y
 
-    def wheelEvent(self, e):
+    def wheelEvent(self, e: Any) -> None:
+        """
+        Handle wheel event.
+
+        Parameters
+        ----------
+        e : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         delta = e.angleDelta().y()
         if delta == 0:
             return
@@ -1382,31 +2052,95 @@ class ImageCanvas(QWidget):  # noqa: F811
         self._pan_y = desired_oy - (ch - ih * new_scale) / 2
         self.update()
 
-    def reset_zoom(self):
+    def reset_zoom(self) -> None:
+        """
+        Handle reset zoom.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self._zoom = 1.0
         self._pan_x = 0.0
         self._pan_y = 0.0
         self.update()
 
-    def _w2i(self, wx, wy):
+    def _w2i(self, wx: np.ndarray, wy: np.ndarray) -> tuple[Any, ...]:
+        """
+        Handle w2i.
+
+        Parameters
+        ----------
+        wx : np.ndarray
+            Input value.
+        wy : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         return (
             (wx - self._offset_x) / self._scale,
             (wy - self._offset_y) / self._scale,
         )
 
-    def _i2w(self, ix, iy):
+    def _i2w(self, ix: np.ndarray, iy: np.ndarray) -> tuple[Any, ...]:
+        """
+        Handle i2w.
+
+        Parameters
+        ----------
+        ix : np.ndarray
+            Input value.
+        iy : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         return (ix * self._scale + self._offset_x, iy * self._scale + self._offset_y)
 
-    def _qpt_w2i(self, q):
+    def _qpt_w2i(self, q: Any) -> Any:
+        """
+        Handle qpt w2i.
+
+        Parameters
+        ----------
+        q : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         x, y = self._w2i(q.x(), q.y())
         return QPointF(x, y)
 
-    def _pts_to_poly_w(self, pts):
+    def _pts_to_poly_w(self, pts: np.ndarray) -> Any:
+        """
+        Handle pts to poly w.
+
+        Parameters
+        ----------
+        pts : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return QPolygonF([QPointF(*self._i2w(float(p[0]), float(p[1]))) for p in pts])
 
     # ── intensity overlay ──────────────────────────────────────────────────────
 
-    def update_intensity_overlay(self):
+    def update_intensity_overlay(self) -> None:
         """Recompute the RGBA overlay array for out-of-range pixels.
 
         We store the raw numpy array rather than a QPixmap so that paintEvent
@@ -1436,7 +2170,20 @@ class ImageCanvas(QWidget):  # noqa: F811
     # ── bounding-box handles ───────────────────────────────────────────────────
 
     @staticmethod
-    def _bbox(pts):
+    def _bbox(pts: np.ndarray) -> tuple[Any, ...]:
+        """
+        Handle bbox.
+
+        Parameters
+        ----------
+        pts : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         return (
             float(pts[:, 0].min()),
             float(pts[:, 1].min()),
@@ -1444,7 +2191,20 @@ class ImageCanvas(QWidget):  # noqa: F811
             float(pts[:, 1].max()),
         )
 
-    def _handle_pos_i(self, pts):
+    def _handle_pos_i(self, pts: np.ndarray) -> list[Any]:
+        """
+        Handle handle pos i.
+
+        Parameters
+        ----------
+        pts : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        list[Any]
+            Return value.
+        """
         x0, y0, x1, y1 = self._bbox(pts)
         mx, my = (x0 + x1) / 2, (y0 + y1) / 2
         return [
@@ -1458,7 +2218,22 @@ class ImageCanvas(QWidget):  # noqa: F811
             (x0, my),
         ]
 
-    def _hit_handle(self, wpt, roi):
+    def _hit_handle(self, wpt: np.ndarray, roi: Any) -> Any:
+        """
+        Handle hit handle.
+
+        Parameters
+        ----------
+        wpt : np.ndarray
+            Input value.
+        roi : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         thresh2 = (_HANDLE_R + 3) ** 2
         for i, (ix, iy) in enumerate(self._handle_pos_i(roi.pts)):
             wx, wy = self._i2w(ix, iy)
@@ -1466,7 +2241,20 @@ class ImageCanvas(QWidget):  # noqa: F811
                 return i
         return -1
 
-    def _hit_roi(self, wpt):
+    def _hit_roi(self, wpt: np.ndarray) -> Any:
+        """
+        Handle hit roi.
+
+        Parameters
+        ----------
+        wpt : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         ix, iy = self._w2i(wpt.x(), wpt.y())
         for i, roi in enumerate(self.rm.rois):
             if (
@@ -1480,7 +2268,20 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     # ── painting ───────────────────────────────────────────────────────────────
 
-    def paintEvent(self, _):
+    def paintEvent(self, _: Any) -> None:
+        """
+        Handle paint event.
+
+        Parameters
+        ----------
+        _ : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self._recompute_transform()
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -1512,7 +2313,24 @@ class ImageCanvas(QWidget):  # noqa: F811
 
         p.end()
 
-    def _paint_roi(self, p, roi, selected):
+    def _paint_roi(self, p: Any, roi: Any, selected: np.ndarray) -> None:
+        """
+        Handle paint roi.
+
+        Parameters
+        ----------
+        p : Any
+            Input value.
+        roi : Any
+            Input value.
+        selected : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if not roi.assigned:
             color = QColor(0, 220, 100) if selected else QColor(140, 140, 155)
             line_style = Qt.DashLine
@@ -1539,7 +2357,22 @@ class ImageCanvas(QWidget):  # noqa: F811
         if selected:
             self._paint_handles(p, roi)
 
-    def _paint_handles(self, p, roi):
+    def _paint_handles(self, p: Any, roi: Any) -> None:
+        """
+        Handle paint handles.
+
+        Parameters
+        ----------
+        p : Any
+            Input value.
+        roi : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         for ix, iy in self._handle_pos_i(roi.pts):
             wx, wy = self._i2w(ix, iy)
             r = _HANDLE_R
@@ -1547,7 +2380,20 @@ class ImageCanvas(QWidget):  # noqa: F811
             p.setPen(QPen(QColor(30, 100, 220), 1.5))
             p.drawEllipse(QRectF(wx - r, wy - r, r * 2, r * 2))
 
-    def _paint_preview(self, p):
+    def _paint_preview(self, p: Any) -> None:
+        """
+        Handle paint preview.
+
+        Parameters
+        ----------
+        p : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         pts = self._preview_pts()
         if len(pts) < 3:
             return
@@ -1558,7 +2404,15 @@ class ImageCanvas(QWidget):  # noqa: F811
         p.setPen(QPen(QColor(255, 255, 255, 160), 1.2, Qt.DashLine))
         p.drawPolygon(poly)
 
-    def _preview_pts(self):
+    def _preview_pts(self) -> Any:
+        """
+        Handle preview pts.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if self._start_i is None:
             return []
         ix, iy = self._start_i
@@ -1572,7 +2426,20 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     # ── mouse ──────────────────────────────────────────────────────────────────
 
-    def mousePressEvent(self, e):
+    def mousePressEvent(self, e: Any) -> None:
+        """
+        Handle mouse press event.
+
+        Parameters
+        ----------
+        e : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if e.button() == Qt.MiddleButton:
             self._recompute_transform()
             self._panning = True
@@ -1635,7 +2502,20 @@ class ImageCanvas(QWidget):  # noqa: F811
         self.update()
         self.roi_changed.emit()
 
-    def mouseMoveEvent(self, e):
+    def mouseMoveEvent(self, e: Any) -> None:
+        """
+        Handle mouse move event.
+
+        Parameters
+        ----------
+        e : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         wpt = QPointF(e.pos())
         self._cur_mw = wpt
 
@@ -1687,7 +2567,20 @@ class ImageCanvas(QWidget):  # noqa: F811
 
         self.update()
 
-    def mouseReleaseEvent(self, e):
+    def mouseReleaseEvent(self, e: Any) -> None:
+        """
+        Handle mouse release event.
+
+        Parameters
+        ----------
+        e : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if e.button() == Qt.MiddleButton:
             self._panning = False
             self.setCursor(Qt.ArrowCursor)
@@ -1714,7 +2607,22 @@ class ImageCanvas(QWidget):  # noqa: F811
             self.roi_changed.emit()
         self.update()
 
-    def _finalise_pts(self, mx, my):
+    def _finalise_pts(self, mx: np.ndarray, my: np.ndarray) -> Any:
+        """
+        Handle finalise pts.
+
+        Parameters
+        ----------
+        mx : np.ndarray
+            Input value.
+        my : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if self._start_i is None:
             return []
         ix, iy = self._start_i
@@ -1726,7 +2634,20 @@ class ImageCanvas(QWidget):  # noqa: F811
         pts = np.array(self._free_i)
         return pts if len(pts) >= 3 else []
 
-    def _apply_resize(self, wpt):
+    def _apply_resize(self, wpt: np.ndarray) -> None:
+        """
+        Apply resize.
+
+        Parameters
+        ----------
+        wpt : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         roi = self.rm.rois[self.selected_idx]
         dix = (wpt.x() - self._rz_start_mw.x()) / self._scale
         diy = (wpt.y() - self._rz_start_mw.y()) / self._scale
@@ -1753,13 +2674,34 @@ class ImageCanvas(QWidget):  # noqa: F811
         roi.pts = np.clip(pts, 0, None).astype(np.int32)
         roi.center = np.mean(roi.pts, axis=0)
 
-    def keyPressEvent(self, e):
+    def keyPressEvent(self, e: Any) -> None:
+        """
+        Handle key press event.
+
+        Parameters
+        ----------
+        e : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if e.key() in (Qt.Key_Delete, Qt.Key_Backspace):
             self._delete_selected()
         elif e.key() == Qt.Key_Home:
             self.reset_zoom()
 
-    def _delete_selected(self):
+    def _delete_selected(self) -> None:
+        """
+        Handle delete selected.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if 0 <= self.selected_idx < len(self.rm.rois):
             self.rm.rois.pop(self.selected_idx)
             self.selected_idx = -1
@@ -1776,7 +2718,18 @@ class ImageCanvas(QWidget):  # noqa: F811
 
 
 class ROIApp(QMainWindow):  # noqa: F811
-    def __init__(self, rm):
+    """
+    Host the full interactive ROI maker interface. The widget wires image display,
+    threshold controls, ROI editing actions, ID assignment, and mask saving into one
+    application window.
+
+    Parameters
+    ----------
+    rm : Any
+        ROI maker or ROI application state object.
+    """
+
+    def __init__(self, rm: Any) -> None:
         super().__init__()
         self.rm = rm
         self.setWindowTitle("ROI Maker")
@@ -1802,7 +2755,15 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     # ── sidebar ───────────────────────────────────────────────────────────────
 
-    def _build_sidebar(self):
+    def _build_sidebar(self) -> Any:
+        """
+        Build sidebar.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -2030,19 +2991,57 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     # ── widget helpers ────────────────────────────────────────────────────────
 
-    def _divider(self):
+    def _divider(self) -> Any:
+        """
+        Handle divider.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         line = QFrame()
         line.setObjectName("divider")
         line.setFrameShape(QFrame.HLine)
         return line
 
-    def _section_label(self, text):
+    def _section_label(self, text: np.ndarray) -> Any:
+        """
+        Handle section label.
+
+        Parameters
+        ----------
+        text : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         lbl = QLabel(text)
         lbl.setObjectName("section_lbl")
         lbl.setContentsMargins(2, 6, 2, 2)
         return lbl
 
-    def _tool_button(self, icon, label, shortcut):
+    def _tool_button(self, icon: Any, label: str, shortcut: np.ndarray) -> np.ndarray:
+        """
+        Handle tool button.
+
+        Parameters
+        ----------
+        icon : Any
+            Input value.
+        label : str
+            Input value.
+        shortcut : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         btn = QPushButton(f"{icon}  {label}")
         btn.setObjectName("tool_btn")
         btn.setCheckable(True)
@@ -2051,14 +3050,39 @@ class ROIApp(QMainWindow):  # noqa: F811
         btn.setToolTip(f"{label}  [{shortcut}]")
         return btn
 
-    def _action_button(self, icon, label, shortcut):
+    def _action_button(self, icon: Any, label: str, shortcut: np.ndarray) -> np.ndarray:
+        """
+        Handle action button.
+
+        Parameters
+        ----------
+        icon : Any
+            Input value.
+        label : str
+            Input value.
+        shortcut : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         btn = QPushButton(f"{icon}  {label}")
         btn.setObjectName("action_btn")
         btn.setCursor(QCursor(Qt.PointingHandCursor))
         btn.setToolTip(f"{label}  [{shortcut}]")
         return btn
 
-    def _refresh_below_color_btn(self):
+    def _refresh_below_color_btn(self) -> None:
+        """
+        Handle refresh below color btn.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         r, g, b = self.rm.mask_below_color
         luma = 0.299 * r + 0.587 * g + 0.114 * b
         fg = "#000" if luma > 128 else "#fff"
@@ -2069,7 +3093,15 @@ class ROIApp(QMainWindow):  # noqa: F811
             f"QPushButton#action_btn:hover {{ background-color: rgb({min(r + 20, 255)},{min(g + 20, 255)},{min(b + 20, 255)}); }}"
         )
 
-    def _refresh_above_color_btn(self):
+    def _refresh_above_color_btn(self) -> None:
+        """
+        Handle refresh above color btn.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         r, g, b = self.rm.mask_above_color
         luma = 0.299 * r + 0.587 * g + 0.114 * b
         fg = "#000" if luma > 128 else "#fff"
@@ -2082,19 +3114,55 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     # ── actions ───────────────────────────────────────────────────────────────
 
-    def _on_tool_toggled(self, key, on):
+    def _on_tool_toggled(self, key: str, on: Any) -> None:
+        """
+        Handle on tool toggled.
+
+        Parameters
+        ----------
+        key : str
+            Input value.
+        on : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if on:
             self.canvas.mode = key
             self.canvas.selected_idx = -1
             self.canvas.update()
             self._refresh_status()
 
-    def _on_mask_type_btn(self, btn):
+    def _on_mask_type_btn(self, btn: np.ndarray) -> None:
+        """
+        Handle on mask type btn.
+
+        Parameters
+        ----------
+        btn : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         labels = {"◻  Binary": "binary", "◼  Multi-ID": "multi", "⊞  Both": "both"}
         self.rm.mask_type = labels.get(btn.text(), "multi")
         self._refresh_status()
 
-    def _toggle_bg(self):
+    def _toggle_bg(self) -> None:
+        """
+        Handle toggle bg.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self.rm.show_bg = not self.rm.show_bg
         self._bg_btn.setStyleSheet(
             ""
@@ -2104,16 +3172,50 @@ class ROIApp(QMainWindow):  # noqa: F811
         )
         self.canvas.update()
 
-    def _delete_selected(self):
+    def _delete_selected(self) -> None:
+        """
+        Handle delete selected.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self.canvas._delete_selected()
 
-    def _on_intensity_toggled(self, active):
+    def _on_intensity_toggled(self, active: np.ndarray) -> None:
+        """
+        Handle on intensity toggled.
+
+        Parameters
+        ----------
+        active : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self.rm.intensity_active = active
         self.canvas.update_intensity_overlay()
         self.canvas.update()
         self._refresh_status()
 
-    def _on_lo_changed(self, val):
+    def _on_lo_changed(self, val: np.ndarray) -> None:
+        """
+        Handle on lo changed.
+
+        Parameters
+        ----------
+        val : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         val = min(val, self.rm.intensity_high)
         self._lo_slider.blockSignals(True)
         self._lo_slider.setValue(val)
@@ -2125,10 +3227,36 @@ class ROIApp(QMainWindow):  # noqa: F811
         self.canvas.update_intensity_overlay()
         self.canvas.update()
 
-    def _on_lo_spin_changed(self, val):
+    def _on_lo_spin_changed(self, val: np.ndarray) -> None:
+        """
+        Handle on lo spin changed.
+
+        Parameters
+        ----------
+        val : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self._lo_slider.setValue(val)
 
-    def _on_hi_changed(self, val):
+    def _on_hi_changed(self, val: np.ndarray) -> None:
+        """
+        Handle on hi changed.
+
+        Parameters
+        ----------
+        val : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         val = max(val, self.rm.intensity_low)
         self._hi_slider.blockSignals(True)
         self._hi_slider.setValue(val)
@@ -2140,10 +3268,31 @@ class ROIApp(QMainWindow):  # noqa: F811
         self.canvas.update_intensity_overlay()
         self.canvas.update()
 
-    def _on_hi_spin_changed(self, val):
+    def _on_hi_spin_changed(self, val: np.ndarray) -> None:
+        """
+        Handle on hi spin changed.
+
+        Parameters
+        ----------
+        val : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self._hi_slider.setValue(val)
 
-    def _pick_below_color(self):
+    def _pick_below_color(self) -> None:
+        """
+        Handle pick below color.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         r, g, b = self.rm.mask_below_color
         chosen = QColorDialog.getColor(
             QColor(r, g, b), self, "Pick color for below-threshold pixels"
@@ -2154,7 +3303,15 @@ class ROIApp(QMainWindow):  # noqa: F811
             self.canvas.update_intensity_overlay()
             self.canvas.update()
 
-    def _pick_above_color(self):
+    def _pick_above_color(self) -> None:
+        """
+        Handle pick above color.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         r, g, b = self.rm.mask_above_color
         chosen = QColorDialog.getColor(
             QColor(r, g, b), self, "Pick color for above-threshold pixels"
@@ -2165,7 +3322,7 @@ class ROIApp(QMainWindow):  # noqa: F811
             self.canvas.update_intensity_overlay()
             self.canvas.update()
 
-    def _create_threshold_rois(self):
+    def _create_threshold_rois(self) -> None:
         """Convert the current intensity threshold mask into ROIObject(s).
 
         Each contiguous region in the threshold mask becomes an unassigned ROI,
@@ -2187,7 +3344,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         self.canvas.update()
         self._refresh_status()
 
-    def _save_threshold_mask(self):
+    def _save_threshold_mask(self) -> None:
         """Save a binary mask built purely from intensity thresholds (no ROI polygons)."""
         if not self.rm.intensity_active:
             self.statusBar().showMessage("  Enable the intensity filter first.", 3000)
@@ -2195,7 +3352,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         path = self.rm.save_threshold_binary_mask()
         self.statusBar().showMessage(f"  Saved threshold binary mask → {path}", 5000)
 
-    def _reset_ids(self):
+    def _reset_ids(self) -> None:
         """Clear all ID assignments — every ROI returns to unassigned state."""
         for roi in self.rm.rois:
             roi.roi_id = 0
@@ -2204,7 +3361,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         self.canvas.update()
         self._refresh_status()
 
-    def _delete_all(self):
+    def _delete_all(self) -> None:
         """Remove every ROI and reset the assign counter."""
         if not self.rm.rois:
             self.statusBar().showMessage("  No ROIs to delete.", 2000)
@@ -2217,7 +3374,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         self._refresh_status()
         self.statusBar().showMessage(f"  Deleted {n} ROI(s).", 2000)
 
-    def _auto_assign_ids(self):
+    def _auto_assign_ids(self) -> None:
         """Assign sequential IDs to all unassigned ROIs without showing a dialog."""
         pending = [r for r in self.rm.rois if not r.assigned]
         if not pending:
@@ -2246,7 +3403,15 @@ class ROIApp(QMainWindow):  # noqa: F811
             return True
         return False
 
-    def _save_close(self):
+    def _save_close(self) -> None:
+        """
+        Save close.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if self.rm.mask_type in ("multi", "both") and self.rm.rois:
             unassigned = [r for r in self.rm.rois if not r.assigned]
             if unassigned:
@@ -2256,10 +3421,26 @@ class ROIApp(QMainWindow):  # noqa: F811
         self.rm.save_masks()
         self.close()
 
-    def _cancel(self):
+    def _cancel(self) -> None:
+        """
+        Handle cancel.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self.close()
 
-    def _refresh_status(self):
+    def _refresh_status(self) -> None:
+        """
+        Handle refresh status.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         n = len(self.rm.rois)
         n_assigned = sum(1 for r in self.rm.rois if r.assigned)
         n_pending = n - n_assigned
@@ -2295,7 +3476,20 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     # ── keyboard ──────────────────────────────────────────────────────────────
 
-    def keyPressEvent(self, e):
+    def keyPressEvent(self, e: Any) -> None:
+        """
+        Handle key press event.
+
+        Parameters
+        ----------
+        e : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         key_map = {
             Qt.Key_S: "select",
             Qt.Key_R: "rect",
@@ -2325,7 +3519,20 @@ class ROIApp(QMainWindow):  # noqa: F811
 
 
 class ROIMaker:
-    def __init__(self, image_2d, save_path="masks/mask.npy"):
+    """
+    Provide a programmatic wrapper around the ROI application. It launches the
+    interactive editor, exposes generated masks, creates threshold-derived ROIs, and
+    saves mask outputs.
+
+    Parameters
+    ----------
+    image_2d : np.ndarray
+        Two-dimensional image used as the ROI editing canvas.
+    save_path : str
+        Output path used when saving generated masks, figures, or data.
+    """
+
+    def __init__(self, image_2d: np.ndarray, save_path: str = "masks/mask.npy") -> None:
         arr = np.asarray(image_2d, dtype=np.float64)
         self._raw_img = arr  # original values for thresholding
         self.img_min = int(np.floor(arr.min()))
@@ -2429,7 +3636,20 @@ class ROIMaker:
 
     # ── load / save ───────────────────────────────────────────────────────────
 
-    def load_mask(self, path: str):
+    def load_mask(self, path: str) -> None:
+        """
+        Load mask.
+
+        Parameters
+        ----------
+        path : str
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         try:
             loaded = np.load(path)
             for uid in np.unique(loaded):
@@ -2450,7 +3670,15 @@ class ROIMaker:
         except Exception as exc:
             logging.warning(f"Load mask failed: {exc}")
 
-    def save_masks(self):
+    def save_masks(self) -> None:
+        """
+        Save masks.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         stem, _ = os.path.splitext(os.path.abspath(self.save_path))
         os.makedirs(os.path.dirname(stem) or ".", exist_ok=True)
 
@@ -2484,7 +3712,7 @@ class ROIMaker:
 
     # ── draw ──────────────────────────────────────────────────────────────────
 
-    def draw(self):
+    def draw(self) -> Any:
         """Open the editor window (blocks). Returns the chosen mask type."""
         app = QApplication.instance() or QApplication(sys.argv)
         win = ROIApp(self)

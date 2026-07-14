@@ -42,14 +42,41 @@ from scipy.stats import (
 
 @dataclass
 class PlotConfig:
-    """Shared visual + statistical configuration.
-    Both SubplotVisualizer and Plotter accept a PlotConfig so all plots
-    in a session can share the same palette, figsize, and test settings.
+    """
+    Collect shared plotting and statistical defaults for comparison figures. Pass one
+    configuration object to map, histogram, KDE, violin, box, CDF, QQ, scatter, and
+    clustered comparison plots for consistent styling.
 
-    Usage
-        cfg = PlotConfig(figsize=(20, 8), cmap="jet",
-                         colors=["#3498db", "#e74c3c"])
-        p = Plotter(gt, pred, style_config=cfg, source_names=["GT", "Model"])
+    Parameters
+    ----------
+    figsize : Tuple[int, int]
+        Configuration value used by the class.
+    cmap : str
+        Configuration value used by the class.
+    bins : int
+        Configuration value used by the class.
+    colors : List[str]
+        Configuration value used by the class.
+    imshow_source : str
+        Configuration value used by the class.
+    shared_colorbar : bool
+        Configuration value used by the class.
+    annotate_stats : bool
+        Configuration value used by the class.
+    scatter_pair : Optional[Tuple[int, int]]
+        Configuration value used by the class.
+    qq_reference : str
+        Configuration value used by the class.
+    point_type : str
+        Configuration value used by the class.
+    show_mean : bool
+        Configuration value used by the class.
+    show_median : bool
+        Configuration value used by the class.
+    test_type : str
+        Configuration value used by the class.
+    correction : bool
+        Configuration value used by the class.
     """
 
     # ── visual ────────────────────────────────────────────────────────────────
@@ -90,16 +117,10 @@ class PlotConfig:
 
 
 class DataProcessor:
-    """Applies a declarative operations dict to a 2-D array.
-
-    Supported keys
-    ──────────────
-    mask            : bool array  – keep True cells, NaN-out the rest
-    remove_nan      : bool        – replace non-finite values with NaN
-    remove_zero     : bool        – replace zeros with NaN
-    threshold       : (min, max)  – values outside range → NaN
-    percentile_clip : (pmin,pmax) – percentile-based outlier removal
-    custom          : callable    – arbitrary f(array) -> array transform
+    """
+    Apply declarative preprocessing operations to two-dimensional arrays. Operations
+    include mask handling, thresholding, finite-value filtering, and simple summary
+    statistics used by plotting classes.
     """
 
     MIN_SAMPLES: int = 5
@@ -148,6 +169,21 @@ class DataProcessor:
 
     @classmethod
     def is_valid(cls, valid: np.ndarray, min_samples: Optional[int] = None) -> bool:
+        """
+        Return whether valid.
+
+        Parameters
+        ----------
+        valid : np.ndarray
+            Input value.
+        min_samples : Optional[int]
+            Input value.
+
+        Returns
+        -------
+        bool
+            Return value.
+        """
         n = min_samples or cls.MIN_SAMPLES
         v = np.asarray(valid)
         v = v[np.isfinite(v)]
@@ -155,6 +191,19 @@ class DataProcessor:
 
     @staticmethod
     def stats(valid: np.ndarray) -> Dict[str, float]:
+        """
+        Handle stats.
+
+        Parameters
+        ----------
+        valid : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Dict[str, float]
+            Return value.
+        """
         if not len(valid):
             return {}
         return dict(
@@ -173,20 +222,27 @@ class DataProcessor:
 
 
 class SourceLoader:
-    """Unified ingestion layer for comparison plots.
+    """
+    Normalize heterogeneous plot inputs into a consistent source dictionary. It accepts
+    direct arrays, dictionaries, or named value collections so downstream plotters can
+    compare multiple data sources uniformly.
 
-    Produces
-    ────────
-    {label: [arr_source_0, arr_source_1, ...]}
-
-    Supported source types
-    ──────────────────────
-    dict          keys are label strings, values are array-like
-    npz           np.load() result; uses .files as labels
-    np.ndarray    1-D → single label; 2-D → each column maps to a label
+    Parameters
+    ----------
+    *args : Any
+        Additional positional values accepted by the object.
+    values : np.ndarray | None
+        Explicit values to load as plotting sources.
+    source_names : np.ndarray | None
+        Names assigned to plotted or compared data sources.
     """
 
-    def __init__(self, *args, values=None, source_names=None):
+    def __init__(
+        self,
+        *args: Any,
+        values: np.ndarray | None = None,
+        source_names: np.ndarray | None = None,
+    ) -> None:
         self.raw_sources = args
         self.values = values
         self.source_names = source_names or [
@@ -195,6 +251,14 @@ class SourceLoader:
         self.labels = self._infer_labels()
 
     def _infer_labels(self) -> List[str]:
+        """
+        Handle infer labels.
+
+        Returns
+        -------
+        List[str]
+            Return value.
+        """
         if self.values:
             return list(self.values)
         seen: Dict[str, None] = {}
@@ -208,7 +272,22 @@ class SourceLoader:
         return list(seen)
 
     @staticmethod
-    def _extract(source, key) -> np.ndarray:
+    def _extract(source: str, key: str) -> np.ndarray:
+        """
+        Handle extract.
+
+        Parameters
+        ----------
+        source : str
+            Input value.
+        key : str
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         try:
             return np.asanyarray(source[key]).astype(float).flatten()
         except (KeyError, ValueError, TypeError):
@@ -243,16 +322,10 @@ class SourceLoader:
 
 
 class PlotKit:
-    """Standalone static axis-level draw primitives.
-
-    Every method is independently usable on any existing Axes:
-
-        fig, ax = plt.subplots()
-        _, valid = DataProcessor.process(arr, ops)
-        PlotKit.kde(ax, valid, config=PlotConfig(), title="Lifetime")
-
-    Plotter and SubplotVisualizer both dispatch to these methods so
-    rendering logic is never duplicated.
+    """
+    Provide stateless axis-level plotting primitives. The methods draw maps, histograms,
+    KDEs, violin and box plots, CDFs, QQ plots, scatters, raincloud plots, and metric
+    bars on caller-provided axes.
     """
 
     # ── map / imshow ─────────────────────────────────────────────────────────
@@ -261,14 +334,43 @@ class PlotKit:
         ax: Axes,
         data_map: np.ndarray,
         *,
-        config=None,
-        title="",
-        vmin=None,
-        vmax=None,
-        fig=None,
-        add_colorbar=True,
-        **kw,
+        config: Any | None = None,
+        title: str = "",
+        vmin: np.ndarray | None = None,
+        vmax: np.ndarray | None = None,
+        fig: Any | None = None,
+        add_colorbar: bool = True,
+        **kw: Any,
     ) -> None:
+        """
+        Handle map.
+
+        Parameters
+        ----------
+        ax : Axes
+            Input value.
+        data_map : np.ndarray
+            Input value.
+        config : Any | None
+            Input value.
+        title : str
+            Input value.
+        vmin : np.ndarray | None
+            Input value.
+        vmax : np.ndarray | None
+            Input value.
+        fig : Any | None
+            Input value.
+        add_colorbar : bool
+            Input value.
+        **kw : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         cfg = config or PlotConfig()
         im = ax.imshow(data_map, cmap=cfg.cmap, vmin=vmin, vmax=vmax, **kw)
         if add_colorbar and fig is not None:
@@ -277,15 +379,69 @@ class PlotKit:
 
     # ── histogram ────────────────────────────────────────────────────────────
     @staticmethod
-    def histogram(ax: Axes, valid: np.ndarray, *, config=None, title="", **kw) -> None:
+    def histogram(
+        ax: Axes,
+        valid: np.ndarray,
+        *,
+        config: Any | None = None,
+        title: str = "",
+        **kw: Any,
+    ) -> None:
+        """
+        Handle histogram.
+
+        Parameters
+        ----------
+        ax : Axes
+            Input value.
+        valid : np.ndarray
+            Input value.
+        config : Any | None
+            Input value.
+        title : str
+            Input value.
+        **kw : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         ax.hist(valid, bins=(config or PlotConfig()).bins, **kw)
         ax.set_title(f"{title} Histogram".strip())
 
     # ── log histogram ─────────────────────────────────────────────────────────
     @staticmethod
     def log_histogram(
-        ax: Axes, valid: np.ndarray, *, config=None, title="", **kw
+        ax: Axes,
+        valid: np.ndarray,
+        *,
+        config: Any | None = None,
+        title: str = "",
+        **kw: Any,
     ) -> None:
+        """
+        Handle log histogram.
+
+        Parameters
+        ----------
+        ax : Axes
+            Input value.
+        valid : np.ndarray
+            Input value.
+        config : Any | None
+            Input value.
+        title : str
+            Input value.
+        **kw : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         ax.hist(valid[valid > 0], bins=(config or PlotConfig()).bins, log=True, **kw)
         ax.set_title(f"{title} Log Histogram".strip())
 
@@ -295,15 +451,46 @@ class PlotKit:
         ax: Axes,
         valid: np.ndarray,
         *,
-        config=None,
-        title="",
-        color=None,
-        label=None,
-        fill=False,
-        alpha=0.35,
-        n_points=1000,
-        **kw,
+        config: Any | None = None,
+        title: str = "",
+        color: str | None = None,
+        label: str | None = None,
+        fill: bool = False,
+        alpha: float = 0.35,
+        n_points: int = 1000,
+        **kw: Any,
     ) -> None:
+        """
+        Handle kde.
+
+        Parameters
+        ----------
+        ax : Axes
+            Input value.
+        valid : np.ndarray
+            Input value.
+        config : Any | None
+            Input value.
+        title : str
+            Input value.
+        color : str | None
+            Input value.
+        label : str | None
+            Input value.
+        fill : bool
+            Input value.
+        alpha : float
+            Input value.
+        n_points : int
+            Input value.
+        **kw : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if len(valid) > 1:
             kf = gaussian_kde(valid)
             x = np.linspace(valid.min(), valid.max(), n_points)
@@ -317,7 +504,35 @@ class PlotKit:
 
     # ── violin ────────────────────────────────────────────────────────────────
     @staticmethod
-    def violinplot(ax: Axes, valid: np.ndarray, *, config=None, title="", **kw) -> None:
+    def violinplot(
+        ax: Axes,
+        valid: np.ndarray,
+        *,
+        config: Any | None = None,
+        title: str = "",
+        **kw: Any,
+    ) -> None:
+        """
+        Handle violinplot.
+
+        Parameters
+        ----------
+        ax : Axes
+            Input value.
+        valid : np.ndarray
+            Input value.
+        config : Any | None
+            Input value.
+        title : str
+            Input value.
+        **kw : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if DataProcessor.is_valid(valid):
             ax.violinplot(valid, showmeans=True, showmedians=True, **kw)
         else:
@@ -333,7 +548,35 @@ class PlotKit:
 
     # ── boxplot ───────────────────────────────────────────────────────────────
     @staticmethod
-    def boxplot(ax: Axes, valid: np.ndarray, *, config=None, title="", **kw) -> None:
+    def boxplot(
+        ax: Axes,
+        valid: np.ndarray,
+        *,
+        config: Any | None = None,
+        title: str = "",
+        **kw: Any,
+    ) -> None:
+        """
+        Handle boxplot.
+
+        Parameters
+        ----------
+        ax : Axes
+            Input value.
+        valid : np.ndarray
+            Input value.
+        config : Any | None
+            Input value.
+        title : str
+            Input value.
+        **kw : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if DataProcessor.is_valid(valid):
             ax.boxplot(valid, orientation="vertical", **kw)
         else:
@@ -353,12 +596,37 @@ class PlotKit:
         ax: Axes,
         valid: np.ndarray,
         *,
-        config=None,
-        title="",
-        color=None,
-        label=None,
-        **kw,
+        config: Any | None = None,
+        title: str = "",
+        color: str | None = None,
+        label: str | None = None,
+        **kw: Any,
     ) -> None:
+        """
+        Handle cdf.
+
+        Parameters
+        ----------
+        ax : Axes
+            Input value.
+        valid : np.ndarray
+            Input value.
+        config : Any | None
+            Input value.
+        title : str
+            Input value.
+        color : str | None
+            Input value.
+        label : str | None
+            Input value.
+        **kw : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         s = np.sort(valid)
         ax.plot(s, np.arange(len(s)) / len(s), color=color, label=label, **kw)
         ax.set_ylabel("Cumulative probability")
@@ -366,15 +634,72 @@ class PlotKit:
 
     # ── QQ ────────────────────────────────────────────────────────────────────
     @staticmethod
-    def qq(ax: Axes, valid: np.ndarray, *, config=None, title="", **kw) -> None:
+    def qq(
+        ax: Axes,
+        valid: np.ndarray,
+        *,
+        config: Any | None = None,
+        title: str = "",
+        **kw: Any,
+    ) -> None:
+        """
+        Handle qq.
+
+        Parameters
+        ----------
+        ax : Axes
+            Input value.
+        valid : np.ndarray
+            Input value.
+        config : Any | None
+            Input value.
+        title : str
+            Input value.
+        **kw : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         probplot(valid, dist=(config or PlotConfig()).qq_reference, plot=ax)
         ax.set_title(f"{title} QQ Plot".strip())
 
     # ── scatter ───────────────────────────────────────────────────────────────
     @staticmethod
     def scatter(
-        ax: Axes, x: np.ndarray, y: np.ndarray, *, config=None, title="", **kw
+        ax: Axes,
+        x: np.ndarray,
+        y: np.ndarray,
+        *,
+        config: Any | None = None,
+        title: str = "",
+        **kw: Any,
     ) -> None:
+        """
+        Handle scatter.
+
+        Parameters
+        ----------
+        ax : Axes
+            Input value.
+        x : np.ndarray
+            Input value.
+        y : np.ndarray
+            Input value.
+        config : Any | None
+            Input value.
+        title : str
+            Input value.
+        **kw : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         ax.scatter(x, y, **kw)
         ax.set_title(f"{title} Scatter".strip())
 
@@ -384,12 +709,12 @@ class PlotKit:
         ax: Axes,
         valid: np.ndarray,
         *,
-        config=None,
-        title="",
-        color=None,
-        position=0,
-        width=0.4,
-        **kw,
+        config: Any | None = None,
+        title: str = "",
+        color: str | None = None,
+        position: int = 0,
+        width: float = 0.4,
+        **kw: Any,
     ) -> None:
         """Half-violin + embedded box + jittered strip at a given x position."""
         if not DataProcessor.is_valid(valid):
@@ -433,9 +758,9 @@ class PlotKit:
         ax: Axes,
         metrics: List[Dict],
         *,
-        config=None,
-        title="Distribution Metrics",
-        **kw,
+        config: Any | None = None,
+        title: str = "Distribution Metrics",
+        **kw: Any,
     ) -> None:
         """Grouped bar chart of Wasserstein / Energy / KL per key × model."""
         cfg = config or PlotConfig()
@@ -488,6 +813,19 @@ class PlotKit:
 
     @classmethod
     def get_method(cls, name: str) -> Callable:
+        """
+        Return method.
+
+        Parameters
+        ----------
+        name : str
+            Input value.
+
+        Returns
+        -------
+        Callable
+            Return value.
+        """
         key = name.strip().lower()
         canonical = cls._NAME_MAP.get(key)
         if canonical is None:
@@ -503,22 +841,20 @@ class PlotKit:
 
 
 class SubplotVisualizer:
-    """Grid of rows (data arrays) × columns (plot types) for 2-D spatial data.
+    """
+    Build compact subplot grids for spatial maps and one-dimensional distributions. It
+    is useful when comparing several operations or plot types over a shared set of
+    arrays.
 
-    Uses PlotKit for all rendering, DataProcessor for cleaning.
-
-    Usage
-    -----
-        viz = SubplotVisualizer(figsize=(20, 8), cmap="jet")
-        viz.plot(lifetime, ratio_valid,
-                 plot_types=["map","histogram","violinplot","boxplot","kde","qq","cdf"],
-                 titles=["Lifetime","Ratio"],
-                 operations=[{"remove_nan":True,"remove_zero":True,
-                               "threshold":(0,1.5),"mask":int_mask},
-                              {"remove_nan":True,"threshold":(0,1)}])
+    Parameters
+    ----------
+    config : Optional[PlotConfig]
+        Configuration value used by the class.
+    **kw : Any
+        Additional keyword arguments forwarded to the underlying implementation.
     """
 
-    def __init__(self, config: Optional[PlotConfig] = None, **kw):
+    def __init__(self, config: Optional[PlotConfig] = None, **kw: Any) -> None:
         if config is not None:
             self.config = config
         else:
@@ -527,13 +863,36 @@ class SubplotVisualizer:
 
     def plot(
         self,
-        *data_arrays,
+        *data_arrays: Any,
         plot_types: Sequence[str] = ("map", "histogram", "violinplot", "boxplot"),
-        titles=None,
-        operations=None,
-        fig=None,
-        axes=None,
+        titles: np.ndarray | None = None,
+        operations: np.ndarray | None = None,
+        fig: Any | None = None,
+        axes: Any | None = None,
     ) -> Figure:
+        """
+        Handle plot.
+
+        Parameters
+        ----------
+        *data_arrays : Any
+            Input value.
+        plot_types : Sequence[str]
+            Input value.
+        titles : np.ndarray | None
+            Input value.
+        operations : np.ndarray | None
+            Input value.
+        fig : Any | None
+            Input value.
+        axes : Any | None
+            Input value.
+
+        Returns
+        -------
+        Figure
+            Return value.
+        """
         n = len(data_arrays)
         titles = titles or [f"Data {i + 1}" for i in range(n)]
         operations = operations or [{} for _ in range(n)]
@@ -573,18 +932,51 @@ class SubplotVisualizer:
 
     def _render(
         self,
-        ax,
-        ptype,
-        data_map,
-        valid,
-        title,
-        fig,
-        vmin,
-        vmax,
-        row,
-        data_arrays,
-        operations,
-    ):
+        ax: Any,
+        ptype: np.ndarray,
+        data_map: np.ndarray,
+        valid: np.ndarray,
+        title: str,
+        fig: Any,
+        vmin: np.ndarray,
+        vmax: np.ndarray,
+        row: np.ndarray,
+        data_arrays: np.ndarray,
+        operations: np.ndarray,
+    ) -> None:
+        """
+        Handle render.
+
+        Parameters
+        ----------
+        ax : Any
+            Input value.
+        ptype : np.ndarray
+            Input value.
+        data_map : np.ndarray
+            Input value.
+        valid : np.ndarray
+            Input value.
+        title : str
+            Input value.
+        fig : Any
+            Input value.
+        vmin : np.ndarray
+            Input value.
+        vmax : np.ndarray
+            Input value.
+        row : np.ndarray
+            Input value.
+        data_arrays : np.ndarray
+            Input value.
+        operations : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         key = ptype.strip().lower()
         if key in ("map", "imshow"):
             PlotKit.map(
@@ -631,7 +1023,24 @@ class SubplotVisualizer:
                     bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.6),
                 )
 
-    def _global_range(self, data_arrays, operations):
+    def _global_range(
+        self, data_arrays: np.ndarray, operations: np.ndarray
+    ) -> tuple[Any, ...]:
+        """
+        Handle global range.
+
+        Parameters
+        ----------
+        data_arrays : np.ndarray
+            Input value.
+        operations : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         if not self.config.shared_colorbar:
             return None, None
         all_v = []
@@ -645,7 +1054,24 @@ class SubplotVisualizer:
         return float(m.min()), float(m.max())
 
     @staticmethod
-    def _shared_cbar(fig, axes, plot_types):
+    def _shared_cbar(fig: Any, axes: Any, plot_types: np.ndarray) -> None:
+        """
+        Handle shared cbar.
+
+        Parameters
+        ----------
+        fig : Any
+            Input value.
+        axes : Any
+            Input value.
+        plot_types : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         map_cols = [
             c
             for c, pt in enumerate(plot_types)
@@ -664,33 +1090,33 @@ class SubplotVisualizer:
 
 
 class Plotter:
-    """Multi-source comparison visualiser.
-
-    Data sources may be dicts, npz files, or ndarrays.
-    Uses SourceLoader for ingestion and PlotKit for rendering primitives.
+    """
+    Coordinate multi-source comparison plots for fitted FLIM maps or model outputs. The
+    class cleans data, applies processing operations, dispatches plot types, annotates
+    significance, and exports underlying data.
 
     Parameters
     ----------
-    *args         : data sources (dict | npz | np.ndarray)
-    values        : key list to plot; inferred when None
-    style_config  : list[str] of hex colors  |  dict of colors  |  PlotConfig
-    source_names  : legend labels for each source
-
-    graph_type options in make_plot
-    ────────────────────────────────
-    "box"        box + optional strip / swarm
-    "violin"     full violin
-    "swarm"      strip / swarm only
-    "overlay"    box + strip / swarm
-    "raincloud"  half-violin + box + strip  (via PlotKit.raincloud)
-    "kde"        per-key KDE comparison     (via PlotKit.kde)
-    "cdf"        per-key CDF comparison     (via PlotKit.cdf)
-    "qq"         per-key QQ plots           (via PlotKit.qq)
+    *args : Any
+        Additional positional values accepted by the object.
+    values : np.ndarray | None
+        Explicit values to load as plotting sources.
+    style_config : np.ndarray | None
+        Plot configuration object controlling colors, layout, and statistics.
+    source_names : np.ndarray | None
+        Names assigned to plotted or compared data sources.
+    operations : np.ndarray | None
+        Configuration value used by the class.
     """
 
     def __init__(
-        self, *args, values=None, style_config=None, source_names=None, operations=None
-    ):
+        self,
+        *args: Any,
+        values: np.ndarray | None = None,
+        style_config: np.ndarray | None = None,
+        source_names: np.ndarray | None = None,
+        operations: np.ndarray | None = None,
+    ) -> None:
         self.raw_data = args
         self.source_names = source_names or [
             f"Source {i + 1}" for i in range(len(args))
@@ -723,7 +1149,7 @@ class Plotter:
         self.values = values
         self._clean_data()
 
-    def _get_clean_array(self, data_source, key) -> np.ndarray:
+    def _get_clean_array(self, data_source: Any, key: str) -> np.ndarray:
         """Backward-compatible extraction helper."""
         try:
             val = data_source[key]
@@ -731,7 +1157,7 @@ class Plotter:
         except (KeyError, ValueError, TypeError):
             return np.array([])
 
-    def _clean_data(self):
+    def _clean_data(self) -> None:
         """Backward-compatible label inference (no-op: SourceLoader already did it)."""
         if self.values:
             self.labels = list(self.values)
@@ -774,17 +1200,17 @@ class Plotter:
     # ── main plotting method ──────────────────────────────────────────────────
     def make_plot(
         self,
-        title="Data Analysis",
-        graph_type="box",
-        show_significance=True,
+        title: str = "Data Analysis",
+        graph_type: str = "box",
+        show_significance: bool = True,
         # legacy positional-style kwargs kept for backward compatibility
-        point_type=None,
-        show_mean=None,
-        show_median=None,
-        test_type=None,
-        correction=None,
-        **config_overrides,
-    ):
+        point_type: np.ndarray | None = None,
+        show_mean: np.ndarray | None = None,
+        show_median: np.ndarray | None = None,
+        test_type: np.ndarray | None = None,
+        correction: np.ndarray | None = None,
+        **config_overrides: Any,
+    ) -> Any:
         """Render a multi-source comparison plot.
 
         Legacy parameters (point_type, show_mean, show_median, test_type,
@@ -857,7 +1283,28 @@ class Plotter:
         return fig
 
     # ── per-type rendering helpers ────────────────────────────────────────────
-    def _plot_kde(self, groups, n_sources, title, cfg):
+    def _plot_kde(
+        self, groups: np.ndarray, n_sources: int, title: str, cfg: Any
+    ) -> np.ndarray:
+        """
+        Plot kde.
+
+        Parameters
+        ----------
+        groups : np.ndarray
+            Input value.
+        n_sources : int
+            Input value.
+        title : str
+            Input value.
+        cfg : Any
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         n_keys = len(self.labels)
         fig, axes = plt.subplots(
             n_keys, 1, figsize=(cfg.figsize[0], 4 * n_keys), sharex=False
@@ -884,7 +1331,28 @@ class Plotter:
         self.current_fig = fig
         return fig
 
-    def _plot_cdf(self, groups, n_sources, title, cfg):
+    def _plot_cdf(
+        self, groups: np.ndarray, n_sources: int, title: str, cfg: Any
+    ) -> np.ndarray:
+        """
+        Plot cdf.
+
+        Parameters
+        ----------
+        groups : np.ndarray
+            Input value.
+        n_sources : int
+            Input value.
+        title : str
+            Input value.
+        cfg : Any
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         n_keys = len(self.labels)
         fig, axes = plt.subplots(1, n_keys, figsize=cfg.figsize, squeeze=False)
         for idx, key in enumerate(self.labels):
@@ -904,7 +1372,28 @@ class Plotter:
         self.current_fig = fig
         return fig
 
-    def _plot_qq(self, groups, n_sources, title, cfg):
+    def _plot_qq(
+        self, groups: np.ndarray, n_sources: int, title: str, cfg: Any
+    ) -> np.ndarray:
+        """
+        Plot qq.
+
+        Parameters
+        ----------
+        groups : np.ndarray
+            Input value.
+        n_sources : int
+            Input value.
+        title : str
+            Input value.
+        cfg : Any
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         n_keys = len(self.labels)
         fig, axes = plt.subplots(
             n_keys, n_sources, figsize=(4 * n_sources, 4 * n_keys), squeeze=False
@@ -924,8 +1413,40 @@ class Plotter:
         return fig
 
     def _plot_box_family(
-        self, ax, groups, n_sources, width, x_centers, graph_type, cfg
-    ):
+        self,
+        ax: Any,
+        groups: np.ndarray,
+        n_sources: int,
+        width: float,
+        x_centers: np.ndarray,
+        graph_type: np.ndarray,
+        cfg: Any,
+    ) -> None:
+        """
+        Plot box family.
+
+        Parameters
+        ----------
+        ax : Any
+            Input value.
+        groups : np.ndarray
+            Input value.
+        n_sources : int
+            Input value.
+        width : float
+            Input value.
+        x_centers : np.ndarray
+            Input value.
+        graph_type : np.ndarray
+            Input value.
+        cfg : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         for src in range(n_sources):
             color = cfg.color(src)
             positions, data_list = [], []
@@ -994,8 +1515,40 @@ class Plotter:
                     )
 
     def _plot_violin_family(
-        self, ax, groups, n_sources, width, x_centers, graph_type, cfg
-    ):
+        self,
+        ax: Any,
+        groups: np.ndarray,
+        n_sources: int,
+        width: float,
+        x_centers: np.ndarray,
+        graph_type: np.ndarray,
+        cfg: Any,
+    ) -> None:
+        """
+        Plot violin family.
+
+        Parameters
+        ----------
+        ax : Any
+            Input value.
+        groups : np.ndarray
+            Input value.
+        n_sources : int
+            Input value.
+        width : float
+            Input value.
+        x_centers : np.ndarray
+            Input value.
+        graph_type : np.ndarray
+            Input value.
+        cfg : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         for src in range(n_sources):
             color = cfg.color(src)
             for idx, key in enumerate(self.labels):
@@ -1048,7 +1601,38 @@ class Plotter:
                         zorder=6,
                     )
 
-    def _annotate_significance(self, ax, groups, n_sources, x_centers, width, cfg):
+    def _annotate_significance(
+        self,
+        ax: Any,
+        groups: np.ndarray,
+        n_sources: int,
+        x_centers: np.ndarray,
+        width: float,
+        cfg: Any,
+    ) -> None:
+        """
+        Handle annotate significance.
+
+        Parameters
+        ----------
+        ax : Any
+            Input value.
+        groups : np.ndarray
+            Input value.
+        n_sources : int
+            Input value.
+        x_centers : np.ndarray
+            Input value.
+        width : float
+            Input value.
+        cfg : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         p_val_text = []
         num_comps = len(self.labels) * (n_sources - 1) if cfg.correction else 1
         for idx, key in enumerate(self.labels):
@@ -1097,7 +1681,24 @@ class Plotter:
                 ),
             )
 
-    def _add_legend(self, ax, n_sources, cfg):
+    def _add_legend(self, ax: Any, n_sources: int, cfg: Any) -> None:
+        """
+        Add legend.
+
+        Parameters
+        ----------
+        ax : Any
+            Input value.
+        n_sources : int
+            Input value.
+        cfg : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         elements = [
             Line2D(
                 [0],
@@ -1122,12 +1723,12 @@ class Plotter:
         title: str = "Cluster Analysis",
         graph_type: str = "box",
         show_significance: bool = True,
-        point_type=None,
-        show_mean=None,
-        show_median=None,
-        test_type=None,
-        correction=None,
-        **config_overrides,
+        point_type: np.ndarray | None = None,
+        show_mean: np.ndarray | None = None,
+        show_median: np.ndarray | None = None,
+        test_type: np.ndarray | None = None,
+        correction: np.ndarray | None = None,
+        **config_overrides: Any,
     ) -> Figure:
         """Per-cluster breakdown of make_plot.
 
@@ -1359,8 +1960,14 @@ class Plotter:
         return fig
 
     def _annotate_cluster_significance(
-        self, ax, key_groups, n_sources, x_centers, width, cfg
-    ):
+        self,
+        ax: Any,
+        key_groups: np.ndarray,
+        n_sources: int,
+        x_centers: np.ndarray,
+        width: float,
+        cfg: Any,
+    ) -> None:
         """Significance stars between sources at each cluster position."""
         n_clusters = len(key_groups)
         num_comps = n_clusters * (n_sources - 1) if cfg.correction else 1
@@ -1408,12 +2015,33 @@ class Plotter:
     # ── export ─────────────────────────────────────────────────────────────────
     def export_data(
         self,
-        save_pdf=False,
-        save_png=False,
-        save_csv=False,
-        filename="results",
-        dpi=150,
+        save_pdf: bool = False,
+        save_png: bool = False,
+        save_csv: bool = False,
+        filename: str = "results",
+        dpi: int = 150,
     ) -> None:
+        """
+        Export data.
+
+        Parameters
+        ----------
+        save_pdf : bool
+            Input value.
+        save_png : bool
+            Input value.
+        save_csv : bool
+            Input value.
+        filename : str
+            Input value.
+        dpi : int
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if self.current_fig is not None:
             if save_pdf:
                 self.current_fig.savefig(
@@ -1433,18 +2061,21 @@ class Plotter:
 
 
 class DLModelComparator(Plotter):
-    """Extends Plotter with distribution-distance metrics.
-
-    Assumes first source = ground truth; all subsequent sources = model outputs.
-
-    New methods
-    ───────────
-    compute_distribution_metrics()   list of {Key, Model, ModelName, W, E, KL}
-    annotate_distribution_metrics(ax)
-    plot_metrics(title)              bar chart via PlotKit.metrics_bar
+    """
+    Extend the general plotter with distribution-distance metrics for model evaluation.
+    It computes Wasserstein, KL, and energy-style summaries and can annotate those
+    metrics on comparison figures.
     """
 
     def compute_distribution_metrics(self) -> List[Dict]:
+        """
+        Compute distribution metrics.
+
+        Returns
+        -------
+        List[Dict]
+            Return value.
+        """
         groups = self._apply_processing(self._loader.load())
         results = []
         for key in self.labels:
@@ -1477,6 +2108,19 @@ class DLModelComparator(Plotter):
         return results
 
     def annotate_distribution_metrics(self, ax: Axes) -> None:
+        """
+        Handle annotate distribution metrics.
+
+        Parameters
+        ----------
+        ax : Axes
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         metrics = self.compute_distribution_metrics()
         lines = [
             f"{m['Key']} / {m['ModelName']}: "
@@ -1494,7 +2138,7 @@ class DLModelComparator(Plotter):
             bbox=dict(boxstyle="round", facecolor="none", edgecolor="gray", alpha=0.4),
         )
 
-    def plot_metrics(self, title="Distribution Metrics") -> Optional[Figure]:
+    def plot_metrics(self, title: str = "Distribution Metrics") -> Optional[Figure]:
         """Standalone bar chart of W / Energy / KL for all key × model pairs."""
         metrics = self.compute_distribution_metrics()
         if not metrics:
@@ -1508,12 +2152,12 @@ class DLModelComparator(Plotter):
 
     def make_plot(
         self,
-        title="DL Model Comparison",
-        graph_type="box",
-        show_significance=True,
-        show_metrics=True,
-        **config_overrides,
-    ):
+        title: str = "DL Model Comparison",
+        graph_type: str = "box",
+        show_significance: bool = True,
+        show_metrics: bool = True,
+        **config_overrides: Any,
+    ) -> np.ndarray:
         """Override: adds optional distribution-metrics annotation block."""
         fig = super().make_plot(
             title=title,
@@ -1536,18 +2180,18 @@ class DLModelComparator(Plotter):
 
 
 def plot_2d_subplots(
-    *data_arrays,
-    plot_types=("map", "histogram", "violinplot", "boxplot"),
-    titles=None,
-    operations=None,
-    figsize=(18, 8),
-    cmap="viridis",
-    bins=100,
-    imshow_source="processed",
-    shared_colorbar=False,
-    annotate_stats=True,
-    scatter_pair=None,
-    qq_reference="norm",
+    *data_arrays: Any,
+    plot_types: tuple[str, ...] = ("map", "histogram", "violinplot", "boxplot"),
+    titles: np.ndarray | None = None,
+    operations: np.ndarray | None = None,
+    figsize: tuple[int, ...] = (18, 8),
+    cmap: str = "viridis",
+    bins: int = 100,
+    imshow_source: str = "processed",
+    shared_colorbar: bool = False,
+    annotate_stats: bool = True,
+    scatter_pair: np.ndarray | None = None,
+    qq_reference: str = "norm",
 ) -> Figure:
     """Drop-in replacement – all original keyword arguments preserved."""
     cfg = PlotConfig(

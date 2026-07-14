@@ -20,7 +20,10 @@ import math
 
 
 class AcquisitionMode(Enum):
-    """Acquisition / gating modes described in Michalet 2021."""
+    """
+    Enumerate phasor acquisition geometries supported by the phasor package. Modes cover
+    continuous, discrete, gated, truncated, and offset acquisition models.
+    """
 
     CONTINUOUS = (
         auto()
@@ -35,45 +38,34 @@ class AcquisitionMode(Enum):
 @dataclass
 class AcquisitionConfig:
     """
-    Complete description of a phasor acquisition experiment.
+    Validate and store physical parameters for phasor locus calculations. The dataclass
+    centralizes acquisition mode, laser period, harmonic, bin counts, gate settings,
+    truncation, offset, and lifetime-grid ranges.
 
     Parameters
     ----------
     mode : AcquisitionMode
-        Which SEPL formula to use.
+        Acquisition, fitting, plotting, or simulator mode.
     T_ns : float
         Laser repetition period in nanoseconds.
     harmonic : int
-        Fourier harmonic n (1 = fundamental, 2 = second harmonic …).
+        Phasor harmonic index.
     N_bins : int
-        Number of time bins for DISCRETE mode (ignored otherwise).
+        Number of temporal bins in discrete phasor acquisition.
     gate_width_frac : float
-        Gate width as a fraction of T (0 < gate_width_frac ≤ 1).
-        Used by GATED_SINGLE and GATED_N.
+        Gate width as a fraction of the laser period.
     N_gates : int
-        Number of equidistant gates for GATED_N mode.
+        Number of gates in gated acquisition.
     T_rec_frac : float
-        Fraction of T covered by the recording window (TRUNCATED mode).
-        Must be in (0, 1].  Values < 1 cause SEPL deformation.
+        Recorded decay window as a fraction of the laser period.
     t0_frac : float
-        IRF / excitation offset as a fraction of T (OFFSET mode).
+        Offset as a fraction of the laser period.
     tau_min_ns : float
-        Minimum lifetime for locus computation (ns).
+        Minimum lifetime in nanoseconds for locus generation.
     tau_max_ns : float
-        Maximum lifetime for locus computation (ns).
+        Maximum lifetime in nanoseconds for locus generation.
     n_tau_pts : int
-        Number of τ samples for locus curves.
-
-    Derived properties
-    ------------------
-    omega : float
-        Angular frequency 2π·n/T  (rad/ns).
-    gate_width_ns : float
-        Absolute gate width  W = gate_width_frac · T  (ns).
-    T_rec_ns : float
-        Absolute recording window  T_rec = T_rec_frac · T  (ns).
-    t0_ns : float
-        Absolute IRF offset  t0 = t0_frac · T  (ns).
+        Number of lifetime samples in a generated locus.
     """
 
     # ------------------------------------------------------------------ core
@@ -101,10 +93,26 @@ class AcquisitionConfig:
 
     # ------------------------------------------------------------------
     def __post_init__(self) -> None:
+        """
+        Handle post init.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         self._validate()
 
     # ------------------------------------------------------------------ validation
     def _validate(self) -> None:
+        """
+        Handle validate.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if self.T_ns <= 0:
             raise ValueError(f"T_ns must be positive, got {self.T_ns}")
         if self.harmonic < 1:
@@ -156,6 +164,14 @@ class AcquisitionConfig:
 
     # ------------------------------------------------------------------ helpers
     def describe(self) -> str:
+        """
+        Handle describe.
+
+        Returns
+        -------
+        str
+            Return value.
+        """
         lines = [
             "AcquisitionConfig",
             f"  mode          : {self.mode.name}",

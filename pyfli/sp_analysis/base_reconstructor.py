@@ -1,29 +1,47 @@
+"""
+Define shared scaffolding for four-dimensional single-pixel reconstruction solvers.
+
+This module belongs to :mod:`pyfli.sp_analysis` and is part of PyFLI single-pixel camera
+basis generation, acquisition simulation, and reconstruction solvers. Public API
+includes classes :class:`BaseReconstructor`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 from abc import ABC, abstractmethod
 
 
 class BaseReconstructor(ABC):
     """
-    Base class for 4D (x, y, T, Lambda) single-pixel camera reconstruction.
-
-    Accepts DMD patterns directly (the {0,1} output of BasisPatterns), handles
-    differential subtraction internally, and recovers the sensing matrix for
-    reconstruction.
+    Provide shared shape handling and pattern bookkeeping for four-dimensional single-
+    pixel reconstruction. Subclasses implement concrete inverse solvers.
 
     Parameters
     ----------
-    h, w        : spatial resolution (image = H x W)
-    t, lam      : number of TCSPC time bins and wavelength channels
-    differential: True  — patterns from generate_hadamard(differential=True)
-                          shape (2M, N); measurements also (2M, T, Lambda).
-                          Internally computes y_diff = y_pos - y_neg and
-                          recovers H = 2*P_pos - 1 as the sensing matrix.
-                  False — patterns from generate_hadamard(differential=False)
-                          or generate_fourier_dct(); shape (M, N), used as-is.
-    n_workers   : reserved for future parallel execution
+    h : np.ndarray
+        Image height or spatial dimension used by reconstruction solvers.
+    w : np.ndarray
+        Image width or spatial dimension used by reconstruction solvers.
+    t : np.ndarray
+        Temporal sample axis used by reconstruction solvers.
+    lam : np.ndarray
+        Wavelength or spectral axis used by reconstruction solvers.
+    differential : bool
+        Whether the sensing basis uses differential pattern pairs.
+    n_workers : int | None
+        Number of worker processes or threads used by parallel solvers.
     """
 
-    def __init__(self, h, w, t, lam, differential=True, n_workers=None):
+    def __init__(
+        self,
+        h: np.ndarray,
+        w: np.ndarray,
+        t: np.ndarray,
+        lam: np.ndarray,
+        differential: bool = True,
+        n_workers: int | None = None,
+    ) -> None:
         self.h = h
         self.w = w
         self.t = t
@@ -33,7 +51,7 @@ class BaseReconstructor(ABC):
         self.n_workers = n_workers
 
     @staticmethod
-    def dmd_to_sensing_matrix(dmd_patterns, differential):
+    def dmd_to_sensing_matrix(dmd_patterns: np.ndarray, differential: bool) -> Any:
         """
         Recover the sensing matrix A from DMD {0,1} patterns.
 
@@ -53,7 +71,9 @@ class BaseReconstructor(ABC):
         return dmd_patterns.astype(np.float64)
 
     @staticmethod
-    def _process_measurements(measurements, dmd_patterns, differential):
+    def _process_measurements(
+        measurements: np.ndarray, dmd_patterns: np.ndarray, differential: bool
+    ) -> Any:
         """
         Apply differential subtraction to raw measurements when needed.
 
@@ -70,7 +90,7 @@ class BaseReconstructor(ABC):
         return measurements
 
     @abstractmethod
-    def reconstruct_slice(self, y_slice, A):
+    def reconstruct_slice(self, y_slice: np.ndarray, A: np.ndarray) -> None:
         """
         Reconstruct one (H, W) frame.
         y_slice : (M,)   measurements for one (t, lambda) slice
@@ -78,7 +98,9 @@ class BaseReconstructor(ABC):
         Returns : (H, W)
         """
 
-    def reconstruct_4d(self, measurements, dmd_patterns):
+    def reconstruct_4d(
+        self, measurements: np.ndarray, dmd_patterns: np.ndarray
+    ) -> np.ndarray:
         """
         Reconstruct the full 4D (x, y, T, Lambda) cube from DMD measurements.
 

@@ -1,3 +1,13 @@
+"""
+Classify mono- versus bi-exponential fit agreement and visualize parameter correlations.
+
+This module belongs to :mod:`pyfli.data_vnp` and is part of PyFLI visualization,
+normalization, plotting, and mono-versus-bi-exponential comparison tools. Public API
+includes classes :class:`MonoBiClassifier` and :class:`ParamCorrelationMatrix`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 from .color_processor import ColorProcessor
 from .data_viewer import DataViewer
@@ -9,37 +19,26 @@ import math
 
 class MonoBiClassifier:
     """
-    Per-dataset mono- vs bi-exponential pixel classification, plus cross-method
-    agreement and parameter-correlation analysis.
-
-    A pixel is classified 'mono' when one component overwhelmingly dominates:
-      - alpha1 > alpha_upper  (component 1 carries most of the signal)
-      - alpha1 < alpha_lower  (component 2 carries most of the signal)
-      - |tau1 - tau2| <= tau_tol  (both lifetimes are indistinguishable)
-    Otherwise the pixel is 'bi'.  All maps are restricted to the ROI
-    given by `b_bool_mask`.
+    Classify agreement between mono- and bi-exponential fits across one or more
+    datasets. It builds masks from lifetime and fraction criteria, summarizes agreement,
+    and plots parameter comparisons.
 
     Parameters
     ----------
-    alpha_upper : float   upper saturation threshold (default 0.95)
-    alpha_lower : float   lower saturation threshold (default 0.05).
-                          Use a small value (e.g. 0.05) so that only pixels
-                          where component 2 is truly dominant are called mono.
-                          Using 0.5 would label 55 % of the alpha space mono.
-    tau_tol     : float   lifetime coincidence tolerance in ns (default 0.01).
-                          Replaces exact float equality (tau1 == tau2 is almost
-                          never True for fitted values).
-
-    Workflow
-    --------
-        clf = MonoBiClassifier(b_bool_mask, names=names, coord=px)
-        clf.classify(all_datasets)                  # populates clf.results
-        clf.agreement(metric="jaccard")             # method-vs-method overlap
-        clf.param_scatter_matrix("tau1_map", cls="bi")
-        df = clf.agreed_param_table(cls="mono")
-
-    Per-dataset result dict keys:
-        {'name', 'mono', 'bi', 'combined', 'mono_mask', 'mono_frac', 'bi_frac'}
+    b_bool_mask : np.ndarray
+        Mask array used to select or label pixels.
+    names : Any | None
+        Configuration value used by the class.
+    alpha_upper : float
+        Configuration value used by the class.
+    alpha_lower : float
+        Configuration value used by the class.
+    tau_tol : float
+        Configuration value used by the class.
+    coord : Any | None
+        Configuration value used by the class.
+    figsize : np.ndarray | None
+        Configuration value used by the class.
     """
 
     CMAP_NAMES = ("jet", "Spectral", "Spectral_r")
@@ -61,14 +60,14 @@ class MonoBiClassifier:
 
     def __init__(
         self,
-        b_bool_mask,
-        names=None,
-        alpha_upper=0.95,
-        alpha_lower=0.05,
-        tau_tol=0.01,
-        coord=None,
-        figsize=None,
-    ):
+        b_bool_mask: np.ndarray,
+        names: Any | None = None,
+        alpha_upper: float = 0.95,
+        alpha_lower: float = 0.05,
+        tau_tol: float = 0.01,
+        coord: Any | None = None,
+        figsize: np.ndarray | None = None,
+    ) -> None:
         self.roi = np.asarray(b_bool_mask).astype(int)
         self.n_roi = int(self.roi.sum())
         self.names = names
@@ -82,11 +81,25 @@ class MonoBiClassifier:
         self.results = []  # per-dataset result dicts
         self.all_datasets = None  # stored by classify() for the analysis methods
 
-    # ════════════════════════════ classification ═══════════════════════════
-    def classify_one(self, res, name="Dataset"):
+    def classify_one(self, res: Any, name: str = "Dataset") -> dict[Any, Any]:
         # Lifetime coincidence: use tolerance instead of exact float equality.
         # tau1 == tau2 almost never holds for fitted floats even when both
         # optimisers converge to the same value (e.g. 1.2000000001 != 1.2).
+        """
+        Handle classify one.
+
+        Parameters
+        ----------
+        res : Any
+            Input value.
+        name : str
+            Input value.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         tau_coincide = (
             np.abs(
                 np.asarray(res["tau1_map"], dtype=float)
@@ -122,7 +135,20 @@ class MonoBiClassifier:
             "bi_frac": bi_frac,
         }
 
-    def display_one(self, result):
+    def display_one(self, result: Any) -> None:
+        """
+        Display one.
+
+        Parameters
+        ----------
+        result : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         name = result["name"]
         DataViewer().display_data(
             [result["combined"], result["mono"], result["bi"]],
@@ -136,7 +162,9 @@ class MonoBiClassifier:
             yscale="linear",
         )
 
-    def classify(self, all_datasets, names=None, display=True):
+    def classify(
+        self, all_datasets: np.ndarray, names: Any | None = None, display: bool = True
+    ) -> Any:
         """Classify every dataset; store self.results and self.all_datasets."""
         self.all_datasets = list(all_datasets)
         base = names or self.names or []
@@ -156,7 +184,15 @@ class MonoBiClassifier:
             self.results.append(r)
         return self.results
 
-    def summary(self):
+    def summary(self) -> Any:
+        """
+        Handle summary.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         for r in self.results:
             logging.info(
                 f"{r['name']:<18s}  mono: {r['mono_frac']:6.1%}   bi: {r['bi_frac']:6.1%}"
@@ -164,7 +200,15 @@ class MonoBiClassifier:
         return self.results
 
     # ════════════════════════ cross-method analysis ════════════════════════
-    def _require_classified(self):
+    def _require_classified(self) -> None:
+        """
+        Handle require classified.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if not self.results or self.all_datasets is None:
             raise RuntimeError(
                 "Call .classify(all_datasets) before running "
@@ -173,12 +217,12 @@ class MonoBiClassifier:
 
     def agreement(
         self,
-        metric="jaccard",
-        classes_to_show=("mono", "bi"),
-        cmap="viridis",
-        figsize=None,
-        show=True,
-    ):
+        metric: str = "jaccard",
+        classes_to_show: tuple[str, ...] = ("mono", "bi"),
+        cmap: str = "viridis",
+        figsize: np.ndarray | None = None,
+        show: bool = True,
+    ) -> tuple[Any, ...]:
         """
         Pairwise agreement between methods on the mono/bi classification.
 
@@ -243,15 +287,15 @@ class MonoBiClassifier:
 
     def param_scatter_matrix(
         self,
-        param="tau1_map",
+        param: str = "tau1_map",
         cls="mono",
-        agree="pairwise",
-        max_points=3000,
-        colors=None,
-        figsize=None,
-        rng=None,
-        show=True,
-    ):
+        agree: str = "pairwise",
+        max_points: int = 3000,
+        colors: Any | None = None,
+        figsize: np.ndarray | None = None,
+        rng: Any | None = None,
+        show: bool = True,
+    ) -> np.ndarray:
         """
         Cross-method correlation of ONE parameter over the pixels of ONE class.
 
@@ -337,8 +381,10 @@ class MonoBiClassifier:
         return fig
 
     def agreed_param_table(
-        self, cls="mono", params=("alpha1_map", "tau1_map", "tau2_map")
-    ):
+        self,
+        cls="mono",
+        params: tuple[str, ...] = ("alpha1_map", "tau1_map", "tau2_map"),
+    ) -> Any:
         """
         Long-form table of parameter values at pixels where ALL methods agree on
         `cls`. One row per (pixel, method) -> groupby('method').describe().
@@ -369,31 +415,18 @@ class MonoBiClassifier:
 
 class ParamCorrelationMatrix:
     """
-    Cross-method parameter correlation analysis over a shared ROI mask.
-
-    Works directly on a list of parameter-map dicts (the same format as
-    MonoBiClassifier's all_datasets); no classify() step is required.
-
-    Parameter arrays may be:
-      - 2-D (H, W)    : single scalar per pixel  → plotted as a plain point.
-      - 3-D (H, W, N) : distribution per pixel   → plotted as mean (circle)
-                         with ± std error bars.
+    Visualize pairwise parameter relationships under an agreement mask. It supports
+    subsampling, scalar and distribution-valued maps, uncertainty display, and pairwise
+    scatter panels.
 
     Parameters
     ----------
-    all_datasets : list of dict
-        Each dict maps parameter name → np.ndarray, either (H, W) or (H, W, N).
-    bool_mask    : np.ndarray (H, W) bool
-        Pixels included in every analysis.
-    names        : list of str, optional
-        Display labels for each dataset.  Defaults to 'Dataset 1', …
-
-    Methods
-    -------
-    scatter_matrix(param, agree, max_points, colors, figsize, rng, show)
-        N × N scatter / histogram grid for ONE parameter across ALL datasets.
-    pairwise_scatter(idx_a, idx_b, params, max_points, colors, figsize, rng, show)
-        Multi-parameter scatter grid comparing exactly TWO datasets.
+    all_datasets : np.ndarray
+        Sequence or mapping of fitted datasets to compare.
+    bool_mask : np.ndarray
+        Boolean mask selecting pixels included in the analysis.
+    names : Any | None
+        Configuration value used by the class.
     """
 
     PALETTE = [
@@ -412,7 +445,9 @@ class ParamCorrelationMatrix:
         "#76D7C4",
     ]
 
-    def __init__(self, all_datasets, bool_mask, names=None):
+    def __init__(
+        self, all_datasets: np.ndarray, bool_mask: np.ndarray, names: Any | None = None
+    ) -> None:
         self.all_datasets = list(all_datasets)
         self.roi = np.asarray(bool_mask).astype(bool)
         N = len(self.all_datasets)
@@ -425,7 +460,7 @@ class ParamCorrelationMatrix:
             )
 
     # ── internal helpers ──────────────────────────────────────────────────────
-    def _masked_stats(self, dataset_idx, param):
+    def _masked_stats(self, dataset_idx: int, param: Any) -> tuple[Any, ...]:
         """
         Return (mean, std, is_dist) for one parameter over the ROI.
 
@@ -444,14 +479,14 @@ class ParamCorrelationMatrix:
             return roi_vals.mean(axis=-1), roi_vals.std(axis=-1), True
         return arr[self.roi].ravel(), None, False  # scalar
 
-    def _resolve_idx(self, ref):
+    def _resolve_idx(self, ref: np.ndarray) -> Any:
         """Accept an int index or a dataset name string."""
         if isinstance(ref, str):
             return self.names.index(ref)
         return int(ref)
 
     @staticmethod
-    def _subsample(rng, max_points, *arrays):
+    def _subsample(rng: Any, max_points: int, *arrays: Any) -> Any:
         """Randomly subsample all arrays to at most max_points rows."""
         n = arrays[0].size
         if n <= max_points:
@@ -460,7 +495,17 @@ class ParamCorrelationMatrix:
         return tuple(a[k] if a is not None else None for a in arrays)
 
     @staticmethod
-    def _plot_points(ax, xs, ys, xe, ye, is_dist, color, alpha, ms):
+    def _plot_points(
+        ax: Any,
+        xs: np.ndarray,
+        ys: np.ndarray,
+        xe: np.ndarray,
+        ye: np.ndarray,
+        is_dist: bool,
+        color: str,
+        alpha: float,
+        ms: Any,
+    ) -> None:
         """Draw scatter (scalar) or mean±std error bars (distribution)."""
         if is_dist:
             ax.errorbar(
@@ -485,14 +530,14 @@ class ParamCorrelationMatrix:
     # ── Method 1: N × N scatter matrix for one parameter ─────────────────────
     def scatter_matrix(
         self,
-        param="tau1_map",
-        agree="pairwise",
-        max_points=3000,
-        colors=None,
-        figsize=None,
-        rng=None,
-        show=True,
-    ):
+        param: str = "tau1_map",
+        agree: str = "pairwise",
+        max_points: int = 3000,
+        colors: Any | None = None,
+        figsize: np.ndarray | None = None,
+        rng: Any | None = None,
+        show: bool = True,
+    ) -> np.ndarray:
         """
         N × N cross-method scatter matrix for a single parameter.
 
@@ -603,15 +648,15 @@ class ParamCorrelationMatrix:
     # ── Method 2: multi-parameter scatter between any two datasets ────────────
     def pairwise_scatter(
         self,
-        idx_a,
-        idx_b,
-        params=("tau1_map", "tau2_map", "alpha1_map"),
-        max_points=3000,
-        colors=None,
-        figsize=None,
-        rng=None,
-        show=True,
-    ):
+        idx_a: int,
+        idx_b: int,
+        params: tuple[str, ...] = ("tau1_map", "tau2_map", "alpha1_map"),
+        max_points: int = 3000,
+        colors: Any | None = None,
+        figsize: np.ndarray | None = None,
+        rng: Any | None = None,
+        show: bool = True,
+    ) -> np.ndarray:
         """
         Scatter plots for multiple parameters between exactly two datasets.
 

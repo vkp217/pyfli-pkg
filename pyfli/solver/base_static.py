@@ -1,9 +1,55 @@
+"""
+Provide static initial-guess, bounds, convolution, and parameter-resolution helpers for
+solvers.
+
+This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
+likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+functions :func:`resolve_params_and_bounds`, :func:`moment_based_guess`, and
+:func:`rld_based_guess`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 
 
 def resolve_params_and_bounds(
-    user_p0, user_bounds, model_type, t, decay, T_laser, guess_plugin, T_acq
-):
+    user_p0: np.ndarray,
+    user_bounds: np.ndarray,
+    model_type: str,
+    t: np.ndarray,
+    decay: np.ndarray,
+    T_laser: np.ndarray,
+    guess_plugin: np.ndarray,
+    T_acq: np.ndarray,
+) -> tuple[Any, ...]:
+    """
+    Handle resolve params and bounds.
+
+    Parameters
+    ----------
+    user_p0 : np.ndarray
+        Input value.
+    user_bounds : np.ndarray
+        Input value.
+    model_type : str
+        Input value.
+    t : np.ndarray
+        Input value.
+    decay : np.ndarray
+        Input value.
+    T_laser : np.ndarray
+        Input value.
+    guess_plugin : np.ndarray
+        Input value.
+    T_acq : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    tuple[Any, ...]
+        Return value.
+    """
     smart_dict = guess_plugin(t, decay, T_acq, T_laser, model_type)
 
     smart_dict.setdefault("h_shift", 0.0)
@@ -91,7 +137,34 @@ def resolve_params_and_bounds(
     return p0_safe, (low_vec, high_vec)
 
 
-def moment_based_guess(t, decay, T_acq, T_laser, model_type="mono-exponential"):
+def moment_based_guess(
+    t: np.ndarray,
+    decay: np.ndarray,
+    T_acq: np.ndarray,
+    T_laser: np.ndarray,
+    model_type: str = "mono-exponential",
+) -> dict[Any, Any]:
+    """
+    Handle moment based guess.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        Input value.
+    decay : np.ndarray
+        Input value.
+    T_acq : np.ndarray
+        Input value.
+    T_laser : np.ndarray
+        Input value.
+    model_type : str
+        Input value.
+
+    Returns
+    -------
+    dict[Any, Any]
+        Return value.
+    """
     offset_guess = np.percentile(decay, 5)
     clean_d = np.clip(decay - offset_guess, 1e-6, None)
 
@@ -133,7 +206,34 @@ def moment_based_guess(t, decay, T_acq, T_laser, model_type="mono-exponential"):
         }
 
 
-def rld_based_guess(t, decay, T_acq, T_laser, model_type="mono-exponential"):
+def rld_based_guess(
+    t: np.ndarray,
+    decay: np.ndarray,
+    T_acq: np.ndarray,
+    T_laser: np.ndarray,
+    model_type: str = "mono-exponential",
+) -> dict[Any, Any]:
+    """
+    Handle rld based guess.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        Input value.
+    decay : np.ndarray
+        Input value.
+    T_acq : np.ndarray
+        Input value.
+    T_laser : np.ndarray
+        Input value.
+    model_type : str
+        Input value.
+
+    Returns
+    -------
+    dict[Any, Any]
+        Return value.
+    """
     offset_guess = np.percentile(decay, 5)
     clean_d = np.clip(decay - offset_guess, 1e-6, None)
 

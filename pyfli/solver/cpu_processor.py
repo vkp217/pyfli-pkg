@@ -1,3 +1,13 @@
+"""
+Process FLIM image cubes on CPU with parallel pixel-level fitting.
+
+This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
+likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+classes :class:`FLICPUProcessor`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 import numpy as np
 import h5py
@@ -12,13 +22,60 @@ except ImportError:
 
 
 class FLICPUProcessor:
-    def __init__(self, freq, fitter_class):
+    """
+    Run pixel-wise FLIM fitting on CPU. The processor parallelizes fitting across image
+    pixels, reconstructs parameter maps, saves results, and loads saved maps.
+
+    Parameters
+    ----------
+    freq : float
+        Acquisition frequency information used to derive timing constants.
+    fitter_class : Any
+        Fitter class instantiated by the processor.
+    """
+
+    def __init__(self, freq: float, fitter_class: Any) -> None:
         self.freq = freq
         self.fitter_class = fitter_class
 
     def _fit_task(
-        self, y_data, irf_p, coords, model_type, estimator, p0, bounds, kwargs
-    ):
+        self,
+        y_data: np.ndarray,
+        irf_p: np.ndarray,
+        coords: Any,
+        model_type: str,
+        estimator: np.ndarray,
+        p0: Any,
+        bounds: np.ndarray,
+        kwargs: np.ndarray,
+    ) -> tuple[Any, ...]:
+        """
+        Fit task.
+
+        Parameters
+        ----------
+        y_data : np.ndarray
+            Input value.
+        irf_p : np.ndarray
+            Input value.
+        coords : Any
+            Input value.
+        model_type : str
+            Input value.
+        estimator : np.ndarray
+            Input value.
+        p0 : Any
+            Input value.
+        bounds : np.ndarray
+            Input value.
+        kwargs : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         y_data = y_data.astype(np.float32)
         irf_p = irf_p.astype(np.float32)
 
@@ -57,18 +114,51 @@ class FLICPUProcessor:
 
     def process_image(
         self,
-        image_cube,
-        irf_cube,
-        mask=None,
-        data_name="FLIM_Dataset",
-        model_type="bi-exponential",
-        estimator="least_squares",
-        p0=None,
-        bounds=None,
-        n_jobs=-1,
-        backend="loky",
-        **kwargs,
-    ):
+        image_cube: np.ndarray,
+        irf_cube: np.ndarray,
+        mask: np.ndarray | None = None,
+        data_name: str = "FLIM_Dataset",
+        model_type: str = "bi-exponential",
+        estimator: str = "least_squares",
+        p0: Any | None = None,
+        bounds: np.ndarray | None = None,
+        n_jobs: int = -1,
+        backend: str = "loky",
+        **kwargs: Any,
+    ) -> Any:
+        """
+        Process image.
+
+        Parameters
+        ----------
+        image_cube : np.ndarray
+            Input value.
+        irf_cube : np.ndarray
+            Input value.
+        mask : np.ndarray | None
+            Input value.
+        data_name : str
+            Input value.
+        model_type : str
+            Input value.
+        estimator : str
+            Input value.
+        p0 : Any | None
+            Input value.
+        bounds : np.ndarray | None
+            Input value.
+        n_jobs : int
+            Input value.
+        backend : str
+            Input value.
+        **kwargs : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         H, W, T = image_cube.shape
 
         if (
@@ -203,7 +293,22 @@ class FLICPUProcessor:
             },
         }
 
-    def save_results(self, dataset, folder="results"):
+    def save_results(self, dataset: np.ndarray, folder: str = "results") -> None:
+        """
+        Save results.
+
+        Parameters
+        ----------
+        dataset : np.ndarray
+            Input value.
+        folder : str
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if dataset is None:
             return
         if not os.path.exists(folder):
@@ -233,7 +338,22 @@ class FLICPUProcessor:
 
         logging.info(f"Analysis complete. Results saved to: {h5_path}")
 
-    def load_map(self, h5_path, map_name="tau1_map"):
+    def load_map(self, h5_path: str, map_name: str = "tau1_map") -> Any:
+        """
+        Load map.
+
+        Parameters
+        ----------
+        h5_path : str
+            Input value.
+        map_name : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         with h5py.File(h5_path, "r") as f:
             if f"results/maps/{map_name}" in f:
                 return f[f"results/maps/{map_name}"][()]

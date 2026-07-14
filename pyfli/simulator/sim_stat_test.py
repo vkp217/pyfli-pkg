@@ -1,3 +1,14 @@
+"""
+Validate simulated and experimental decay distributions with summary statistics and
+plots.
+
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
+generation, hardware noise modeling, calibration, and validation tools. Public API
+includes classes :class:`FLIValidator`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 
 # simulator/sim_stat_test .py
@@ -9,11 +20,37 @@ from scipy.special import rel_entr
 
 
 class FLIValidator:
-    def __init__(self, method="analytical", threshold=10):
+    """
+    Compare simulated and experimental decay cubes with distribution summaries and
+    diagnostic plots. It preprocesses cubes, computes similarity metrics, and reports
+    validation statistics.
+
+    Parameters
+    ----------
+    method : str
+        Algorithm or model-selection method to use.
+    threshold : int
+        Threshold applied to counts, masks, or statistics.
+    """
+
+    def __init__(self, method: str = "analytical", threshold: int = 10) -> None:
         self.method = method.lower()
         self.threshold = threshold
 
-    def _preprocess_cube(self, data_cube):
+    def _preprocess_cube(self, data_cube: np.ndarray) -> tuple[Any, ...]:
+        """
+        Handle preprocess cube.
+
+        Parameters
+        ----------
+        data_cube : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         if data_cube.ndim == 3:
             H, W, T = data_cube.shape
             flat_data = data_cube.reshape(-1, T)
@@ -28,7 +65,12 @@ class FLIValidator:
 
         return filtered_data, filtered_intensities
 
-    def run_comprehensive_test(self, sim_dataset, exp_decay_cube, normalize=False):
+    def run_comprehensive_test(
+        self,
+        sim_dataset: np.ndarray,
+        exp_decay_cube: np.ndarray,
+        normalize: bool = False,
+    ) -> Any:
         """
         Args:
             normalize: If True, scales both intensity distributions to [0, 1]
@@ -91,7 +133,38 @@ class FLIValidator:
             "exp_counts": exp_counts,
         }
 
-    def _print_summary(self, cos_sim, kl_div, ks_stat, p_value, intersection, n):
+    def _print_summary(
+        self,
+        cos_sim: Any,
+        kl_div: np.ndarray,
+        ks_stat: np.ndarray,
+        p_value: np.ndarray,
+        intersection: np.ndarray,
+        n: Any,
+    ) -> None:
+        """
+        Handle print summary.
+
+        Parameters
+        ----------
+        cos_sim : Any
+            Input value.
+        kl_div : np.ndarray
+            Input value.
+        ks_stat : np.ndarray
+            Input value.
+        p_value : np.ndarray
+            Input value.
+        intersection : np.ndarray
+            Input value.
+        n : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         logging.info("\n" + "=" * 60)
         logging.info(f"STATISTICAL VALIDATION REPORT (N={n} Pixels)")
         logging.info("=" * 60)
@@ -104,7 +177,32 @@ class FLIValidator:
         logging.info(f"{'Hist Intersection':<25} | {intersection:<15.4f} | -> 1.0")
         logging.info("=" * 60 + "\n")
 
-    def _plot_results(self, sim_vec, exp_vec, sim_counts, exp_counts):
+    def _plot_results(
+        self,
+        sim_vec: np.ndarray,
+        exp_vec: np.ndarray,
+        sim_counts: np.ndarray,
+        exp_counts: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Plot results.
+
+        Parameters
+        ----------
+        sim_vec : np.ndarray
+            Input value.
+        exp_vec : np.ndarray
+            Input value.
+        sim_counts : np.ndarray
+            Input value.
+        exp_counts : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         fig, ax = plt.subplots(1, 2, figsize=(14, 5))
 
         # Plot 1: Mean Temporal Decay (Log Scale)

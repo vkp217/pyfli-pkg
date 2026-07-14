@@ -5,6 +5,8 @@ HardSimulator    -> uses generate_pixel_decay()  (analytical convolution + Poiss
 HardestSimulator  -> uses tcspc_pixel_decay()      (photon-by-photon TCSPC simulation)
 """
 
+from __future__ import annotations
+from typing import Any
 import numpy as np
 from scipy.signal import fftconvolve
 from scipy.optimize import curve_fit
@@ -21,17 +23,43 @@ _MAX_GATE_SHIFT = 3
 
 
 class HardSimulator:
+    """
+    Simulate heterogeneous FLIM pixels with explicit lifetime and detector settings. The
+    class samples local parameters and produces analytical or photon-counting decays for
+    difficult synthetic cases.
+
+    Parameters
+    ----------
+    irf_file_path : str
+        Filesystem path used by this workflow.
+    tau2 : np.ndarray | None
+        Configuration value used by the class.
+    efficiency : tuple[int, ...]
+        Configuration value used by the class.
+    f_fraction : tuple[int, ...]
+        Configuration value used by the class.
+    photo_count : tuple[int, ...]
+        Configuration value used by the class.
+    mono_fraction : float
+        Configuration value used by the class.
+    bit : int
+        Configuration value used by the class.
+    n_cycles : int
+        Number of items used by this workflow.
+    """
+
     def __init__(
         self,
-        irf_file_path="../data/raw/ICCD/paper_IRF700nm.mat",
-        tau2=None,  # Can be: None (Random), (mu, sigma), or [(mu1, sig1), (mu2, sig2)]
-        efficiency=(2, 5),
-        f_fraction=(4, 5),
-        photo_count=(5, 5),
-        mono_fraction=0.2,
-        bit=10,
-        n_cycles=800_000,
-    ):
+        irf_file_path: str = "../data/raw/ICCD/paper_IRF700nm.mat",
+        tau2: np.ndarray
+        | None = None,  # Can be: None (Random), (mu, sigma), or [(mu1, sig1), (mu2, sig2)]
+        efficiency: tuple[int, ...] = (2, 5),
+        f_fraction: tuple[int, ...] = (4, 5),
+        photo_count: tuple[int, ...] = (5, 5),
+        mono_fraction: float = 0.2,
+        bit: int = 10,
+        n_cycles: int = 800_000,
+    ) -> None:
         self.irf_data_full = DataOperations(irf_path=irf_file_path).load_irf()
         self.tau2_user = tau2
         self.efficiency = efficiency
@@ -41,7 +69,7 @@ class HardSimulator:
         self.bit = bit
         self.n_cycles = n_cycles
 
-    def _get_current_tau2(self):
+    def _get_current_tau2(self) -> Any:
         """Logic to determine which distribution to use for the current call."""
         if isinstance(self.tau2_user, list):
             idx = np.random.choice(len(self.tau2_user))
@@ -54,7 +82,15 @@ class HardSimulator:
         sigma = np.random.uniform(0.05, max_sigma)
         return (mu, sigma)
 
-    def __call__(self):
+    def __call__(self) -> dict[Any, Any]:
+        """
+        Run the instance as a callable.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         n_pixel_cycles = np.random.randint(1, self.n_cycles + 1)
 
         current_tau2 = self._get_current_tau2()
@@ -88,20 +124,37 @@ class HardSimulator:
 
 class HardestSimulator:
     """
-    Pixel simulator using photon-by-photon TCSPC Monte Carlo simulation
-    (tcspc_pixel_decay).
+    Simulate photon-by-photon TCSPC pixels for stress-testing fitting methods. It favors
+    realism over speed and is intended for demanding validation scenarios.
+
+    Parameters
+    ----------
+    irf_file_path : str
+        Filesystem path used by this workflow.
+    tau2 : tuple[int, float]
+        Configuration value used by the class.
+    efficiency : tuple[int, ...]
+        Configuration value used by the class.
+    f_fraction : tuple[int, ...]
+        Configuration value used by the class.
+    photo_count : tuple[float, int]
+        Configuration value used by the class.
+    mono_fraction : float
+        Configuration value used by the class.
+    bit : int
+        Configuration value used by the class.
     """
 
     def __init__(
         self,
-        irf_file_path="../data/raw/SPCImage/SPCimage_IRF.txt",
-        tau2=(1, 0.4),
-        efficiency=(7, 5),
-        f_fraction=(3, 5),
-        photo_count=(1.1, 5),
-        mono_fraction=0.2,
-        bit=8,
-    ):
+        irf_file_path: str = "../data/raw/SPCImage/SPCimage_IRF.txt",
+        tau2: tuple[int, float] = (1, 0.4),
+        efficiency: tuple[int, ...] = (7, 5),
+        f_fraction: tuple[int, ...] = (3, 5),
+        photo_count: tuple[float, int] = (1.1, 5),
+        mono_fraction: float = 0.2,
+        bit: int = 8,
+    ) -> None:
 
         self.irf_data_full = DataOperations(irf_path=irf_file_path).load_irf()
         self.efficiency = efficiency
@@ -110,7 +163,15 @@ class HardestSimulator:
         self.mono_fraction = mono_fraction
         self.bit = bit
 
-    def __call__(self):
+    def __call__(self) -> dict[Any, Any]:
+        """
+        Run the instance as a callable.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         n_cycles = np.random.randint(800_000)
         current_tau2 = (np.random.uniform(0.2, 2.5), 0.199999)
         self.fli_sim = HeterogeneousFLISimulator(
@@ -146,19 +207,51 @@ class HardestSimulator:
 
 
 class HeterogeneousFLISimulator:
+    """
+    Generate heterogeneous pixel-level FLIM decays with random local parameters, noise,
+    phasor summaries, and Fisher-information estimates. It is the main physical
+    simulator for nonuniform samples.
+
+    Parameters
+    ----------
+    irf_full : np.ndarray
+        Configuration value used by the class.
+    tau2 : np.ndarray
+        Configuration value used by the class.
+    efficiency : np.ndarray
+        Configuration value used by the class.
+    f_fraction : np.ndarray
+        Configuration value used by the class.
+    photo_count : tuple[float, int]
+        Configuration value used by the class.
+    mono_fraction : float
+        Configuration value used by the class.
+    bit : int
+        Configuration value used by the class.
+    omega : float
+        Configuration value used by the class.
+    n_cycles : int
+        Number of items used by this workflow.
+    norm_type : str
+        Configuration value used by the class.
+    """
+
     def __init__(
         self,
-        irf_full,
-        tau2,  # (mean_tau2, std_tau2)
-        efficiency,  # Beta(alpha, beta) for FRET efficiency E
-        f_fraction,  # Beta(alpha, beta) for amplitude fraction f
-        photo_count=(1.5, 5),  # Beta(alpha, beta) scaled to photon count
-        mono_fraction=0.1,  # probability of mono-exponential pixel
-        bit=8,
-        omega=0.08,  # angular frequency for phasor (rad/ns)
-        n_cycles=800_000,
-        norm_type="pdf_robust",
-    ):
+        irf_full: np.ndarray,
+        tau2: np.ndarray,  # (mean_tau2, std_tau2)
+        efficiency: np.ndarray,  # Beta(alpha, beta) for FRET efficiency E
+        f_fraction: np.ndarray,  # Beta(alpha, beta) for amplitude fraction f
+        photo_count: tuple[float, int] = (
+            1.5,
+            5,
+        ),  # Beta(alpha, beta) scaled to photon count
+        mono_fraction: float = 0.1,  # probability of mono-exponential pixel
+        bit: int = 8,
+        omega: float = 0.08,  # angular frequency for phasor (rad/ns)
+        n_cycles: int = 800_000,
+        norm_type: str = "pdf_robust",
+    ) -> None:
         # ---- IRF ----
         if irf_full.ndim == 3:
             x = np.random.randint(irf_full.shape[0])
@@ -198,7 +291,20 @@ class HeterogeneousFLISimulator:
     # Normalisation
     # ------------------------------------------------------------------
 
-    def pixel_wise_normalisation(self, decay_series):
+    def pixel_wise_normalisation(self, decay_series: np.ndarray) -> Any:
+        """
+        Handle pixel wise normalisation.
+
+        Parameters
+        ----------
+        decay_series : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         eps = 1e-12
         decay = np.asarray(decay_series, dtype=np.float64)
 
@@ -230,7 +336,22 @@ class HeterogeneousFLISimulator:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def fft_features(decay, n_harmonics=5):
+    def fft_features(decay: np.ndarray, n_harmonics: int = 5) -> Any:
+        """
+        Handle fft features.
+
+        Parameters
+        ----------
+        decay : np.ndarray
+            Input value.
+        n_harmonics : int
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         decay = np.asarray(decay, dtype=np.float64)
         scalar = decay.ndim == 1
         if scalar:
@@ -250,16 +371,48 @@ class HeterogeneousFLISimulator:
     # Sampling helpers
     # ------------------------------------------------------------------
 
-    def _sample_tau2(self, lower_bound=0.01, upper_bound=5.0, size=1):
+    def _sample_tau2(
+        self, lower_bound: float = 0.01, upper_bound: float = 5.0, size: int = 1
+    ) -> Any:
+        """
+        Sample tau2.
+
+        Parameters
+        ----------
+        lower_bound : float
+            Input value.
+        upper_bound : float
+            Input value.
+        size : int
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         a = (lower_bound - self.tau2_mean) / self.tau2_std
         b = (upper_bound - self.tau2_mean) / self.tau2_std
         return truncnorm.rvs(a, b, loc=self.tau2_mean, scale=self.tau2_std, size=size)
 
-    def _safe_fraction(self, x):
+    def _safe_fraction(self, x: np.ndarray) -> np.ndarray:
+        """
+        Handle safe fraction.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         return np.clip(x, self.eps, 1.0 - self.eps)
 
     @staticmethod
-    def _stretch_or_squeeze(samples, epsilon):
+    def _stretch_or_squeeze(samples: Any, epsilon: Any) -> Any:
         """Map samples from [0,1] into [epsilon, 1-epsilon]."""
         return samples * (1.0 - 2.0 * epsilon) + epsilon
 
@@ -267,7 +420,15 @@ class HeterogeneousFLISimulator:
     # Parameter sampling
     # ------------------------------------------------------------------
 
-    def sample_local_parameters(self):
+    def sample_local_parameters(self) -> dict[Any, Any]:
+        """
+        Sample local parameters.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         tau2 = float(self._sample_tau2()[0])
         mono = np.random.rand() < self.mono_fraction
 
@@ -329,12 +490,20 @@ class HeterogeneousFLISimulator:
             "A2": 1.0 - f,
         }
 
-    def sample_photon_count(self):
+    def sample_photon_count(self) -> Any:
+        """
+        Sample photon count.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return round(np.random.beta(self.alpha_A, self.beta_A) * (2**self.bit - 1))
 
     # IRF jitter
     @staticmethod
-    def _jitter(decay):
+    def _jitter(decay: np.ndarray) -> np.ndarray:
         """Apply a random sub-bin shift to simulate timing jitter."""
         n = len(decay)
         r = np.random.rand()
@@ -349,7 +518,7 @@ class HeterogeneousFLISimulator:
         return np.concatenate([decay[shift:], np.zeros(shift)])
 
     # Analytical convolution pixel decay  (used by HardSimulator)
-    def generate_pixel_decay(self):
+    def generate_pixel_decay(self) -> tuple[Any, ...]:
         """
         Bi-exponential decay convolved with IRF, then Poisson-sampled.
 
@@ -382,7 +551,15 @@ class HeterogeneousFLISimulator:
         return decay, observed, scaled, pars, A, self.irf
 
     # Global analytical parameters / phasor / Fisher information
-    def analytical_global_parameters(self):
+    def analytical_global_parameters(self) -> dict[Any, Any]:
+        """
+        Handle analytical global parameters.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         mu_f = self.alpha_f / (self.alpha_f + self.beta_f)
         tau2_global = self.tau2_mean
         tau1_global = tau2_global * (self.beta_E / (self.alpha_E + self.beta_E + 1))
@@ -393,16 +570,60 @@ class HeterogeneousFLISimulator:
         }
 
     @staticmethod
-    def biexponential(t, a1, tau1, a2, tau2):
+    def biexponential(
+        t: np.ndarray, a1: Any, tau1: np.ndarray, a2: Any, tau2: np.ndarray
+    ) -> Any:
+        """
+        Handle biexponential.
+
+        Parameters
+        ----------
+        t : np.ndarray
+            Input value.
+        a1 : Any
+            Input value.
+        tau1 : np.ndarray
+            Input value.
+        a2 : Any
+            Input value.
+        tau2 : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return a1 * np.exp(-t / tau1) + a2 * np.exp(-t / tau2)
 
-    def recover_global_lifetime(self, decay):
+    def recover_global_lifetime(self, decay: np.ndarray) -> dict[Any, Any]:
+        """
+        Handle recover global lifetime.
+
+        Parameters
+        ----------
+        decay : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         tau2_init = self.tau2_mean
         p0 = [0.4, 0.5 * tau2_init, 0.6, tau2_init]
         popt, _ = curve_fit(self.biexponential, self.t, decay, p0=p0, maxfev=20_000)
         return {"a1": popt[0], "tau1": popt[1], "a2": popt[2], "tau2": popt[3]}
 
-    def analytical_phasor(self):
+    def analytical_phasor(self) -> tuple[Any, ...]:
+        """
+        Handle analytical phasor.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         mu_f = self.alpha_f / (self.alpha_f + self.beta_f)
         tau2 = self.tau2_mean
         c = self.omega * tau2
@@ -418,7 +639,15 @@ class HeterogeneousFLISimulator:
             mu_f * s_short + (1 - mu_f) * s_long,
         )
 
-    def fisher_information(self):
+    def fisher_information(self) -> np.ndarray:
+        """
+        Handle fisher information.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         pars = self.sample_local_parameters()
         if pars["mono"]:
             return np.zeros((4, 4))
@@ -443,7 +672,7 @@ class HeterogeneousFLISimulator:
         return np.clip((F + F.T) / 2.0, 0, None)
 
     ## TCSPC photon-by-photon simulation  (used by HardestSimulator)
-    def tcspc_pixel_decay(self):
+    def tcspc_pixel_decay(self) -> tuple[Any, ...]:
         """
         Photon-by-photon TCSPC simulation with pile-up and IRF convolution.
         Returns:
@@ -511,33 +740,32 @@ class HeterogeneousFLISimulator:
 #### Fluorescence Lifetime Image and Parameters Map Generator
 class FLIImageGenerator:
     """
-    Generates full FLI images with support for intensity masking and ROI-based
-    parameter variations using internalized HardSimulator logic.
+    Generate full FLIM image cubes from masks, intensity images, ROI parameters, and
+    simulator settings. It bridges pixel-level simulation with image-shaped datasets
+    used by solvers and visualizers.
+
+    Parameters
+    ----------
+    intensity_image_path : str | None
+        Filesystem path used by this workflow.
+    roi_mask_path : str | None
+        Filesystem path used by this workflow.
+    roi_params : Any | None
+        Configuration value used by the class.
+    image_shape : tuple[int, ...]
+        Configuration value used by the class.
+    method : str
+        Algorithm or model-selection method to use.
     """
 
     def __init__(
         self,
-        intensity_image_path=None,
-        roi_mask_path=None,
-        roi_params=None,
-        image_shape=(32, 32),
-        method="analytical",
-    ):
-        """
-        Parameters:
-        -----------
-        intensity_image_path : str, optional
-            Path to a .png or .jpg to use as photon counts.
-        roi_mask_path : str, optional
-            Path to a grayscale/label image where 0, 1, 2... define different ROIs.
-        roi_params : list of dict, optional
-            A list of dictionaries containing simulator arguments for each ROI.
-            Example: [{'tau2': (0.4, 0.2)}, {'tau2': (1.1, 0.3)}]
-        image_shape : tuple
-            Default shape if no intensity image is provided.
-        method : str
-            'analytical' or 'tcspc'.
-        """
+        intensity_image_path: str | None = None,
+        roi_mask_path: str | None = None,
+        roi_params: Any | None = None,
+        image_shape: tuple[int, ...] = (32, 32),
+        method: str = "analytical",
+    ) -> None:
         self.method = method.lower()
 
         # 1. Load Intensity Image
@@ -593,7 +821,7 @@ class FLIImageGenerator:
 
         # Note: Added tau_mean_map to capture the calculated mean lifetime from the simulator
 
-    def generate_image(self):
+    def generate_image(self) -> None:
         """Generate 2D FLI image with ROI-specific simulators and tqdm progress."""
         total_pixels = self.shape[0] * self.shape[1]
 

@@ -1,3 +1,13 @@
+"""
+Implement a compact phasor analyzer for CPU and optional GPU workflows.
+
+This module belongs to :mod:`pyfli.analytical_methods` and is part of PyFLI analytical
+FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
+estimation. Public API includes classes :class:`PhasorAnalyzer`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 import numpy as np
 import torch
@@ -8,13 +18,31 @@ from .phasor_simple_plots import PhasorPlotsMixin
 
 
 class PhasorAnalyzer(PhasorPlotsMixin):
-    """Phasor-based FLI analysis.
+    """
+    Compute, calibrate, and interpret FLIM phasors from decay data. The analyzer
+    supports NumPy and optional Torch execution, multi-harmonic phasors, IRF
+    calibration, lifetime conversion, fractional component estimates, and plotting
+    through the phasor mixin.
 
-    Plotting methods live in PhasorPlotsMixin (phasor_simple_plots.py).
-    Shared helper functions and constants live in phasor_simple_utils.py.
+    Parameters
+    ----------
+    frequency_hz : float
+        Excitation frequency in hertz.
+    time_axis_ns : np.ndarray
+        Time axis for decay samples in nanoseconds.
+    n_harmonics : int
+        Number of phasor harmonics to compute.
+    device : Any | None
+        Execution device, such as a Torch device or device string.
     """
 
-    def __init__(self, frequency_hz, time_axis_ns, n_harmonics=1, device=None):
+    def __init__(
+        self,
+        frequency_hz: float,
+        time_axis_ns: np.ndarray,
+        n_harmonics: int = 1,
+        device: Any | None = None,
+    ) -> None:
         self.frequency = float(frequency_hz)
         self.time_axis_ns = np.asarray(time_axis_ns)
         self.n_harmonics = int(n_harmonics)
@@ -28,7 +56,20 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
     # ── phasor computation ────────────────────────────────────────────────────
 
-    def _phasor_numpy(self, decay):
+    def _phasor_numpy(self, decay: np.ndarray) -> tuple[Any, ...]:
+        """
+        Handle phasor numpy.
+
+        Parameters
+        ----------
+        decay : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         decay = np.asarray(decay, dtype=np.float64)
         *spatial, T = decay.shape
         decay_flat = decay.reshape(-1, T)
@@ -45,7 +86,20 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
         return np.stack(G_all), np.stack(S_all)
 
-    def _phasor_torch(self, decay):
+    def _phasor_torch(self, decay: np.ndarray) -> tuple[Any, ...]:
+        """
+        Handle phasor torch.
+
+        Parameters
+        ----------
+        decay : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         decay_t = torch.tensor(
             np.asarray(decay), dtype=torch.float32, device=self.device
         )
@@ -68,16 +122,61 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
         return torch.stack(G_all), torch.stack(S_all)
 
-    def create_phasor_cpu(self, decay):
+    def create_phasor_cpu(self, decay: np.ndarray) -> Any:
+        """
+        Create phasor cpu.
+
+        Parameters
+        ----------
+        decay : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return self._phasor_numpy(decay)
 
-    def create_phasor_gpu(self, decay):
+    def create_phasor_gpu(self, decay: np.ndarray) -> tuple[Any, ...]:
+        """
+        Create phasor gpu.
+
+        Parameters
+        ----------
+        decay : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         G, S = self._phasor_torch(decay)
         return G.cpu().numpy(), S.cpu().numpy()
 
     # ── calibration ───────────────────────────────────────────────────────────
 
-    def calibrate(self, G, S, irf):
+    def calibrate(
+        self, G: np.ndarray, S: np.ndarray, irf: np.ndarray
+    ) -> tuple[Any, ...]:
+        """
+        Handle calibrate.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        irf : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         G = np.asarray(G)
         S = np.asarray(S)
         irf = np.asarray(irf)
@@ -103,7 +202,26 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
         return np.real(P_true), np.imag(P_true)
 
-    def calibrate_pixelwise(self, G, S, irf):
+    def calibrate_pixelwise(
+        self, G: np.ndarray, S: np.ndarray, irf: np.ndarray
+    ) -> tuple[Any, ...]:
+        """
+        Handle calibrate pixelwise.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        irf : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         G = np.asarray(G, dtype=np.float32)
         S = np.asarray(S, dtype=np.float32)
         irf = np.asarray(irf, dtype=np.float32)
@@ -145,19 +263,66 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
     # ── lifetime conversion ───────────────────────────────────────────────────
 
-    def lifetime_to_phasor(self, tau_ns, frequency_hz):
+    def lifetime_to_phasor(
+        self, tau_ns: np.ndarray, frequency_hz: float
+    ) -> tuple[Any, ...]:
+        """
+        Handle lifetime to phasor.
+
+        Parameters
+        ----------
+        tau_ns : np.ndarray
+            Input value.
+        frequency_hz : float
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         tau_s = np.asarray(tau_ns) * 1e-9
         omega = 2 * np.pi * frequency_hz
         denom = 1 + (omega * tau_s) ** 2
         return 1 / denom, (omega * tau_s) / denom
 
-    def compute_lifetime(self, G, S):
+    def compute_lifetime(self, G: np.ndarray, S: np.ndarray) -> np.ndarray:
+        """
+        Compute lifetime.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         G = np.asarray(G, dtype=np.float64)
         S = np.asarray(S, dtype=np.float64)
         safe_denom = np.where(np.abs(G) > 1e-4, G * self.omega, np.inf)
         return np.where(np.abs(G) > 1e-4, S / safe_denom * 1e9, np.nan)
 
-    def compute_modulation_lifetime(self, G, S):
+    def compute_modulation_lifetime(self, G: np.ndarray, S: np.ndarray) -> Any:
+        """
+        Compute modulation lifetime.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         G = np.asarray(G, dtype=np.float64)
         S = np.asarray(S, dtype=np.float64)
         M_sq = np.clip(G**2 + S**2, self.eps, 1.0 - self.eps)
@@ -167,16 +332,45 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
     def compute_fractions(
         self,
-        G,
-        S,
-        tau1_ns,
-        tau2_ns,
-        mask=None,
-        hexbin_color=None,
-        plot_graph=True,
-        ax=None,
-        half_circle=False,
-    ):
+        G: np.ndarray,
+        S: np.ndarray,
+        tau1_ns: np.ndarray,
+        tau2_ns: np.ndarray,
+        mask: np.ndarray | None = None,
+        hexbin_color: np.ndarray | None = None,
+        plot_graph: bool = True,
+        ax: Any | None = None,
+        half_circle: bool = False,
+    ) -> tuple[Any, ...]:
+        """
+        Compute fractions.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        tau1_ns : np.ndarray
+            Input value.
+        tau2_ns : np.ndarray
+            Input value.
+        mask : np.ndarray | None
+            Input value.
+        hexbin_color : np.ndarray | None
+            Input value.
+        plot_graph : bool
+            Input value.
+        ax : Any | None
+            Input value.
+        half_circle : bool
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         g1, s1 = self.lifetime_to_phasor(tau1_ns, self.frequency)
         g2, s2 = self.lifetime_to_phasor(tau2_ns, self.frequency)
 
@@ -213,7 +407,22 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
     # ── biexponential reconstruction ──────────────────────────────────────────
 
-    def _convolve_batch(self, signal, kernel):
+    def _convolve_batch(self, signal: np.ndarray, kernel: np.ndarray) -> Any:
+        """
+        Handle convolve batch.
+
+        Parameters
+        ----------
+        signal : np.ndarray
+            Input value.
+        kernel : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         N, T = signal.shape
         L = 2 * T - 1
         nfft = 1 << (L - 1).bit_length()
@@ -222,7 +431,28 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         out = torch.fft.irfft(S_fft * K_fft, n=nfft, dim=1)
         return out[:, :T]
 
-    def _build_model_decay(self, A1, A2, tau1_ns, tau2_ns):
+    def _build_model_decay(
+        self, A1: Any, A2: Any, tau1_ns: np.ndarray, tau2_ns: np.ndarray
+    ) -> Any:
+        """
+        Build model decay.
+
+        Parameters
+        ----------
+        A1 : Any
+            Input value.
+        A2 : Any
+            Input value.
+        tau1_ns : np.ndarray
+            Input value.
+        tau2_ns : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         t_ns = torch.tensor(self.t_s_np * 1e9, dtype=torch.float32, device=self.device)
         a1 = torch.tensor(
             A1.ravel(), dtype=torch.float32, device=self.device
@@ -232,15 +462,60 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         ).unsqueeze(1)
         return a1 * torch.exp(-t_ns / tau1_ns) + a2 * torch.exp(-t_ns / tau2_ns)
 
-    def _normalize_irf(self, irf):
+    def _normalize_irf(self, irf: np.ndarray) -> Any:
+        """
+        Normalize irf.
+
+        Parameters
+        ----------
+        irf : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         irf_flat = np.asarray(irf, dtype=np.float32).reshape(-1, irf.shape[2])
         irf_t = torch.tensor(irf_flat, dtype=torch.float32, device=self.device)
         norms = irf_t.sum(dim=1, keepdim=True).clamp(min=self.eps)
         return irf_t / norms
 
     def analyze_biexponential_and_reconstruct(
-        self, G, S, irf, tau1_ns=None, tau2_ns=None, plot=True, axes=None
-    ):
+        self,
+        G: np.ndarray,
+        S: np.ndarray,
+        irf: np.ndarray,
+        tau1_ns: np.ndarray | None = None,
+        tau2_ns: np.ndarray | None = None,
+        plot: bool = True,
+        axes: Any | None = None,
+    ) -> Any:
+        """
+        Handle analyze biexponential and reconstruct.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        irf : np.ndarray
+            Input value.
+        tau1_ns : np.ndarray | None
+            Input value.
+        tau2_ns : np.ndarray | None
+            Input value.
+        plot : bool
+            Input value.
+        axes : Any | None
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if tau1_ns is None or tau2_ns is None:
             return None
 
@@ -285,10 +560,44 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
     # ── utilities ─────────────────────────────────────────────────────────────
 
-    def generate_intensity_image(self, decay):
+    def generate_intensity_image(self, decay: np.ndarray) -> np.ndarray:
+        """
+        Generate intensity image.
+
+        Parameters
+        ----------
+        decay : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         return np.sum(decay, axis=2)
 
-    def save_phasors_hdf5(self, Gc, Sc, tau_phasor, save_file):
+    def save_phasors_hdf5(
+        self, Gc: Any, Sc: Any, tau_phasor: np.ndarray, save_file: np.ndarray
+    ) -> None:
+        """
+        Save phasors hdf5.
+
+        Parameters
+        ----------
+        Gc : Any
+            Input value.
+        Sc : Any
+            Input value.
+        tau_phasor : np.ndarray
+            Input value.
+        save_file : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         try:
             with h5py.File(save_file, "w") as hf:
                 hf.create_dataset("Gc", data=Gc, compression="gzip", chunks=True)

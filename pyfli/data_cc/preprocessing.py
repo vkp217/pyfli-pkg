@@ -1,3 +1,13 @@
+"""
+Apply threshold masks and shared boolean masks to one or more data arrays.
+
+This module belongs to :mod:`pyfli.data_cc` and is part of PyFLI array preprocessing
+helpers for normalization, masking, ROI extraction, and IRF alignment. Public API
+includes classes :class:`DataPreprocessing`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 
 
@@ -6,19 +16,29 @@ class DataPreprocessing:
     # - 2D data  : (H, W)
     # - 3D data  : (H, W, T)
     # - multiple inputs (decay, irf, background, etc.)
-    def __init__(self, *data, mask=None):
-        """
-        Parameters
-        ----------
-        *data : np.ndarray
-            Variable number of datasets (2D or 3D)
-        mask : np.ndarray, optional
-            Binary mask (H,W)
-        """
+    """
+    Apply reusable masks and threshold filters to one or more aligned data arrays. It is
+    useful before fitting, visualization, and statistical comparison steps that need
+    shared valid-pixel selection.
+
+    Parameters
+    ----------
+    *data : Any
+        Additional positional values accepted by the object.
+    mask : np.ndarray | None
+        Configuration value used by the class.
+    """
+
+    def __init__(self, *data: Any, mask: np.ndarray | None = None) -> None:
         self.data = data
         self.mask = mask
 
-    def threshold_masking(self, lower=None, upper=None, data_index=0):
+    def threshold_masking(
+        self,
+        lower: np.ndarray | None = None,
+        upper: np.ndarray | None = None,
+        data_index: int = 0,
+    ) -> np.ndarray:
         """
         Generates a mask based on intensity thresholds.
         If lower and upper are both None, a mask of all ones is returned.
@@ -53,7 +73,20 @@ class DataPreprocessing:
         self.mask = mask
         return mask
 
-    def apply_mask(self, mask=None):
+    def apply_mask(self, mask: np.ndarray | None = None) -> tuple[Any, ...]:
+        """
+        Apply mask.
+
+        Parameters
+        ----------
+        mask : np.ndarray | None
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         if mask is None:
             mask = self.mask
         if mask is None:

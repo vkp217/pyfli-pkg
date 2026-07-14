@@ -1,10 +1,49 @@
+"""
+Provide small analytical helper routines for acquisition frequency calculations.
+
+This module belongs to :mod:`pyfli.analytical_methods` and is part of PyFLI analytical
+FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
+estimation. Public API includes classes :class:`AnalyticalHelpers`.
+"""
+
+from __future__ import annotations
+from typing import Any
+
+
 class AnalyticalHelpers:
-    def __init__(self, laser_period=12.5, gate_delay=None, num_gate=None):
+    """
+    Store acquisition timing parameters and derive the base and effective excitation
+    frequencies used by analytical workflows.
+
+    Parameters
+    ----------
+    laser_period : float
+        Laser repetition period in nanoseconds.
+    gate_delay : Any | None
+        Delay between gated acquisition windows in nanoseconds.
+    num_gate : int | None
+        Number of acquisition gates used to compute the effective frequency.
+    """
+
+    def __init__(
+        self,
+        laser_period: float = 12.5,
+        gate_delay: Any | None = None,
+        num_gate: int | None = None,
+    ) -> None:
         self.laser_period = laser_period
         self.gate_delay = gate_delay
         self.num_gate = num_gate
 
-    def freq_computation(self):
+    def freq_computation(self) -> list[Any]:
+        """
+        Handle freq computation.
+
+        Returns
+        -------
+        list[Any]
+            Return value.
+        """
         freq = 1000.0 / self.laser_period  # laser_period in ns; freq in Hz
         if self.gate_delay is None or self.num_gate is None:
             effective_freq = freq

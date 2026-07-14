@@ -1,3 +1,14 @@
+"""
+Load and plot processed outputs from AlliG, BH, and PyFLI pipelines.
+
+This module belongs to :mod:`pyfli.io` and is part of PyFLI detector importers, file
+readers, saving helpers, and processed-data loaders. Public API includes classes
+:class:`DatasetPlotter`, :class:`AlliGprocessedImport`, :class:`BHprocessedImport`, and
+:class:`PyFliprocessedImport`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 import numpy as np
 import os
@@ -7,7 +18,20 @@ import json
 
 
 class DatasetPlotter:
-    def _plotting_maps(self):
+    """
+    Provide shared plotting helpers for processed dataset importers. It keeps plotting
+    behavior close to the processed-data readers that use it.
+    """
+
+    def _plotting_maps(self) -> np.ndarray:
+        """
+        Handle plotting maps.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         if (
             not hasattr(self, "dataset")
             or not self.dataset
@@ -58,14 +82,24 @@ class DatasetPlotter:
 
 
 class AlliGprocessedImport(DatasetPlotter):
-    def __init__(self, folder_path):
+    """
+    Import processed AlliG outputs into PyFLI-style result structures. The class loads
+    saved arrays and exposes them for plotting or downstream comparison.
+
+    Parameters
+    ----------
+    folder_path : str
+        Filesystem path used by this workflow.
+    """
+
+    def __init__(self, folder_path: str) -> None:
         self.folder_path = os.path.abspath(folder_path)
         self.dataset = {
             "name": os.path.basename(self.folder_path),
             "results": {"maps": {}, "decay": None, "irf": None},
         }
 
-    def _read_roi_files(self):
+    def _read_roi_files(self) -> None:
         """Processes .roiN files using the provided working logic."""
         if not os.path.exists(self.folder_path):
             logging.error(f"Error: The path '{self.folder_path}' does not exist.")
@@ -99,7 +133,20 @@ class AlliGprocessedImport(DatasetPlotter):
                 self.dataset["results"]["maps"]["mask"] = mask
             # -------------------------
 
-    def _detect_fit_type(self, files):
+    def _detect_fit_type(self, files: np.ndarray) -> bool:
+        """
+        Handle detect fit type.
+
+        Parameters
+        ----------
+        files : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        bool
+            Return value.
+        """
         for f in files:
             name_lower = os.path.basename(f).lower()
             if any(
@@ -109,7 +156,15 @@ class AlliGprocessedImport(DatasetPlotter):
                 return True
         return False
 
-    def _read_text_files(self):
+    def _read_text_files(self) -> Any:
+        """
+        Read text files.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if not os.path.exists(self.folder_path):
             logging.error(f"Error: The path '{self.folder_path}' does not exist.")
             return None
@@ -187,14 +242,37 @@ class AlliGprocessedImport(DatasetPlotter):
 
 
 class BHprocessedImport(DatasetPlotter):
-    def __init__(self, folder_path):
+    """
+    Import Becker & Hickl processed results for comparison with PyFLI outputs. It adapts
+    BH maps and traces into structures used by the analysis layer.
+
+    Parameters
+    ----------
+    folder_path : str
+        Filesystem path used by this workflow.
+    """
+
+    def __init__(self, folder_path: str) -> None:
         self.folder_path = os.path.abspath(folder_path)
         self.dataset = {
             "name": os.path.basename(self.folder_path),
             "results": {"maps": {}, "decay": None, "irf": None},
         }
 
-    def _detect_fit_type(self, files):
+    def _detect_fit_type(self, files: np.ndarray) -> bool:
+        """
+        Handle detect fit type.
+
+        Parameters
+        ----------
+        files : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        bool
+            Return value.
+        """
         for f in files:
             name_lower = os.path.basename(f).lower()
             if "biexp" in name_lower or any(
@@ -203,7 +281,15 @@ class BHprocessedImport(DatasetPlotter):
                 return True
         return False
 
-    def _read_ascfiles(self):
+    def _read_ascfiles(self) -> Any:
+        """
+        Read ascfiles.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if not os.path.exists(self.folder_path):
             logging.error(f"Error: The path '{self.folder_path}' does not exist.")
             return None
@@ -304,4 +390,9 @@ class BHprocessedImport(DatasetPlotter):
 
 
 class PyFliprocessedImport(DatasetPlotter):
+    """
+    Reload processed PyFLI outputs from disk. The importer supports downstream plotting
+    and comparison without rerunning the original fitting workflow.
+    """
+
     pass

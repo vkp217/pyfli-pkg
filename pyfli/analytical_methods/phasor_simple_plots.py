@@ -1,3 +1,14 @@
+"""
+Provide plotting mixins for phasor maps, overlays, pixel fits, and harmonic
+visualizations.
+
+This module belongs to :mod:`pyfli.analytical_methods` and is part of PyFLI analytical
+FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
+estimation. Public API includes classes :class:`PhasorPlotsMixin`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -16,7 +27,38 @@ from .phasor_simple_utils import (
 class PhasorPlotsMixin:
     # Plotting and color-mapping methods for PhasorAnalyzer.
 
-    def phasor_colormap(self, G, S, intensity=None, colormap="viridis"):
+    """
+    Add plotting methods to phasor analyzers. The mixin renders phasor diagrams, color
+    maps, overlays, pixel fits, harmonic views, and traceable analysis panels without
+    owning acquisition state.
+    """
+
+    def phasor_colormap(
+        self,
+        G: np.ndarray,
+        S: np.ndarray,
+        intensity: np.ndarray | None = None,
+        colormap: str = "viridis",
+    ) -> Any:
+        """
+        Handle phasor colormap.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        intensity : np.ndarray | None
+            Input value.
+        colormap : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         G_col = G[0] if G.ndim == 3 else G
         S_col = S[0] if S.ndim == 3 else S
         phasor_val = np.sqrt(G_col**2 + S_col**2)
@@ -30,9 +72,34 @@ class PhasorPlotsMixin:
         return colors
 
     def phasor_radial_color(
-        self, G, S, colormap="viridis", norm_color=False, half_circle=True
-    ):
+        self,
+        G: np.ndarray,
+        S: np.ndarray,
+        colormap: str = "viridis",
+        norm_color: bool = False,
+        half_circle: bool = True,
+    ) -> Any:
+        """
+        Handle phasor radial color.
 
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        colormap : str
+            Input value.
+        norm_color : bool
+            Input value.
+        half_circle : bool
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         G_col = G[0] if G.ndim == 3 else np.asarray(G)
         S_col = S[0] if S.ndim == 3 else np.asarray(S)
 
@@ -79,18 +146,51 @@ class PhasorPlotsMixin:
 
     def plot_phasor_diagram(
         self,
-        G,
-        S,
-        mask=None,
-        colors=None,
-        hexbin_color=None,
-        ax=None,
-        figsize=(8, 3),
-        half_circle=True,
-        title="Phasor Diagram",
-        xlim=(-0.1, 1.1),
-        ylim=(0.0, 0.6),
-    ):
+        G: np.ndarray,
+        S: np.ndarray,
+        mask: np.ndarray | None = None,
+        colors: Any | None = None,
+        hexbin_color: np.ndarray | None = None,
+        ax: Any | None = None,
+        figsize: tuple[int, ...] = (8, 3),
+        half_circle: bool = True,
+        title: str = "Phasor Diagram",
+        xlim: tuple[float, ...] = (-0.1, 1.1),
+        ylim: tuple[float, ...] = (0.0, 0.6),
+    ) -> np.ndarray:
+        """
+        Plot phasor diagram.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        mask : np.ndarray | None
+            Input value.
+        colors : Any | None
+            Input value.
+        hexbin_color : np.ndarray | None
+            Input value.
+        ax : Any | None
+            Input value.
+        figsize : tuple[int, ...]
+            Input value.
+        half_circle : bool
+            Input value.
+        title : str
+            Input value.
+        xlim : tuple[float, ...]
+            Input value.
+        ylim : tuple[float, ...]
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
@@ -148,7 +248,35 @@ class PhasorPlotsMixin:
             plt.tight_layout()
         return fig
 
-    def plot_map(self, image, scales=[0, 2], title="", ax=None, figsize=(8, 6)):
+    def plot_map(
+        self,
+        image: np.ndarray,
+        scales: list[Any] = [0, 2],
+        title: str = "",
+        ax: Any | None = None,
+        figsize: tuple[int, ...] = (8, 6),
+    ) -> np.ndarray:
+        """
+        Plot map.
+
+        Parameters
+        ----------
+        image : np.ndarray
+            Input value.
+        scales : list[Any]
+            Input value.
+        title : str
+            Input value.
+        ax : Any | None
+            Input value.
+        figsize : tuple[int, ...]
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
@@ -167,8 +295,37 @@ class PhasorPlotsMixin:
         return fig
 
     def plot_phasor_overlay(
-        self, decay, G, S, colormap="viridis", ax=None, figsize=(8, 8)
-    ):
+        self,
+        decay: np.ndarray,
+        G: np.ndarray,
+        S: np.ndarray,
+        colormap: str = "viridis",
+        ax: Any | None = None,
+        figsize: tuple[int, ...] = (8, 8),
+    ) -> np.ndarray:
+        """
+        Plot phasor overlay.
+
+        Parameters
+        ----------
+        decay : np.ndarray
+            Input value.
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        colormap : str
+            Input value.
+        ax : Any | None
+            Input value.
+        figsize : tuple[int, ...]
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         created_fig = ax is None
         if created_fig:
             fig, ax = plt.subplots(figsize=figsize)
@@ -189,14 +346,39 @@ class PhasorPlotsMixin:
 
     def plot_pure_phasor_map(
         self,
-        G,
-        S,
-        decay,
-        noise_removed=True,
-        colormap="viridis",
-        ax=None,
-        figsize=(4, 4),
-    ):
+        G: np.ndarray,
+        S: np.ndarray,
+        decay: np.ndarray,
+        noise_removed: bool = True,
+        colormap: str = "viridis",
+        ax: Any | None = None,
+        figsize: tuple[int, ...] = (4, 4),
+    ) -> np.ndarray:
+        """
+        Plot pure phasor map.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        decay : np.ndarray
+            Input value.
+        noise_removed : bool
+            Input value.
+        colormap : str
+            Input value.
+        ax : Any | None
+            Input value.
+        figsize : tuple[int, ...]
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         phasor_colors = self.phasor_colormap(G, S, colormap=colormap)
         if phasor_colors.shape[-1] == 4:
             phasor_colors = phasor_colors[..., :3]
@@ -227,20 +409,54 @@ class PhasorPlotsMixin:
 
     def plot_overlay_subplots(
         self,
-        decay,
-        G,
-        S,
-        mask=None,
-        colormaps=["jet", "jet", "viridis", "jet"],
-        noise_removed=True,
-        figsize=(15, 10),
-        half_circle=True,
-        xlim=(-0.1, 1.1),
-        ylim=(0.0, 0.6),
-        bg_color="black",
-        transpose=False,
-    ):
+        decay: np.ndarray,
+        G: np.ndarray,
+        S: np.ndarray,
+        mask: np.ndarray | None = None,
+        colormaps: list[Any] = ["jet", "jet", "viridis", "jet"],
+        noise_removed: bool = True,
+        figsize: tuple[int, ...] = (15, 10),
+        half_circle: bool = True,
+        xlim: tuple[float, ...] = (-0.1, 1.1),
+        ylim: tuple[float, ...] = (0.0, 0.6),
+        bg_color: str = "black",
+        transpose: bool = False,
+    ) -> np.ndarray:
+        """
+        Plot overlay subplots.
 
+        Parameters
+        ----------
+        decay : np.ndarray
+            Input value.
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        mask : np.ndarray | None
+            Input value.
+        colormaps : list[Any]
+            Input value.
+        noise_removed : bool
+            Input value.
+        figsize : tuple[int, ...]
+            Input value.
+        half_circle : bool
+            Input value.
+        xlim : tuple[float, ...]
+            Input value.
+        ylim : tuple[float, ...]
+            Input value.
+        bg_color : str
+            Input value.
+        transpose : bool
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         _t = (lambda a: np.swapaxes(a, 0, 1)) if transpose else (lambda a: a)
 
         G_2d = G[0] if G.ndim == 3 else G
@@ -264,7 +480,20 @@ class PhasorPlotsMixin:
 
         bg_val = 0.0 if bg_color == "black" else 1.0
 
-        def _resolve_cmap(spec):
+        def _resolve_cmap(spec: Any) -> np.ndarray:
+            """
+            Handle resolve cmap.
+
+            Parameters
+            ----------
+            spec : Any
+                Input value.
+
+            Returns
+            -------
+            np.ndarray
+                Return value.
+            """
             cmap = plt.colormaps[spec] if isinstance(spec, str) else spec
             cmap = cmap.copy()
             cmap.set_bad(bg_color)
@@ -357,15 +586,42 @@ class PhasorPlotsMixin:
 
     def plot_pixel_fit(
         self,
-        irf,
-        decay,
-        reconstructed_decay,
-        x,
-        y,
-        log_scale=True,
-        ax=None,
-        figsize=(10, 6),
-    ):
+        irf: np.ndarray,
+        decay: np.ndarray,
+        reconstructed_decay: np.ndarray,
+        x: np.ndarray,
+        y: np.ndarray,
+        log_scale: bool = True,
+        ax: Any | None = None,
+        figsize: tuple[int, ...] = (10, 6),
+    ) -> np.ndarray:
+        """
+        Plot pixel fit.
+
+        Parameters
+        ----------
+        irf : np.ndarray
+            Input value.
+        decay : np.ndarray
+            Input value.
+        reconstructed_decay : np.ndarray
+            Input value.
+        x : np.ndarray
+            Input value.
+        y : np.ndarray
+            Input value.
+        log_scale : bool
+            Input value.
+        ax : Any | None
+            Input value.
+        figsize : tuple[int, ...]
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         irf_trace = irf[y, x, :] if irf.ndim == 3 else np.asarray(irf)
         raw_trace = decay[y, x, :]
         fit_trace = reconstructed_decay[y, x, :]
@@ -413,8 +669,43 @@ class PhasorPlotsMixin:
         return fig
 
     def plot_pixel_fit_single_exp(
-        self, irf, decay, tau_ns, x, y, log_scale=True, ax=None, figsize=(10, 6)
-    ):
+        self,
+        irf: np.ndarray,
+        decay: np.ndarray,
+        tau_ns: np.ndarray,
+        x: np.ndarray,
+        y: np.ndarray,
+        log_scale: bool = True,
+        ax: Any | None = None,
+        figsize: tuple[int, ...] = (10, 6),
+    ) -> np.ndarray:
+        """
+        Plot pixel fit single exp.
+
+        Parameters
+        ----------
+        irf : np.ndarray
+            Input value.
+        decay : np.ndarray
+            Input value.
+        tau_ns : np.ndarray
+            Input value.
+        x : np.ndarray
+            Input value.
+        y : np.ndarray
+            Input value.
+        log_scale : bool
+            Input value.
+        ax : Any | None
+            Input value.
+        figsize : tuple[int, ...]
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         if isinstance(tau_ns, (torch.Tensor, np.ndarray)):
             if tau_ns.ndim >= 2:
                 tau_val = tau_ns[y, x]
@@ -494,18 +785,51 @@ class PhasorPlotsMixin:
 
     def plot_phasor_harmonics(
         self,
-        G,
-        S,
-        harmonics=(1, 2, 3, 4),
-        mask=None,
-        colors=None,
-        hexbin_color=None,
-        figsize=(22, 5),
-        axes=None,
-        half_circle=True,
-        xlim=(-0.1, 1.1),
-        ylim=(0.0, 0.6),
-    ):
+        G: np.ndarray,
+        S: np.ndarray,
+        harmonics: tuple[int, ...] = (1, 2, 3, 4),
+        mask: np.ndarray | None = None,
+        colors: Any | None = None,
+        hexbin_color: np.ndarray | None = None,
+        figsize: tuple[int, ...] = (22, 5),
+        axes: Any | None = None,
+        half_circle: bool = True,
+        xlim: tuple[float, ...] = (-0.1, 1.1),
+        ylim: tuple[float, ...] = (0.0, 0.6),
+    ) -> np.ndarray:
+        """
+        Plot phasor harmonics.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        harmonics : tuple[int, ...]
+            Input value.
+        mask : np.ndarray | None
+            Input value.
+        colors : Any | None
+            Input value.
+        hexbin_color : np.ndarray | None
+            Input value.
+        figsize : tuple[int, ...]
+            Input value.
+        axes : Any | None
+            Input value.
+        half_circle : bool
+            Input value.
+        xlim : tuple[float, ...]
+            Input value.
+        ylim : tuple[float, ...]
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         G = np.asarray(G)
         S = np.asarray(S)
         n_panels = len(harmonics)
@@ -605,16 +929,45 @@ class PhasorPlotsMixin:
 
     def plot_traceable_analysis(
         self,
-        G,
-        S,
-        mask=None,
-        colormap="viridis",
-        figsize=(14, 6),
-        axes=None,
-        half_circle=True,
-        xlim=(-0.1, 1.1),
-        ylim=(0.0, 0.6),
-    ):
+        G: np.ndarray,
+        S: np.ndarray,
+        mask: np.ndarray | None = None,
+        colormap: str = "viridis",
+        figsize: tuple[int, ...] = (14, 6),
+        axes: Any | None = None,
+        half_circle: bool = True,
+        xlim: tuple[float, ...] = (-0.1, 1.1),
+        ylim: tuple[float, ...] = (0.0, 0.6),
+    ) -> np.ndarray:
+        """
+        Plot traceable analysis.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Input value.
+        S : np.ndarray
+            Input value.
+        mask : np.ndarray | None
+            Input value.
+        colormap : str
+            Input value.
+        figsize : tuple[int, ...]
+            Input value.
+        axes : Any | None
+            Input value.
+        half_circle : bool
+            Input value.
+        xlim : tuple[float, ...]
+            Input value.
+        ylim : tuple[float, ...]
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         G_2d = G[0] if G.ndim == 3 else G
         S_2d = S[0] if S.ndim == 3 else S
 

@@ -1,3 +1,14 @@
+"""
+Compute phasor coordinates from binned decay data and save phasor-derived lifetime maps.
+
+This module belongs to :mod:`pyfli.analysis` and is part of PyFLI post-processing,
+diagnostics, statistical comparison, and result-loading utilities for fitted FLIM
+datasets. Public API includes functions :func:`compute_freq_axis`,
+:func:`compute_phasor`, :func:`plot_phasor_figures`, and :func:`save_phasor_result`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import os
 import numpy as np
 
@@ -7,7 +18,9 @@ from ..analytical_methods import PhasorAnalyzer, AnalyticalHelpers
 from ..data_vnp import ColorProcessor
 
 
-def compute_freq_axis(binned_irf, laser_period_ns=12.5):
+def compute_freq_axis(
+    binned_irf: np.ndarray, laser_period_ns: float = 12.5
+) -> tuple[Any, ...]:
     """Derive frequency and time axis from IRF array shape.
 
     Parameters
@@ -31,7 +44,13 @@ def compute_freq_axis(binned_irf, laser_period_ns=12.5):
     return freq, freq_hz, time_axis_ns
 
 
-def compute_phasor(binned_decay, binned_irf, freq_hz, time_axis_ns, n_harmonics=3):
+def compute_phasor(
+    binned_decay: np.ndarray,
+    binned_irf: np.ndarray,
+    freq_hz: np.ndarray,
+    time_axis_ns: np.ndarray,
+    n_harmonics: int = 3,
+) -> tuple[Any, ...]:
     """Compute and calibrate phasor coordinates.
 
     Parameters
@@ -58,8 +77,14 @@ def compute_phasor(binned_decay, binned_irf, freq_hz, time_axis_ns, n_harmonics=
 
 
 def plot_phasor_figures(
-    phasor_obj, Gc, Sc, binned_decay, mask, colorset="jet", saver=None
-):
+    phasor_obj: np.ndarray,
+    Gc: Any,
+    Sc: Any,
+    binned_decay: np.ndarray,
+    mask: np.ndarray,
+    colorset: str = "jet",
+    saver: Any | None = None,
+) -> np.ndarray:
     """Generate all standard phasor figures.
 
     Produces: phasor diagram, overlay subplots, harmonics plot (if ≥ 3 harmonics),
@@ -128,39 +153,25 @@ def plot_phasor_figures(
     return figs
 
 
-def save_phasor_result(save_dir, tau_map_ns, saver=None):
-    """Save the phasor apparent lifetime map as a loadable result file.
-
-    The file is written in the same dict structure as fitting results so it can
-    be included in the ``experiments`` dict passed to ``load_fitting_results``.
-    The map is stored under two keys:
-
-    * ``'tau_map'``       — matches the mono-exponential fitting key
-    * ``'mean_lifetime'`` — matches the bi-exponential comparison key
+def save_phasor_result(
+    save_dir: str, tau_map_ns: np.ndarray, saver: Any | None = None
+) -> np.ndarray:
+    """
+    Save phasor result.
 
     Parameters
     ----------
-    save_dir    : str         session folder (e.g. saver.save_dir)
-    tau_map_ns  : np.ndarray  (H, W) phasor lifetime from compute_phasor()
-    saver       : DataSaver or None  — if given, logs the save action
+    save_dir : str
+        Input value.
+    tau_map_ns : np.ndarray
+        Input value.
+    saver : Any | None
+        Input value.
 
     Returns
     -------
-    path : str   full path to the saved file
-
-    Example
-    -------
-    After calling compute_phasor::
-
-        _, _, _, tau_phasor = compute_phasor(decay, irf, freq_hz, time_axis_ns)
-        save_phasor_result(saver.save_dir, tau_phasor, saver=saver)
-
-    Then include in experiments::
-
-        experiments = {
-            'phasor_tau_map.npy':                          'Phasor',
-            'CPU_NLSF_least_squares_mono-exponential.npy': 'NLSF',
-        }
+    np.ndarray
+        Return value.
     """
     result = {
         "results": {

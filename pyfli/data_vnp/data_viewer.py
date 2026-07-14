@@ -1,3 +1,13 @@
+"""
+Render FLIM maps, fit summaries, and selected-pixel traces.
+
+This module belongs to :mod:`pyfli.data_vnp` and is part of PyFLI visualization,
+normalization, plotting, and mono-versus-bi-exponential comparison tools. Public API
+includes classes :class:`DataViewer`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -5,13 +15,43 @@ from matplotlib import gridspec
 
 
 class DataViewer:
-    def __init__(self, save_path=None, fig_name=None):
+    """
+    Render fitted parameter maps, raw decay traces, IRF traces, and selected-pixel
+    summaries. The class is aimed at interactive inspection and publication-style
+    diagnostic figures.
+
+    Parameters
+    ----------
+    save_path : str | None
+        Output path used when saving generated masks, figures, or data.
+    fig_name : str | None
+        Figure name or output stem used by plotting helpers.
+    """
+
+    def __init__(
+        self, save_path: str | None = None, fig_name: str | None = None
+    ) -> None:
         self.fig_name = fig_name
         self.save_path = save_path
         if save_path and not os.path.exists(save_path):
             os.makedirs(save_path)
 
-    def _apply_marker(self, ax, coord):
+    def _apply_marker(self, ax: Any, coord: Any) -> None:
+        """
+        Apply marker.
+
+        Parameters
+        ----------
+        ax : Any
+            Input value.
+        coord : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if coord is not None:
             x, y = coord
             ax.scatter(
@@ -20,17 +60,45 @@ class DataViewer:
 
     def display_data(
         self,
-        data_list,
-        structure=(1, 1),
-        coord=None,
-        data_names=None,
-        cmaps=None,
-        v_ranges=None,
-        figsize=None,
-        normalize=False,
-        yscale="linear",
-    ):
+        data_list: np.ndarray,
+        structure: tuple[int, ...] = (1, 1),
+        coord: Any | None = None,
+        data_names: np.ndarray | None = None,
+        cmaps: np.ndarray | None = None,
+        v_ranges: np.ndarray | None = None,
+        figsize: np.ndarray | None = None,
+        normalize: bool = False,
+        yscale: str = "linear",
+    ) -> tuple[Any, ...]:
+        """
+        Display data.
 
+        Parameters
+        ----------
+        data_list : np.ndarray
+            Input value.
+        structure : tuple[int, ...]
+            Input value.
+        coord : Any | None
+            Input value.
+        data_names : np.ndarray | None
+            Input value.
+        cmaps : np.ndarray | None
+            Input value.
+        v_ranges : np.ndarray | None
+            Input value.
+        figsize : np.ndarray | None
+            Input value.
+        normalize : bool
+            Input value.
+        yscale : str
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         num_plots = len(data_list)
         r, c = structure
         names = data_names or [f"Data {i + 1}" for i in range(num_plots)]
@@ -108,14 +176,35 @@ class DataViewer:
 
     def plot_pyfli_fit_summary(
         self,
-        data,
-        pixel=None,
-        title="FLI Fit Summary",
-        mode=("decay", "irf", "fit", "residuals"),
-        esp=1e0,
-    ):
+        data: np.ndarray,
+        pixel: np.ndarray | None = None,
+        title: str = "FLI Fit Summary",
+        mode: tuple[str, ...] = ("decay", "irf", "fit", "residuals"),
+        esp: float = 1e0,
+    ) -> Any:
         # since simulator/pyfli img processing output is in specific disctionary
         # best to use in the simulator
+        """
+        Plot pyfli fit summary.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Input value.
+        pixel : np.ndarray | None
+            Input value.
+        title : str
+            Input value.
+        mode : tuple[str, ...]
+            Input value.
+        esp : float
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         mode = set(mode)  # faster lookup
         is_3d = pixel is not None
         decay = data["raw_data"]["decay"]
@@ -140,7 +229,20 @@ class DataViewer:
         irf_scaled = (irf_1d / np.max(irf_1d)) * np.max(decay_1d)
         irf_log = np.clip(irf_scaled, eps, None)
 
-        def fmt(v):
+        def fmt(v: np.ndarray) -> Any:
+            """
+            Handle fmt.
+
+            Parameters
+            ----------
+            v : np.ndarray
+                Input value.
+
+            Returns
+            -------
+            Any
+                Return value.
+            """
             try:
                 return f"{float(v):.4f}"
             except Exception:
@@ -255,15 +357,39 @@ class DataViewer:
 
     def plot_fli_px(
         self,
-        data_list,
-        pixel=None,  # pixel: (x, y) → enables time-series plotting
-        title="FLI Data Viewer",
-        mode=None,  # index in data_list which are to be added in the plot
-        mode2=None,  # index in the data_list which has to be displayed
-        names=None,
-        esp=1e0,
-    ):
+        data_list: np.ndarray,
+        pixel: np.ndarray | None = None,  # pixel: (x, y) → enables time-series plotting
+        title: str = "FLI Data Viewer",
+        mode: str | None = None,  # index in data_list which are to be added in the plot
+        mode2: Any | None = None,  # index in the data_list which has to be displayed
+        names: Any | None = None,
+        esp: float = 1e0,
+    ) -> tuple[Any, ...]:
+        """
+        Plot fli px.
 
+        Parameters
+        ----------
+        data_list : np.ndarray
+            Input value.
+        pixel : np.ndarray | None
+            Input value.
+        title : str
+            Input value.
+        mode : str | None
+            Input value.
+        mode2 : Any | None
+            Input value.
+        names : Any | None
+            Input value.
+        esp : float
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         n_total = len(data_list)
         if mode is None:
             mode = list(range(n_total))

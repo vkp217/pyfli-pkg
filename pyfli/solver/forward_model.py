@@ -1,9 +1,21 @@
+"""
+Evaluate exponential decay kernels and convolved NumPy forward models.
+
+This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
+likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+functions :func:`decay_kernel` and :func:`model_numpy`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 
 _EPS = 1e-8
 
 
-def decay_kernel(t: np.ndarray, params, model_type: str, h_shift: float = 0.0) -> tuple:
+def decay_kernel(
+    t: np.ndarray, params: Any, model_type: str, h_shift: float = 0.0
+) -> tuple:
     """Return (kernel, v_shift).
 
     The temporal delay h_shift (in the same units as t, i.e. ns) is applied
@@ -31,9 +43,28 @@ def decay_kernel(t: np.ndarray, params, model_type: str, h_shift: float = 0.0) -
 def model_numpy(
     t: np.ndarray,
     irf: np.ndarray,
-    params,
+    params: Any,
     model_type: str,
 ) -> np.ndarray:
+    """
+    Handle model numpy.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        Input value.
+    irf : np.ndarray
+        Input value.
+    params : Any
+        Input value.
+    model_type : str
+        Input value.
+
+    Returns
+    -------
+    np.ndarray
+        Return value.
+    """
     params = np.asarray(params, dtype=float)
 
     h_shift = float(params[-1])

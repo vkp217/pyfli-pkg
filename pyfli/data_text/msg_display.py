@@ -1,18 +1,69 @@
+"""
+Format fitting parameters, session settings, and pixel summaries for display or logging.
+
+This module belongs to :mod:`pyfli.data_text` and is part of PyFLI text display helpers
+used by interactive fitting workflows. Public API includes classes
+:class:`MessageDisplay`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 import numpy as np
 
 
 class MessageDisplay:
-    def __init__(self, saver=None):
+    """
+    Format fitting parameters, session settings, and pixel summaries for notebook or
+    console display. An optional saver can persist the same messages alongside analysis
+    outputs.
+
+    Parameters
+    ----------
+    saver : Any | None
+        Optional object responsible for persisting display text or outputs.
+    """
+
+    def __init__(self, saver: Any | None = None) -> None:
         self.saver = saver
 
-    def _internal_log(self, message):
+    def _internal_log(self, message: Any) -> None:
+        """
+        Handle internal log.
+
+        Parameters
+        ----------
+        message : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if self.saver:
             self.saver.log(message)
         else:
             logging.info(message)
 
-    def disp_params(self, res_px, model_type="bi-exponential"):
+    def disp_params(
+        self, res_px: np.ndarray, model_type: str = "bi-exponential"
+    ) -> None:
+        """
+        Handle disp params.
+
+        Parameters
+        ----------
+        res_px : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if not res_px:
             raise ValueError("Data was not provided (res_px is empty or None)")
 
@@ -49,7 +100,20 @@ class MessageDisplay:
         full_msg = "\n".join(output)
         self._internal_log(full_msg)
 
-    def fit_session(self, **kwargs):
+    def fit_session(self, **kwargs: Any) -> None:
+        """
+        Fit session.
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         pretty_labels = {
             "model_type": "Decay Model",
             "processor_name": "Processor",
@@ -86,7 +150,22 @@ class MessageDisplay:
         ("h-shift", ["h_shift_map"]),
     ]
 
-    def get_pixel_summary(self, data_maps, px):
+    def get_pixel_summary(self, data_maps: np.ndarray, px: np.ndarray) -> np.ndarray:
+        """
+        Return pixel summary.
+
+        Parameters
+        ----------
+        data_maps : np.ndarray
+            Input value.
+        px : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         x, y = px
         rows = []
         for label, candidates in self._PIXEL_FIELDS:

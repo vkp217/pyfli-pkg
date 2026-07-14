@@ -1,3 +1,18 @@
+"""
+Collect numerical, masking, simulation, plotting, and export utilities shared by
+analysis workflows.
+
+This module belongs to :mod:`pyfli.analysis` and is part of PyFLI post-processing,
+diagnostics, statistical comparison, and result-loading utilities for fitted FLIM
+datasets. Public API includes functions :func:`circular_convolution_fft`,
+:func:`single_ex_decay_summed_overtime`, :func:`gate_j`, :func:`Pj_continuous_mono`,
+:func:`Pj_from_samples_mono`, :func:`multimodal_normal`, :func:`recovery_plot`,
+:func:`threshold_masking`, :func:`data_masking`, and
+:func:`save_3d_array_as_tiff_sequence`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 import numpy as np
 from scipy.integrate import quad
@@ -12,7 +27,26 @@ from ..data_vnp.color_processor import ColorProcessor
 from ..data_vnp.mono_bi_classifier import MonoBiClassifier
 
 
-def circular_convolution_fft(x, h, broadcast_irf=True):
+def circular_convolution_fft(
+    x: np.ndarray, h: np.ndarray, broadcast_irf: bool = True
+) -> np.ndarray:
+    """
+    Handle circular convolution fft.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Input value.
+    h : np.ndarray
+        Input value.
+    broadcast_irf : bool
+        Input value.
+
+    Returns
+    -------
+    np.ndarray
+        Return value.
+    """
     x = np.asarray(x)
     h = np.asarray(h)
 
@@ -46,14 +80,36 @@ def circular_convolution_fft(x, h, broadcast_irf=True):
 
 
 def single_ex_decay_summed_overtime(
-    tau,
-    irf_data,
-    alpha=1.0,
-    err=0.0,
-    laser_period=12.5,
-    seed=None,
-):
+    tau: np.ndarray,
+    irf_data: np.ndarray,
+    alpha: float = 1.0,
+    err: float = 0.0,
+    laser_period: float = 12.5,
+    seed: int | None = None,
+) -> tuple[Any, ...]:
+    """
+    Handle single ex decay summed overtime.
 
+    Parameters
+    ----------
+    tau : np.ndarray
+        Input value.
+    irf_data : np.ndarray
+        Input value.
+    alpha : float
+        Input value.
+    err : float
+        Input value.
+    laser_period : float
+        Input value.
+    seed : int | None
+        Input value.
+
+    Returns
+    -------
+    tuple[Any, ...]
+        Return value.
+    """
     if seed is not None:
         np.random.seed(seed)
     M, N, T = irf_data.shape
@@ -104,7 +160,22 @@ def single_ex_decay_summed_overtime(
     return f_t, s_t, I_t, t
 
 
-def gate_j(m: int, T: float):
+def gate_j(m: int, T: float) -> np.ndarray:
+    """
+    Handle gate j.
+
+    Parameters
+    ----------
+    m : int
+        Input value.
+    T : float
+        Input value.
+
+    Returns
+    -------
+    np.ndarray
+        Return value.
+    """
     buckets = []
     for j in range(1, m + 1):
         a = (j - 1) * T / m
@@ -113,12 +184,50 @@ def gate_j(m: int, T: float):
     return buckets
 
 
-def Pj_continuous_mono(f, m: int, T: float, epsabs=1e-8, epsrel=1e-8):
+def Pj_continuous_mono(
+    f: np.ndarray, m: int, T: float, epsabs: float = 1e-8, epsrel: float = 1e-8
+) -> Any:
+    """
+    Handle pj continuous mono.
+
+    Parameters
+    ----------
+    f : np.ndarray
+        Input value.
+    m : int
+        Input value.
+    T : float
+        Input value.
+    epsabs : float
+        Input value.
+    epsrel : float
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     gates = np.array(gate_j(m, T))  # list-of-tuples → 2D array for slicing
     a_vals, b_vals = gates[:, 0], gates[:, 1]
 
     # Vectorized numerical integration using np.vectorize wrapper
-    def integrate_interval(a, b):
+    def integrate_interval(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """
+        Handle integrate interval.
+
+        Parameters
+        ----------
+        a : np.ndarray
+            Input value.
+        b : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         val, _ = quad(f, a, b, epsabs=epsabs, epsrel=epsrel)
         return val
 
@@ -129,7 +238,26 @@ def Pj_continuous_mono(f, m: int, T: float, epsabs=1e-8, epsrel=1e-8):
 
 def Pj_from_samples_mono(
     t_samples: np.ndarray, y_samples: np.ndarray, m: int, T: float
-):
+) -> Any:
+    """
+    Handle pj from samples mono.
+
+    Parameters
+    ----------
+    t_samples : np.ndarray
+        Input value.
+    y_samples : np.ndarray
+        Input value.
+    m : int
+        Input value.
+    T : float
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     H, W, Tn = y_samples.shape
     gates = gate_j(m, T)
 
@@ -181,7 +309,34 @@ def Pj_from_samples_mono(
     return Pj
 
 
-def multimodal_normal(n_samples=10000, mus=None, sigma=None, weights=None, seed=None):
+def multimodal_normal(
+    n_samples: int = 10000,
+    mus: np.ndarray | None = None,
+    sigma: float | None = None,
+    weights: np.ndarray | None = None,
+    seed: int | None = None,
+) -> tuple[Any, ...]:
+    """
+    Handle multimodal normal.
+
+    Parameters
+    ----------
+    n_samples : int
+        Input value.
+    mus : np.ndarray | None
+        Input value.
+    sigma : float | None
+        Input value.
+    weights : np.ndarray | None
+        Input value.
+    seed : int | None
+        Input value.
+
+    Returns
+    -------
+    tuple[Any, ...]
+        Return value.
+    """
     np.random.seed(seed)
 
     if mus is None:
@@ -228,7 +383,9 @@ def multimodal_normal(n_samples=10000, mus=None, sigma=None, weights=None, seed=
     return samples, samples_2d
 
 
-def recovery_plot(gt_dict, est_dict, keys_to_plot=None):
+def recovery_plot(
+    gt_dict: np.ndarray, est_dict: np.ndarray, keys_to_plot: np.ndarray | None = None
+) -> np.ndarray:
     """
     Plots Ground Truth vs Estimates for specific keys.
     Handles data shapes: (N, X, Y) or (N, Batch, X, Y).
@@ -320,7 +477,26 @@ def recovery_plot(gt_dict, est_dict, keys_to_plot=None):
     return fig
 
 
-def threshold_masking(fli, irf, threshold=100):
+def threshold_masking(
+    fli: np.ndarray, irf: np.ndarray, threshold: int = 100
+) -> tuple[Any, ...]:
+    """
+    Handle threshold masking.
+
+    Parameters
+    ----------
+    fli : np.ndarray
+        Input value.
+    irf : np.ndarray
+        Input value.
+    threshold : int
+        Input value.
+
+    Returns
+    -------
+    tuple[Any, ...]
+        Return value.
+    """
     if threshold is None:
         raise ValueError("no thershold value provided")
     else:
@@ -339,7 +515,24 @@ def threshold_masking(fli, irf, threshold=100):
     return masked_fli, masked_irf
 
 
-def data_masking(*arrays, mask, return_list=False):
+def data_masking(*arrays: Any, mask: np.ndarray, return_list: bool = False) -> Any:
+    """
+    Handle data masking.
+
+    Parameters
+    ----------
+    *arrays : Any
+        Input value.
+    mask : np.ndarray
+        Input value.
+    return_list : bool
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     mask = mask.astype(bool)
     results = []
     for arr in arrays:
@@ -360,7 +553,9 @@ def data_masking(*arrays, mask, return_list=False):
     return results if return_list else tuple(results)
 
 
-def save_3d_array_as_tiff_sequence(array_3d, output_folder, prefix="frame"):
+def save_3d_array_as_tiff_sequence(
+    array_3d: np.ndarray, output_folder: str, prefix: str = "frame"
+) -> None:
     """
     Saves a 3D numpy array (H, W, T) as a series of 2D TIFF files.
 
@@ -392,7 +587,9 @@ def save_3d_array_as_tiff_sequence(array_3d, output_folder, prefix="frame"):
     logging.info("Saving complete.")
 
 
-def save_as_uint16_sequence(data, output_folder, prefix="frame"):
+def save_as_uint16_sequence(
+    data: np.ndarray, output_folder: str, prefix: str = "frame"
+) -> None:
     """
     Saves (H, W, T) array as 16-bit integer TIFFs.
     """
@@ -421,7 +618,20 @@ def save_as_uint16_sequence(data, output_folder, prefix="frame"):
     logging.info(f"Saved {T} files to {output_folder} in uint16 format.")
 
 
-def random_true_pixel(bool_array):
+def random_true_pixel(bool_array: np.ndarray) -> Any:
+    """
+    Handle random true pixel.
+
+    Parameters
+    ----------
+    bool_array : np.ndarray
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     true_indices = np.flatnonzero(bool_array)
     if true_indices.size == 0:
         return None
@@ -431,8 +641,27 @@ def random_true_pixel(bool_array):
 
 
 def PhasorFreqComputaion(
-    laser_period=12.5, gate_delay=None, num_gates=None
-):  # all the units in ns
+    laser_period: float = 12.5,
+    gate_delay: np.ndarray | None = None,
+    num_gates: int | None = None,
+) -> np.ndarray:  # all the units in ns
+    """
+    Handle phasor freq computaion.
+
+    Parameters
+    ----------
+    laser_period : float
+        Input value.
+    gate_delay : np.ndarray | None
+        Input value.
+    num_gates : int | None
+        Input value.
+
+    Returns
+    -------
+    np.ndarray
+        Return value.
+    """
     freq = 1000.0 / laser_period
     if gate_delay is None or num_gates is None:
         effective_freq = freq
@@ -443,8 +672,35 @@ def PhasorFreqComputaion(
     return effective_freq
 
 
-def save_plot(save_dir, name, fig=None, dpi=300, close=False):
+def save_plot(
+    save_dir: str,
+    name: str,
+    fig: Any | None = None,
+    dpi: int = 300,
+    close: bool = False,
+) -> None:
     # Saves a plot. Handles subplots (pass fig) or direct plots (uses current)
+    """
+    Save plot.
+
+    Parameters
+    ----------
+    save_dir : str
+        Input value.
+    name : str
+        Input value.
+    fig : Any | None
+        Input value.
+    dpi : int
+        Input value.
+    close : bool
+        Input value.
+
+    Returns
+    -------
+    None
+        Return value.
+    """
     path = os.path.join(save_dir, f"{name}.png")
     target = fig if fig is not None else plt
     try:
@@ -456,21 +712,60 @@ def save_plot(save_dir, name, fig=None, dpi=300, close=False):
 
 
 def plot_pixel_diagnostic(
-    binned_decay,
-    all_fitset,
-    names,
-    pixel=None,
-    mask=None,
-    t=None,
-    yscale="log",
-    model_type="BI-EXPONENTIAL",
-    colors=None,
-    figsize=(12, 6),
-    raw_style="bar",
-    map_aspect="equal",
-    show_colorbar=True,
-    show=True,
-):
+    binned_decay: np.ndarray,
+    all_fitset: np.ndarray,
+    names: Any,
+    pixel: np.ndarray | None = None,
+    mask: np.ndarray | None = None,
+    t: np.ndarray | None = None,
+    yscale: str = "log",
+    model_type: str = "BI-EXPONENTIAL",
+    colors: Any | None = None,
+    figsize: tuple[int, ...] = (12, 6),
+    raw_style: str = "bar",
+    map_aspect: str = "equal",
+    show_colorbar: bool = True,
+    show: bool = True,
+) -> np.ndarray:
+    """
+    Plot pixel diagnostic.
+
+    Parameters
+    ----------
+    binned_decay : np.ndarray
+        Input value.
+    all_fitset : np.ndarray
+        Input value.
+    names : Any
+        Input value.
+    pixel : np.ndarray | None
+        Input value.
+    mask : np.ndarray | None
+        Input value.
+    t : np.ndarray | None
+        Input value.
+    yscale : str
+        Input value.
+    model_type : str
+        Input value.
+    colors : Any | None
+        Input value.
+    figsize : tuple[int, ...]
+        Input value.
+    raw_style : str
+        Input value.
+    map_aspect : str
+        Input value.
+    show_colorbar : bool
+        Input value.
+    show : bool
+        Input value.
+
+    Returns
+    -------
+    np.ndarray
+        Return value.
+    """
     jet_m = ColorProcessor().lowest_zero("jet")
     if pixel is None:
         if mask is None:
@@ -565,17 +860,17 @@ def plot_pixel_diagnostic(
 
 
 def compute_detailed_results(
-    tau1,
-    tau2,
-    f,
-    freq_acq,
-    binned_irf,
-    binned_decay=None,
-    data_name="F-BI",
-    model_type="bi-exponential",
-    params=3,
-    eps=1e-8,
-):
+    tau1: np.ndarray,
+    tau2: np.ndarray,
+    f: np.ndarray,
+    freq_acq: np.ndarray,
+    binned_irf: np.ndarray,
+    binned_decay: np.ndarray | None = None,
+    data_name: str = "F-BI",
+    model_type: str = "bi-exponential",
+    params: int = 3,
+    eps: float = 1e-8,
+) -> dict[Any, Any]:
     """
     Reconstruct fit curves + goodness-of-fit maps from pre-estimated
     bi-exponential parameter maps (e.g. F-BI output), packaged in the same

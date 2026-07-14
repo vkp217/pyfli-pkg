@@ -1,4 +1,15 @@
 # solver/comparison.py
+"""
+Compare least-squares and maximum-likelihood fitters across selected pixels and
+datasets.
+
+This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
+likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+classes :class:`FittingComparator`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 import time
 import io
@@ -9,7 +20,24 @@ from pyfli import logging
 
 
 class FittingComparator:
-    def __init__(self, freq, base_fitter_class, mle_fitter_class):
+    """
+    Compare fitting methods on selected pixels or whole datasets. It runs base and MLE
+    fitters, summarizes model statistics, plots comparisons, and saves comparison
+    outputs.
+
+    Parameters
+    ----------
+    freq : float
+        Acquisition frequency information used to derive timing constants.
+    base_fitter_class : Any
+        Least-squares fitter class used as a fitting backend.
+    mle_fitter_class : Any
+        Maximum-likelihood fitter class used as a fitting backend.
+    """
+
+    def __init__(
+        self, freq: float, base_fitter_class: Any, mle_fitter_class: Any
+    ) -> None:
         self.freq = freq
         self.BaseClass = base_fitter_class
         self.MLEClass = mle_fitter_class
@@ -24,7 +52,7 @@ class FittingComparator:
         }
 
     @staticmethod
-    def _print_summary_table(rows, model_type):
+    def _print_summary_table(rows: np.ndarray, model_type: str) -> Any:
         """rows: list of [method, category, success, elapsed, r2, stat, red_stat, popt | None]"""
         is_bi = model_type == "bi-exponential"
         if is_bi:
@@ -54,7 +82,24 @@ class FittingComparator:
                 ("h-shift", 8, ">"),
             ]
 
-        def fmt_cell(text, width, align):
+        def fmt_cell(text: np.ndarray, width: float, align: Any) -> Any:
+            """
+            Handle fmt cell.
+
+            Parameters
+            ----------
+            text : np.ndarray
+                Input value.
+            width : float
+                Input value.
+            align : Any
+                Input value.
+
+            Returns
+            -------
+            Any
+                Return value.
+            """
             s = str(text)
             if align == "<":
                 return f" {s:<{width}} "
@@ -62,14 +107,44 @@ class FittingComparator:
                 return f" {s:>{width}} "
             return f" {s:^{width}} "
 
-        def row_str(cells):
+        def row_str(cells: Any) -> Any:
+            """
+            Handle row str.
+
+            Parameters
+            ----------
+            cells : Any
+                Input value.
+
+            Returns
+            -------
+            Any
+                Return value.
+            """
             return (
                 "│"
                 + "│".join(fmt_cell(c, w, a) for c, (_, w, a) in zip(cells, cols))
                 + "│"
             )
 
-        def sep(left, mid, right):
+        def sep(left: np.ndarray, mid: Any, right: np.ndarray) -> Any:
+            """
+            Handle sep.
+
+            Parameters
+            ----------
+            left : np.ndarray
+                Input value.
+            mid : Any
+                Input value.
+            right : np.ndarray
+                Input value.
+
+            Returns
+            -------
+            Any
+                Return value.
+            """
             return left + mid.join("─" * (w + 2) for _, w, _ in cols) + right
 
         logging.info("")
@@ -127,7 +202,7 @@ class FittingComparator:
         logging.info("")
 
     @staticmethod
-    def _weighted_residual(method, y, model):
+    def _weighted_residual(method: str, y: np.ndarray, model: Any) -> Any:
         """Return normalised residuals appropriate for each estimator.
 
         Poisson MLE  → signed deviance residual  sign(y−m)·√(2(m−y+y·ln(y/m)))
@@ -149,15 +224,42 @@ class FittingComparator:
 
     def compare_selected(
         self,
-        methods,
-        y_data,
-        irf_data,
-        model_type="bi-exponential",
-        p0=None,
-        bounds=None,
-        yscale="log",
-        plot=True,
-    ):
+        methods: np.ndarray,
+        y_data: np.ndarray,
+        irf_data: np.ndarray,
+        model_type: str = "bi-exponential",
+        p0: Any | None = None,
+        bounds: np.ndarray | None = None,
+        yscale: str = "log",
+        plot: bool = True,
+    ) -> tuple[Any, ...]:
+        """
+        Handle compare selected.
+
+        Parameters
+        ----------
+        methods : np.ndarray
+            Input value.
+        y_data : np.ndarray
+            Input value.
+        irf_data : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+        p0 : Any | None
+            Input value.
+        bounds : np.ndarray | None
+            Input value.
+        yscale : str
+            Input value.
+        plot : bool
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         results_table = []
         if y_data.ndim != 1 or irf_data.ndim != 1:
             raise ValueError("compare_selected expects 1D decay and IRF traces")
@@ -238,14 +340,39 @@ class FittingComparator:
 
     def run_all(
         self,
-        y_data,
-        irf_data,
-        model_type="bi-exponential",
-        p0=None,
-        bounds=None,
-        yscale="log",
-        plot=True,
-    ):
+        y_data: np.ndarray,
+        irf_data: np.ndarray,
+        model_type: str = "bi-exponential",
+        p0: Any | None = None,
+        bounds: np.ndarray | None = None,
+        yscale: str = "log",
+        plot: bool = True,
+    ) -> Any:
+        """
+        Run all.
+
+        Parameters
+        ----------
+        y_data : np.ndarray
+            Input value.
+        irf_data : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+        p0 : Any | None
+            Input value.
+        bounds : np.ndarray | None
+            Input value.
+        yscale : str
+            Input value.
+        plot : bool
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         return self.compare_selected(
             list(self.method_mapping.keys()),
             y_data,
@@ -257,7 +384,26 @@ class FittingComparator:
             plot=plot,
         )
 
-    def _plot_comparison(self, data, yscale, model_type):
+    def _plot_comparison(
+        self, data: np.ndarray, yscale: np.ndarray, model_type: str
+    ) -> np.ndarray:
+        """
+        Plot comparison.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Input value.
+        yscale : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         fig, (ax1, ax2) = plt.subplots(
             2, 1, figsize=(8, 8), sharex=True, gridspec_kw={"height_ratios": [2.5, 1]}
         )
@@ -293,12 +439,33 @@ class FittingComparator:
 
     def save_results(
         self,
-        saver,
-        results_table,
-        fig=None,
-        model_type="bi-exponential",
-        name="fitting_comparison",
-    ):
+        saver: Any,
+        results_table: np.ndarray,
+        fig: Any | None = None,
+        model_type: str = "bi-exponential",
+        name: str = "fitting_comparison",
+    ) -> None:
+        """
+        Save results.
+
+        Parameters
+        ----------
+        saver : Any
+            Input value.
+        results_table : np.ndarray
+            Input value.
+        fig : Any | None
+            Input value.
+        model_type : str
+            Input value.
+        name : str
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             self._print_summary_table(results_table, model_type)

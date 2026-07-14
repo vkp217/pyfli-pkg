@@ -1,3 +1,14 @@
+"""
+Provide demo flim tools for PyFLI detector-aware IRF deconvolution and joint FLIM
+fitting utilities.
+
+This module belongs to :mod:`pyfli.irf_deconvolution` and is part of PyFLI detector-
+aware IRF deconvolution and joint FLIM fitting utilities. Public API includes functions
+:func:`make_counts` and :func:`report`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 import numpy as np
 from detector_weights import ICCDParams, SPADParams, TCSPCParams
@@ -32,7 +43,24 @@ for k in range(P):
 lam_clean = cyclic_conv(H_true, np.tile(f_true, (P, 1))) @ G.T
 
 
-def make_counts(detector, params, budget):
+def make_counts(detector: str, params: Any, budget: float) -> Any:
+    """
+    Create counts.
+
+    Parameters
+    ----------
+    detector : str
+        Input value.
+    params : Any
+        Input value.
+    budget : float
+        Input value.
+
+    Returns
+    -------
+    Any
+        Return value.
+    """
     lam = lam_clean * budget / lam_clean.sum(1, keepdims=True)
     if detector == "iccd":
         npe = rng.poisson(lam)
@@ -46,7 +74,22 @@ def make_counts(detector, params, budget):
         return rng.poisson(lam).astype(float)
 
 
-def report(name, res):
+def report(name: str, res: Any) -> None:
+    """
+    Handle report.
+
+    Parameters
+    ----------
+    name : str
+        Input value.
+    res : Any
+        Input value.
+
+    Returns
+    -------
+    None
+        Return value.
+    """
     te = res["taus"].mean(0)
     err = 100 * np.abs(te - tau_true) / tau_true
     am = (res["amps"] / res["amps"].sum(1, keepdims=True)).mean(0)

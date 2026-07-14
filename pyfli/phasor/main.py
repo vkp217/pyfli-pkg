@@ -65,6 +65,19 @@ def make_all_configs() -> list[AcquisitionConfig]:
 
 
 def fig_comparison(outdir: pathlib.Path) -> None:
+    """
+    Handle fig comparison.
+
+    Parameters
+    ----------
+    outdir : pathlib.Path
+        Input value.
+
+    Returns
+    -------
+    None
+        Return value.
+    """
     cfgs = make_all_configs()
     fig, ax = plot_locus_comparison(
         cfgs,
@@ -83,6 +96,19 @@ def fig_comparison(outdir: pathlib.Path) -> None:
 
 
 def fig_discrete_sweep(outdir: pathlib.Path) -> None:
+    """
+    Handle fig discrete sweep.
+
+    Parameters
+    ----------
+    outdir : pathlib.Path
+        Input value.
+
+    Returns
+    -------
+    None
+        Return value.
+    """
     fig, ax = plot_discrete_N_sweep(
         BASE,
         N_values=[2, 4, 8, 16, 64, 256],
@@ -99,6 +125,19 @@ def fig_discrete_sweep(outdir: pathlib.Path) -> None:
 
 
 def fig_individual_modes(outdir: pathlib.Path) -> None:
+    """
+    Handle fig individual modes.
+
+    Parameters
+    ----------
+    outdir : pathlib.Path
+        Input value.
+
+    Returns
+    -------
+    None
+        Return value.
+    """
     cfgs = make_all_configs()
     fig, axes = plt.subplots(2, 3, figsize=(14, 9), constrained_layout=True)
     fig.suptitle(
@@ -119,6 +158,14 @@ def fig_individual_modes(outdir: pathlib.Path) -> None:
 
 
 def print_summary() -> None:
+    """
+    Handle print summary.
+
+    Returns
+    -------
+    None
+        Return value.
+    """
     logging.info("\n" + "═" * 60)
     logging.info("  phasor_flim — acquisition mode summary")
     logging.info("═" * 60)
@@ -147,6 +194,14 @@ def print_summary() -> None:
 
 
 def main() -> None:
+    """
+    Handle main.
+
+    Returns
+    -------
+    None
+        Return value.
+    """
     parser = argparse.ArgumentParser(description="phasor_flim demo")
     parser.add_argument(
         "--outdir", default="output", help="Output directory for figures"

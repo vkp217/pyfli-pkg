@@ -1,3 +1,13 @@
+"""
+Implement a Poisson-likelihood TV reconstructor for SPAD photon-count measurements.
+
+This module belongs to :mod:`pyfli.sp_analysis` and is part of PyFLI single-pixel camera
+basis generation, acquisition simulation, and reconstruction solvers. Public API
+includes classes :class:`SPADPoissonReconstructor`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 from scipy.optimize import minimize
 from .base_reconstructor import BaseReconstructor
@@ -5,33 +15,66 @@ from .base_reconstructor import BaseReconstructor
 
 class SPADPoissonReconstructor(BaseReconstructor):
     """
-    Poisson-likelihood + isotropic TV reconstruction for SPAD photon count data.
-
-    Solves:  min_{x >= 0}  KL(y || Ax) + alpha * TV(x)
-
-    Use this instead of TVReconstructor when y contains integer photon counts
-    (Poisson-distributed TCSPC measurements). The Poisson negative log-likelihood
-    replaces the Gaussian L2 fidelity term used in TVReconstructor.
+    Reconstruct SPAD photon-count data with a Poisson likelihood and isotropic TV
+    penalty. The solver is designed for low-count single-pixel acquisitions.
 
     Parameters
     ----------
-    h, w         : spatial resolution (image = H x W)
-    t, lam       : number of TCSPC time bins and wavelength channels
-    differential : True  — DMD differential patterns [P_pos; P_neg] in {0,1}
-                   False — direct patterns in [0,1] (Fourier or single-pass)
-    alpha        : TV regularization weight
-    maxiter      : max L-BFGS-B iterations per (t, lambda) slice
-    n_workers    : reserved for future parallel execution
+    h : np.ndarray
+        Image height or spatial dimension used by reconstruction solvers.
+    w : np.ndarray
+        Image width or spatial dimension used by reconstruction solvers.
+    t : np.ndarray
+        Temporal sample axis used by reconstruction solvers.
+    lam : np.ndarray
+        Wavelength or spectral axis used by reconstruction solvers.
+    differential : bool
+        Whether the sensing basis uses differential pattern pairs.
+    alpha : float
+        Regularization strength or statistical threshold value, depending on context.
+    maxiter : int
+        Maximum number of optimization iterations.
+    n_workers : int | None
+        Number of worker processes or threads used by parallel solvers.
     """
 
     def __init__(
-        self, h, w, t, lam, differential=True, alpha=0.1, maxiter=500, n_workers=None
-    ):
+        self,
+        h: np.ndarray,
+        w: np.ndarray,
+        t: np.ndarray,
+        lam: np.ndarray,
+        differential: bool = True,
+        alpha: float = 0.1,
+        maxiter: int = 500,
+        n_workers: int | None = None,
+    ) -> None:
         super().__init__(h, w, t, lam, differential, n_workers)
         self.alpha = alpha
         self.maxiter = maxiter
 
-    def _objective_and_grad(self, x_flat, A, y, alpha):
+    def _objective_and_grad(
+        self, x_flat: np.ndarray, A: np.ndarray, y: np.ndarray, alpha: float
+    ) -> tuple[Any, ...]:
+        """
+        Handle objective and grad.
+
+        Parameters
+        ----------
+        x_flat : np.ndarray
+            Input value.
+        A : np.ndarray
+            Input value.
+        y : np.ndarray
+            Input value.
+        alpha : float
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         eps = 1e-10
         Ax = np.dot(A, x_flat)
         Ax_safe = np.maximum(Ax, eps)
@@ -60,7 +103,22 @@ class SPADPoissonReconstructor(BaseReconstructor):
 
         return poisson_loss + alpha * tv, grad_poisson + alpha * grad_tv.flatten()
 
-    def reconstruct_slice(self, y_slice, A):
+    def reconstruct_slice(self, y_slice: np.ndarray, A: np.ndarray) -> Any:
+        """
+        Handle reconstruct slice.
+
+        Parameters
+        ----------
+        y_slice : np.ndarray
+            Input value.
+        A : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         A = A.astype(np.float64)
         y = y_slice.astype(np.float64)
         M = A.shape[0]

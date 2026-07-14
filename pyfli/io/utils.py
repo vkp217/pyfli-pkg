@@ -1,3 +1,13 @@
+"""
+Provide ROI mask loading, hot-pixel detection, and assorted data I/O helpers.
+
+This module belongs to :mod:`pyfli.io` and is part of PyFLI detector importers, file
+readers, saving helpers, and processed-data loaders. Public API includes classes
+:class:`DataIOUtils`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 
 # dataIO_utils.py
@@ -8,10 +18,28 @@ import json
 
 
 class DataIOUtils:
-    def __init__(self):
+    """
+    Collect utility methods for ROI loading, mask handling, and hot-pixel detection.
+    These helpers support detector import and preprocessing workflows.
+    """
+
+    def __init__(self) -> None:
         pass
 
-    def load_phasors_hdf5(self, file_path):
+    def load_phasors_hdf5(self, file_path: str) -> tuple[Any, ...]:
+        """
+        Load phasors hdf5.
+
+        Parameters
+        ----------
+        file_path : str
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         with h5py.File(file_path, "r") as f:
             Gc = f["Gc"][:]
             Sc = f["Sc"][:]
@@ -26,7 +54,26 @@ class DataIOUtils:
                 raise ValueError("Critical Error: Gc and Sc dimensions do not match.")
         return Gc, Sc, tau
 
-    def roiNloader(self, map_array, file_path, visualize=True):
+    def roiNloader(
+        self, map_array: np.ndarray, file_path: str, visualize: bool = True
+    ) -> np.ndarray:
+        """
+        Handle roi nloader.
+
+        Parameters
+        ----------
+        map_array : np.ndarray
+            Input value.
+        file_path : str
+            Input value.
+        visualize : bool
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         if map_array.ndim == 3:
             H, W, _ = map_array.shape
         elif map_array.ndim == 2:
@@ -51,14 +98,29 @@ class DataIOUtils:
                 continue
         return mask
 
-    def detect_hot_pixels(self, bg_path, threshold_sigma=5.0, save_path=None):
+    def detect_hot_pixels(
+        self, bg_path: str, threshold_sigma: float = 5.0, save_path: str | None = None
+    ) -> Any:
         """
         Finding hot pixels from an SS3 background HDF5 file or folder
             total_counts > median + threshold_sigma × 1.4826 × MAD
         equivalent threshold_sigma=5 ≈ 5σ rejection for Gaussian data.
         """
 
-        def _read_raw(fname):
+        def _read_raw(fname: str) -> np.ndarray:
+            """
+            Read raw.
+
+            Parameters
+            ----------
+            fname : str
+                Input value.
+
+            Returns
+            -------
+            np.ndarray
+                Return value.
+            """
             with h5py.File(fname, "r") as f:
                 gate_grp = f.get("Gate Images")
                 if gate_grp is None:

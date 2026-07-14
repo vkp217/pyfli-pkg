@@ -1,13 +1,48 @@
+"""
+Extract ROI-specific datasets from global fitted result dictionaries.
+
+This module belongs to :mod:`pyfli.data_cc` and is part of PyFLI array preprocessing
+helpers for normalization, masking, ROI extraction, and IRF alignment. Public API
+includes classes :class:`ROIOperations`.
+"""
+
+from __future__ import annotations
 import numpy as np
 
 
 class ROIOperations:
-    def __init__(self):
+    """
+    Extract ROI-specific fit dictionaries from global fitted datasets. It uses integer
+    ROI masks to separate parameter maps and decay arrays into per-region result
+    collections.
+    """
+
+    def __init__(self) -> None:
         pass
 
     def extract_roi_datasets(
-        self, global_dataset, multi_roi_mask, model_type="bi-exponential"
-    ):
+        self,
+        global_dataset: np.ndarray,
+        multi_roi_mask: np.ndarray,
+        model_type: str = "bi-exponential",
+    ) -> np.ndarray:
+        """
+        Handle extract roi datasets.
+
+        Parameters
+        ----------
+        global_dataset : np.ndarray
+            Input value.
+        multi_roi_mask : np.ndarray
+            Input value.
+        model_type : str
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         roi_datasets = {}
         H, W = multi_roi_mask.shape
 

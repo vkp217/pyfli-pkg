@@ -15,6 +15,7 @@ References
 """
 
 from __future__ import annotations
+from typing import Any
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
@@ -164,8 +165,35 @@ def phase_lifetime_gated(
     s = np.asarray(s, dtype=float)
     phi_meas = np.arctan2(s, g)
 
-    def solve_one(phi):
-        def residual(tau):
+    def solve_one(phi: np.ndarray) -> Any:
+        """
+        Handle solve one.
+
+        Parameters
+        ----------
+        phi : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
+
+        def residual(tau: np.ndarray) -> Any:
+            """
+            Handle residual.
+
+            Parameters
+            ----------
+            tau : np.ndarray
+                Input value.
+
+            Returns
+            -------
+            Any
+                Return value.
+            """
             gg, ss = phasor_gated_single(tau, cfg)
             return np.arctan2(ss, gg) - phi
 

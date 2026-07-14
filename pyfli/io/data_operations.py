@@ -1,3 +1,13 @@
+"""
+Load raw decay, IRF, background, mask, and hot-pixel data from common FLIM sources.
+
+This module belongs to :mod:`pyfli.io` and is part of PyFLI detector importers, file
+readers, saving helpers, and processed-data loaders. Public API includes classes
+:class:`DataOperations`.
+"""
+
+from __future__ import annotations
+from typing import Any
 from pyfli import logging
 import os
 import numpy as np
@@ -9,12 +19,33 @@ from .data_ops_static import StaticDataOps as ds
 
 
 class DataOperations:
+    """
+    Load primary data, IRF, background, masks, and hot-pixel maps from common FLIM file
+    formats. It provides a path-centric interface for raw loading, correction, and
+    packaging into PyFLI-ready structures.
+
+    Parameters
+    ----------
+    data_path : str | None
+        Path to the primary decay data source.
+    irf_path : str | None
+        Path to the instrument response data source.
+    bg_path : str | None
+        Path to the background measurement used for subtraction or correction.
+    mask_path : str | None
+        Path to a binary or labeled mask used to select valid pixels.
+    hp_path : str | None
+        Path to a hot-pixel mask or image used for interpolation.
+    """
+
     def __init__(
-        self, data_path=None, irf_path=None, bg_path=None, mask_path=None, hp_path=None
-    ):
-        """
-        Initializes the DataOperations class with paths to relevant data files.
-        """
+        self,
+        data_path: str | None = None,
+        irf_path: str | None = None,
+        bg_path: str | None = None,
+        mask_path: str | None = None,
+        hp_path: str | None = None,
+    ) -> None:
         self.data_path = data_path
         self.irf_path = irf_path
         self.bg_path = bg_path
@@ -34,7 +65,26 @@ class DataOperations:
 
     # --- PUBLIC API ---
 
-    def load_data(self, sub_bg=True, pile_up=False, hot_pixel=False):
+    def load_data(
+        self, sub_bg: bool = True, pile_up: bool = False, hot_pixel: bool = False
+    ) -> Any:
+        """
+        Load data.
+
+        Parameters
+        ----------
+        sub_bg : bool
+            Input value.
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         logging.info(f"Initiating DATA load from: {self.data_path}")
         return self._general_loader(
             self.data_path,
@@ -44,7 +94,7 @@ class DataOperations:
             label="DATA",
         )
 
-    def load_background(self, pile_up=False, hot_pixel=False):
+    def load_background(self, pile_up: bool = False, hot_pixel: bool = False) -> Any:
         """Loads background. If folder, returns the mean average of all files."""
         if self.bg_path and os.path.isdir(self.bg_path):
             logging.info(f"Background FOLDER detected: {self.bg_path}")
@@ -70,7 +120,26 @@ class DataOperations:
         logging.info("No background path provided.")
         return None
 
-    def load_irf(self, sub_bg=False, pile_up=False, hot_pixel=False):
+    def load_irf(
+        self, sub_bg: bool = False, pile_up: bool = False, hot_pixel: bool = False
+    ) -> Any:
+        """
+        Load irf.
+
+        Parameters
+        ----------
+        sub_bg : bool
+            Input value.
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         logging.info(f"Initiating IRF load from: {self.irf_path}")
         return self._general_loader(
             self.irf_path,
@@ -80,7 +149,26 @@ class DataOperations:
             label="IRF",
         )
 
-    def load_all_parallel(self, sub_bg=True, pile_up=False, hot_pixel=False):
+    def load_all_parallel(
+        self, sub_bg: bool = True, pile_up: bool = False, hot_pixel: bool = False
+    ) -> tuple[Any, ...]:
+        """
+        Load all parallel.
+
+        Parameters
+        ----------
+        sub_bg : bool
+            Input value.
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         logging.info("Starting synchronized parallel loading for DATA, IRF, and BG...")
         with ThreadPoolExecutor(max_workers=3) as executor:
             data_future = executor.submit(
@@ -97,13 +185,34 @@ class DataOperations:
 
     def make_dataset(
         self,
-        name="Experiment_1",
-        source="ICCD",
-        sub_bg=True,
-        pile_up=False,
-        hot_pixel=False,
-    ):
+        name: str = "Experiment_1",
+        source: str = "ICCD",
+        sub_bg: bool = True,
+        pile_up: bool = False,
+        hot_pixel: bool = False,
+    ) -> dict[Any, Any]:
         # Fix 2: Check for dimension consistency
+        """
+        Create dataset.
+
+        Parameters
+        ----------
+        name : str
+            Input value.
+        source : str
+            Input value.
+        sub_bg : bool
+            Input value.
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         if all([self.data_path, self.irf_path, self.bg_path]):
             data, irf, background = self.load_all_parallel(
                 sub_bg=sub_bg, pile_up=pile_up, hot_pixel=hot_pixel
@@ -156,7 +265,15 @@ class DataOperations:
             },
         }
 
-    def load_mask(self):
+    def load_mask(self) -> Any:
+        """
+        Load mask.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if not self.mask_path:
             return None
         logging.info(f"Loading mask from: {self.mask_path}")
@@ -170,8 +287,34 @@ class DataOperations:
     # --- PRIVATE INTERNAL LOADERS ---
 
     def _general_loader(
-        self, path, sub_bg=True, pile_up=False, hot_pixel=False, label="Data"
-    ):
+        self,
+        path: str,
+        sub_bg: bool = True,
+        pile_up: bool = False,
+        hot_pixel: bool = False,
+        label: str = "Data",
+    ) -> Any:
+        """
+        Handle general loader.
+
+        Parameters
+        ----------
+        path : str
+            Input value.
+        sub_bg : bool
+            Input value.
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+        label : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if not path or not os.path.exists(path):
             abs_path = os.path.abspath(path) if path else "(None)"
             logging.error(f"[ERROR] {label} path not found: {abs_path}")
@@ -183,8 +326,31 @@ class DataOperations:
             return self._load_from_folder(path, sub_bg, pile_up, hot_pixel, label=label)
 
     def _load_single_file(
-        self, file_path, pile_up=False, hot_pixel=False, active_hp=None
-    ):
+        self,
+        file_path: str,
+        pile_up: bool = False,
+        hot_pixel: bool = False,
+        active_hp: np.ndarray | None = None,
+    ) -> Any:
+        """
+        Load single file.
+
+        Parameters
+        ----------
+        file_path : str
+            Input value.
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+        active_hp : np.ndarray | None
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         ext = os.path.splitext(file_path)[-1].lower()
         active_hp = active_hp or self.hp_path
 
@@ -221,16 +387,42 @@ class DataOperations:
 
     def _load_from_folder(
         self,
-        folder_path,
-        sub_bg=True,
-        pile_up=False,
-        hot_pixel=False,
-        active_hp=None,
-        mode="sum",
-        is_background=False,
-        label="Data",
-    ):
+        folder_path: str,
+        sub_bg: bool = True,
+        pile_up: bool = False,
+        hot_pixel: bool = False,
+        active_hp: np.ndarray | None = None,
+        mode: str = "sum",
+        is_background: bool = False,
+        label: str = "Data",
+    ) -> Any:
+        """
+        Load from folder.
 
+        Parameters
+        ----------
+        folder_path : str
+            Input value.
+        sub_bg : bool
+            Input value.
+        pile_up : bool
+            Input value.
+        hot_pixel : bool
+            Input value.
+        active_hp : np.ndarray | None
+            Input value.
+        mode : str
+            Input value.
+        is_background : bool
+            Input value.
+        label : str
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         valid_exts = (".tif", ".tiff", ".hdf5", ".h5")
         files = sorted(
             [f for f in os.listdir(folder_path) if f.lower().endswith(valid_exts)]
@@ -293,7 +485,20 @@ class DataOperations:
 
         return stack
 
-    def _load_single_file_parallel(self, args):
+    def _load_single_file_parallel(self, args: Any) -> tuple[Any, ...]:
+        """
+        Load single file parallel.
+
+        Parameters
+        ----------
+        args : Any
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         idx, path, pile_up, hot_pixel, active_hp = args
         res_data = self._load_single_file(path, pile_up, hot_pixel, active_hp)
         return idx, res_data

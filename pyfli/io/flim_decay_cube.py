@@ -7,10 +7,10 @@ compression scheme (US20230344447A1 / US12278654B2).
 
 Dimensions explained
 --------------------
-M  – mosaic / tile index  (number of tiles or time-lapse frames)
-Y  – image height (pixels)
-X  – image width  (pixels)
-H  – TCSPC histogram bin index  (number_bins_in_period ≈ laser-period / clock-period)
+M  - mosaic / tile index  (number of tiles or time-lapse frames)
+Y  - image height (pixels)
+X  - image width  (pixels)
+H  - TCSPC histogram bin index  (number_bins_in_period ≈ laser-period / clock-period)
 
 The resulting decay cube has shape (M, Y, X, H) with dtype uint16.
 Each voxel [m, y, x, h] counts the photons that arrived in bin h of the
@@ -47,17 +47,10 @@ Usage
 
     # Plot a single frame / pixel
     plot_decay_cube(cube, flim_img)
-
-Notes
------
-* If you do NOT have the raw photon-tag data (i.e. the LifFlimImage memory
-  block is unavailable or access is blocked), use `read_derived_images()`
-  instead – it reads the pre-computed FLIM maps (intensity, decay time, etc.)
-  that Leica already stores as ordinary LifImage objects in the same file.
-* Tested against liffile >= 2026.4.11.
 """
 
 from __future__ import annotations
+from typing import Any
 from pyfli import logging
 
 import struct
@@ -158,36 +151,21 @@ def build_decay_cube(
     dtype: np.dtype = np.uint16,
 ) -> np.ndarray:
     """
-    Decode a LMSRAW PulseVersion2 photon-tag stream into a (M, Y, X, H) decay cube.
-
-    Confirmed record layout (16-bit uint16 LE, uncompressed)
-    ---------------------------------------------------------
-    PHOTON record   — low_byte bit7 == 0  (low_byte < 0x80)
-        bits[15:8]  arrival-time TCSPC bin  (0 .. H-1)
-        bits[6:4]   detector channel        (3 bits)
-        bits[3:0]   spare
-
-    PIXEL CLOCK     — word == 0x54A0
-        Each occurrence advances the current pixel index by 1.
-        One pixel-clock per scanner pixel dwell period.
-
-    SYNC A          — low_byte >= 0x80, word != 0x54A0, word != exact marker
-        Laser-sync record that accompanies each pixel clock. Ignored.
-
-    MARKER (exact)  — low_byte == 0xA0, high_byte in {1, 2, 4}
-        0x01A0  LineStartMarker  — new scan line, reset pixel counter
-        0x02A0  LineEndMarker    — end of scan line, advance line index
-        0x04A0  FrameMarker      — new frame (when FrameRepetitionsMarked=True)
+    Build decay cube.
 
     Parameters
     ----------
-    flim_image : LifFlimImage
-    channel    : detector channel index (default 0)
-    dtype      : accumulation dtype (use uint32 for very bright samples)
+    flim_image : 'lf.LifFlimImage'
+        Input value.
+    channel : int
+        Input value.
+    dtype : np.dtype
+        Input value.
 
     Returns
     -------
-    cube : np.ndarray, shape (M, Y, X, H)
+    np.ndarray
+        Return value.
     """
     sizes = flim_image.sizes
     n_frames = sizes.get("M", 1)
@@ -374,7 +352,7 @@ def plot_decay_cube(
     frame: int = 0,
     pixel_yx: tuple[int, int] | None = None,
     save_path: str | None = None,
-):
+) -> np.ndarray:
     """
     Visualise the decay cube with four panels:
       1. Intensity image  (sum over H axis)
@@ -483,7 +461,7 @@ def plot_derived_images(
     series_name: str = "",
     frame: int = 0,
     save_path: str | None = None,
-):
+) -> np.ndarray:
     """
     Display a grid of all pre-computed FLIM parameter maps.
 
@@ -571,6 +549,19 @@ def load_flim_data(
         # series_name may be supplied as either the full path ('T23_.../FLIM')
         # or just the base series name ('T23_...'), so we normalise both sides.
         def _flim_path_matches(img: "lf.LifImageABC") -> bool:
+            """
+            Handle flim path matches.
+
+            Parameters
+            ----------
+            img : 'lf.LifImageABC'
+                Input value.
+
+            Returns
+            -------
+            bool
+                Return value.
+            """
             if series_name is None:
                 return True
             # Strip trailing /FLIM from the query so both forms work
@@ -651,27 +642,29 @@ def plot_xyt(
     cmap_intensity: str = "hot",
     cmap_lifetime: str = "RdYlGn_r",
     save_path: str | None = None,
-):
+) -> np.ndarray:
     """
-    Interactive four-panel figure for a (Y, X, H) decay cube.
-
-    Panels
-    ------
-    1. Intensity image          — total photon count per pixel
-    2. Mean arrival-time image  — intensity-weighted mean TCSPC bin (ns)
-    3. Summed decay curve       — log-scale, all pixels summed
-    4. Single-pixel decay curve — bar chart for selected pixel
-
-    Click anywhere on panels 1 or 2 to update the single-pixel decay.
+    Plot xyt.
 
     Parameters
     ----------
-    xyt               : np.ndarray (Y, X, H)
-    tcspc_resolution_s: bin width in seconds (default 97 ps)
-    pixel_yx          : initial (y, x) selection; defaults to image centre
-    cmap_intensity    : matplotlib colormap name for intensity image
-    cmap_lifetime     : matplotlib colormap name for mean-arrival-time image
-    save_path         : if given, save PNG instead of showing interactively
+    xyt : np.ndarray
+        Input value.
+    tcspc_resolution_s : float
+        Input value.
+    pixel_yx : tuple[int, int] | None
+        Input value.
+    cmap_intensity : str
+        Input value.
+    cmap_lifetime : str
+        Input value.
+    save_path : str | None
+        Input value.
+
+    Returns
+    -------
+    np.ndarray
+        Return value.
     """
     import matplotlib.pyplot as plt
     import matplotlib.gridspec as gridspec
@@ -738,6 +731,21 @@ def plot_xyt(
     ax_pix.set_xlim(t_ns[0], t_ns[-1])
 
     def _update_pixel(py: int, px: int) -> None:
+        """
+        Update pixel.
+
+        Parameters
+        ----------
+        py : int
+            Input value.
+        px : int
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         sel[0], sel[1] = int(py), int(px)
         decay = xyt[sel[0], sel[1]]
         for bar, h in zip(bars, decay):
@@ -748,7 +756,20 @@ def plot_xyt(
             m.set_data([sel[1]], [sel[0]])
         fig.canvas.draw_idle()
 
-    def _on_click(event):
+    def _on_click(event: Any) -> None:
+        """
+        Handle on click.
+
+        Parameters
+        ----------
+        event : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if event.inaxes in (ax_int, ax_tau) and event.xdata is not None:
             _update_pixel(
                 int(np.clip(event.ydata, 0, n_y - 1)),
@@ -793,27 +814,29 @@ def plot_xyt(  # noqa: F811
     cmap_intensity: str = "hot",
     cmap_lifetime: str = "RdYlGn_r",
     save_path: str | None = None,
-):
+) -> None:
     """
-    Interactive four-panel figure for a (Y, X, H) decay cube.
-
-    Panels
-    ------
-    1. Intensity image          — total photon count per pixel
-    2. Mean arrival-time image  — intensity-weighted mean TCSPC bin (ns)
-    3. Summed decay curve       — log-scale, all pixels summed
-    4. Single-pixel decay curve — bar chart for selected pixel
-
-    Click anywhere on panels 1 or 2 to update the single-pixel decay.
+    Plot xyt.
 
     Parameters
     ----------
-    xyt               : np.ndarray (Y, X, H)
-    tcspc_resolution_s: bin width in seconds (default 97 ps)
-    pixel_yx          : initial (y, x) selection; defaults to image centre
-    cmap_intensity    : matplotlib colormap name for intensity image
-    cmap_lifetime     : matplotlib colormap name for mean-arrival-time image
-    save_path         : if given, save PNG instead of showing interactively
+    xyt : np.ndarray
+        Input value.
+    tcspc_resolution_s : float
+        Input value.
+    pixel_yx : tuple[int, int] | None
+        Input value.
+    cmap_intensity : str
+        Input value.
+    cmap_lifetime : str
+        Input value.
+    save_path : str | None
+        Input value.
+
+    Returns
+    -------
+    None
+        Return value.
     """
     import matplotlib.pyplot as plt
     import matplotlib.gridspec as gridspec
@@ -880,6 +903,21 @@ def plot_xyt(  # noqa: F811
     ax_pix.set_xlim(t_ns[0], t_ns[-1])
 
     def _update_pixel(py: int, px: int) -> None:
+        """
+        Update pixel.
+
+        Parameters
+        ----------
+        py : int
+            Input value.
+        px : int
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         sel[0], sel[1] = int(py), int(px)
         decay = xyt[sel[0], sel[1]]
         for bar, h in zip(bars, decay):
@@ -890,7 +928,20 @@ def plot_xyt(  # noqa: F811
             m.set_data([sel[1]], [sel[0]])
         fig.canvas.draw_idle()
 
-    def _on_click(event):
+    def _on_click(event: Any) -> None:
+        """
+        Handle on click.
+
+        Parameters
+        ----------
+        event : Any
+            Input value.
+
+        Returns
+        -------
+        None
+            Return value.
+        """
         if event.inaxes in (ax_int, ax_tau) and event.xdata is not None:
             _update_pixel(
                 int(np.clip(event.ydata, 0, n_y - 1)),

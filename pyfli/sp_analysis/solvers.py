@@ -1,3 +1,13 @@
+"""
+Implement linear and total-variation reconstructors for four-dimensional SPAD data.
+
+This module belongs to :mod:`pyfli.sp_analysis` and is part of PyFLI single-pixel camera
+basis generation, acquisition simulation, and reconstruction solvers. Public API
+includes classes :class:`LinearReconstructor` and :class:`TVReconstructor`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 from scipy.optimize import minimize
 from .base_reconstructor import BaseReconstructor
@@ -5,15 +15,52 @@ from .base_reconstructor import BaseReconstructor
 
 class LinearReconstructor(BaseReconstructor):
     """
-    Back-projection (ghost imaging) reconstruction for 4D SPAD data.
-    Mirrors simulator's reconstruct_linear() extended to (T, Lambda) slices.
-    Fast but lower quality; good for quick preview or warm-start.
+    Perform back-projection reconstruction for four-dimensional SPAD measurements. It is
+    the lightweight baseline solver for single-pixel camera data.
+
+    Parameters
+    ----------
+    h : np.ndarray
+        Image height or spatial dimension used by reconstruction solvers.
+    w : np.ndarray
+        Image width or spatial dimension used by reconstruction solvers.
+    t : np.ndarray
+        Temporal sample axis used by reconstruction solvers.
+    lam : np.ndarray
+        Wavelength or spectral axis used by reconstruction solvers.
+    differential : bool
+        Whether the sensing basis uses differential pattern pairs.
+    n_workers : int | None
+        Number of worker processes or threads used by parallel solvers.
     """
 
-    def __init__(self, h, w, t, lam, differential=True, n_workers=None):
+    def __init__(
+        self,
+        h: np.ndarray,
+        w: np.ndarray,
+        t: np.ndarray,
+        lam: np.ndarray,
+        differential: bool = True,
+        n_workers: int | None = None,
+    ) -> None:
         super().__init__(h, w, t, lam, differential, n_workers)
 
-    def reconstruct_slice(self, y_slice, A):
+    def reconstruct_slice(self, y_slice: np.ndarray, A: np.ndarray) -> Any:
+        """
+        Handle reconstruct slice.
+
+        Parameters
+        ----------
+        y_slice : np.ndarray
+            Input value.
+        A : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         A = A.astype(np.float64)
         y = y_slice.astype(np.float64)
         M = A.shape[0]
@@ -22,20 +69,68 @@ class LinearReconstructor(BaseReconstructor):
 
 class TVReconstructor(BaseReconstructor):
     """
-    Isotropic TV-minimization for 4D SPAD data (Gaussian noise model).
-    Mirrors simulator's solve_tv() extended to (T, Lambda) slices.
-    Uses L-BFGS-B with analytic gradient for fast convergence.
+    Solve four-dimensional SPAD reconstruction with isotropic total-variation
+    regularization. It is intended for Gaussian-noise measurements where spatial
+    smoothness is useful.
+
+    Parameters
+    ----------
+    h : np.ndarray
+        Image height or spatial dimension used by reconstruction solvers.
+    w : np.ndarray
+        Image width or spatial dimension used by reconstruction solvers.
+    t : np.ndarray
+        Temporal sample axis used by reconstruction solvers.
+    lam : np.ndarray
+        Wavelength or spectral axis used by reconstruction solvers.
+    differential : bool
+        Whether the sensing basis uses differential pattern pairs.
+    alpha : float
+        Regularization strength or statistical threshold value, depending on context.
+    maxiter : int
+        Maximum number of optimization iterations.
+    n_workers : int | None
+        Number of worker processes or threads used by parallel solvers.
     """
 
     def __init__(
-        self, h, w, t, lam, differential=True, alpha=1.0, maxiter=500, n_workers=None
-    ):
+        self,
+        h: np.ndarray,
+        w: np.ndarray,
+        t: np.ndarray,
+        lam: np.ndarray,
+        differential: bool = True,
+        alpha: float = 1.0,
+        maxiter: int = 500,
+        n_workers: int | None = None,
+    ) -> None:
         super().__init__(h, w, t, lam, differential, n_workers)
         self.alpha = alpha
         self.maxiter = maxiter
 
-    def _objective_and_grad(self, x_flat, A, y, alpha):
+    def _objective_and_grad(
+        self, x_flat: np.ndarray, A: np.ndarray, y: np.ndarray, alpha: float
+    ) -> tuple[Any, ...]:
         # Data fidelity: 0.5 * ||Ax - y||^2
+        """
+        Handle objective and grad.
+
+        Parameters
+        ----------
+        x_flat : np.ndarray
+            Input value.
+        A : np.ndarray
+            Input value.
+        y : np.ndarray
+            Input value.
+        alpha : float
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         Ax_minus_y = np.dot(A, x_flat) - y
         fidelity = 0.5 * np.sum(Ax_minus_y**2)
         grad_fidelity = np.dot(A.T, Ax_minus_y)
@@ -61,7 +156,22 @@ class TVReconstructor(BaseReconstructor):
 
         return fidelity + alpha * tv, grad_fidelity + alpha * grad_tv.flatten()
 
-    def reconstruct_slice(self, y_slice, A):
+    def reconstruct_slice(self, y_slice: np.ndarray, A: np.ndarray) -> Any:
+        """
+        Handle reconstruct slice.
+
+        Parameters
+        ----------
+        y_slice : np.ndarray
+            Input value.
+        A : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         A = A.astype(np.float64)
         y = y_slice.astype(np.float64)
         M = A.shape[0]

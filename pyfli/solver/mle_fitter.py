@@ -1,4 +1,14 @@
 #  solver/mle_fitter.py
+"""
+Extend the base fitter with Poisson and chi-square maximum-likelihood estimators.
+
+This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
+likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+classes :class:`MLEFLIFitter`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import f, chi2
@@ -8,7 +18,13 @@ from .shared_metrics import enforce_tau_ordering, compute_fli_stats
 
 
 class MLEFLIFitter(BaseFLIFitter):
-    def poisson_log_likelihood(self, params, model_type):
+    """
+    Extend the base FLIM fitter with Poisson, Pearson, and Neyman objective functions.
+    It supports MLE-style fitting, uncertainty extraction from optimizer curvature, and
+    likelihood-based model comparison.
+    """
+
+    def poisson_log_likelihood(self, params: Any, model_type: str) -> Any:
         """Standard Poisson MLE (Deviance/C-Statistic)."""
         model = self.model_fit(self.t, params, model_type=model_type)[self.fit_indices]
         if not np.all(np.isfinite(model)):
@@ -20,14 +36,14 @@ class MLEFLIFitter(BaseFLIFitter):
         )
         return val if np.isfinite(val) else np.inf
 
-    def pearson_chi_square(self, params, model_type):
+    def pearson_chi_square(self, params: Any, model_type: str) -> np.ndarray:
         """Pearson's Chi-square: Weighted by the MODEL [1/y_model]."""
         model = self.model_fit(self.t, params, model_type=model_type)[self.fit_indices]
         data = self.decay[self.fit_indices]
         model = np.clip(model, 1e-9, None)
         return np.sum((data - model) ** 2 / model)
 
-    def neyman_chi_square(self, params, model_type):
+    def neyman_chi_square(self, params: Any, model_type: str) -> np.ndarray:
         """Neyman's Chi-square: Weighted by the DATA [1/y_data]."""
         model = self.model_fit(self.t, params, model_type=model_type)[self.fit_indices]
         data = self.decay[self.fit_indices]
@@ -36,12 +52,12 @@ class MLEFLIFitter(BaseFLIFitter):
 
     def fit_with_estimator(
         self,
-        estimator_type="poisson",
-        p0=None,
-        bounds=None,
-        model_type="bi-exponential",
-        **kwargs,
-    ):
+        estimator_type: str = "poisson",
+        p0: Any | None = None,
+        bounds: np.ndarray | None = None,
+        model_type: str = "bi-exponential",
+        **kwargs: Any,
+    ) -> Any:
         """
         Main interface for MLE/Chi-square fitting.
         Fully compatible with BaseFLIFitter registry and offset-based parameter resolving.
@@ -94,14 +110,14 @@ class MLEFLIFitter(BaseFLIFitter):
 
     def _post_process(
         self,
-        popt,
-        jac,
-        status,
-        model_type,
-        pcov=None,
-        manual_stat=None,
-        manual_perr=None,
-    ):
+        popt: np.ndarray,
+        jac: Any,
+        status: np.ndarray,
+        model_type: str,
+        pcov: np.ndarray | None = None,
+        manual_stat: np.ndarray | None = None,
+        manual_perr: np.ndarray | None = None,
+    ) -> tuple[Any, ...]:
         """
         Compatible post-processor that enforces tau1 <= tau2 and handles MLE-specific statistics.
         """
@@ -119,7 +135,9 @@ class MLEFLIFitter(BaseFLIFitter):
 
         return popt, perr, r_sq, chi_sq, red_chi_sq, ssr, (1 if status > 0 else 0)
 
-    def compare_models(self, alpha=0.05, estimator="poisson"):
+    def compare_models(
+        self, alpha: float = 0.05, estimator: str = "poisson"
+    ) -> tuple[Any, ...]:
         """
         Statistical model selection.
         - Poisson: Uses Likelihood Ratio Test (LRT) on Deviance.

@@ -10,6 +10,7 @@ variants arising from gating / binning / truncation.
 """
 
 from __future__ import annotations
+from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
@@ -96,7 +97,7 @@ def build_locus(
 
 def build_loci(
     cfgs: list[AcquisitionConfig],
-    **kwargs,
+    **kwargs: Any,
 ) -> list[tuple[NDArray, NDArray, NDArray]]:
     """
     Compute SEPL curves for a list of configs in one call.

@@ -1,4 +1,14 @@
 # simulator/simulator_engine
+"""
+Generate mono- and bi-exponential model parameters and simulated TCSPC observations.
+
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
+generation, hardware noise modeling, calibration, and validation tools. Public API
+includes classes :class:`FLIModelSimulator`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 
 from .distributions import ParameterSampler
@@ -7,23 +17,63 @@ from .sim_helper import irf_picker
 
 
 class FLIModelSimulator:
+    """
+    Sample mono- and bi-exponential model parameters and create analytical or TCSPC
+    observations. The class is useful for controlled model-generation experiments
+    independent of image geometry.
+
+    Parameters
+    ----------
+    irf_full : np.ndarray
+        Configuration value used by the class.
+    tau2 : tuple[int, float]
+        Configuration value used by the class.
+    tau2_dist : str
+        Configuration value used by the class.
+    tau2_beta_range : tuple[float, ...]
+        Configuration value used by the class.
+    efficiency : tuple[int, ...]
+        Configuration value used by the class.
+    A1_fraction : tuple[int, ...]
+        Configuration value used by the class.
+    photo_count : tuple[float, int]
+        Configuration value used by the class.
+    mono_fraction : float
+        Configuration value used by the class.
+    bit : int
+        Configuration value used by the class.
+    n_cycles : int
+        Number of items used by this workflow.
+    dcr : float
+        Configuration value used by the class.
+    laser_feq : int
+        Configuration value used by the class.
+    seed : int | None
+        Configuration value used by the class.
+    **kwargs : Any
+        Additional keyword arguments forwarded to the underlying implementation.
+    """
+
     def __init__(
         self,
-        irf_full,
-        tau2=(1, 0.5),
-        tau2_dist="normal",  # 'normal' -> truncated_normal | 'beta' -> sample_beta
-        tau2_beta_range=(4.8, 0.2),  # (scale, offset), only used when tau2_dist='beta'
-        efficiency=(5, 5),
-        A1_fraction=(5, 5),
-        photo_count=(1.2, 5),
-        mono_fraction=0.2,
-        bit=8,
-        n_cycles=800_000,
-        dcr=0.05,
-        laser_feq=80,
-        seed=None,
-        **kwargs,
-    ):
+        irf_full: np.ndarray,
+        tau2: tuple[int, float] = (1, 0.5),
+        tau2_dist: str = "normal",  # 'normal' -> truncated_normal | 'beta' -> sample_beta
+        tau2_beta_range: tuple[float, ...] = (
+            4.8,
+            0.2,
+        ),  # (scale, offset), only used when tau2_dist='beta'
+        efficiency: tuple[int, ...] = (5, 5),
+        A1_fraction: tuple[int, ...] = (5, 5),
+        photo_count: tuple[float, int] = (1.2, 5),
+        mono_fraction: float = 0.2,
+        bit: int = 8,
+        n_cycles: int = 800_000,
+        dcr: float = 0.05,
+        laser_feq: int = 80,
+        seed: int | None = None,
+        **kwargs: Any,
+    ) -> None:
 
         irf = irf_picker(irf_full)
         # Timing and Normalization
@@ -54,7 +104,7 @@ class FLIModelSimulator:
             **kwargs,
         }
 
-    def _sample_tau2(self):
+    def _sample_tau2(self) -> Any:
         """Draws tau2 from either a truncated normal or a beta prior, per tau2_dist."""
         if self.params_cfg["tau2_dist"] == "beta":
             scale, offset = self.params_cfg["tau2_beta_range"]
@@ -66,12 +116,12 @@ class FLIModelSimulator:
         # Guard against a zero (or negative) lifetime, which would blow up any 1/tau2 term downstream
         return max(t2, 1e-3)
 
-    def sample_mono_params(self):
+    def sample_mono_params(self) -> dict[Any, Any]:
         """Samples the lifetime parameter for a single pixel (pure single-exponential)."""
         t2 = self._sample_tau2()
         return {"mono": True, "tau": t2}
 
-    def sample_bi_params(self):
+    def sample_bi_params(self) -> dict[Any, Any]:
         """Samples lifetime and fraction parameters for a single pixel."""
         t2 = self._sample_tau2()
 
@@ -98,12 +148,33 @@ class FLIModelSimulator:
             "A2": A2,
         }
 
-    def sample_params(self):
+    def sample_params(self) -> Any:
+        """
+        Sample params.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if self.rng.random() < self.params_cfg["mono"]:
             return self.sample_mono_params()
         return self.sample_bi_params()
 
-    def get_model_analytical_decay(self, p):
+    def get_model_analytical_decay(self, p: Any) -> Any:
+        """
+        Return model analytical decay.
+
+        Parameters
+        ----------
+        p : Any
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         T = self.laser_period
         if p.get("mono", False):
             tau = p["tau"]
@@ -120,7 +191,26 @@ class FLIModelSimulator:
             i += 1
         return decay
 
-    def simulate_model_tcspc(self, p, n_cycles, mu_per_cycle):
+    def simulate_model_tcspc(
+        self, p: Any, n_cycles: int, mu_per_cycle: np.ndarray
+    ) -> Any:
+        """
+        Handle simulate model tcspc.
+
+        Parameters
+        ----------
+        p : Any
+            Input value.
+        n_cycles : int
+            Input value.
+        mu_per_cycle : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         total_photons = self.rng.poisson(mu_per_cycle * n_cycles)
         if total_photons == 0:
             return np.zeros_like(self.t)

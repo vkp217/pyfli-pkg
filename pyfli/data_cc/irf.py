@@ -1,10 +1,36 @@
+"""
+Align decay and IRF cubes with threshold-based rise detection and circular or Fourier
+shifts.
+
+This module belongs to :mod:`pyfli.data_cc` and is part of PyFLI array preprocessing
+helpers for normalization, masking, ROI extraction, and IRF alignment. Public API
+includes classes :class:`IRFAligner`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import warnings
 import numpy as np
 from scipy.fft import fft, ifft, fftfreq
 
 
 class IRFAligner:
-    def __init__(self, decay, irf, noise_bins=5):
+    """
+    Estimate and apply temporal alignment between decay and IRF cubes. It detects rising
+    edges per pixel or globally and can shift signals with Fourier or circular methods
+    before fitting.
+
+    Parameters
+    ----------
+    decay : np.ndarray
+        Configuration value used by the class.
+    irf : np.ndarray
+        Configuration value used by the class.
+    noise_bins : int
+        Configuration value used by the class.
+    """
+
+    def __init__(self, decay: np.ndarray, irf: np.ndarray, noise_bins: int = 5) -> None:
         self.H, self.W, self.T = decay.shape
         self.dt = 12.5 / self.T
 
@@ -33,7 +59,7 @@ class IRFAligner:
                 stacklevel=2,
             )
 
-    def _find_rising_point(self, data, fraction=0.1):
+    def _find_rising_point(self, data: np.ndarray, fraction: float = 0.1) -> Any:
         """
         Finds the fractional bin index where the signal first reaches
         a certain percentage of its peak (the 'toe').
@@ -68,7 +94,7 @@ class IRFAligner:
 
         return rising_indices
 
-    def estimate_shift(self, fraction=0.1):
+    def estimate_shift(self, fraction: float = 0.1) -> Any:
         """
         Calculates how much the IRF must move to match the decay's start.
         """
@@ -78,8 +104,20 @@ class IRFAligner:
         # Shift = Target - Source
         return t_decay - t_irf
 
-    def apply_fourier_shift(self, shifts):
+    def apply_fourier_shift(self, shifts: np.ndarray) -> Any:
+        """
+        Apply fourier shift.
 
+        Parameters
+        ----------
+        shifts : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         freqs = fftfreq(self.T)
         # Apply the fractional shift in the frequency domain
         phase = np.exp(-2j * np.pi * freqs[None, None, :] * shifts[:, :, None])
@@ -89,7 +127,7 @@ class IRFAligner:
 
         return np.maximum(aligned_irf, 0)
 
-    def apply_circular_shift(self, shifts):
+    def apply_circular_shift(self, shifts: np.ndarray) -> np.ndarray:
         """
         Applies a linear circular shift by rounding fractional shifts
         to the nearest integer and rolling the array.
@@ -105,7 +143,12 @@ class IRFAligner:
 
         return aligned_irf
 
-    def align(self, fraction=0.1, method="fourier", manual_correction=0.0):
+    def align(
+        self,
+        fraction: float = 0.1,
+        method: str = "fourier",
+        manual_correction: float = 0.0,
+    ) -> tuple[Any, ...]:
         """
         Aligns the IRF using the specified method.
         """
@@ -116,7 +159,14 @@ class IRFAligner:
         else:
             return self.apply_fourier_shift(shifts), shifts
 
-    def align_pixel(self, x, y, fraction=0.1, method="fourier", manual_correction=0.0):
+    def align_pixel(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        fraction: float = 0.1,
+        method: str = "fourier",
+        manual_correction: float = 0.0,
+    ) -> Any:
         """
         Aligns the IRF for a single pixel (x, y) — useful for quick inspection
         of the alignment at a specific spatial location without processing the
@@ -125,7 +175,20 @@ class IRFAligner:
         decay_trace = self.decay[x, y, :]
         irf_trace = self.irf[x, y, :]
 
-        def _rising_point(trace):
+        def _rising_point(trace: np.ndarray) -> Any:
+            """
+            Handle rising point.
+
+            Parameters
+            ----------
+            trace : np.ndarray
+                Input value.
+
+            Returns
+            -------
+            Any
+                Return value.
+            """
             peak_val = np.max(trace)
             if peak_val <= 0:
                 return 0.0

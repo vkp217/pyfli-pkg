@@ -1,16 +1,50 @@
 # pyfli/data_cc/norm.py
 
+"""
+Normalize FLIM arrays with zero-one, min-max, reference-scale, peak, and PDF transforms.
+
+This module belongs to :mod:`pyfli.data_cc` and is part of PyFLI array preprocessing
+helpers for normalization, masking, ROI extraction, and IRF alignment. Public API
+includes classes :class:`Normalization`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 
 
 class Normalization:
-    def __init__(self, data):
+    """
+    Apply common normalization transforms to FLIM arrays. The class keeps a source array
+    and exposes zero-one scaling, min-max scaling, reference scaling, global peak
+    normalization, and probability-density conversion.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Configuration value used by the class.
+    """
+
+    def __init__(self, data: np.ndarray) -> None:
         if isinstance(data, (list, tuple)):
             self.data = [np.asarray(d) for d in data]
         else:
             self.data = [np.asarray(data)]
 
-    def _compute_min_max(self, arr):
+    def _compute_min_max(self, arr: np.ndarray) -> tuple[Any, ...]:
+        """
+        Compute min max.
+
+        Parameters
+        ----------
+        arr : np.ndarray
+            Input value.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Return value.
+        """
         if arr.ndim == 1:
             return np.min(arr), np.max(arr)
         elif arr.ndim == 3:
@@ -20,13 +54,41 @@ class Normalization:
         else:
             raise ValueError("Only 1D or 3D data supported")
 
-    def _threshold_mask(self, arr, threshold):
+    def _threshold_mask(self, arr: np.ndarray, threshold: float) -> Any:
+        """
+        Handle threshold mask.
+
+        Parameters
+        ----------
+        arr : np.ndarray
+            Input value.
+        threshold : float
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         if arr.ndim == 1:
             return np.sum(arr) > threshold
         elif arr.ndim == 3:
             return np.sum(arr, axis=2, keepdims=True) > threshold
 
-    def zerone(self, threshold=0):
+    def zerone(self, threshold: int = 0) -> Any:
+        """
+        Handle zerone.
+
+        Parameters
+        ----------
+        threshold : int
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         normalized = []
         for arr in self.data:
             mask = self._threshold_mask(arr, threshold)
@@ -46,7 +108,20 @@ class Normalization:
             normalized.append(norm)
         return normalized if len(normalized) > 1 else normalized[0]
 
-    def minmax(self, threshold=0):
+    def minmax(self, threshold: int = 0) -> Any:
+        """
+        Handle minmax.
+
+        Parameters
+        ----------
+        threshold : int
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         normalized = []
         for arr in self.data:
             mask = self._threshold_mask(arr, threshold)
@@ -63,7 +138,22 @@ class Normalization:
             normalized.append(norm)
         return normalized if len(normalized) > 1 else normalized[0]
 
-    def norm_scale(self, ref_data, threshold=0):
+    def norm_scale(self, ref_data: np.ndarray, threshold: int = 0) -> Any:
+        """
+        Handle norm scale.
+
+        Parameters
+        ----------
+        ref_data : np.ndarray
+            Input value.
+        threshold : int
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         ref_data = np.asarray(ref_data)
         if ref_data.ndim == 1:
             ref_max = np.max(ref_data)
@@ -89,7 +179,20 @@ class Normalization:
                 scaled.append(scaled_arr)
         return scaled if len(scaled) > 1 else scaled[0]
 
-    def global_peak_norm_3d(self, threshold=0):
+    def global_peak_norm_3d(self, threshold: int = 0) -> Any:
+        """
+        Handle global peak norm 3d.
+
+        Parameters
+        ----------
+        threshold : int
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         normalized = []
         for arr in self.data:
             if arr.ndim != 3:
@@ -102,7 +205,20 @@ class Normalization:
             normalized.append(norm)
         return normalized if len(normalized) > 1 else normalized[0]
 
-    def to_pdf(self, threshold=0):
+    def to_pdf(self, threshold: int = 0) -> Any:
+        """
+        Handle to pdf.
+
+        Parameters
+        ----------
+        threshold : int
+            Input value.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         pdf_data = []
         for arr in self.data:
             mask = self._threshold_mask(arr, threshold)

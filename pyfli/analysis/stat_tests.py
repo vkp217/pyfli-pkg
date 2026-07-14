@@ -1,3 +1,15 @@
+"""
+Compare simulated and experimental FLIM distributions with classical and multivariate
+tests.
+
+This module belongs to :mod:`pyfli.analysis` and is part of PyFLI post-processing,
+diagnostics, statistical comparison, and result-loading utilities for fitted FLIM
+datasets. Public API includes classes :class:`TestStat` and
+:class:`FLIDistributionTest`.
+"""
+
+from __future__ import annotations
+from typing import Any
 import numpy as np
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.decomposition import PCA
@@ -6,11 +18,24 @@ from scipy.linalg import sqrtm
 
 
 class TestStat:
-    def __init__(self, sim_batch, exp_batch, eps=1e-12):
-        """
-        sim_batch : (B, n_bins)
-        exp_batch : (B, n_bins)
-        """
+    """
+    Run classical statistical comparisons between simulated and experimental FLIM result
+    batches. The class groups Anderson-Darling, Kolmogorov-Smirnov, likelihood-ratio,
+    bootstrap confidence interval, and Bayesian evidence helpers behind one object.
+
+    Parameters
+    ----------
+    sim_batch : np.ndarray
+        Simulated result batch used as the reference distribution.
+    exp_batch : np.ndarray
+        Experimental result batch used for comparison.
+    eps : float
+        Configuration value used by the class.
+    """
+
+    def __init__(
+        self, sim_batch: np.ndarray, exp_batch: np.ndarray, eps: float = 1e-12
+    ) -> None:
         self.sim = np.asarray(sim_batch, dtype=np.float64)
         self.exp = np.asarray(exp_batch, dtype=np.float64)
         self.eps = eps
@@ -28,7 +53,7 @@ class TestStat:
 
     # Anderson–Darling Test (Shape Sensitive)
 
-    def anderson_darling(self):
+    def anderson_darling(self) -> np.ndarray:
         """
         Batch AD statistic (two-sample version approximation)
         """
@@ -48,13 +73,21 @@ class TestStat:
 
     # Kolmogorov–Smirnov Test (CDF-based)
 
-    def kolmogorov_smirnov(self):
+    def kolmogorov_smirnov(self) -> np.ndarray:
+        """
+        Handle kolmogorov smirnov.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         ks_stats = np.max(np.abs(self.sim_cdf - self.exp_cdf), axis=1)
         return ks_stats
 
     # Likelihood Ratio Test (Mono vs Bi)
 
-    def likelihood_ratio(self):
+    def likelihood_ratio(self) -> Any:
         """
         Poisson likelihood ratio:
         Λ = 2 (LL_bi - LL_mono)
@@ -77,7 +110,9 @@ class TestStat:
 
     # Bootstrap Confidence Intervals
 
-    def bootstrap_ci(self, metric_func, n_boot=200):
+    def bootstrap_ci(
+        self, metric_func: np.ndarray, n_boot: int = 200
+    ) -> tuple[Any, ...]:
         """
         Generic bootstrap CI over batch
         """
@@ -95,7 +130,7 @@ class TestStat:
 
     # Bayesian Evidence (AIC/BIC Approximation)
 
-    def bayesian_evidence(self, k_mono=2, k_bi=4):
+    def bayesian_evidence(self, k_mono: int = 2, k_bi: int = 4) -> np.ndarray:
         """
         Approximate log evidence using BIC
         """
@@ -114,7 +149,15 @@ class TestStat:
         return delta_BIC
 
     # MASTER FUNCTION
-    def run_all_tests(self):
+    def run_all_tests(self) -> np.ndarray:
+        """
+        Run all tests.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         results = {}
 
         # Core statistics
@@ -132,11 +175,24 @@ class TestStat:
 
 
 class FLIDistributionTest:
-    def __init__(self, sim_batch, exp_batch, eps=1e-12):
-        """
-        sim_batch: (N, n_bins)
-        exp_batch: (N, n_bins)
-        """
+    """
+    Compare high-dimensional simulated and experimental FLIM distributions. It exposes
+    MMD, energy distance, sliced Wasserstein, Frechet-style, and PCA-overlap metrics for
+    validating whether simulations match measured data.
+
+    Parameters
+    ----------
+    sim_batch : np.ndarray
+        Simulated result batch used as the reference distribution.
+    exp_batch : np.ndarray
+        Experimental result batch used for comparison.
+    eps : float
+        Configuration value used by the class.
+    """
+
+    def __init__(
+        self, sim_batch: np.ndarray, exp_batch: np.ndarray, eps: float = 1e-12
+    ) -> None:
         self.sim = sim_batch.astype(np.float64)
         self.exp = exp_batch.astype(np.float64)
         self.eps = eps
@@ -150,7 +206,7 @@ class FLIDistributionTest:
     # ==========================================================
     # 1️⃣ Maximum Mean Discrepancy (BEST CHOICE)
     # ==========================================================
-    def mmd(self, gamma=None):
+    def mmd(self, gamma: float | None = None) -> np.ndarray:
         """
         Kernel two-sample test.
         """
@@ -168,7 +224,15 @@ class FLIDistributionTest:
     # ==========================================================
     # 2️⃣ Energy Distance
     # ==========================================================
-    def energy_distance(self):
+    def energy_distance(self) -> Any:
+        """
+        Handle energy distance.
+
+        Returns
+        -------
+        Any
+            Return value.
+        """
         X = self.sim
         Y = self.exp
 
@@ -181,7 +245,7 @@ class FLIDistributionTest:
     # ==========================================================
     # 3️⃣ Sliced Wasserstein Distance
     # ==========================================================
-    def sliced_wasserstein(self, n_projections=50):
+    def sliced_wasserstein(self, n_projections: int = 50) -> np.ndarray:
         """
         Project high-D distributions to random 1D lines.
         """
@@ -201,7 +265,15 @@ class FLIDistributionTest:
     # ==========================================================
     # 4️⃣ Fréchet Distance (FID-style)
     # ==========================================================
-    def frechet_distance(self):
+    def frechet_distance(self) -> np.ndarray:
+        """
+        Handle frechet distance.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         mu1 = self.sim.mean(axis=0)
         mu2 = self.exp.mean(axis=0)
 
@@ -224,7 +296,20 @@ class FLIDistributionTest:
     # ==========================================================
     # 5️⃣ PCA Manifold Overlap
     # ==========================================================
-    def pca_overlap(self, n_components=10):
+    def pca_overlap(self, n_components: int = 10) -> np.ndarray:
+        """
+        Handle pca overlap.
+
+        Parameters
+        ----------
+        n_components : int
+            Input value.
+
+        Returns
+        -------
+        np.ndarray
+            Return value.
+        """
         pca = PCA(n_components=n_components)
 
         combined = np.vstack([self.sim, self.exp])
@@ -245,7 +330,15 @@ class FLIDistributionTest:
     # ==========================================================
     # MASTER FUNCTION
     # ==========================================================
-    def run_all(self):
+    def run_all(self) -> dict[Any, Any]:
+        """
+        Run all.
+
+        Returns
+        -------
+        dict[Any, Any]
+            Return value.
+        """
         return {
             "MMD": self.mmd(),
             "EnergyDistance": self.energy_distance(),

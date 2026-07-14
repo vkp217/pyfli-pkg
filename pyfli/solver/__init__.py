@@ -1,6 +1,16 @@
 ##### inside solver.__init__.py
 # ruff: noqa: F401
 
+"""
+Provide solver tools for PyFLI least-squares, maximum-likelihood, CPU, GPU, binned, and
+global FLIM fitting routines.
+
+This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
+likelihood, CPU, GPU, binned, and global FLIM fitting routines. The module primarily re-
+exports package symbols or constants for downstream imports.
+"""
+
+from __future__ import annotations
 from .base_fitter import BaseFLIFitter
 from .cpu_processor import FLICPUProcessor
 from .gpu_processor import FLIGPUProcessor
