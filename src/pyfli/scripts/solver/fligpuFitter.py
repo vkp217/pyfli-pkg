@@ -1,10 +1,3 @@
-"""GPU-accelerated batched FLI/FLIM image fitting using PyTorch.
-
-Defines :class:`Fli_GPUProcessor`, which fits all valid pixels of a FLIM
-image cube jointly on a GPU device via gradient-based optimisation (Adam)
-with FFT-based IRF convolution, supporting both NLSF (Neyman chi-square) and
-MLE (Poisson deviance) objectives.
-"""
 import torch
 import numpy as np
 import h5py
@@ -14,24 +7,6 @@ from tqdm import tqdm
 from .base_static import resolve_params_and_bounds, moment_based_guess
 
 class Fli_GPUProcessor:
-    """GPU-accelerated batched FLI/FLIM image fitting using PyTorch.
-
-    Fits every valid pixel of a FLIM image cube simultaneously on a GPU (or
-    CPU) device by jointly optimising a reparameterised, unconstrained
-    parameter tensor with Adam, using either a Neyman chi-square (NLSF) or
-    Poisson deviance/C-statistic (MLE) objective, with IRF convolution
-    performed via FFT.
-
-    Args:
-        freq: Two-element frequency descriptor ``[laser_freq, acquisition_freq]``
-            (MHz).
-        fitter_class: Optional per-pixel fitter class; currently unused by
-            this processor but accepted for interface parity with
-            :class:`~pyfli.scripts.solver.flicpuFitter.Fli_CPUProcessor`.
-        device: Torch device string (e.g. ``'cuda'`` or ``'cpu'``). If None,
-            automatically selects ``'cuda'`` when available, else ``'cpu'``.
-    """
-
     def __init__(self, freq, fitter_class=None, device=None):
         self.device = device if device else ('cuda' if torch.cuda.is_available() else 'cpu')
         self.freq = freq
@@ -102,46 +77,6 @@ class Fli_GPUProcessor:
     def fit_image(self, image_cube, irf_cube, mask=None, mode='MLE',
                   model_type='bi-exponential', max_iter=500, CRLB=False,
                   data_name="Torch_Fit", p0=None, **kwargs):
-        """Fit every valid pixel of a FLIM image cube in parallel on the GPU (or CPU).
-
-        Reparameterises each pixel's parameters into an unconstrained space
-        (log/sigmoid/tanh transforms), builds a per-pixel Neyman chi-square
-        (``mode='NLSF'``) or Poisson deviance (``mode='MLE'``) objective
-        summed over all valid pixels, and jointly optimises all pixels'
-        parameters with the Adam optimizer using early stopping based on
-        loss-change patience. IRF convolution is performed via FFT inside
-        ``_model_kernel``.
-
-        Args:
-            image_cube: Decay image cube of shape ``(H, W, T)``.
-            irf_cube: Instrument response function cube of shape ``(H, W, T)``.
-            mask: Optional boolean mask selecting which pixels to fit. If
-                None, pixels with total counts > 20 are used.
-            mode: Objective/estimator family. Values in ``{'NLSF', 'LSE',
-                'WLS', 'NEYMAN'}`` (case-insensitive) select the Neyman
-                chi-square (NLSF) objective; anything else selects the
-                Poisson MLE objective (default ``'MLE'``).
-            model_type: Either ``'mono-exponential'`` or ``'bi-exponential'``
-                (default ``'bi-exponential'``).
-            max_iter: Maximum number of Adam optimisation steps (default 500).
-            CRLB: If True, compute Cramér-Rao lower bound parameter
-                uncertainties via the Jacobian-based Fisher information
-                matrix (default False).
-            data_name: Name recorded in the output dataset (default
-                ``'Torch_Fit'``).
-            p0: Optional initial parameter guess (dict or array-like) applied
-                to every fitted pixel; if None, a moment-based guess is
-                computed per pixel.
-            **kwargs: ``lr`` (Adam learning rate, default 0.05) and
-                ``patience`` (number of stagnant steps before early
-                stopping, default 50).
-
-        Returns:
-            dict or None: A results dataset with keys ``'name'``,
-            ``'method'``, and ``'results'`` (containing ``'maps'``,
-            ``'error_maps'``, and ``'TR_maps'``), or None if no valid pixels
-            were found in the mask.
-        """
         # Normalise mode tag: NLSF/LSE variants → 'NLSF', everything else → 'MLE'
         _NLSF_MODES = {'NLSF', 'LSE', 'WLS', 'NEYMAN'}
         mode = 'NLSF' if mode.upper() in _NLSF_MODES else 'MLE'
@@ -408,19 +343,6 @@ class Fli_GPUProcessor:
         return torch.tensor(guesses.astype(np.float32), device=self.device)
 
     def save_results(self, dataset, folder="results"):
-        """Save a GPU fitting results dataset to a compressed HDF5 file.
-
-        Args:
-            dataset: Results dataset as returned by :meth:`fit_image`.
-            folder: Output directory; created if it does not exist (default
-                ``'results'``).
-
-        Writes:
-            ``<folder>/<dataset['name']>_GPU_results.h5`` containing groups
-            ``results/maps``, ``results/error_maps``, and
-            ``results/TR_maps``, with the fitting method recorded as an HDF5
-            attribute.
-        """
         if not os.path.exists(folder): os.makedirs(folder)
         h5_path = os.path.join(folder, f"{dataset['name']}_GPU_results.h5")
 

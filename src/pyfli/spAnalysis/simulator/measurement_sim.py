@@ -1,22 +1,8 @@
 # spAnalysis/simulator/measurement_sim.py
 
-"""Simulated single-pixel detector measurement acquisition.
-
-Models the physical projection y = A * x performed by a single-pixel
-detector (photodiode/SPAD) as a scene is illuminated with a sequence of
-DMD/Fourier patterns, optionally corrupted by shot noise or Gaussian
-electronic noise.
-"""
-
 import numpy as np
 
 class MeasurementSimulator:
-    """Simulates a single-pixel detector capturing patterned measurements.
-
-    Wraps the linear measurement model y = A * x with optional noise
-    injection, differential pair processing, and SNR evaluation utilities.
-    """
-
     def __init__(self, noise_level=0.0, shot_noise=False):
         """
         Simulates a Single Pixel Detector (Photodiode).

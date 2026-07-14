@@ -1,15 +1,8 @@
 # scripts/ss_helpers.py
-"""Helper functions for reading single-shot gated HDF5 acquisition data.
-
-Currently provides `SS3HDF5read`, which loads a stack of gated TPSF
-images from an HDF5 file and optionally applies pileup and hot-pixel
-corrections.
-"""
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-from .dataIO.dataops_static import Staticdataops
 
 def SS3HDF5read(fname, pileCorr=True, hot_pixels=True, hp_path=None):
     """
@@ -43,12 +36,7 @@ def SS3HDF5read(fname, pileCorr=True, hot_pixels=True, hp_path=None):
             if pileCorr: 
                 tpsfs = Staticdataops.pileup_correction(tpsfs)
             
-            if hot_pixels:
+            if hot_pixels: 
                 tpsfs = Staticdataops.apply_interpolation_mask(tpsfs, hp_path=hp_path)
-
+            
             return tpsfs
-    except Exception as e:
-        if isinstance(e, ValueError):
-            raise e
-        print(f"HDF5 Load Error: {e}")
-        return None

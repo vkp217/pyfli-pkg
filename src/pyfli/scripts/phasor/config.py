@@ -152,18 +152,6 @@ class AcquisitionConfig:
 
     # ------------------------------------------------------------------ helpers
     def describe(self) -> str:
-        """
-        Build a human-readable, multi-line summary of this configuration.
-
-        Always reports the mode, laser period/frequency, and harmonic. Then
-        conditionally appends mode-specific parameters: ``N_bins`` for
-        DISCRETE, gate width for GATED_SINGLE/GATED_N, ``N_gates`` for
-        GATED_N, recording window for TRUNCATED, and IRF offset for OFFSET.
-        Always ends with the τ sampling range used for locus computation.
-
-        Returns:
-            str: Newline-joined summary lines, headed by "AcquisitionConfig".
-        """
         lines = [
             f"AcquisitionConfig",
             f"  mode          : {self.mode.name}",

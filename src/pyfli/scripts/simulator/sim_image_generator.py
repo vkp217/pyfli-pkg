@@ -1,30 +1,12 @@
 # simulator/sim_image_generator.py
-
-"""Full-image FLI dataset generation with per-ROI simulator configuration.
-
-Provides ``FLIImageGenerator``, which builds a 2-D image of simulated FLI
-pixel decays by assigning a ``Macro_sim`` (ICCD) or ``TCSPC_sim``
-(photon-counting) simulator instance to each region of interest (ROI) in an
-optional label mask, and simulating every pixel individually.
-"""
-
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-import itertools
+import itertools  
 from .main_factory import Macro_sim, TCSPC_sim
 from .sim_helper import irf_picker
 
 class FLIImageGenerator:
-    """Generates a full 2-D FLI image dataset with per-ROI simulator configs.
-
-    Loads an optional intensity mask (to scale per-pixel photon budget) and
-    an optional ROI label mask (to assign different simulator parameters to
-    different regions), instantiates one ``Macro_sim``/``TCSPC_sim`` per
-    ROI value, and simulates every pixel to build stacked decay/IRF/fit
-    cubes and parameter maps.
-    """
-
     def __init__(self,
                  irf_data,
                  intensity_image_path=None,
@@ -35,38 +17,6 @@ class FLIImageGenerator:
                  verbose=True,
                  bool_mask=None
                  ):
-        """Loads masks and instantiates one simulator per ROI.
-
-        Args:
-            irf_data: IRF data (1-D trace or 3-D IRF stack). If 3-D, a
-                per-pixel IRF slice is used during simulation; otherwise a
-                single IRF (picked via ``irf_picker``) is shared across
-                pixels.
-            intensity_image_path: Optional path to a grayscale image used
-                as a per-pixel intensity scaling mask (values normalized to
-                [0, 1]); if omitted, a mask of ones with shape
-                ``image_shape`` is used.
-            roi_mask_path: Optional path to a grayscale/label image where
-                pixel values 0, 1, 2, ... identify different ROIs; resized
-                (nearest-neighbor) to match the intensity mask shape. If
-                omitted, all pixels belong to ROI 0.
-            roi_params: Optional list of per-ROI config dicts (indexed by
-                ROI value) forwarded as ``**cfg`` to the simulator
-                constructor for that ROI; may include a ``sensor_type``
-                key. ROI values without a matching entry get an empty
-                config.
-            image_shape: Fallback ``(H, W)`` image shape when no intensity
-                image is provided.
-            method: Simulation method string (case-insensitive); stored
-                lower-cased as ``self.method``. ``'ICCD'`` selects
-                ``Macro_sim`` with sensor_type ``'ICCD'``; any other value
-                selects ``TCSPC_sim`` with sensor_type ``'PHOTON_COUNTER'``.
-            verbose: If True, prints progress info and shows the tqdm
-                progress bar during ``generate_image``.
-            bool_mask: Optional boolean array of shape ``image_shape``
-                used to zero out pixels outside the mask in the final
-                output cubes/maps.
-        """
         self.method = method.lower()
         self.irf_data = irf_data
         self.verbose = verbose
@@ -94,34 +44,17 @@ class FLIImageGenerator:
         # dummy_irf = irf_data[0, 0, :] if irf_data.ndim == 3 else irf_data
         self.roi_sims = {}
         unique_rois = np.unique(self.roi_mask)
-        SimClass = Macro_sim if self.method == 'iccd' else TCSPC_sim
-
+        SimClass = Macro_sim if self.method == 'ICCD' else TCSPC_sim
+        # SimClass = TCSPC_sim if self.method == 'tcspc' else Macro_sim
+        
         for roi_val in unique_rois:
             cfg = roi_params[roi_val].copy() if (roi_params and roi_val < len(roi_params)) else {}
-            default_sensor = 'ICCD' if self.method == 'iccd' else 'PHOTON_COUNTER'
+            default_sensor = 'ICCD' if self.method == 'ICCD' else 'PHOTON_COUNTER'
             sensor_type = cfg.pop('sensor_type', default_sensor)
             cfg.pop('method', None) 
             self.roi_sims[roi_val] = SimClass(dummy_irf, sensor_type=sensor_type, **cfg)
 
     def generate_image(self):
-        """Simulates every pixel and assembles the full FLI dataset.
-
-        Iterates over all ``(i, j)`` pixels, selects the simulator assigned
-        to that pixel's ROI (swapping in a per-pixel normalized IRF slice
-        when ``irf_data`` is 3-D), runs it, and accumulates the results
-        (scaled by the intensity mask) into pre-allocated decay/fit/IRF
-        cubes and parameter maps. If ``bool_mask`` was provided, it is
-        applied as a final multiplicative mask.
-
-        Returns:
-            dict: ``{"raw_data": {"decay": <H,W,T>, "irf": <H,W,T>},
-            "results": {"maps": {<param_name>: <H,W> ...}, "TR_maps":
-            {"fit_map": <H,W,T>, "residual_map": decay_cube - fit_cube}}}``.
-
-        Raises:
-            ValueError: If ``bool_mask`` was provided but its shape does
-                not match the image shape ``(H, W)``.
-        """
         h, w = self.shape
         total_pixels = h * w
         

@@ -1,36 +1,14 @@
 # dataIO_utils.py
-"""Utility helpers for loading phasor HDF5 data, ROI masks, and detecting hot pixels."""
 import os
 import h5py
 import numpy as np
 import json
 
 class DataIO_utils:
-    """Collection of standalone I/O utilities for FLIM/phasor datasets.
-
-    Provides helpers to load phasor coordinates from HDF5 files, build
-    boolean ROI masks from JSON ROI descriptor files, and detect hot pixels
-    from SS3 background acquisitions.
-    """
     def __init__(self):
         pass
 
     def load_phasors_hdf5(self, file_path):
-        """Load phasor coordinates (and optional lifetime map) from an HDF5 file.
-
-        Args:
-            file_path: Path to an HDF5 file containing ``Gc`` and ``Sc``
-                datasets, and optionally a ``tau`` dataset.
-
-        Returns:
-            tuple: ``(Gc, Sc, tau)`` where ``Gc`` and ``Sc`` are the phasor
-            G and S coordinate arrays and ``tau`` is the lifetime array, or
-            ``None`` if the ``tau`` dataset is not present in the file.
-
-        Raises:
-            ValueError: If the spatial shape of ``Gc`` does not match the
-                shape of ``tau``, or if ``Gc`` and ``Sc`` shapes differ.
-        """
         with h5py.File(file_path, 'r') as f:
             Gc = f['Gc'][:]
             Sc = f['Sc'][:]
@@ -44,28 +22,6 @@ class DataIO_utils:
         return Gc, Sc, tau
     
     def roiNloader(self, map_array, file_path, visualize=True):
-        """Build a boolean ROI mask from a JSON ROI descriptor file.
-
-        Reads named ROI contour coordinates from the JSON file and marks the
-        corresponding pixel positions ``True`` in a mask matching the
-        spatial shape of ``map_array``.
-
-        Args:
-            map_array: Reference array (2D ``(H, W)`` or 3D ``(H, W, ...)``)
-                used only to determine the output mask shape.
-            file_path: Path to a JSON file containing a
-                ``"Named ROI Descriptions"`` list with ROI contour
-                coordinates.
-            visualize: Currently unused; reserved for future visualization
-                support.
-
-        Returns:
-            numpy.ndarray: Boolean mask of shape ``(H, W)`` with ``True`` at
-            the coordinates listed in the ROI file.
-
-        Raises:
-            ValueError: If ``map_array`` is neither 2D nor 3D.
-        """
         if map_array.ndim == 3:
             H, W, _ = map_array.shape
         elif map_array.ndim == 2:

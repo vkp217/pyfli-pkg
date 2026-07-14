@@ -1,24 +1,3 @@
-"""Generalized (mono- or bi-exponential) per-pixel FLI decay simulators.
-
-Provides two callable simulator classes built on the generalized model
-engine ``FLIModelSim`` (which, unlike ``FLIEngine``, supports both pure
-mono-exponential and bi-exponential per-pixel decays):
-
-* ``ContinousEqSim`` — analytical decay convolved with the IRF, scaled to a
-  target peak intensity, then passed through a modular ADC-style noise
-  pipeline (jitter, quantum efficiency, dark count rate, read noise,
-  Poisson shot noise, rounding, clipping). Intended for ICCD-style,
-  integrating (macro-time) sensors.
-* ``PhotonCountSim`` — photon-by-photon TCSPC Monte Carlo simulation via
-  ``FLIModelSim.simulate_model_tcspc``, intended for photon-counting
-  sensors.
-
-Both are zero-argument callables that return a per-pixel result dict with
-``raw_data`` (``decay``, ``irf``) and ``results`` (``maps``, ``TR_maps``)
-keys, matching the layout consumed by ``FLIImageGenerator`` and
-``Batch_sim``.
-"""
-
 import numpy as np
 from scipy.signal import fftconvolve
 from .simEngGen import FLIModelSim
@@ -26,29 +5,7 @@ from .noise_models import NoiseEngine
 from .distributions import ParameterSampler
 
 class ContinousEqSim:
-    """Analytical-convolution FLI pixel simulator supporting mono/bi-exponential decays.
-
-    On each call, samples parameters (mono- or bi-exponential, per
-    ``FLIModelSim.sample_params``) and a peak intensity, builds the
-    analytical decay convolved with the IRF, and runs it through a
-    configurable noise pipeline (jitter, quantum efficiency, dark count
-    rate, read noise, Poisson shot noise, rounding, and ADC clipping).
-    """
-
     def __init__(self, irf_data, sensor_type='ICCD', **cfg):
-        """Initializes the simulator and its underlying ``FLIModelSim``.
-
-        Args:
-            irf_data: IRF data (1-D trace or 3-D IRF stack) forwarded to
-                ``FLIModelSim``.
-            sensor_type: Sensor type string (e.g. ``'ICCD'``), upper-cased
-                and used to select QE/read-noise sampling behavior.
-            **cfg: Simulator configuration and noise-pipeline toggles,
-                forwarded to ``FLIModelSim``. Recognized toggle keys:
-                ``jitter``, ``dcr_on``, ``poisson``, ``qe_on``,
-                ``read_noise_on``, ``round_on``, ``clip_on`` (all default
-                True).
-        """
         # Toggles
         self.use_jitter = cfg.get('jitter', True)
         self.use_dcr = cfg.get('dcr_on', True)
@@ -62,23 +19,6 @@ class ContinousEqSim:
         self.engine = FLIModelSim(irf_data, **cfg)
 
     def __call__(self):
-        """Simulates one pixel's decay trace and ground-truth parameter maps.
-
-        Samples mono- or bi-exponential lifetime/amplitude parameters and a
-        Beta-distributed peak intensity, builds the IRF-convolved
-        analytical decay scaled to that peak, and applies the enabled
-        noise stages (jitter, QE, DCR, read noise, Poisson, rounding,
-        clipping) in sequence.
-
-        Returns:
-            dict: ``{"raw_data": {"decay": ..., "irf": ...}, "results":
-            {"maps": {...ground-truth parameters, "tau_map"/"photon_count_map"/
-            "mono_map" for mono pixels or "tau1_map"/"tau2_map"/etc. for
-            bi-exponential pixels...}, "TR_maps": {"fit_map": ...,
-            "residual_map": ...}}}`` where ``fit_map`` is the clean decay
-            rescaled to match the noisy observation's peak, and
-            ``residual_map`` is ``decay - fit_map``.
-        """
         p = self.engine.sample_params()
 
         # 1. Determine target intensity (A) based on bit-depth
@@ -173,30 +113,7 @@ class ContinousEqSim:
         }
 
 class PhotonCountSim:
-    """Photon-by-photon TCSPC FLI pixel simulator supporting mono/bi-exponential decays.
-
-    On each call, samples mono- or bi-exponential parameters (per
-    ``FLIModelSim.sample_params``), then generates a photon histogram via
-    ``FLIModelSim.simulate_model_tcspc`` (inverse-transform sampling of
-    emission times, IRF convolution, and pile-up filtering), with optional
-    jitter, dark count rate, and bit-depth clipping applied afterward.
-    """
-
     def __init__(self, irf_data, sensor_type='PHOTON_COUNTER', **cfg):
-        """Initializes the simulator and its underlying ``FLIModelSim``.
-
-        Args:
-            irf_data: IRF data (1-D trace or 3-D IRF stack) forwarded to
-                ``FLIModelSim``.
-            sensor_type: Sensor type string (e.g. ``'PHOTON_COUNTER'``),
-                upper-cased and used for QE sampling when enabled.
-            **cfg: Simulator configuration and noise-pipeline toggles,
-                forwarded to ``FLIModelSim``. Recognized toggle keys:
-                ``jitter`` (default True), ``dcr_on`` (default True),
-                ``qe_on`` (default False), ``clip_on`` (default True).
-                If ``bit`` is not supplied, it defaults to 16 (TCSPC
-                counters are 16-bit by default).
-        """
         self.use_jitter = cfg.get('jitter', True)
         self.use_dcr = cfg.get('dcr_on', True)
         self.use_qe = cfg.get('qe_on', False)
@@ -210,22 +127,6 @@ class PhotonCountSim:
         self.engine = FLIModelSim(irf_data, **cfg)
 
     def __call__(self):
-        """Simulates one pixel's photon histogram and ground-truth parameter maps.
-
-        Draws a random number of excitation cycles (up to the configured
-        ``cycles`` limit), runs the photon-by-photon TCSPC Monte Carlo
-        simulation for that many cycles, applies optional jitter and dark
-        count rate noise, and clips to the configured bit-depth range.
-
-        Returns:
-            dict: ``{"raw_data": {"decay": ..., "irf": ...}, "results":
-            {"maps": {...ground-truth parameters, "tau_map"/etc. for mono
-            pixels or "tau1_map"/"tau2_map"/etc. for bi-exponential
-            pixels, plus expected total photon count...}, "TR_maps":
-            {"fit_map": ..., "residual_map": ...}}}`` where ``fit_map`` is
-            the analytical decay scaled to the expected total photon
-            count, and ``residual_map`` is ``decay - fit_map``.
-        """
         p = self.engine.sample_params()
         n_cycles = np.random.randint(1, self.engine.params_cfg['cycles'] + 1)
         mu_per_cycle = 0.01

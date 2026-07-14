@@ -747,6 +747,143 @@ def plot_xyt(
         print(f"Saved to {save_path}")
     else:
         plt.show()
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Part 5 – (X, Y, T) collapse and pixel-wise decay plotting
+# ---------------------------------------------------------------------------
+
+def collapse_to_xyt(cube: np.ndarray) -> np.ndarray:
+    """
+    Sum the M (mosaic/frame) axis to get a single (Y, X, H) image.
+
+    Parameters
+    ----------
+    cube : np.ndarray, shape (M, Y, X, H)
+
+    Returns
+    -------
+    xyt : np.ndarray, shape (Y, X, H)  — dtype promoted to uint32 to avoid overflow
+    """
+    return cube.sum(axis=0).astype(np.uint32)
+
+
+def plot_xyt(
+    xyt: np.ndarray,
+    tcspc_resolution_s: float = 97e-12,
+    *,
+    pixel_yx: tuple[int, int] | None = None,
+    cmap_intensity: str = "hot",
+    cmap_lifetime:  str = "RdYlGn_r",
+    save_path: str | None = None,
+):
+    """
+    Interactive four-panel figure for a (Y, X, H) decay cube.
+
+    Panels
+    ------
+    1. Intensity image          — total photon count per pixel
+    2. Mean arrival-time image  — intensity-weighted mean TCSPC bin (ns)
+    3. Summed decay curve       — log-scale, all pixels summed
+    4. Single-pixel decay curve — bar chart for selected pixel
+
+    Click anywhere on panels 1 or 2 to update the single-pixel decay.
+
+    Parameters
+    ----------
+    xyt               : np.ndarray (Y, X, H)
+    tcspc_resolution_s: bin width in seconds (default 97 ps)
+    pixel_yx          : initial (y, x) selection; defaults to image centre
+    cmap_intensity    : matplotlib colormap name for intensity image
+    cmap_lifetime     : matplotlib colormap name for mean-arrival-time image
+    save_path         : if given, save PNG instead of showing interactively
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.gridspec as gridspec
+
+    n_y, n_x, n_h = xyt.shape
+    t_ns = np.arange(n_h) * tcspc_resolution_s * 1e9   # time axis in ns
+
+    if pixel_yx is None:
+        pixel_yx = (n_y // 2, n_x // 2)
+    sel = list(pixel_yx)   # mutable so click handler can update it
+
+    intensity = xyt.sum(axis=-1).astype(float)
+    denom     = intensity.clip(min=1)
+    mean_t    = (xyt * t_ns[np.newaxis, np.newaxis, :]).sum(-1) / denom
+
+    fig = plt.figure(figsize=(14, 10))
+    fig.suptitle(
+        f"FLIM (Y={n_y}, X={n_x}, H={n_h})  |  "
+        f"res={tcspc_resolution_s*1e12:.0f} ps/bin  |  "
+        f"total photons={int(intensity.sum()):,}",
+        fontsize=12,
+    )
+    gs = gridspec.GridSpec(2, 2, figure=fig, hspace=0.35, wspace=0.35)
+
+    ax_int  = fig.add_subplot(gs[0, 0])
+    ax_tau  = fig.add_subplot(gs[0, 1])
+    ax_sum  = fig.add_subplot(gs[1, 0])
+    ax_pix  = fig.add_subplot(gs[1, 1])
+
+    # ── Panel 1: intensity ────────────────────────────────────────────────
+    im1 = ax_int.imshow(intensity, cmap=cmap_intensity, origin="upper")
+    ax_int.set_title("Intensity (photon count)")
+    ax_int.set_xlabel("X (pixels)"); ax_int.set_ylabel("Y (pixels)")
+    plt.colorbar(im1, ax=ax_int, shrink=0.85)
+    marker_int, = ax_int.plot(*sel[::-1], "c+", ms=12, mew=2)
+
+    # ── Panel 2: mean arrival time ────────────────────────────────────────
+    vmax_t = t_ns[-1]
+    im2 = ax_tau.imshow(mean_t, cmap=cmap_lifetime, origin="upper",
+                        vmin=0, vmax=vmax_t)
+    ax_tau.set_title("Mean photon arrival time (ns)")
+    ax_tau.set_xlabel("X (pixels)"); ax_tau.set_ylabel("Y (pixels)")
+    cb2 = plt.colorbar(im2, ax=ax_tau, shrink=0.85)
+    cb2.set_label("ns")
+    marker_tau, = ax_tau.plot(*sel[::-1], "w+", ms=12, mew=2)
+
+    # ── Panel 3: summed decay ─────────────────────────────────────────────
+    summed = xyt.sum(axis=(0, 1))
+    ax_sum.semilogy(t_ns, summed + 1, color="steelblue", lw=1.5)
+    ax_sum.set_title("Summed decay (all pixels, log scale)")
+    ax_sum.set_xlabel("Arrival time (ns)"); ax_sum.set_ylabel("Photon count")
+    ax_sum.grid(True, which="both", alpha=0.3)
+    ax_sum.set_xlim(t_ns[0], t_ns[-1])
+
+    # ── Panel 4: single-pixel decay ───────────────────────────────────────
+    bw = t_ns[1] - t_ns[0] if n_h > 1 else 1.0
+    bars = ax_pix.bar(t_ns, xyt[sel[0], sel[1]], width=bw,
+                      color="salmon", alpha=0.85)
+    ax_pix.set_xlabel("Arrival time (ns)"); ax_pix.set_ylabel("Photon count")
+    pix_title = ax_pix.set_title(f"Pixel (y={sel[0]}, x={sel[1]})")
+    ax_pix.grid(True, axis="y", alpha=0.3)
+    ax_pix.set_xlim(t_ns[0], t_ns[-1])
+
+    def _update_pixel(py: int, px: int) -> None:
+        sel[0], sel[1] = int(py), int(px)
+        decay = xyt[sel[0], sel[1]]
+        for bar, h in zip(bars, decay):
+            bar.set_height(h)
+        ax_pix.set_ylim(0, max(decay.max() * 1.1, 1))
+        pix_title.set_text(f"Pixel (y={sel[0]}, x={sel[1]})")
+        for m in (marker_int, marker_tau):
+            m.set_data([sel[1]], [sel[0]])
+        fig.canvas.draw_idle()
+
+    def _on_click(event):
+        if event.inaxes in (ax_int, ax_tau) and event.xdata is not None:
+            _update_pixel(int(np.clip(event.ydata, 0, n_y-1)),
+                          int(np.clip(event.xdata, 0, n_x-1)))
+
+    fig.canvas.mpl_connect("button_press_event", _on_click)
+
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"Saved to {save_path}")
+    else:
+        plt.show()
 
 
 # CLI demo  (python flim_decay_cube.py example.lif  [series_name])

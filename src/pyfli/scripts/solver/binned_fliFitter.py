@@ -1,23 +1,10 @@
 # solver/binned_fliFitter.py
-"""Spatial binning utilities and a binned-data wrapper for FLI/FLIM fitting.
-
-Provides :class:`FliBinner` for box-window spatial binning of decay/IRF image
-cubes, and :class:`BinnedFliFitter`, which fits pre-binned data cubes using an
-existing CPU or GPU fitting processor.
-"""
 import numpy as np
 import h5py
 import os
 from .flicpuFitter import Fli_CPUProcessor
 
 class FliBinner:
-    """Applies spatial (3x3, 5x5, ...) binning to FLIM decay and IRF image cubes.
-
-    Wraps constant-padding, vectorised box-window summation across a decay
-    image cube and matching IRF cube while preserving the original spatial
-    dimensions.
-    """
-
     def __init__(self, bin_radius=1):
         """
         Handles the spatial binning logic for FLIM data cubes.
@@ -62,13 +49,6 @@ class FliBinner:
 
 
 class BinnedFliFitter:
-    """Fits pre-binned FLIM data cubes using an existing CPU or GPU processor.
-
-    Wraps a :class:`~pyfli.scripts.solver.flicpuFitter.Fli_CPUProcessor` or
-    :class:`~pyfli.scripts.solver.fligpuFitter.Fli_GPUProcessor` instance via
-    duck-typing and injects binning metadata into the resulting dataset.
-    """
-
     def __init__(self, processor_instance, bin_radius=1):
         """
         Wraps an existing CPU or GPU processor.

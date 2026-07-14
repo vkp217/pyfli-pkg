@@ -1,10 +1,4 @@
 #  solver/mleFitter.py
-"""Maximum-likelihood and chi-square estimators for FLI/FLIM decay fitting.
-
-Defines :class:`MLEFLIFitter`, extending the NLSF base fitter with Poisson
-MLE (deviance), Pearson chi-square, and Neyman chi-square objective
-functions optimised via L-BFGS-B.
-"""
 import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import f, chi2
@@ -14,13 +8,6 @@ from .shared_metrics import enforce_tau_ordering, compute_fli_stats
 
 
 class MLEFLIFitter(BaseFLIFitter):
-    """Maximum-likelihood / chi-square based FLI fitter.
-
-    Extends :class:`~pyfli.scripts.solver.base_fitter.BaseFLIFitter` with
-    Poisson maximum-likelihood (deviance/C-statistic), Pearson chi-square,
-    and Neyman chi-square objectives, minimised with
-    ``scipy.optimize.minimize`` (L-BFGS-B).
-    """
 
     def poisson_log_likelihood(self, params, model_type):
         """Standard Poisson MLE (Deviance/C-Statistic)."""
