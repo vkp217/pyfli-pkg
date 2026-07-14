@@ -7,11 +7,8 @@
 [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://img.shields.io/pypi/v/pyfli-lib.svg)](https://pypi.org/project/pyfli-lib/)
-[![Documentation](https://img.shields.io/badge/docs-online-brightgreen.svg)](https://vkp217.github.io/pyfli-pkg/)
 
 `pyfli` is a comprehensive library designed for **Fluorescence Lifetime Imaging (FLI)** data processing. It streamlines the workflow for handling diverse file formats from various hardware manufacturers and provides a standardized pipeline for both traditional analytical and deep-learning-based inference.
-
-📖 **Full documentation and API reference:** [https://vkp217.github.io/pyfli-pkg/](https://vkp217.github.io/pyfli-pkg/)
 
 ---
 
