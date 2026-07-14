@@ -7,9 +7,10 @@ aware IRF deconvolution and joint FLIM fitting utilities. Public API includes fu
 :func:`make_counts` and :func:`report`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
+
 import numpy as np
 from detector_weights import ICCDParams, SPADParams, TCSPCParams
 from flim_solver import (
@@ -50,16 +51,16 @@ def make_counts(detector: str, params: Any, budget: float) -> Any:
     Parameters
     ----------
     detector : str
-        Input value.
+        Detector model name used to select weighting or conversion logic.
     params : Any
-        Input value.
+        Model, detector, or plotting parameters used by the routine.
     budget : float
-        Input value.
+        Photon budget used to generate simulated counts.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by make counts.
     """
     lam = lam_clean * budget / lam_clean.sum(1, keepdims=True)
     if detector == "iccd":
@@ -76,19 +77,19 @@ def make_counts(detector: str, params: Any, budget: float) -> Any:
 
 def report(name: str, res: Any) -> None:
     """
-    Handle report.
+    Run the report routine.
 
     Parameters
     ----------
     name : str
-        Input value.
+        Dataset, experiment, figure, or output name.
     res : Any
-        Input value.
+        Fit result object or dataset result dictionary.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform report.
     """
     te = res["taus"].mean(0)
     err = 100 * np.abs(te - tau_true) / tau_true

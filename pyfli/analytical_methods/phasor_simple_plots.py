@@ -7,8 +7,8 @@ FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
 estimation. Public API includes classes :class:`PhasorPlotsMixin`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -41,23 +41,23 @@ class PhasorPlotsMixin:
         colormap: str = "viridis",
     ) -> Any:
         """
-        Handle phasor colormap.
+        Run the phasor colormap routine.
 
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         intensity : np.ndarray | None
-            Input value.
+            Intensity map used to weight or color phasor output.
         colormap : str
-            Input value.
+            Colormap used to convert phasor coordinates to colors.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by phasor colormap.
         """
         G_col = G[0] if G.ndim == 3 else G
         S_col = S[0] if S.ndim == 3 else S
@@ -80,25 +80,25 @@ class PhasorPlotsMixin:
         half_circle: bool = True,
     ) -> Any:
         """
-        Handle phasor radial color.
+        Run the phasor radial color routine.
 
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         colormap : str
-            Input value.
+            Colormap used to convert phasor coordinates to colors.
         norm_color : bool
-            Input value.
+            Whether phasor colors are normalized before display.
         half_circle : bool
-            Input value.
+            Whether to draw only the upper half of the universal phasor circle.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by phasor radial color.
         """
         G_col = G[0] if G.ndim == 3 else np.asarray(G)
         S_col = S[0] if S.ndim == 3 else np.asarray(S)
@@ -164,32 +164,32 @@ class PhasorPlotsMixin:
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         mask : np.ndarray | None
-            Input value.
+            Boolean or labeled mask selecting pixels for the operation.
         colors : Any | None
-            Input value.
+            Color sequence used for plotted sources or groups.
         hexbin_color : np.ndarray | None
-            Input value.
+            Optional values used to color phasor hexbin density.
         ax : Any | None
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         figsize : tuple[int, ...]
-            Input value.
+            Figure size passed to Matplotlib.
         half_circle : bool
-            Input value.
+            Whether to draw only the upper half of the universal phasor circle.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         xlim : tuple[float, ...]
-            Input value.
+            X-axis limits for the phasor plot.
         ylim : tuple[float, ...]
-            Input value.
+            Y-axis limits for the phasor plot.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the phasor diagram.
         """
         created_fig = ax is None
         if created_fig:
@@ -262,20 +262,20 @@ class PhasorPlotsMixin:
         Parameters
         ----------
         image : np.ndarray
-            Input value.
+            Image array displayed or processed by the routine.
         scales : list[Any]
-            Input value.
+            Display limits used when plotting an image.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         ax : Any | None
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         figsize : tuple[int, ...]
-            Input value.
+            Figure size passed to Matplotlib.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the rendered map.
         """
         created_fig = ax is None
         if created_fig:
@@ -309,22 +309,22 @@ class PhasorPlotsMixin:
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         colormap : str
-            Input value.
+            Colormap used to convert phasor coordinates to colors.
         ax : Any | None
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         figsize : tuple[int, ...]
-            Input value.
+            Figure size passed to Matplotlib.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the phasor overlay.
         """
         created_fig = ax is None
         if created_fig:
@@ -360,24 +360,24 @@ class PhasorPlotsMixin:
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
         noise_removed : bool
-            Input value.
+            Whether noise-filtered phasor points are shown.
         colormap : str
-            Input value.
+            Colormap used to convert phasor coordinates to colors.
         ax : Any | None
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         figsize : tuple[int, ...]
-            Input value.
+            Figure size passed to Matplotlib.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the pure phasor map.
         """
         phasor_colors = self.phasor_colormap(G, S, colormap=colormap)
         if phasor_colors.shape[-1] == 4:
@@ -428,34 +428,34 @@ class PhasorPlotsMixin:
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         mask : np.ndarray | None
-            Input value.
+            Boolean or labeled mask selecting pixels for the operation.
         colormaps : list[Any]
-            Input value.
+            Colormap specifications used for overlay panels.
         noise_removed : bool
-            Input value.
+            Whether noise-filtered phasor points are shown.
         figsize : tuple[int, ...]
-            Input value.
+            Figure size passed to Matplotlib.
         half_circle : bool
-            Input value.
+            Whether to draw only the upper half of the universal phasor circle.
         xlim : tuple[float, ...]
-            Input value.
+            X-axis limits for the phasor plot.
         ylim : tuple[float, ...]
-            Input value.
+            Y-axis limits for the phasor plot.
         bg_color : str
-            Input value.
+            Background color used behind the phasor overlay.
         transpose : bool
-            Input value.
+            Whether image-like arrays are transposed before display.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing overlay subplot panels.
         """
         _t = (lambda a: np.swapaxes(a, 0, 1)) if transpose else (lambda a: a)
 
@@ -482,17 +482,17 @@ class PhasorPlotsMixin:
 
         def _resolve_cmap(spec: Any) -> np.ndarray:
             """
-            Handle resolve cmap.
+            Run the resolve cmap routine.
 
             Parameters
             ----------
             spec : Any
-                Input value.
+                Colormap specification resolved by the plotting helper.
 
             Returns
             -------
             np.ndarray
-                Return value.
+                Resolved Matplotlib colormap object.
             """
             cmap = plt.colormaps[spec] if isinstance(spec, str) else spec
             cmap = cmap.copy()
@@ -601,26 +601,26 @@ class PhasorPlotsMixin:
         Parameters
         ----------
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
         reconstructed_decay : np.ndarray
-            Input value.
+            Model decay reconstructed from fitted parameters.
         x : np.ndarray
-            Input value.
+            Input array, coordinate, or signal being transformed.
         y : np.ndarray
-            Input value.
+            Observed signal, target data, or coordinate array.
         log_scale : bool
-            Input value.
+            Whether the decay axis is drawn on a logarithmic scale.
         ax : Any | None
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         figsize : tuple[int, ...]
-            Input value.
+            Figure size passed to Matplotlib.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the pixel fit.
         """
         irf_trace = irf[y, x, :] if irf.ndim == 3 else np.asarray(irf)
         raw_trace = decay[y, x, :]
@@ -685,26 +685,26 @@ class PhasorPlotsMixin:
         Parameters
         ----------
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
         tau_ns : np.ndarray
-            Input value.
+            Lifetime value in nanoseconds.
         x : np.ndarray
-            Input value.
+            Input array, coordinate, or signal being transformed.
         y : np.ndarray
-            Input value.
+            Observed signal, target data, or coordinate array.
         log_scale : bool
-            Input value.
+            Whether the decay axis is drawn on a logarithmic scale.
         ax : Any | None
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         figsize : tuple[int, ...]
-            Input value.
+            Figure size passed to Matplotlib.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the single-exponential pixel fit.
         """
         if isinstance(tau_ns, (torch.Tensor, np.ndarray)):
             if tau_ns.ndim >= 2:
@@ -803,32 +803,32 @@ class PhasorPlotsMixin:
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         harmonics : tuple[int, ...]
-            Input value.
+            Harmonic indices included in the phasor plot.
         mask : np.ndarray | None
-            Input value.
+            Boolean or labeled mask selecting pixels for the operation.
         colors : Any | None
-            Input value.
+            Color sequence used for plotted sources or groups.
         hexbin_color : np.ndarray | None
-            Input value.
+            Optional values used to color phasor hexbin density.
         figsize : tuple[int, ...]
-            Input value.
+            Figure size passed to Matplotlib.
         axes : Any | None
-            Input value.
+            Matplotlib axes collection used for drawing subplots.
         half_circle : bool
-            Input value.
+            Whether to draw only the upper half of the universal phasor circle.
         xlim : tuple[float, ...]
-            Input value.
+            X-axis limits for the phasor plot.
         ylim : tuple[float, ...]
-            Input value.
+            Y-axis limits for the phasor plot.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing phasor harmonics.
         """
         G = np.asarray(G)
         S = np.asarray(S)
@@ -945,28 +945,28 @@ class PhasorPlotsMixin:
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         mask : np.ndarray | None
-            Input value.
+            Boolean or labeled mask selecting pixels for the operation.
         colormap : str
-            Input value.
+            Colormap used to convert phasor coordinates to colors.
         figsize : tuple[int, ...]
-            Input value.
+            Figure size passed to Matplotlib.
         axes : Any | None
-            Input value.
+            Matplotlib axes collection used for drawing subplots.
         half_circle : bool
-            Input value.
+            Whether to draw only the upper half of the universal phasor circle.
         xlim : tuple[float, ...]
-            Input value.
+            X-axis limits for the phasor plot.
         ylim : tuple[float, ...]
-            Input value.
+            Y-axis limits for the phasor plot.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing traceable phasor analysis panels.
         """
         G_2d = G[0] if G.ndim == 3 else G
         S_2d = S[0] if S.ndim == 3 else S

@@ -8,8 +8,8 @@ generation, hardware noise modeling, calibration, and validation tools. Public A
 includes classes :class:`NoiseEngine`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 
 
@@ -28,12 +28,12 @@ class NoiseEngine:
         Parameters
         ----------
         clean_signal : np.ndarray
-            Input value.
+            Noise-free simulated signal before detector noise is applied.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by apply poisson.
         """
         return np.random.poisson(np.clip(clean_signal, 0, None)).astype(np.float64)
 
@@ -63,14 +63,14 @@ class NoiseEngine:
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
         max_shift : int
-            Input value.
+            Maximum random temporal jitter shift in bins.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Decay array after timing jitter has been applied.
         """
         n = len(decay)
         shift = np.random.randint(-max_shift, max_shift + 1)
@@ -84,18 +84,18 @@ class NoiseEngine:
     def tcspc_pileup_filter(arrival_times: np.ndarray, t_rep: float) -> Any:
         # Simplistic pile-up: real systems might only take the first photon per cycle
         """
-        Handle tcspc pileup filter.
+        Run the TCSPC pileup filter routine.
 
         Parameters
         ----------
         arrival_times : np.ndarray
-            Input value.
+            Photon arrival times passed to the TCSPC pile-up filter.
         t_rep : float
-            Input value.
+            Laser repetition period used for TCSPC pile-up filtering.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by TCSPC pileup filter.
         """
         return arrival_times[arrival_times < t_rep]

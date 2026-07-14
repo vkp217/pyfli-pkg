@@ -6,7 +6,6 @@ helpers for normalization, masking, ROI extraction, and IRF alignment. Public AP
 includes classes :class:`ROIOperations`.
 """
 
-from __future__ import annotations
 import numpy as np
 
 
@@ -27,21 +26,21 @@ class ROIOperations:
         model_type: str = "bi-exponential",
     ) -> np.ndarray:
         """
-        Handle extract roi datasets.
+        Run the extract ROI datasets routine.
 
         Parameters
         ----------
         global_dataset : np.ndarray
-            Input value.
+            Mapping containing datasets for all ROI groups.
         multi_roi_mask : np.ndarray
-            Input value.
+            Labeled ROI mask used to split global results.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            ROI-specific dataset arrays extracted from the global dataset.
         """
         roi_datasets = {}
         H, W = multi_roi_mask.shape

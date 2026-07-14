@@ -7,8 +7,8 @@ functions :func:`enforce_tau_ordering`, :func:`compute_fli_stats`,
 :func:`compute_average_lifetime`, and :func:`compute_fret_efficiency`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 
 
@@ -21,16 +21,16 @@ def enforce_tau_ordering(
     Parameters
     ----------
     popt : np.ndarray
-        Input value.
+        Optimized model parameter vector.
     perr : Any | None
-        Input value.
+        One-standard-deviation parameter uncertainty estimates.
     pcov : np.ndarray | None
-        Input value.
+        Parameter covariance matrix.
 
     Returns
     -------
     tuple[Any, ...]
-        Return value.
+        Tuple containing the reordered parameter vector and any reordered uncertainty or covariance data.
     """
     popt = np.asarray(popt, dtype=float)
 
@@ -56,21 +56,21 @@ def compute_fli_stats(
     final_model: np.ndarray, d_fit: np.ndarray, n_params: int
 ) -> tuple[Any, ...]:
     """
-    Compute fli stats.
+    Compute FLIM fit statistics.
 
     Parameters
     ----------
     final_model : np.ndarray
-        Input value.
+        Model decay evaluated at the fitted parameters.
     d_fit : np.ndarray
-        Input value.
+        Measured decay samples over the fitted range.
     n_params : int
-        Input value.
+        Number of fitted model parameters.
 
     Returns
     -------
     tuple[Any, ...]
-        Return value.
+        Tuple containing SSR, chi-square, reduced chi-square, and R-squared statistics.
     """
     residuals = final_model - d_fit
     ssr = float(np.sum(residuals**2))
@@ -89,12 +89,12 @@ def compute_average_lifetime(popt: np.ndarray) -> float:
     Parameters
     ----------
     popt : np.ndarray
-        Input value.
+        Optimized model parameter vector.
 
     Returns
     -------
     float
-        Return value.
+        Amplitude-weighted average lifetime for bi-exponential fits or the mono-exponential lifetime.
     """
     if len(popt) == 6:
         return float(popt[1] * popt[2] + (1.0 - popt[1]) * popt[3])
@@ -103,17 +103,17 @@ def compute_average_lifetime(popt: np.ndarray) -> float:
 
 def compute_fret_efficiency(popt: np.ndarray) -> float:
     """
-    Compute fret efficiency.
+    Compute FRET efficiency.
 
     Parameters
     ----------
     popt : np.ndarray
-        Input value.
+        Optimized model parameter vector.
 
     Returns
     -------
     float
-        Return value.
+        FRET efficiency estimated from the fitted short and long lifetimes.
     """
     if len(popt) == 6:
         tau1, tau2 = popt[2], popt[3]

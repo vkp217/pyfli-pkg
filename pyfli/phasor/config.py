@@ -13,7 +13,6 @@ Units
     Angles    : radians (computed internally)
 """
 
-from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 import math
@@ -94,24 +93,24 @@ class AcquisitionConfig:
     # ------------------------------------------------------------------
     def __post_init__(self) -> None:
         """
-        Handle post init.
+        Run the post init routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform post init.
         """
         self._validate()
 
     # ------------------------------------------------------------------ validation
     def _validate(self) -> None:
         """
-        Handle validate.
+        Run the validate routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform validate.
         """
         if self.T_ns <= 0:
             raise ValueError(f"T_ns must be positive, got {self.T_ns}")
@@ -165,12 +164,12 @@ class AcquisitionConfig:
     # ------------------------------------------------------------------ helpers
     def describe(self) -> str:
         """
-        Handle describe.
+        Run the describe routine.
 
         Returns
         -------
         str
-            Return value.
+            String path, label, or message produced by describe.
         """
         lines = [
             "AcquisitionConfig",

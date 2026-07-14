@@ -10,7 +10,6 @@ normalization, plotting, and mono-versus-bi-exponential comparison tools. The mo
 primarily re-exports package symbols or constants for downstream imports.
 """
 
-from __future__ import annotations
 from .data_viewer import DataViewer
 from .multi_plotter import (
     Plotter,

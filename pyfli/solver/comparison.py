@@ -8,12 +8,13 @@ likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API inclu
 classes :class:`FittingComparator`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 import time
 import io
 import contextlib
+
 import matplotlib.pyplot as plt
 
 from pyfli import logging
@@ -84,21 +85,21 @@ class FittingComparator:
 
         def fmt_cell(text: np.ndarray, width: float, align: Any) -> Any:
             """
-            Handle fmt cell.
+            Run the fmt cell routine.
 
             Parameters
             ----------
             text : np.ndarray
-                Input value.
+                Text rendered into a UI label or formatted table cell.
             width : float
-                Input value.
+                Gate width used by the gate matrix.
             align : Any
-                Input value.
+                Text alignment used when formatting a table cell.
 
             Returns
             -------
             Any
-                Return value.
+                Object produced by fmt cell.
             """
             s = str(text)
             if align == "<":
@@ -109,17 +110,17 @@ class FittingComparator:
 
         def row_str(cells: Any) -> Any:
             """
-            Handle row str.
+            Run the row str routine.
 
             Parameters
             ----------
             cells : Any
-                Input value.
+                Rendered table cells for one formatted row.
 
             Returns
             -------
             Any
-                Return value.
+                Object produced by row str.
             """
             return (
                 "│"
@@ -129,21 +130,21 @@ class FittingComparator:
 
         def sep(left: np.ndarray, mid: Any, right: np.ndarray) -> Any:
             """
-            Handle sep.
+            Run the sep routine.
 
             Parameters
             ----------
             left : np.ndarray
-                Input value.
+                Left border character used by the table separator.
             mid : Any
-                Input value.
+                Middle separator character used by the table formatter.
             right : np.ndarray
-                Input value.
+                Right border character used by the table separator.
 
             Returns
             -------
             Any
-                Return value.
+                Object produced by sep.
             """
             return left + mid.join("─" * (w + 2) for _, w, _ in cols) + right
 
@@ -234,31 +235,31 @@ class FittingComparator:
         plot: bool = True,
     ) -> tuple[Any, ...]:
         """
-        Handle compare selected.
+        Compare selected.
 
         Parameters
         ----------
         methods : np.ndarray
-            Input value.
+            Names of fitting methods to include in the comparison.
         y_data : np.ndarray
-            Input value.
+            Observed decay data passed to the fitter.
         irf_data : np.ndarray
-            Input value.
+            Instrument response data used to convolve or simulate decays.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
         p0 : Any | None
-            Input value.
+            Initial parameter vector supplied to the optimizer.
         bounds : np.ndarray | None
-            Input value.
+            Lower and upper parameter bounds supplied to the optimizer.
         yscale : str
-            Input value.
+            Scale used for the y-axis.
         plot : bool
-            Input value.
+            Whether diagnostic plots should be generated.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing comparison metrics for the selected fitting methods.
         """
         results_table = []
         if y_data.ndim != 1 or irf_data.ndim != 1:
@@ -354,24 +355,24 @@ class FittingComparator:
         Parameters
         ----------
         y_data : np.ndarray
-            Input value.
+            Observed decay data passed to the fitter.
         irf_data : np.ndarray
-            Input value.
+            Instrument response data used to convolve or simulate decays.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
         p0 : Any | None
-            Input value.
+            Initial parameter vector supplied to the optimizer.
         bounds : np.ndarray | None
-            Input value.
+            Lower and upper parameter bounds supplied to the optimizer.
         yscale : str
-            Input value.
+            Scale used for the y-axis.
         plot : bool
-            Input value.
+            Whether diagnostic plots should be generated.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by run all.
         """
         return self.compare_selected(
             list(self.method_mapping.keys()),
@@ -393,16 +394,16 @@ class FittingComparator:
         Parameters
         ----------
         data : np.ndarray
-            Input value.
+            Data array or mapping processed by the routine.
         yscale : np.ndarray
-            Input value.
+            Scale used for the y-axis.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the method comparison.
         """
         fig, (ax1, ax2) = plt.subplots(
             2, 1, figsize=(8, 8), sharex=True, gridspec_kw={"height_ratios": [2.5, 1]}
@@ -451,20 +452,20 @@ class FittingComparator:
         Parameters
         ----------
         saver : Any
-            Input value.
+            Optional saver used to persist messages or figures.
         results_table : np.ndarray
-            Input value.
+            Rows of fit comparison results written to disk.
         fig : Any | None
-            Input value.
+            Matplotlib figure object to update or save.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
         name : str
-            Input value.
+            Dataset, experiment, figure, or output name.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save results.
         """
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):

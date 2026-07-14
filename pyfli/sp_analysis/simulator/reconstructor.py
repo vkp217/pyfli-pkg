@@ -7,8 +7,8 @@ pixel camera basis generation, acquisition simulation, and reconstruction solver
 Public API includes classes :class:`Reconstructor`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
 # sp_analysis/simulator/reconstructor.py
 
@@ -36,17 +36,17 @@ class Reconstructor:
     def _tv_norm(self, x_flat: np.ndarray) -> Any:
         # Calculates the Total Variation of the image
         """
-        Handle tv norm.
+        Run the TV norm routine.
 
         Parameters
         ----------
         x_flat : np.ndarray
-            Input value.
+            Flattened image or parameter vector.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by TV norm.
         """
         x = x_flat.reshape((self.res_h, self.res_w))
         grad_x = np.diff(x, axis=1)
@@ -100,23 +100,24 @@ class Reconstructor:
         maxiter: int = 500,
     ) -> Any:
         """
-        Handle solve tv.
+        Run the solve TV routine.
 
         Parameters
         ----------
         measurements : np.ndarray
-            Input value.
+            Single-pixel measurement vector or matrix.
         basis_matrix : np.ndarray
-            Input value.
+            Sensing basis matrix used for reconstruction.
         alpha : float
-            Input value.
+            Regularization strength, fraction value, or significance threshold used by the
+        routine.
         maxiter : int
-            Input value.
+            Maximum number of optimization iterations.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by solve TV.
         """
         A = basis_matrix.astype(np.float64)
         y = measurements.astype(np.float64).flatten()
@@ -143,19 +144,19 @@ class Reconstructor:
     ) -> Any:
         # Standard linear back-projection (Ghost Imaging)
         """
-        Handle reconstruct linear.
+        Reconstruct linear.
 
         Parameters
         ----------
         measurements : np.ndarray
-            Input value.
+            Single-pixel measurement vector or matrix.
         basis_matrix : np.ndarray
-            Input value.
+            Sensing basis matrix used for reconstruction.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by reconstruct linear.
         """
         y = measurements.flatten()
         M = len(y)
@@ -169,19 +170,19 @@ class Reconstructor:
         # Fast reconstruction for Fourier SPI.
         # Directly fills the 2D DCT spectrum and performs IDCT.
         """
-        Handle reconstruct fourier domain.
+        Reconstruct fourier domain.
 
         Parameters
         ----------
         measurements : np.ndarray
-            Input value.
+            Single-pixel measurement vector or matrix.
         sampling_indices : Any
-            Input value.
+            Frequency-domain sample indices used for reconstruction.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Fourier-domain reconstruction on the requested sampling indices.
         """
         freq_map_flat = np.zeros(self.n_pixels)
         # Place measurements back into their frequency locations

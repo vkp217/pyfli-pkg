@@ -11,7 +11,6 @@ estimation. The module primarily re-exports package symbols or constants for dow
 imports.
 """
 
-from __future__ import annotations
 from .phasor_simple import PhasorAnalyzer
 from .am_utils import AnalyticalHelpers
 from .laguerre_deconvolution import LaguerreFLI

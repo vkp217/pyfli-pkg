@@ -7,12 +7,14 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`PyFliprocessedImport`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
+
 import numpy as np
 import os
 import glob
+
 import matplotlib.pyplot as plt
 import json
 
@@ -25,12 +27,12 @@ class DatasetPlotter:
 
     def _plotting_maps(self) -> np.ndarray:
         """
-        Handle plotting maps.
+        Run the plotting maps routine.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the rendered result maps.
         """
         if (
             not hasattr(self, "dataset")
@@ -135,17 +137,17 @@ class AlliGprocessedImport(DatasetPlotter):
 
     def _detect_fit_type(self, files: np.ndarray) -> bool:
         """
-        Handle detect fit type.
+        Run the detect fit type routine.
 
         Parameters
         ----------
         files : np.ndarray
-            Input value.
+            File list inspected to infer the processed fit type.
 
         Returns
         -------
         bool
-            Return value.
+            Boolean result computed by detect fit type.
         """
         for f in files:
             name_lower = os.path.basename(f).lower()
@@ -163,7 +165,7 @@ class AlliGprocessedImport(DatasetPlotter):
         Returns
         -------
         Any
-            Return value.
+            Object produced by read text files.
         """
         if not os.path.exists(self.folder_path):
             logging.error(f"Error: The path '{self.folder_path}' does not exist.")
@@ -261,17 +263,17 @@ class BHprocessedImport(DatasetPlotter):
 
     def _detect_fit_type(self, files: np.ndarray) -> bool:
         """
-        Handle detect fit type.
+        Run the detect fit type routine.
 
         Parameters
         ----------
         files : np.ndarray
-            Input value.
+            File list inspected to infer the processed fit type.
 
         Returns
         -------
         bool
-            Return value.
+            Boolean result computed by detect fit type.
         """
         for f in files:
             name_lower = os.path.basename(f).lower()
@@ -288,7 +290,7 @@ class BHprocessedImport(DatasetPlotter):
         Returns
         -------
         Any
-            Return value.
+            Object produced by read ascfiles.
         """
         if not os.path.exists(self.folder_path):
             logging.error(f"Error: The path '{self.folder_path}' does not exist.")

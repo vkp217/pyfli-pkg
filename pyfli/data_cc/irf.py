@@ -7,27 +7,27 @@ helpers for normalization, masking, ROI extraction, and IRF alignment. Public AP
 includes classes :class:`IRFAligner`.
 """
 
-from __future__ import annotations
 from typing import Any
 import warnings
+
 import numpy as np
 from scipy.fft import fft, ifft, fftfreq
 
 
 class IRFAligner:
     """
-    Estimate and apply temporal alignment between decay and IRF cubes. It detects rising
+    Run the irfaligner routine.
     edges per pixel or globally and can shift signals with Fourier or circular methods
     before fitting.
 
     Parameters
     ----------
     decay : np.ndarray
-        Configuration value used by the class.
+        Fluorescence decay trace to process.
     irf : np.ndarray
-        Configuration value used by the class.
+        Instrument response function aligned with the decay trace.
     noise_bins : int
-        Configuration value used by the class.
+        Number of leading bins used to estimate the noise floor.
     """
 
     def __init__(self, decay: np.ndarray, irf: np.ndarray, noise_bins: int = 5) -> None:
@@ -111,12 +111,12 @@ class IRFAligner:
         Parameters
         ----------
         shifts : np.ndarray
-            Input value.
+            Per-pixel temporal shifts applied to the IRF cube.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by apply fourier shift.
         """
         freqs = fftfreq(self.T)
         # Apply the fractional shift in the frequency domain
@@ -177,17 +177,17 @@ class IRFAligner:
 
         def _rising_point(trace: np.ndarray) -> Any:
             """
-            Handle rising point.
+            Run the rising point routine.
 
             Parameters
             ----------
             trace : np.ndarray
-                Input value.
+                One-dimensional decay trace being processed.
 
             Returns
             -------
             Any
-                Return value.
+                Object produced by rising point.
             """
             peak_val = np.max(trace)
             if peak_val <= 0:

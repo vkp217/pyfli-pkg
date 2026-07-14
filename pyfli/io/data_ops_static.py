@@ -6,17 +6,16 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`StaticDataOps`.
 """
 
-from __future__ import annotations
 from typing import Any
-from pyfli import logging
 
-# dataIO/data_ops_static.py
 import numpy as np
 import h5py
 import tifffile
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from sdtfile import SdtFile
+
+from pyfli import logging
 
 
 class StaticDataOps:
@@ -147,12 +146,12 @@ class StaticDataOps:
         Parameters
         ----------
         path : str
-            Input value.
+            Filesystem path loaded or saved by the routine.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Data array loaded from a MATLAB file.
         """
         try:
             data = loadmat(path, squeeze_me=True)
@@ -174,12 +173,12 @@ class StaticDataOps:
         Parameters
         ----------
         path : str
-            Input value.
+            Filesystem path loaded or saved by the routine.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Data array loaded from a Becker-Hickl SDT file.
         """
         return np.asarray(SdtFile(path).data[0])
 
@@ -191,12 +190,12 @@ class StaticDataOps:
         Parameters
         ----------
         path : str
-            Input value.
+            Filesystem path loaded or saved by the routine.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Data array loaded from a TIFF file.
         """
         return np.asarray(tifffile.imread(path))
 
@@ -208,12 +207,12 @@ class StaticDataOps:
         Parameters
         ----------
         path : str
-            Input value.
+            Filesystem path loaded or saved by the routine.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by load npy file.
         """
         return np.load(path)
 
@@ -227,14 +226,14 @@ class StaticDataOps:
         Parameters
         ----------
         path : str
-            Input value.
+            Filesystem path loaded or saved by the routine.
         target_spatial : tuple[int, ...]
-            Input value.
+            Target spatial shape used when loading text data.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Data array loaded from a text file.
         """
         data = np.loadtxt(path)
         if data.ndim == 1:
@@ -250,14 +249,14 @@ class StaticDataOps:
         Parameters
         ----------
         path : str
-            Input value.
+            Filesystem path loaded or saved by the routine.
         target_spatial : tuple[int, ...]
-            Input value.
+            Target spatial shape used when loading text data.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by load asc file.
         """
         data_read = np.genfromtxt(path)
         data_1d = data_read[:, 1] if data_read.ndim == 2 else data_read.flatten()

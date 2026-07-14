@@ -7,8 +7,8 @@ generation, hardware noise modeling, calibration, and validation tools. Public A
 includes classes :class:`FLIEngine`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 
 from .distributions import ParameterSampler
@@ -18,33 +18,33 @@ from .sim_helper import irf_picker
 
 class FLIEngine:
     """
-    Drive the main non-image FLIM simulation engine. It samples parameters, creates
+    Run the fliengine routine.
     analytical decays, and simulates TCSPC counts from a shared IRF and configuration.
 
     Parameters
     ----------
     irf_full : np.ndarray
-        Configuration value used by the class.
+        Full instrument response function sampled over the decay window.
     tau2 : tuple[int, float]
-        Configuration value used by the class.
+        Long lifetime component.
     efficiency : tuple[int, ...]
-        Configuration value used by the class.
+        FRET transfer efficiency used to derive simulated lifetime components.
     A1_fraction : tuple[int, ...]
-        Configuration value used by the class.
+        Amplitude fraction assigned to the first exponential component.
     photo_count : tuple[float, int]
-        Configuration value used by the class.
+        Expected photon count used to scale the simulated decay.
     mono_fraction : float
-        Configuration value used by the class.
+        Fraction of pixels or events assigned to the mono-exponential component.
     bit : int
-        Configuration value used by the class.
+        Bit depth or quantization setting for simulated detector output.
     n_cycles : int
-        Number of items used by this workflow.
+        Number of excitation cycles used when constructing the simulated decay.
     dcr : float
-        Configuration value used by the class.
+        Detector dark-count rate used by the noise model.
     laser_feq : int
-        Configuration value used by the class.
+        Laser repetition frequency used by the simulation.
     seed : int | None
-        Configuration value used by the class.
+        Seed for reproducible random sampling.
     **kwargs : Any
         Additional keyword arguments forwarded to the underlying implementation.
     """
@@ -148,12 +148,12 @@ class FLIEngine:
         Parameters
         ----------
         p : Any
-            Input value.
+            Detector parameter object or fitted parameter vector.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by get analytical decay.
         """
         T = self.laser_period
         # steady-state scaling factor per component

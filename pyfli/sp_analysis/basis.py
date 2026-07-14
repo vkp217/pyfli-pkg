@@ -7,8 +7,8 @@ includes classes :class:`OrthogonalBasis`, :class:`HadamardBasis`, and
 :class:`DCTBasis`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 from scipy.linalg import hadamard as _hadamard
 from scipy.fftpack import dct, idct
@@ -22,33 +22,33 @@ class OrthogonalBasis:
 
     def forward(self, x: np.ndarray) -> None:
         """
-        Handle forward.
+        Apply the forward basis transform.
 
         Parameters
         ----------
         x : np.ndarray
-            Input value.
+            Input array, coordinate, or signal being transformed.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform forward.
         """
         raise NotImplementedError
 
     def inverse(self, y: np.ndarray) -> None:
         """
-        Handle inverse.
+        Apply the inverse basis transform.
 
         Parameters
         ----------
         y : np.ndarray
-            Input value.
+            Observed signal, target data, or coordinate array.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform inverse.
         """
         raise NotImplementedError
 
@@ -70,17 +70,17 @@ class HadamardBasis(OrthogonalBasis):
 
     def forward(self, x: np.ndarray) -> Any:
         """
-        Handle forward.
+        Apply the forward basis transform.
 
         Parameters
         ----------
         x : np.ndarray
-            Input value.
+            Input array, coordinate, or signal being transformed.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by forward.
         """
         shape = x.shape
         return (self._H @ x.reshape(self.n, -1)).reshape(shape)
@@ -88,17 +88,17 @@ class HadamardBasis(OrthogonalBasis):
     def inverse(self, y: np.ndarray) -> Any:
         # H @ H = N * I, so H^{-1} = H / N
         """
-        Handle inverse.
+        Apply the inverse basis transform.
 
         Parameters
         ----------
         y : np.ndarray
-            Input value.
+            Observed signal, target data, or coordinate array.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by inverse.
         """
         shape = y.shape
         return (self._H @ y.reshape(self.n, -1) / self.n).reshape(shape)
@@ -112,32 +112,32 @@ class DCTBasis(OrthogonalBasis):
 
     def forward(self, x: np.ndarray) -> Any:
         """
-        Handle forward.
+        Apply the forward basis transform.
 
         Parameters
         ----------
         x : np.ndarray
-            Input value.
+            Input array, coordinate, or signal being transformed.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by forward.
         """
         return dct(x, axis=0, norm="ortho")
 
     def inverse(self, y: np.ndarray) -> Any:
         """
-        Handle inverse.
+        Apply the inverse basis transform.
 
         Parameters
         ----------
         y : np.ndarray
-            Input value.
+            Observed signal, target data, or coordinate array.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by inverse.
         """
         return idct(y, axis=0, norm="ortho")

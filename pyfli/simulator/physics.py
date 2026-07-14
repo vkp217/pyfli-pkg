@@ -5,8 +5,8 @@ HardSimulator    -> uses generate_pixel_decay()  (analytical convolution + Poiss
 HardestSimulator  -> uses tcspc_pixel_decay()      (photon-by-photon TCSPC simulation)
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 from scipy.signal import fftconvolve
 from scipy.optimize import curve_fit
@@ -15,6 +15,7 @@ from scipy.special import hyp2f1
 from scipy.stats import truncnorm
 from tqdm import tqdm
 from PIL import Image
+
 from ..io.data_operations import DataOperations
 
 
@@ -24,7 +25,7 @@ _MAX_GATE_SHIFT = 3
 
 class HardSimulator:
     """
-    Simulate heterogeneous FLIM pixels with explicit lifetime and detector settings. The
+    Run the hard simulator routine.
     class samples local parameters and produces analytical or photon-counting decays for
     difficult synthetic cases.
 
@@ -33,19 +34,19 @@ class HardSimulator:
     irf_file_path : str
         Filesystem path used by this workflow.
     tau2 : np.ndarray | None
-        Configuration value used by the class.
+        Long lifetime component.
     efficiency : tuple[int, ...]
-        Configuration value used by the class.
+        FRET transfer efficiency used to derive simulated lifetime components.
     f_fraction : tuple[int, ...]
-        Configuration value used by the class.
+        Fractional contribution of the FRET-sensitive population.
     photo_count : tuple[int, ...]
-        Configuration value used by the class.
+        Expected photon count used to scale the simulated decay.
     mono_fraction : float
-        Configuration value used by the class.
+        Fraction of pixels or events assigned to the mono-exponential component.
     bit : int
-        Configuration value used by the class.
+        Bit depth or quantization setting for simulated detector output.
     n_cycles : int
-        Number of items used by this workflow.
+        Number of excitation cycles used when constructing the simulated decay.
     """
 
     def __init__(
@@ -89,7 +90,7 @@ class HardSimulator:
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by call.
         """
         n_pixel_cycles = np.random.randint(1, self.n_cycles + 1)
 
@@ -124,7 +125,7 @@ class HardSimulator:
 
 class HardestSimulator:
     """
-    Simulate photon-by-photon TCSPC pixels for stress-testing fitting methods. It favors
+    Run the hardest simulator routine.
     realism over speed and is intended for demanding validation scenarios.
 
     Parameters
@@ -132,17 +133,17 @@ class HardestSimulator:
     irf_file_path : str
         Filesystem path used by this workflow.
     tau2 : tuple[int, float]
-        Configuration value used by the class.
+        Long lifetime component.
     efficiency : tuple[int, ...]
-        Configuration value used by the class.
+        FRET transfer efficiency used to derive simulated lifetime components.
     f_fraction : tuple[int, ...]
-        Configuration value used by the class.
+        Fractional contribution of the FRET-sensitive population.
     photo_count : tuple[float, int]
-        Configuration value used by the class.
+        Expected photon count used to scale the simulated decay.
     mono_fraction : float
-        Configuration value used by the class.
+        Fraction of pixels or events assigned to the mono-exponential component.
     bit : int
-        Configuration value used by the class.
+        Bit depth or quantization setting for simulated detector output.
     """
 
     def __init__(
@@ -170,7 +171,7 @@ class HardestSimulator:
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by call.
         """
         n_cycles = np.random.randint(800_000)
         current_tau2 = (np.random.uniform(0.2, 2.5), 0.199999)
@@ -208,32 +209,32 @@ class HardestSimulator:
 
 class HeterogeneousFLISimulator:
     """
-    Generate heterogeneous pixel-level FLIM decays with random local parameters, noise,
+    Run the heterogeneous flisimulator routine.
     phasor summaries, and Fisher-information estimates. It is the main physical
     simulator for nonuniform samples.
 
     Parameters
     ----------
     irf_full : np.ndarray
-        Configuration value used by the class.
+        Full instrument response function sampled over the decay window.
     tau2 : np.ndarray
-        Configuration value used by the class.
+        Long lifetime component.
     efficiency : np.ndarray
-        Configuration value used by the class.
+        FRET transfer efficiency used to derive simulated lifetime components.
     f_fraction : np.ndarray
-        Configuration value used by the class.
+        Fractional contribution of the FRET-sensitive population.
     photo_count : tuple[float, int]
-        Configuration value used by the class.
+        Expected photon count used to scale the simulated decay.
     mono_fraction : float
-        Configuration value used by the class.
+        Fraction of pixels or events assigned to the mono-exponential component.
     bit : int
-        Configuration value used by the class.
+        Bit depth or quantization setting for simulated detector output.
     omega : float
-        Configuration value used by the class.
+        Angular modulation frequency used in phasor calculations.
     n_cycles : int
-        Number of items used by this workflow.
+        Number of excitation cycles used when constructing the simulated decay.
     norm_type : str
-        Configuration value used by the class.
+        Normalization strategy applied to simulated decays.
     """
 
     def __init__(
@@ -293,17 +294,17 @@ class HeterogeneousFLISimulator:
 
     def pixel_wise_normalisation(self, decay_series: np.ndarray) -> Any:
         """
-        Handle pixel wise normalisation.
+        Run the pixel wise normalisation routine.
 
         Parameters
         ----------
         decay_series : np.ndarray
-            Input value.
+            Decay traces normalized pixel by pixel.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by pixel wise normalisation.
         """
         eps = 1e-12
         decay = np.asarray(decay_series, dtype=np.float64)
@@ -338,19 +339,19 @@ class HeterogeneousFLISimulator:
     @staticmethod
     def fft_features(decay: np.ndarray, n_harmonics: int = 5) -> Any:
         """
-        Handle fft features.
+        Run the FFT features routine.
 
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
         n_harmonics : int
-            Input value.
+            Number of phasor harmonics.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by FFT features.
         """
         decay = np.asarray(decay, dtype=np.float64)
         scalar = decay.ndim == 1
@@ -380,16 +381,16 @@ class HeterogeneousFLISimulator:
         Parameters
         ----------
         lower_bound : float
-            Input value.
+            Lower bound applied during constrained sampling or fitting.
         upper_bound : float
-            Input value.
+            Upper bound applied during constrained sampling or fitting.
         size : int
-            Input value.
+            Number of samples drawn by the sampler.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by sample tau2.
         """
         a = (lower_bound - self.tau2_mean) / self.tau2_std
         b = (upper_bound - self.tau2_mean) / self.tau2_std
@@ -397,17 +398,17 @@ class HeterogeneousFLISimulator:
 
     def _safe_fraction(self, x: np.ndarray) -> np.ndarray:
         """
-        Handle safe fraction.
+        Run the safe fraction routine.
 
         Parameters
         ----------
         x : np.ndarray
-            Input value.
+            Input array, coordinate, or signal being transformed.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Fraction values clipped into the valid probability range.
         """
         return np.clip(x, self.eps, 1.0 - self.eps)
 
@@ -427,7 +428,7 @@ class HeterogeneousFLISimulator:
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by sample local parameters.
         """
         tau2 = float(self._sample_tau2()[0])
         mono = np.random.rand() < self.mono_fraction
@@ -497,7 +498,7 @@ class HeterogeneousFLISimulator:
         Returns
         -------
         Any
-            Return value.
+            Object produced by sample photon count.
         """
         return round(np.random.beta(self.alpha_A, self.beta_A) * (2**self.bit - 1))
 
@@ -553,12 +554,12 @@ class HeterogeneousFLISimulator:
     # Global analytical parameters / phasor / Fisher information
     def analytical_global_parameters(self) -> dict[Any, Any]:
         """
-        Handle analytical global parameters.
+        Run the analytical global parameters routine.
 
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by analytical global parameters.
         """
         mu_f = self.alpha_f / (self.alpha_f + self.beta_f)
         tau2_global = self.tau2_mean
@@ -574,41 +575,41 @@ class HeterogeneousFLISimulator:
         t: np.ndarray, a1: Any, tau1: np.ndarray, a2: Any, tau2: np.ndarray
     ) -> Any:
         """
-        Handle biexponential.
+        Run the biexponential routine.
 
         Parameters
         ----------
         t : np.ndarray
-            Input value.
+            Time axis or acquisition period used by the calculation.
         a1 : Any
-            Input value.
+            Amplitude or fraction of the first exponential component.
         tau1 : np.ndarray
-            Input value.
+            Short lifetime component.
         a2 : Any
-            Input value.
+            Amplitude or fraction of the second exponential component.
         tau2 : np.ndarray
-            Input value.
+            Long lifetime component.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by biexponential.
         """
         return a1 * np.exp(-t / tau1) + a2 * np.exp(-t / tau2)
 
     def recover_global_lifetime(self, decay: np.ndarray) -> dict[Any, Any]:
         """
-        Handle recover global lifetime.
+        Run the recover global lifetime routine.
 
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
 
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by recover global lifetime.
         """
         tau2_init = self.tau2_mean
         p0 = [0.4, 0.5 * tau2_init, 0.6, tau2_init]
@@ -617,12 +618,12 @@ class HeterogeneousFLISimulator:
 
     def analytical_phasor(self) -> tuple[Any, ...]:
         """
-        Handle analytical phasor.
+        Run the analytical phasor routine.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing analytical phasor coordinates and intensity values.
         """
         mu_f = self.alpha_f / (self.alpha_f + self.beta_f)
         tau2 = self.tau2_mean
@@ -641,12 +642,12 @@ class HeterogeneousFLISimulator:
 
     def fisher_information(self) -> np.ndarray:
         """
-        Handle fisher information.
+        Run the fisher information routine.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Fisher information matrix for the model parameters.
         """
         pars = self.sample_local_parameters()
         if pars["mono"]:
@@ -740,7 +741,7 @@ class HeterogeneousFLISimulator:
 #### Fluorescence Lifetime Image and Parameters Map Generator
 class FLIImageGenerator:
     """
-    Generate full FLIM image cubes from masks, intensity images, ROI parameters, and
+    Run the fliimage generator routine.
     simulator settings. It bridges pixel-level simulation with image-shaped datasets
     used by solvers and visualizers.
 
@@ -751,9 +752,9 @@ class FLIImageGenerator:
     roi_mask_path : str | None
         Filesystem path used by this workflow.
     roi_params : Any | None
-        Configuration value used by the class.
+        Parameters defining ROI shape, position, and intensity properties.
     image_shape : tuple[int, ...]
-        Configuration value used by the class.
+        Height and width of the generated image.
     method : str
         Algorithm or model-selection method to use.
     """

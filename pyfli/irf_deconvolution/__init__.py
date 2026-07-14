@@ -9,7 +9,6 @@ aware IRF deconvolution and joint FLIM fitting utilities. The module primarily r
 exports package symbols or constants for downstream imports.
 """
 
-from __future__ import annotations
 from .detector_weights import (
     TCSPCParams,
     SPADParams,

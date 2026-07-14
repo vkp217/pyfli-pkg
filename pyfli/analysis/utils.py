@@ -11,9 +11,10 @@ datasets. Public API includes functions :func:`circular_convolution_fft`,
 :func:`save_3d_array_as_tiff_sequence`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
+
 import numpy as np
 from scipy.integrate import quad
 from scipy.signal import fftconvolve
@@ -21,6 +22,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
 import math
 import os
+
 import tifffile
 
 from ..data_vnp.color_processor import ColorProcessor
@@ -31,21 +33,21 @@ def circular_convolution_fft(
     x: np.ndarray, h: np.ndarray, broadcast_irf: bool = True
 ) -> np.ndarray:
     """
-    Handle circular convolution fft.
+    Run the circular convolution FFT routine.
 
     Parameters
     ----------
     x : np.ndarray
-        Input value.
+        Input array, coordinate, or signal being transformed.
     h : np.ndarray
-        Input value.
+        IRF, image height, or temporal kernel used by the routine.
     broadcast_irf : bool
-        Input value.
+        Whether a shared IRF should be broadcast to every pixel.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Circular convolution result with the same length as the input decay.
     """
     x = np.asarray(x)
     h = np.asarray(h)
@@ -88,27 +90,28 @@ def single_ex_decay_summed_overtime(
     seed: int | None = None,
 ) -> tuple[Any, ...]:
     """
-    Handle single ex decay summed overtime.
+    Run the single ex decay summed overtime routine.
 
     Parameters
     ----------
     tau : np.ndarray
-        Input value.
+        Lifetime value or lifetime map in nanoseconds.
     irf_data : np.ndarray
-        Input value.
+        Instrument response data used to convolve or simulate decays.
     alpha : float
-        Input value.
+        Regularization strength, fraction value, or significance threshold used by the
+    routine.
     err : float
-        Input value.
+        Noise or perturbation level applied to simulated decays.
     laser_period : float
-        Input value.
+        Laser repetition period in nanoseconds.
     seed : int | None
-        Input value.
+        Random seed used for reproducible sampling.
 
     Returns
     -------
     tuple[Any, ...]
-        Return value.
+        Tuple containing the integrated single-exponential decay and time samples.
     """
     if seed is not None:
         np.random.seed(seed)
@@ -162,19 +165,19 @@ def single_ex_decay_summed_overtime(
 
 def gate_j(m: int, T: float) -> np.ndarray:
     """
-    Handle gate j.
+    Run the gate j routine.
 
     Parameters
     ----------
     m : int
-        Input value.
+        Gate, harmonic, or interval index.
     T : float
-        Input value.
+        Time axis or acquisition period used by the calculation.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Integrated gate image or trace for the requested gate index.
     """
     buckets = []
     for j in range(1, m + 1):
@@ -188,25 +191,25 @@ def Pj_continuous_mono(
     f: np.ndarray, m: int, T: float, epsabs: float = 1e-8, epsrel: float = 1e-8
 ) -> Any:
     """
-    Handle pj continuous mono.
+    Run the pj continuous mono routine.
 
     Parameters
     ----------
     f : np.ndarray
-        Input value.
+        Decay basis, distribution, or signal function used by the calculation.
     m : int
-        Input value.
+        Gate, harmonic, or interval index.
     T : float
-        Input value.
+        Time axis or acquisition period used by the calculation.
     epsabs : float
-        Input value.
+        Absolute integration tolerance.
     epsrel : float
-        Input value.
+        Relative integration tolerance.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by pj continuous mono.
     """
     gates = np.array(gate_j(m, T))  # list-of-tuples → 2D array for slicing
     a_vals, b_vals = gates[:, 0], gates[:, 1]
@@ -214,19 +217,19 @@ def Pj_continuous_mono(
     # Vectorized numerical integration using np.vectorize wrapper
     def integrate_interval(a: np.ndarray, b: np.ndarray) -> np.ndarray:
         """
-        Handle integrate interval.
+        Run the integrate interval routine.
 
         Parameters
         ----------
         a : np.ndarray
-            Input value.
+            Lower integration or interval bound.
         b : np.ndarray
-            Input value.
+            Upper integration or interval bound.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Integrated signal over the requested interval.
         """
         val, _ = quad(f, a, b, epsabs=epsabs, epsrel=epsrel)
         return val
@@ -240,23 +243,23 @@ def Pj_from_samples_mono(
     t_samples: np.ndarray, y_samples: np.ndarray, m: int, T: float
 ) -> Any:
     """
-    Handle pj from samples mono.
+    Run the pj from samples mono routine.
 
     Parameters
     ----------
     t_samples : np.ndarray
-        Input value.
+        Sample times used to integrate a mono-exponential decay.
     y_samples : np.ndarray
-        Input value.
+        Sampled mono-exponential values integrated over gates.
     m : int
-        Input value.
+        Gate, harmonic, or interval index.
     T : float
-        Input value.
+        Time axis or acquisition period used by the calculation.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by pj from samples mono.
     """
     H, W, Tn = y_samples.shape
     gates = gate_j(m, T)
@@ -317,25 +320,25 @@ def multimodal_normal(
     seed: int | None = None,
 ) -> tuple[Any, ...]:
     """
-    Handle multimodal normal.
+    Run the multimodal normal routine.
 
     Parameters
     ----------
     n_samples : int
-        Input value.
+        Number of samples, components, gates, or iterations used by the routine.
     mus : np.ndarray | None
-        Input value.
+        Gaussian component means used by the multimodal sampler.
     sigma : float | None
-        Input value.
+        Standard deviation used by a sampler or noise model.
     weights : np.ndarray | None
-        Input value.
+        Sampling or model weights used by the routine.
     seed : int | None
-        Input value.
+        Random seed used for reproducible sampling.
 
     Returns
     -------
     tuple[Any, ...]
-        Return value.
+        Tuple containing sampled values from the configured normal mixture.
     """
     np.random.seed(seed)
 
@@ -481,21 +484,21 @@ def threshold_masking(
     fli: np.ndarray, irf: np.ndarray, threshold: int = 100
 ) -> tuple[Any, ...]:
     """
-    Handle threshold masking.
+    Run the threshold masking routine.
 
     Parameters
     ----------
     fli : np.ndarray
-        Input value.
+        FLI lifetime map or decay-derived image to threshold.
     irf : np.ndarray
-        Input value.
+        Instrument response function aligned with the decay signal.
     threshold : int
-        Input value.
+        Threshold used to mask, classify, or validate data.
 
     Returns
     -------
     tuple[Any, ...]
-        Return value.
+        Tuple containing thresholded mask arrays and metadata.
     """
     if threshold is None:
         raise ValueError("no thershold value provided")
@@ -517,21 +520,21 @@ def threshold_masking(
 
 def data_masking(*arrays: Any, mask: np.ndarray, return_list: bool = False) -> Any:
     """
-    Handle data masking.
+    Run the data masking routine.
 
     Parameters
     ----------
     *arrays : Any
-        Input value.
+        Additional positional values accepted by the routine.
     mask : np.ndarray
-        Input value.
+        Boolean or labeled mask selecting pixels for the operation.
     return_list : bool
-        Input value.
+        If ``True``, return a list of masks instead of a combined mask.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by data masking.
     """
     mask = mask.astype(bool)
     results = []
@@ -620,17 +623,17 @@ def save_as_uint16_sequence(
 
 def random_true_pixel(bool_array: np.ndarray) -> Any:
     """
-    Handle random true pixel.
+    Run the random true pixel routine.
 
     Parameters
     ----------
     bool_array : np.ndarray
-        Input value.
+        Boolean array from which a true pixel is selected.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by random true pixel.
     """
     true_indices = np.flatnonzero(bool_array)
     if true_indices.size == 0:
@@ -646,21 +649,21 @@ def PhasorFreqComputaion(
     num_gates: int | None = None,
 ) -> np.ndarray:  # all the units in ns
     """
-    Handle phasor freq computaion.
+    Run the phasor freq computaion routine.
 
     Parameters
     ----------
     laser_period : float
-        Input value.
+        Laser repetition period in nanoseconds.
     gate_delay : np.ndarray | None
-        Input value.
+        Delay of each gate relative to the excitation pulse.
     num_gates : int | None
-        Input value.
+        Number of acquisition gates used for frequency computation.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Phasor frequency-domain representation for the input decay.
     """
     freq = 1000.0 / laser_period
     if gate_delay is None or num_gates is None:
@@ -686,20 +689,20 @@ def save_plot(
     Parameters
     ----------
     save_dir : str
-        Input value.
+        Directory where outputs are saved.
     name : str
-        Input value.
+        Dataset, experiment, figure, or output name.
     fig : Any | None
-        Input value.
+        Matplotlib figure object to update or save.
     dpi : int
-        Input value.
+        Resolution used when saving a figure.
     close : bool
-        Input value.
+        Whether to close the figure after saving.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function save plot.
     """
     path = os.path.join(save_dir, f"{name}.png")
     target = fig if fig is not None else plt
@@ -733,38 +736,38 @@ def plot_pixel_diagnostic(
     Parameters
     ----------
     binned_decay : np.ndarray
-        Input value.
+        Binned decay cube used for fitting or diagnostics.
     all_fitset : np.ndarray
-        Input value.
+        Collection of fit-result dictionaries used for comparison or plotting.
     names : Any
-        Input value.
+        Dataset names used in summaries and plots.
     pixel : np.ndarray | None
-        Input value.
+        Selected pixel coordinate.
     mask : np.ndarray | None
-        Input value.
+        Boolean or labeled mask selecting pixels for the operation.
     t : np.ndarray | None
-        Input value.
+        Time axis or acquisition period used by the calculation.
     yscale : str
-        Input value.
+        Scale used for the y-axis.
     model_type : str
-        Input value.
+        FLIM model family, such as mono- or bi-exponential.
     colors : Any | None
-        Input value.
+        Color sequence used for plotted sources or groups.
     figsize : tuple[int, ...]
-        Input value.
+        Figure size passed to Matplotlib.
     raw_style : str
-        Input value.
+        Style used to draw raw pixel decay data.
     map_aspect : str
-        Input value.
+        Aspect ratio used when rendering lifetime maps.
     show_colorbar : bool
-        Input value.
+        Whether to draw a colorbar.
     show : bool
-        Input value.
+        Whether to display the generated plot.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Matplotlib figure or axes containing the pixel diagnostic plot.
     """
     jet_m = ColorProcessor().lowest_zero("jet")
     if pixel is None:

@@ -49,8 +49,8 @@ Usage
     plot_decay_cube(cube, flim_img)
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
 
 import struct
@@ -156,16 +156,16 @@ def build_decay_cube(
     Parameters
     ----------
     flim_image : 'lf.LifFlimImage'
-        Input value.
+        Leica LifFlimImage object containing raw FLIM data.
     channel : int
-        Input value.
+        Detector channel index to read or decode.
     dtype : np.dtype
-        Input value.
+        NumPy dtype used for output accumulation.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Decay cube assembled from time-gated image data.
     """
     sizes = flim_image.sizes
     n_frames = sizes.get("M", 1)
@@ -550,17 +550,17 @@ def load_flim_data(
         # or just the base series name ('T23_...'), so we normalise both sides.
         def _flim_path_matches(img: "lf.LifImageABC") -> bool:
             """
-            Handle flim path matches.
+            Run the FLIM path matches routine.
 
             Parameters
             ----------
             img : 'lf.LifImageABC'
-                Input value.
+                Image object or image array being processed.
 
             Returns
             -------
             bool
-                Return value.
+                Boolean result computed by FLIM path matches.
             """
             if series_name is None:
                 return True
@@ -649,22 +649,22 @@ def plot_xyt(
     Parameters
     ----------
     xyt : np.ndarray
-        Input value.
+        Decay cube with shape (Y, X, T).
     tcspc_resolution_s : float
-        Input value.
+        TCSPC bin width in seconds.
     pixel_yx : tuple[int, int] | None
-        Input value.
+        Selected pixel as a (row, column) coordinate.
     cmap_intensity : str
-        Input value.
+        Colormap used for intensity images.
     cmap_lifetime : str
-        Input value.
+        Colormap used for lifetime or mean-arrival-time images.
     save_path : str | None
-        Input value.
+        Path where the generated figure or array is saved.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Matplotlib figure or axes containing the XYT decay visualization.
     """
     import matplotlib.pyplot as plt
     import matplotlib.gridspec as gridspec
@@ -737,14 +737,14 @@ def plot_xyt(
         Parameters
         ----------
         py : int
-            Input value.
+            Pixel row coordinate.
         px : int
-            Input value.
+            Pixel column coordinate.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function update pixel.
         """
         sel[0], sel[1] = int(py), int(px)
         decay = xyt[sel[0], sel[1]]
@@ -758,17 +758,17 @@ def plot_xyt(
 
     def _on_click(event: Any) -> None:
         """
-        Handle on click.
+        Run the on click routine.
 
         Parameters
         ----------
         event : Any
-            Input value.
+            GUI or Matplotlib event handled by the callback.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on click.
         """
         if event.inaxes in (ax_int, ax_tau) and event.xdata is not None:
             _update_pixel(
@@ -821,22 +821,22 @@ def plot_xyt(  # noqa: F811
     Parameters
     ----------
     xyt : np.ndarray
-        Input value.
+        Decay cube with shape (Y, X, T).
     tcspc_resolution_s : float
-        Input value.
+        TCSPC bin width in seconds.
     pixel_yx : tuple[int, int] | None
-        Input value.
+        Selected pixel as a (row, column) coordinate.
     cmap_intensity : str
-        Input value.
+        Colormap used for intensity images.
     cmap_lifetime : str
-        Input value.
+        Colormap used for lifetime or mean-arrival-time images.
     save_path : str | None
-        Input value.
+        Path where the generated figure or array is saved.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function plot xyt.
     """
     import matplotlib.pyplot as plt
     import matplotlib.gridspec as gridspec
@@ -909,14 +909,14 @@ def plot_xyt(  # noqa: F811
         Parameters
         ----------
         py : int
-            Input value.
+            Pixel row coordinate.
         px : int
-            Input value.
+            Pixel column coordinate.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function update pixel.
         """
         sel[0], sel[1] = int(py), int(px)
         decay = xyt[sel[0], sel[1]]
@@ -930,17 +930,17 @@ def plot_xyt(  # noqa: F811
 
     def _on_click(event: Any) -> None:
         """
-        Handle on click.
+        Run the on click routine.
 
         Parameters
         ----------
         event : Any
-            Input value.
+            GUI or Matplotlib event handled by the callback.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on click.
         """
         if event.inaxes in (ax_int, ax_tau) and event.xdata is not None:
             _update_pixel(

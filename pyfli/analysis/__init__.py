@@ -10,7 +10,6 @@ datasets. The module primarily re-exports package symbols or constants for downs
 imports.
 """
 
-from __future__ import annotations
 from typing import Any
 
 from .load_results import (
@@ -65,14 +64,14 @@ except ImportError:
         Parameters
         ----------
         *_ : Any
-            Input value.
+            Additional positional values accepted by the routine.
         **__ : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function load fbi model.
         """
         raise ImportError("FBI model code is not available in this installation.")
 
@@ -83,14 +82,14 @@ except ImportError:
         Parameters
         ----------
         *_ : Any
-            Input value.
+            Additional positional values accepted by the routine.
         **__ : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function run fbi inference.
         """
         raise ImportError("FBI model code is not available in this installation.")
 
@@ -101,14 +100,14 @@ except ImportError:
         Parameters
         ----------
         *_ : Any
-            Input value.
+            Additional positional values accepted by the routine.
         **__ : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function compute fbi results.
         """
         raise ImportError("FBI model code is not available in this installation.")
 
@@ -119,13 +118,13 @@ except ImportError:
         Parameters
         ----------
         *_ : Any
-            Input value.
+            Additional positional values accepted by the routine.
         **__ : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function plot fbi maps.
         """
         raise ImportError("FBI model code is not available in this installation.")

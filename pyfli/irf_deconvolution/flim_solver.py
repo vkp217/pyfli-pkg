@@ -9,10 +9,12 @@ aware IRF deconvolution and joint FLIM fitting utilities. Public API includes cl
 :func:`pin_barycenter`, and :func:`fit_decay_pixel`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
+
 from dataclasses import dataclass
+
 import numpy as np
 from scipy.optimize import least_squares
 from scipy.special import erf
@@ -27,19 +29,19 @@ EPS = 1e-9
 
 def cyclic_conv(h: np.ndarray, f: np.ndarray) -> Any:
     """
-    Handle cyclic conv.
+    Run the cyclic conv routine.
 
     Parameters
     ----------
     h : np.ndarray
-        Input value.
+        IRF, image height, or temporal kernel used by the routine.
     f : np.ndarray
-        Input value.
+        Decay basis, distribution, or signal function used by the calculation.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by cyclic conv.
     """
     N = h.shape[-1]
     return np.fft.irfft(np.fft.rfft(h, axis=-1) * np.fft.rfft(f, axis=-1), n=N, axis=-1)
@@ -47,19 +49,19 @@ def cyclic_conv(h: np.ndarray, f: np.ndarray) -> Any:
 
 def cyclic_corr(u: np.ndarray, f: np.ndarray) -> Any:
     """
-    Handle cyclic corr.
+    Run the cyclic corr routine.
 
     Parameters
     ----------
     u : np.ndarray
-        Input value.
+        Signal vector used by cyclic correlation.
     f : np.ndarray
-        Input value.
+        Decay basis, distribution, or signal function used by the calculation.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by cyclic corr.
     """
     N = u.shape[-1]
     return np.fft.irfft(
@@ -69,21 +71,21 @@ def cyclic_corr(u: np.ndarray, f: np.ndarray) -> Any:
 
 def decay_basis(taus: np.ndarray, t: np.ndarray, T: np.ndarray) -> np.ndarray:
     """
-    Handle decay basis.
+    Run the decay basis routine.
 
     Parameters
     ----------
     taus : np.ndarray
-        Input value.
+        Lifetime grid or lifetime vector in nanoseconds.
     t : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
     T : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Exponential decay basis evaluated on the time grid.
     """
     taus = np.atleast_1d(np.asarray(taus, float))
     return np.stack([np.exp(-t / tau) / (1.0 - np.exp(-T / tau)) for tau in taus], 0)
@@ -103,22 +105,22 @@ def build_gate_matrix(
     Parameters
     ----------
     t : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
     T : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
     n_gates : int
-        Input value.
+        Number of acquisition gates.
     width : float
-        Input value.
+        Gate width used by the gate matrix.
     edge : float
-        Input value.
+        Gate edge offset used when building the gate matrix.
     eta : float | None
-        Input value.
+        Optional gate efficiency profile.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Gate-integration matrix mapping decay samples to gates.
     """
     N = t.size
     dt = T / N
@@ -143,17 +145,17 @@ def build_gate_matrix(
 
 def project_simplex(V: np.ndarray) -> Any:
     """
-    Handle project simplex.
+    Run the project simplex routine.
 
     Parameters
     ----------
     V : np.ndarray
-        Input value.
+        Vector or matrix evaluated by the simplex projection.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by project simplex.
     """
     V = np.atleast_2d(V)
     n = V.shape[1]
@@ -168,19 +170,19 @@ def project_simplex(V: np.ndarray) -> Any:
 
 def huber_tv_grad(h: np.ndarray, delta: np.ndarray) -> Any:
     """
-    Handle huber tv grad.
+    Run the huber TV grad routine.
 
     Parameters
     ----------
     h : np.ndarray
-        Input value.
+        IRF, image height, or temporal kernel used by the routine.
     delta : np.ndarray
-        Input value.
+        Huber transition value used by the TV gradient.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by huber TV grad.
     """
     d = h - np.roll(h, 1, axis=-1)
     psi = np.where(np.abs(d) <= delta, d / delta, np.sign(d))
@@ -189,21 +191,21 @@ def huber_tv_grad(h: np.ndarray, delta: np.ndarray) -> Any:
 
 def spatial_laplacian(H: np.ndarray, ny: np.ndarray, nx: np.ndarray) -> Any:
     """
-    Handle spatial laplacian.
+    Run the spatial laplacian routine.
 
     Parameters
     ----------
     H : np.ndarray
-        Input value.
+        IRF estimate, image stack, or convolution kernel used by the solver.
     ny : np.ndarray
-        Input value.
+        Image height used for reshaping flattened arrays.
     nx : np.ndarray
-        Input value.
+        Image width used for reshaping flattened arrays.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by spatial laplacian.
     """
     N = H.shape[-1]
     Himg = H.reshape(ny, nx, N)
@@ -219,19 +221,19 @@ def spatial_laplacian(H: np.ndarray, ny: np.ndarray, nx: np.ndarray) -> Any:
 
 def fourier_shift(H: np.ndarray, s: np.ndarray) -> Any:
     """
-    Handle fourier shift.
+    Run the fourier shift routine.
 
     Parameters
     ----------
     H : np.ndarray
-        Input value.
+        IRF estimate, image stack, or convolution kernel used by the solver.
     s : np.ndarray
-        Input value.
+        Phasor imaginary coordinate or shift amount.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by fourier shift.
     """
     N = H.shape[-1]
     k = np.fft.rfftfreq(N, d=1.0 / N)
@@ -241,19 +243,19 @@ def fourier_shift(H: np.ndarray, s: np.ndarray) -> Any:
 
 def pin_barycenter(H: np.ndarray, c_target: np.ndarray) -> Any:
     """
-    Handle pin barycenter.
+    Run the pin barycenter routine.
 
     Parameters
     ----------
     H : np.ndarray
-        Input value.
+        IRF estimate, image stack, or convolution kernel used by the solver.
     c_target : np.ndarray
-        Input value.
+        Target barycenter used to pin the IRF shift.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by pin barycenter.
     """
     idx = np.arange(H.shape[-1])
     cbar = float(np.mean((H * idx).sum(-1) / np.maximum(H.sum(-1), EPS)))
@@ -263,38 +265,38 @@ def pin_barycenter(H: np.ndarray, c_target: np.ndarray) -> Any:
 @dataclass
 class SolverConfig:
     """
-    Collect optimization settings for detector-aware FLIM and IRF fitting. The dataclass
+    Run the solver config routine.
     controls model count, lifetime bounds, regularization, IRF update iterations, and
     logging behavior.
 
     Parameters
     ----------
     T : float
-        Configuration value used by the class.
+        Time axis or acquisition period used by the calculation.
     n_models : int
-        Number of items used by this workflow.
+        Number of mixture models or candidate components to fit.
     tau_init : tuple
-        Configuration value used by the class.
+        Initial lifetime vector for pixel-wise exponential fitting.
     tau_bounds : tuple
-        Configuration value used by the class.
+        Lower and upper lifetime bounds for fitted exponential components.
     tau_sep : float
-        Configuration value used by the class.
+        Minimum separation enforced between fitted lifetimes.
     rho1 : float
-        Configuration value used by the class.
+        Penalty weight for the first regularized optimization term.
     rho2 : float
-        Configuration value used by the class.
+        Penalty weight for the second regularized optimization term.
     outer_iters : int
-        Configuration value used by the class.
+        Number of outer optimization iterations.
     irf_inner_iters : int
-        Configuration value used by the class.
+        Number of inner iterations used when updating the IRF estimate.
     irf_step : float
-        Configuration value used by the class.
+        Step size for IRF updates.
     estimate_irf : bool
-        Configuration value used by the class.
+        If ``True``, update the IRF during optimization.
     pin_global_shift : bool
-        Configuration value used by the class.
+        If ``True``, keep the global IRF shift fixed during optimization.
     verbose : bool
-        Configuration value used by the class.
+        If ``True``, report progress and diagnostic messages during processing.
     """
 
     T: float = 12.5
@@ -316,25 +318,25 @@ def _phi(
     taus: np.ndarray, h: np.ndarray, t: np.ndarray, T: np.ndarray, G: np.ndarray
 ) -> Any:
     """
-    Handle phi.
+    Run the phi routine.
 
     Parameters
     ----------
     taus : np.ndarray
-        Input value.
+        Lifetime grid or lifetime vector in nanoseconds.
     h : np.ndarray
-        Input value.
+        IRF, image height, or temporal kernel used by the routine.
     t : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
     T : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
     G : np.ndarray
-        Input value.
+        Phasor real coordinate.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by phi.
     """
     B = decay_basis(taus, t, T)
     M = cyclic_conv(h[None, :], B)
@@ -356,41 +358,41 @@ def fit_decay_pixel(
     Parameters
     ----------
     lam_obs : np.ndarray
-        Input value.
+        Observed photon-rate array after detector conversion.
     w : np.ndarray
-        Input value.
+        Weight vector, image width, or basis vector used by the routine.
     h : np.ndarray
-        Input value.
+        IRF, image height, or temporal kernel used by the routine.
     t : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
     T : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
     G : np.ndarray
-        Input value.
+        Phasor real coordinate.
     cfg : Any
-        Input value.
+        Configuration object or keyword dictionary used by the algorithm.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by fit decay pixel.
     """
     sw = np.sqrt(w)
     lo, hi = cfg.tau_bounds
 
     def resid(log_taus: np.ndarray) -> Any:
         """
-        Handle resid.
+        Run the resid routine.
 
         Parameters
         ----------
         log_taus : np.ndarray
-            Input value.
+            Log-transformed lifetimes optimized by the residual function.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by resid.
         """
         taus = np.exp(log_taus)
         Phi = _phi(taus, h, t, T, G)
@@ -422,51 +424,51 @@ def update_irf(
     cfg: Any,
 ) -> Any:
     """
-    Update irf.
+    Update IRF.
 
     Parameters
     ----------
     H : np.ndarray
-        Input value.
+        IRF estimate, image stack, or convolution kernel used by the solver.
     F : np.ndarray
-        Input value.
+        Forward model matrix or decay estimate used by the solver.
     lam_obs : np.ndarray
-        Input value.
+        Observed photon-rate array after detector conversion.
     W : np.ndarray
-        Input value.
+        Weight matrix or vector applied in the optimization objective.
     G : np.ndarray
-        Input value.
+        Phasor real coordinate.
     mu1 : np.ndarray
-        Input value.
+        Auxiliary optimization variable for the first regularized update.
     mu2 : np.ndarray
-        Input value.
+        Auxiliary optimization variable for the second regularized update.
     ny : np.ndarray
-        Input value.
+        Image height used for reshaping flattened arrays.
     nx : np.ndarray
-        Input value.
+        Image width used for reshaping flattened arrays.
     cfg : Any
-        Input value.
+        Configuration object or keyword dictionary used by the algorithm.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by update IRF.
     """
     P, N = H.shape
 
     def data_grad(Hx: np.ndarray) -> Any:
         """
-        Handle data grad.
+        Run the data grad routine.
 
         Parameters
         ----------
         Hx : np.ndarray
-            Input value.
+            Candidate IRF vector evaluated by the gradient or Hessian helper.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by data grad.
         """
         lam = cyclic_conv(Hx, F) @ G.T
         resid = W * (lam - lam_obs)
@@ -475,17 +477,17 @@ def update_irf(
 
     def data_hess(V: np.ndarray) -> Any:
         """
-        Handle data hess.
+        Run the data hess routine.
 
         Parameters
         ----------
         V : np.ndarray
-            Input value.
+            Vector or matrix evaluated by the simplex projection.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by data hess.
         """
         lam = cyclic_conv(V, F) @ G.T
         return 2.0 * cyclic_corr((W * lam) @ G, F)
@@ -521,31 +523,31 @@ def solve_flim(
     h_init: np.ndarray | None = None,
 ) -> Any:
     """
-    Handle solve flim.
+    Run the solve FLIM routine.
 
     Parameters
     ----------
     y : np.ndarray
-        Input value.
+        Observed signal, target data, or coordinate array.
     detector : str
-        Input value.
+        Detector model name used to select weighting or conversion logic.
     det_params : np.ndarray
-        Input value.
+        Detector model parameters used for observation weighting.
     ny : np.ndarray
-        Input value.
+        Image height used for reshaping flattened arrays.
     nx : np.ndarray
-        Input value.
+        Image width used for reshaping flattened arrays.
     gate_spec : np.ndarray
-        Input value.
+        Gate timing specification used by the detector model.
     cfg : SolverConfig
-        Input value.
+        Configuration object or keyword dictionary used by the algorithm.
     h_init : np.ndarray | None
-        Input value.
+        Initial IRF estimate supplied to the solver.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by solve FLIM.
     """
     P = y.shape[0]
     N = gate_spec.get("N", 256)
@@ -575,19 +577,19 @@ def solve_flim(
 
     def assemble_F(taus: np.ndarray, amps: np.ndarray) -> np.ndarray:
         """
-        Handle assemble  f.
+        Run the assemble f routine.
 
         Parameters
         ----------
         taus : np.ndarray
-            Input value.
+            Lifetime grid or lifetime vector in nanoseconds.
         amps : np.ndarray
-            Input value.
+            Amplitude vector estimated for fixed lifetimes.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Assembled forward-model matrix.
         """
         out = np.zeros((P, N))
         for k in range(P):

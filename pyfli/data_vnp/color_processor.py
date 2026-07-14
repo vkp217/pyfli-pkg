@@ -6,8 +6,8 @@ normalization, plotting, and mono-versus-bi-exponential comparison tools. Public
 includes classes :class:`ColorProcessor`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import numpy as np
@@ -21,17 +21,17 @@ class ColorProcessor:
 
     def lowest_zero(self, cmap_name: str = "jet") -> Any:
         """
-        Handle lowest zero.
+        Run the lowest zero routine.
 
         Parameters
         ----------
         cmap_name : str
-            Input value.
+            Name of the Matplotlib colormap to transform.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by lowest zero.
         """
         original_cmap = plt.get_cmap(cmap_name)
         colors = original_cmap(np.linspace(0, 1, 256))
@@ -46,23 +46,23 @@ class ColorProcessor:
         n: int = 256,
     ) -> Any:
         """
-        Handle clip crange.
+        Run the clip crange routine.
 
         Parameters
         ----------
         cmap_name : str
-            Input value.
+            Name of the Matplotlib colormap to transform.
         low : float
-            Input value.
+            Lower normalized colormap or threshold bound.
         high : float
-            Input value.
+            Upper normalized colormap or threshold bound.
         n : int
-            Input value.
+            Number of samples, bins, gates, or plotted items.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by clip crange.
         """
         if not (0.0 <= low < high <= 1.0):
             raise ValueError(f"Require 0 ≤ low < high ≤ 1, got low={low}, high={high}")

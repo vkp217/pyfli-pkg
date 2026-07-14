@@ -8,5 +8,4 @@ display helpers bundled with PyFLI. The module primarily re-exports package symb
 constants for downstream imports.
 """
 
-from __future__ import annotations
 from .logo import pflogo

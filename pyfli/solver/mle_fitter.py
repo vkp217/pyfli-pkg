@@ -7,11 +7,12 @@ likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API inclu
 classes :class:`MLEFLIFitter`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import f, chi2
+
 from .base_fitter import BaseFLIFitter
 from .base_static import resolve_params_and_bounds
 from .shared_metrics import enforce_tau_ordering, compute_fli_stats

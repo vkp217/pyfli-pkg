@@ -24,8 +24,8 @@ References
     ISS Technical Note: "FLIM Analysis using the Phasor Plots".
 """
 
-from __future__ import annotations
 import math
+
 import numpy as np
 from numpy.typing import ArrayLike
 

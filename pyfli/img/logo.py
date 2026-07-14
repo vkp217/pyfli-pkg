@@ -6,7 +6,6 @@ display helpers bundled with PyFLI. The module primarily re-exports package symb
 constants for downstream imports.
 """
 
-from __future__ import annotations
 from typing import Any
 import os
 import base64
@@ -22,24 +21,24 @@ class _LogoDisplay:
 
     def _repr_png_(self) -> Any:
         """
-        Return the representation.
+        Run the repr png routine.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by repr png.
         """
         with open(_LOGO_PATH, "rb") as f:
             return f.read()
 
     def _repr_html_(self) -> Any:
         """
-        Return the representation.
+        Run the repr html routine.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by repr html.
         """
         with open(_LOGO_PATH, "rb") as f:
             data = base64.b64encode(f.read()).decode()
@@ -51,12 +50,12 @@ class _LogoDisplay:
 
     def __repr__(self) -> str:
         """
-        Return the representation.
+        Run the repr routine.
 
         Returns
         -------
         str
-            Return value.
+            String path, label, or message produced by repr.
         """
         return "PyFLI logo — place alone in a Jupyter cell to display"
 

@@ -10,5 +10,4 @@ used by interactive fitting workflows. The module primarily re-exports package s
 or constants for downstream imports.
 """
 
-from __future__ import annotations
 from .msg_display import MessageDisplay

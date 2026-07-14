@@ -8,21 +8,21 @@ helpers for normalization, masking, ROI extraction, and IRF alignment. Public AP
 includes classes :class:`Normalization`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 
 
 class Normalization:
     """
-    Apply common normalization transforms to FLIM arrays. The class keeps a source array
+    Run the normalization routine.
     and exposes zero-one scaling, min-max scaling, reference scaling, global peak
     normalization, and probability-density conversion.
 
     Parameters
     ----------
     data : np.ndarray
-        Configuration value used by the class.
+        Array of values to normalize, mask, or summarize.
     """
 
     def __init__(self, data: np.ndarray) -> None:
@@ -38,12 +38,12 @@ class Normalization:
         Parameters
         ----------
         arr : np.ndarray
-            Input value.
+            Array processed by the routine.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing finite minimum and maximum values.
         """
         if arr.ndim == 1:
             return np.min(arr), np.max(arr)
@@ -56,19 +56,19 @@ class Normalization:
 
     def _threshold_mask(self, arr: np.ndarray, threshold: float) -> Any:
         """
-        Handle threshold mask.
+        Run the threshold mask routine.
 
         Parameters
         ----------
         arr : np.ndarray
-            Input value.
+            Array processed by the routine.
         threshold : float
-            Input value.
+            Threshold used to mask, classify, or validate data.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by threshold mask.
         """
         if arr.ndim == 1:
             return np.sum(arr) > threshold
@@ -77,17 +77,17 @@ class Normalization:
 
     def zerone(self, threshold: int = 0) -> Any:
         """
-        Handle zerone.
+        Run the zerone routine.
 
         Parameters
         ----------
         threshold : int
-            Input value.
+            Threshold used to mask, classify, or validate data.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by zerone.
         """
         normalized = []
         for arr in self.data:
@@ -110,17 +110,17 @@ class Normalization:
 
     def minmax(self, threshold: int = 0) -> Any:
         """
-        Handle minmax.
+        Run the minmax routine.
 
         Parameters
         ----------
         threshold : int
-            Input value.
+            Threshold used to mask, classify, or validate data.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by minmax.
         """
         normalized = []
         for arr in self.data:
@@ -140,19 +140,19 @@ class Normalization:
 
     def norm_scale(self, ref_data: np.ndarray, threshold: int = 0) -> Any:
         """
-        Handle norm scale.
+        Run the norm scale routine.
 
         Parameters
         ----------
         ref_data : np.ndarray
-            Input value.
+            Reference data used for normalization.
         threshold : int
-            Input value.
+            Threshold used to mask, classify, or validate data.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by norm scale.
         """
         ref_data = np.asarray(ref_data)
         if ref_data.ndim == 1:
@@ -181,17 +181,17 @@ class Normalization:
 
     def global_peak_norm_3d(self, threshold: int = 0) -> Any:
         """
-        Handle global peak norm 3d.
+        Run the global peak norm 3d routine.
 
         Parameters
         ----------
         threshold : int
-            Input value.
+            Threshold used to mask, classify, or validate data.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by global peak norm 3d.
         """
         normalized = []
         for arr in self.data:
@@ -207,17 +207,17 @@ class Normalization:
 
     def to_pdf(self, threshold: int = 0) -> Any:
         """
-        Handle to pdf.
+        Run the to PDF routine.
 
         Parameters
         ----------
         threshold : int
-            Input value.
+            Threshold used to mask, classify, or validate data.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by to PDF.
         """
         pdf_data = []
         for arr in self.data:

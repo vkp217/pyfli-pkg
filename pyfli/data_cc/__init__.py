@@ -9,7 +9,6 @@ helpers for normalization, masking, ROI extraction, and IRF alignment. The modul
 primarily re-exports package symbols or constants for downstream imports.
 """
 
-from __future__ import annotations
 from .irf import IRFAligner
 from .preprocessing import DataPreprocessing
 from .norm import Normalization

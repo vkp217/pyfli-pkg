@@ -1,17 +1,15 @@
 """Top-level public API for PyFLI."""
 # ruff: noqa: E402, F401
 
-from __future__ import annotations
-
 
 def setup() -> None:
     """
-    Handle setup.
+    Configure PyFLI logging and package defaults.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; package logging is configured for later imports.
     """
     from .logging import configure_logging
 

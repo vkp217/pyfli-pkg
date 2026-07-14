@@ -7,24 +7,23 @@ generation, hardware noise modeling, calibration, and validation tools. Public A
 includes functions :func:`irf_picker`.
 """
 
-from __future__ import annotations
 import numpy as np
 
 
 def irf_picker(irf_full: np.ndarray) -> np.ndarray:
     # IRF Selection Logic
     """
-    Handle irf picker.
+    Run the IRF picker routine.
 
     Parameters
     ----------
     irf_full : np.ndarray
-        Input value.
+        Full instrument response function sampled over the decay window.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Selected IRF array matching the requested simulation settings.
     """
     if irf_full.ndim == 3:
         H, W, T = irf_full.shape

@@ -6,17 +6,19 @@ generation, hardware noise modeling, calibration, and validation tools. Public A
 includes classes :class:`FLICalibrator`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
 
 # simulator/calibration_engine.py
 import numpy as np
 import json
 import os
+
 from scipy import stats
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
+
 from .sim_image_generator import FLIImageGenerator
 from .sim_stat_test import FLIValidator
 
@@ -61,12 +63,12 @@ class FLICalibrator:
         Parameters
         ----------
         data_cube : np.ndarray
-            Input value.
+            Array cube processed by the routine.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Mask or count array identifying valid simulated pixels.
         """
         _, counts = self.validator._preprocess_cube(data_cube)
         return counts
@@ -75,21 +77,21 @@ class FLICalibrator:
         self, x: np.ndarray, exp_decay_cube: np.ndarray, base_cfg: np.ndarray
     ) -> Any:
         """
-        Handle objective function.
+        Run the objective function routine.
 
         Parameters
         ----------
         x : np.ndarray
-            Input value.
+            Input array, coordinate, or signal being transformed.
         exp_decay_cube : np.ndarray
-            Input value.
+            Experimental decay cube used for calibration.
         base_cfg : np.ndarray
-            Input value.
+            Base simulator configuration copied during calibration.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by objective function.
         """
         self.iteration += 1
         current_cfg = base_cfg.copy()
@@ -131,12 +133,12 @@ class FLICalibrator:
         Parameters
         ----------
         results : Any
-            Input value.
+            Calibration, fitting, or validation results.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function display report.
         """
         if results is None:
             logging.info("No results to display.")
@@ -208,16 +210,16 @@ class FLICalibrator:
         Parameters
         ----------
         exp_decay_cube : np.ndarray
-            Input value.
+            Experimental decay cube used for calibration.
         base_config : np.ndarray
-            Input value.
+            Base simulator configuration used for calibration or sensitivity analysis.
         initial_guess : np.ndarray | None
-            Input value.
+            Initial optimizer parameter vector.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Calibration results for the configured simulator.
         """
         logging.info(
             f"--- Starting Calibration: {self.method.upper()} (Norm: {self.normalize_stats}) ---"
@@ -274,19 +276,19 @@ class FLICalibrator:
         self, calibrated_cfg: np.ndarray, test_exp_cube: np.ndarray
     ) -> np.ndarray:
         """
-        Handle cross validate.
+        Run the cross validate routine.
 
         Parameters
         ----------
         calibrated_cfg : np.ndarray
-            Input value.
+            Calibrated simulator configuration used for validation.
         test_exp_cube : np.ndarray
-            Input value.
+            Experimental decay cube used for cross-validation.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Cross-validation scores for the calibration model.
         """
         logging.info(f"\n--- Cross-Validation (Norm: {self.normalize_stats}) ---")
         gen = FLIImageGenerator(
@@ -309,12 +311,12 @@ class FLICalibrator:
         Parameters
         ----------
         filename : str
-            Input value.
+            File name used for saving or loading results.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save hardware profile.
         """
         if self.opt_params is None:
             return
@@ -336,12 +338,12 @@ class FLICalibrator:
         Parameters
         ----------
         filename : str
-            Input value.
+            File name used for saving or loading results.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by load hardware profile.
         """
         if not os.path.exists(filename):
             return None
@@ -361,18 +363,18 @@ class FLICalibrator:
         Parameters
         ----------
         train_exp_cube : np.ndarray
-            Input value.
+            Array cube processed by the routine.
         base_config : np.ndarray
-            Input value.
+            Base simulator configuration used for calibration or sensitivity analysis.
         dcr_range : tuple[float, float, int]
-            Input value.
+            Dark-count-rate values evaluated during sensitivity analysis.
         sigma_range : tuple[float, float, int]
-            Input value.
+            Read-noise sigma values evaluated by the sensitivity plot.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing noise-sensitivity figure data and summary metrics.
         """
         logging.info("Generating Sensitivity Surface (Processing...)")
         dcr_vals = np.linspace(*dcr_range)

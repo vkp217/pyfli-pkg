@@ -14,8 +14,8 @@ References
     ISS Technical Note: "FLIM Analysis using the Phasor Plots" Eq. 10.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
@@ -159,6 +159,7 @@ def phase_lifetime_gated(
     tau : ndarray  (ns)
     """
     from scipy.optimize import brentq
+
     from .phasors import phasor_gated_single  # local import: scipy is optional
 
     g = np.asarray(g, dtype=float)
@@ -167,32 +168,32 @@ def phase_lifetime_gated(
 
     def solve_one(phi: np.ndarray) -> Any:
         """
-        Handle solve one.
+        Run the solve one routine.
 
         Parameters
         ----------
         phi : np.ndarray
-            Input value.
+            Phasor phase angle used by the lifetime solver.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by solve one.
         """
 
         def residual(tau: np.ndarray) -> Any:
             """
-            Handle residual.
+            Run the residual routine.
 
             Parameters
             ----------
             tau : np.ndarray
-                Input value.
+                Lifetime value or lifetime map in nanoseconds.
 
             Returns
             -------
             Any
-                Return value.
+                Object produced by residual.
             """
             gg, ss = phasor_gated_single(tau, cfg)
             return np.arctan2(ss, gg) - phi

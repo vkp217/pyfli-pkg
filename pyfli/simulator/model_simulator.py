@@ -7,8 +7,8 @@ generation, hardware noise modeling, calibration, and validation tools. Public A
 includes classes :class:`FLIModelSimulator`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 
 from .distributions import ParameterSampler
@@ -18,38 +18,38 @@ from .sim_helper import irf_picker
 
 class FLIModelSimulator:
     """
-    Sample mono- and bi-exponential model parameters and create analytical or TCSPC
+    Run the flimodel simulator routine.
     observations. The class is useful for controlled model-generation experiments
     independent of image geometry.
 
     Parameters
     ----------
     irf_full : np.ndarray
-        Configuration value used by the class.
+        Full instrument response function sampled over the decay window.
     tau2 : tuple[int, float]
-        Configuration value used by the class.
+        Long lifetime component.
     tau2_dist : str
-        Configuration value used by the class.
+        Distribution used to sample donor-only lifetimes.
     tau2_beta_range : tuple[float, ...]
-        Configuration value used by the class.
+        Shape-parameter range for beta-distributed tau2 values.
     efficiency : tuple[int, ...]
-        Configuration value used by the class.
+        FRET transfer efficiency used to derive simulated lifetime components.
     A1_fraction : tuple[int, ...]
-        Configuration value used by the class.
+        Amplitude fraction assigned to the first exponential component.
     photo_count : tuple[float, int]
-        Configuration value used by the class.
+        Expected photon count used to scale the simulated decay.
     mono_fraction : float
-        Configuration value used by the class.
+        Fraction of pixels or events assigned to the mono-exponential component.
     bit : int
-        Configuration value used by the class.
+        Bit depth or quantization setting for simulated detector output.
     n_cycles : int
-        Number of items used by this workflow.
+        Number of excitation cycles used when constructing the simulated decay.
     dcr : float
-        Configuration value used by the class.
+        Detector dark-count rate used by the noise model.
     laser_feq : int
-        Configuration value used by the class.
+        Laser repetition frequency used by the simulation.
     seed : int | None
-        Configuration value used by the class.
+        Seed for reproducible random sampling.
     **kwargs : Any
         Additional keyword arguments forwarded to the underlying implementation.
     """
@@ -155,7 +155,7 @@ class FLIModelSimulator:
         Returns
         -------
         Any
-            Return value.
+            Object produced by sample params.
         """
         if self.rng.random() < self.params_cfg["mono"]:
             return self.sample_mono_params()
@@ -168,12 +168,12 @@ class FLIModelSimulator:
         Parameters
         ----------
         p : Any
-            Input value.
+            Detector parameter object or fitted parameter vector.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by get model analytical decay.
         """
         T = self.laser_period
         if p.get("mono", False):
@@ -195,21 +195,21 @@ class FLIModelSimulator:
         self, p: Any, n_cycles: int, mu_per_cycle: np.ndarray
     ) -> Any:
         """
-        Handle simulate model tcspc.
+        Simulate model TCSPC.
 
         Parameters
         ----------
         p : Any
-            Input value.
+            Detector parameter object or fitted parameter vector.
         n_cycles : int
-            Input value.
+            Number of simulated laser cycles.
         mu_per_cycle : np.ndarray
-            Input value.
+            Expected photons per laser cycle in the TCSPC simulation.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by simulate model TCSPC.
         """
         total_photons = self.rng.poisson(mu_per_cycle * n_cycles)
         if total_photons == 0:

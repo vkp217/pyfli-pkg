@@ -10,7 +10,6 @@ datasets. Public API includes functions :func:`plot_fitting_maps`,
 :func:`run_mono_bi_classifier`.
 """
 
-from __future__ import annotations
 from typing import Any
 
 from ..data_vnp import (
@@ -328,26 +327,26 @@ def run_mono_bi_classifier(
     Parameters
     ----------
     all_datasets : Any
-        Input value.
+        Collection of fitted datasets to classify, compare, or summarize.
     names : Any
-        Input value.
+        Dataset names used in summaries and plots.
     mask : Any
-        Input value.
+        Boolean or labeled mask selecting pixels for the operation.
     alpha_upper : float
-        Input value.
+        Upper alpha-fraction threshold used by the classifier.
     alpha_lower : float
-        Input value.
+        Lower alpha-fraction threshold used by the classifier.
     tau_tol : float
-        Input value.
+        Lifetime tolerance used by the mono/bi classifier.
     scatter_keys : Any | None
-        Input value.
+        Parameter keys used in classifier scatter plots.
     saver : Any | None
-        Input value.
+        Optional saver used to persist messages or figures.
 
     Returns
     -------
     tuple[Any, ...]
-        Return value.
+        Tuple containing classifier outputs and mono/bi-exponential labels.
     """
     if scatter_keys is None:
         scatter_keys = ["tau1_map", "tau2_map"]

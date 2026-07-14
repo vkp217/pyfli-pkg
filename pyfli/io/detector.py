@@ -7,13 +7,16 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`Detector`.
 """
 
-from __future__ import annotations
 from typing import Any
-from pyfli import logging
+
 import os
+
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
+
 from tqdm import tqdm
+
+from pyfli import logging
 from .data_ops_static import StaticDataOps as ds
 
 
@@ -443,12 +446,12 @@ class Detector:
             Parameters
             ----------
             args : Any
-                Input value.
+                Worker argument tuple passed to the parallel file-processing helper.
 
             Returns
             -------
             tuple[Any, ...]
-                Return value.
+                Tuple containing gate data and gate metadata read from disk.
             """
             idx, path = args
             raw = ds.load_tiff_file(path).astype(np.float32)
@@ -554,27 +557,27 @@ class Detector:
         **kw: Any,
     ) -> Any:
         """
-        Handle dispatch.
+        Run the dispatch routine.
 
         Parameters
         ----------
         path : str
-            Input value.
+            Filesystem path loaded or saved by the routine.
         sub_bg : bool
-            Input value.
+            Whether background subtraction is applied.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
         valid_exts : np.ndarray | None
-            Input value.
+            Allowed file extensions for detector loading.
         **kw : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by dispatch.
         """
         if not path:
             return None
@@ -633,24 +636,24 @@ class Detector:
         Parameters
         ----------
         folder_path : str
-            Input value.
+            Directory containing detector files to load.
         sub_bg : bool
-            Input value.
+            Whether background subtraction is applied.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
         mode : str
-            Input value.
+            Mode selector used by the fitting, loading, or plotting routine.
         valid_exts : tuple[str, ...]
-            Input value.
+            Allowed file extensions for detector loading.
         **kw : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by load folder.
         """
         files = sorted(
             f for f in os.listdir(folder_path) if f.lower().endswith(valid_exts)
@@ -709,17 +712,17 @@ class Detector:
 
     def _file_task(self, args: Any) -> tuple[Any, ...]:
         """
-        Handle file task.
+        Run the file task routine.
 
         Parameters
         ----------
         args : Any
-            Input value.
+            Worker argument tuple passed to the parallel file-processing helper.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing loaded file data and associated metadata.
         """
         idx, path, pile_up, hot_pixel, kw = args
         return idx, self._load_file(path, pile_up=pile_up, hot_pixel=hot_pixel, **kw)
@@ -742,20 +745,20 @@ class Detector:
         Parameters
         ----------
         file_path : str
-            Input value.
+            Path to the file being loaded.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
         channel : int
-            Input value.
+            Detector channel index to read or decode.
         **_ : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by load file.
         """
         if not file_path or not os.path.exists(file_path):
             return None
@@ -817,16 +820,16 @@ class Detector:
         Parameters
         ----------
         fname : str
-            Input value.
+            File name read by the detector-specific loader.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by read ss3 HDF5.
         """
         return ds.spad_hdf5_read(
             fname, "Bottom G2 Gate", pile_up=pile_up, bit_size=self.bit_size
@@ -839,14 +842,14 @@ class Detector:
         Parameters
         ----------
         fname : str
-            Input value.
+            File name read by the detector-specific loader.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by read ss2 HDF5.
         """
         return ds.spad_hdf5_read(
             fname, "Gate ", pile_up=pile_up, bit_size=self.bit_size
@@ -854,19 +857,19 @@ class Detector:
 
     def _correct_hotpixels(self, data_3d: np.ndarray, hot_pixel_map: np.ndarray) -> Any:
         """
-        Handle correct hotpixels.
+        Run the correct hotpixels routine.
 
         Parameters
         ----------
         data_3d : np.ndarray
-            Input value.
+            Three-dimensional data cube processed by the routine.
         hot_pixel_map : np.ndarray
-            Input value.
+            Boolean map marking hot pixels to correct.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by correct hotpixels.
         """
         return ds.hotpixel_correct(data_3d, hot_pixel_map)
 
@@ -886,16 +889,16 @@ class Detector:
         Parameters
         ----------
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
         valid_exts : np.ndarray | None
-            Input value.
+            Allowed file extensions for detector loading.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by load background.
         """
         if not self.bg_path:
             return None
@@ -928,7 +931,7 @@ class Detector:
         Returns
         -------
         Any
-            Return value.
+            Object produced by load mask.
         """
         if not self.mask_path:
             return None
@@ -954,29 +957,29 @@ class Detector:
         **processing: Any,
     ) -> dict[Any, Any]:
         """
-        Handle package.
+        Run the package routine.
 
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
         background : np.ndarray
-            Input value.
+            Background array packaged with the loaded dataset.
         mask : np.ndarray
-            Input value.
+            Boolean or labeled mask selecting pixels for the operation.
         name : str
-            Input value.
+            Dataset, experiment, figure, or output name.
         source : str
-            Input value.
+            Source label recorded with the loaded dataset.
         **processing : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by package.
         """
         if decay is not None and irf is not None:
             if decay.shape[-1] != irf.shape[-1]:

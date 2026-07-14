@@ -6,12 +6,15 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`DataOperations`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
+
 import os
+
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
+
 from tqdm import tqdm
 
 # Import the static logic from your utility file
@@ -63,8 +66,6 @@ class DataOperations:
             ".asc": ds.load_asc_file,
         }
 
-    # --- PUBLIC API ---
-
     def load_data(
         self, sub_bg: bool = True, pile_up: bool = False, hot_pixel: bool = False
     ) -> Any:
@@ -74,16 +75,16 @@ class DataOperations:
         Parameters
         ----------
         sub_bg : bool
-            Input value.
+            Whether background subtraction is applied.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by load data.
         """
         logging.info(f"Initiating DATA load from: {self.data_path}")
         return self._general_loader(
@@ -129,16 +130,16 @@ class DataOperations:
         Parameters
         ----------
         sub_bg : bool
-            Input value.
+            Whether background subtraction is applied.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by load IRF.
         """
         logging.info(f"Initiating IRF load from: {self.irf_path}")
         return self._general_loader(
@@ -158,16 +159,16 @@ class DataOperations:
         Parameters
         ----------
         sub_bg : bool
-            Input value.
+            Whether background subtraction is applied.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing loaded data arrays, labels, and file metadata.
         """
         logging.info("Starting synchronized parallel loading for DATA, IRF, and BG...")
         with ThreadPoolExecutor(max_workers=3) as executor:
@@ -198,20 +199,20 @@ class DataOperations:
         Parameters
         ----------
         name : str
-            Input value.
+            Dataset, experiment, figure, or output name.
         source : str
-            Input value.
+            Source label recorded with the loaded dataset.
         sub_bg : bool
-            Input value.
+            Whether background subtraction is applied.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
 
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by make dataset.
         """
         if all([self.data_path, self.irf_path, self.bg_path]):
             data, irf, background = self.load_all_parallel(
@@ -272,7 +273,7 @@ class DataOperations:
         Returns
         -------
         Any
-            Return value.
+            Object produced by load mask.
         """
         if not self.mask_path:
             return None
@@ -284,8 +285,6 @@ class DataOperations:
             mask = np.mean(mask, axis=-1)
         return (mask > np.min(mask)).astype(bool)
 
-    # --- PRIVATE INTERNAL LOADERS ---
-
     def _general_loader(
         self,
         path: str,
@@ -295,25 +294,25 @@ class DataOperations:
         label: str = "Data",
     ) -> Any:
         """
-        Handle general loader.
+        Run the general loader routine.
 
         Parameters
         ----------
         path : str
-            Input value.
+            Filesystem path loaded or saved by the routine.
         sub_bg : bool
-            Input value.
+            Whether background subtraction is applied.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
         label : str
-            Input value.
+            Display label assigned to the data or plot element.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by general loader.
         """
         if not path or not os.path.exists(path):
             abs_path = os.path.abspath(path) if path else "(None)"
@@ -338,18 +337,18 @@ class DataOperations:
         Parameters
         ----------
         file_path : str
-            Input value.
+            Path to the file being loaded.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
         active_hp : np.ndarray | None
-            Input value.
+            Hot-pixel mask currently applied to the loaded data.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by load single file.
         """
         ext = os.path.splitext(file_path)[-1].lower()
         active_hp = active_hp or self.hp_path
@@ -402,26 +401,26 @@ class DataOperations:
         Parameters
         ----------
         folder_path : str
-            Input value.
+            Directory containing detector files to load.
         sub_bg : bool
-            Input value.
+            Whether background subtraction is applied.
         pile_up : bool
-            Input value.
+            Whether pile-up correction should be applied.
         hot_pixel : bool
-            Input value.
+            Whether hot-pixel correction should be applied.
         active_hp : np.ndarray | None
-            Input value.
+            Hot-pixel mask currently applied to the loaded data.
         mode : str
-            Input value.
+            Mode selector used by the fitting, loading, or plotting routine.
         is_background : bool
-            Input value.
+            Whether the file should be loaded as a background measurement.
         label : str
-            Input value.
+            Display label assigned to the data or plot element.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by load from folder.
         """
         valid_exts = (".tif", ".tiff", ".hdf5", ".h5")
         files = sorted(
@@ -492,12 +491,12 @@ class DataOperations:
         Parameters
         ----------
         args : Any
-            Input value.
+            Worker argument tuple passed to the parallel file-processing helper.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing loaded file data and file metadata.
         """
         idx, path, pile_up, hot_pixel, active_hp = args
         res_data = self._load_single_file(path, pile_up, hot_pixel, active_hp)

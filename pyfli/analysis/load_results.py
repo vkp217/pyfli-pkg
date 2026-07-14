@@ -9,11 +9,12 @@ datasets. Public API includes functions :func:`load_session_arrays`,
 :func:`add_mean_lifetime`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
 
 import os
+
 import numpy as np
 
 
@@ -63,12 +64,12 @@ def scan_session_results(save_dir: str) -> np.ndarray:
     Parameters
     ----------
     save_dir : str
-        Input value.
+        Directory where outputs are saved.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Session result arrays discovered from the output folder.
     """
     all_npy = sorted(f for f in os.listdir(save_dir) if f.endswith(".npy"))
     result_files = [f for f in all_npy if f not in _NON_RESULT_FILES]
@@ -143,16 +144,16 @@ def save_laguerre_result(saver: Any, lag_results: np.ndarray, model_type: str) -
     Parameters
     ----------
     saver : Any
-        Input value.
+        Optional saver used to persist messages or figures.
     lag_results : np.ndarray
-        Input value.
+        Laguerre deconvolution results written into the saver.
     model_type : str
-        Input value.
+        FLIM model family, such as mono- or bi-exponential.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function save laguerre result.
     """
     key = f"laguerre_{model_type.split('-')[0]}"  # 'laguerre_mono' or 'laguerre_bi'
     if key not in RESULT_FILENAMES:
@@ -177,20 +178,20 @@ def inject_phasor_result(
     Parameters
     ----------
     tau_map_ns : np.ndarray
-        Input value.
+        Lifetime map in nanoseconds.
     all_datasets : np.ndarray
-        Input value.
+        Collection of fitted datasets to classify, compare, or summarize.
     all_fitset : np.ndarray
-        Input value.
+        Collection of fit-result dictionaries used for comparison or plotting.
     names : Any
-        Input value.
+        Dataset names used in summaries and plots.
     label : str
-        Input value.
+        Display label assigned to the data or plot element.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function inject phasor result.
     """
     all_datasets.append(
         {
@@ -209,12 +210,12 @@ def add_mean_lifetime(all_datasets: np.ndarray) -> None:
     Parameters
     ----------
     all_datasets : np.ndarray
-        Input value.
+        Collection of fitted datasets to classify, compare, or summarize.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function add mean lifetime.
     """
     for ds in all_datasets:
         if "mean_lifetime" in ds:

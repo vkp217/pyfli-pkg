@@ -7,10 +7,11 @@ likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API inclu
 classes :class:`GlobalFLIFitter`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 import time
+
 from tqdm import tqdm
 from tabulate import tabulate
 
@@ -306,12 +307,12 @@ class GlobalFLIFitter:
 
         def _z2() -> np.ndarray:
             """
-            Handle z2.
+            Run the z2 routine.
 
             Returns
             -------
             np.ndarray
-                Return value.
+                Transformed optimization variable used by the global fitter.
             """
             return np.zeros((H, W), dtype=np.float32)
 
@@ -374,17 +375,17 @@ class GlobalFLIFitter:
 
     def _print_master_table(self, data: np.ndarray) -> None:
         """
-        Handle print master table.
+        Print master table.
 
         Parameters
         ----------
         data : np.ndarray
-            Input value.
+            Data array or mapping processed by the routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform print master table.
         """
         headers = [
             "Cluster",

@@ -7,8 +7,8 @@ estimation. The module primarily re-exports package symbols or constants for dow
 imports.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 
 _TAU_MARKS_NS = np.array(
@@ -22,19 +22,19 @@ def _universal_circle_xy(
     n_points: int = 500, half_circle: bool = False
 ) -> tuple[Any, ...]:
     """
-    Handle universal circle xy.
+    Run the universal circle xy routine.
 
     Parameters
     ----------
     n_points : int
-        Input value.
+        Number of points sampled for a curve or density.
     half_circle : bool
-        Input value.
+        Whether to draw only the upper half of the universal phasor circle.
 
     Returns
     -------
     tuple[Any, ...]
-        Return value.
+        Tuple containing x and y coordinates for the universal semicircle.
     """
     theta = np.linspace(0, np.pi if half_circle else 2 * np.pi, n_points)
     cx, cy = _UNIVERSAL_CIRCLE_CENTER
@@ -54,33 +54,33 @@ def _draw_lifetime_ticks(
     show_units: bool = False,
 ) -> None:
     """
-    Handle draw lifetime ticks.
+    Draw lifetime ticks.
 
     Parameters
     ----------
     ax : Any
-        Input value.
+        Matplotlib axes object on which the plot is drawn.
     G_mark : Any
-        Input value.
+        Phasor real coordinate for a lifetime tick mark.
     S_mark : Any
-        Input value.
+        Phasor imaginary coordinate for a lifetime tick mark.
     tick_length : float
-        Input value.
+        Length of the lifetime tick mark in phasor coordinates.
     text_offset : float
-        Input value.
+        Offset applied to lifetime labels on the phasor plot.
     color : str
-        Input value.
+        Matplotlib color used for drawing the plot element.
     lw : float
-        Input value.
+        Line width used when drawing lifetime tick marks.
     fontsize : int
-        Input value.
+        Font size used for phasor plot labels.
     show_units : bool
-        Input value.
+        If ``True``, include lifetime units in text labels.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform draw lifetime ticks.
     """
     cx, cy = _UNIVERSAL_CIRCLE_CENTER
     for tau, Gm, Sm in zip(_TAU_MARKS_NS, G_mark, S_mark):
@@ -114,25 +114,25 @@ def _style_phasor_ax(
     half_circle: bool = True,
 ) -> None:
     """
-    Handle style phasor ax.
+    Run the style phasor ax routine.
 
     Parameters
     ----------
     ax : Any
-        Input value.
+        Matplotlib axes object on which the plot is drawn.
     title : str
-        Input value.
+        Title displayed on the generated plot.
     xlim : tuple[float, ...]
-        Input value.
+        X-axis limits for the phasor plot.
     ylim : tuple[float, ...]
-        Input value.
+        Y-axis limits for the phasor plot.
     half_circle : bool
-        Input value.
+        Whether to draw only the upper half of the universal phasor circle.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform style phasor ax.
     """
     ax.set_xlabel("G")
     ax.set_ylabel("S")

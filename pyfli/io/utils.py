@@ -6,12 +6,13 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`DataIOUtils`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
 
 # dataIO_utils.py
 import os
+
 import h5py
 import numpy as np
 import json
@@ -33,12 +34,12 @@ class DataIOUtils:
         Parameters
         ----------
         file_path : str
-            Input value.
+            Path to the file being loaded.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing phasor arrays and metadata read from HDF5.
         """
         with h5py.File(file_path, "r") as f:
             Gc = f["Gc"][:]
@@ -58,21 +59,21 @@ class DataIOUtils:
         self, map_array: np.ndarray, file_path: str, visualize: bool = True
     ) -> np.ndarray:
         """
-        Handle roi nloader.
+        Run the ROI nloader routine.
 
         Parameters
         ----------
         map_array : np.ndarray
-            Input value.
+            Parameter map or mask array being loaded or displayed.
         file_path : str
-            Input value.
+            Path to the file being loaded.
         visualize : bool
-            Input value.
+            Whether to display the loaded ROI mask.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            ROI mask or coordinate array loaded from file.
         """
         if map_array.ndim == 3:
             H, W, _ = map_array.shape
@@ -114,12 +115,12 @@ class DataIOUtils:
             Parameters
             ----------
             fname : str
-                Input value.
+                File name read by the detector-specific loader.
 
             Returns
             -------
             np.ndarray
-                Return value.
+                Raw detector data array read from disk.
             """
             with h5py.File(fname, "r") as f:
                 gate_grp = f.get("Gate Images")

@@ -8,8 +8,8 @@ datasets. Public API includes classes :class:`TestStat` and
 :class:`FLIDistributionTest`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.decomposition import PCA
@@ -19,7 +19,7 @@ from scipy.linalg import sqrtm
 
 class TestStat:
     """
-    Run classical statistical comparisons between simulated and experimental FLIM result
+    Run the test stat routine.
     batches. The class groups Anderson-Darling, Kolmogorov-Smirnov, likelihood-ratio,
     bootstrap confidence interval, and Bayesian evidence helpers behind one object.
 
@@ -30,7 +30,7 @@ class TestStat:
     exp_batch : np.ndarray
         Experimental result batch used for comparison.
     eps : float
-        Configuration value used by the class.
+        Small numerical tolerance used to avoid division-by-zero and boundary issues.
     """
 
     def __init__(
@@ -75,12 +75,12 @@ class TestStat:
 
     def kolmogorov_smirnov(self) -> np.ndarray:
         """
-        Handle kolmogorov smirnov.
+        Run the kolmogorov smirnov routine.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Kolmogorov-Smirnov statistic and p-value for the supplied samples.
         """
         ks_stats = np.max(np.abs(self.sim_cdf - self.exp_cdf), axis=1)
         return ks_stats
@@ -156,7 +156,7 @@ class TestStat:
         Returns
         -------
         np.ndarray
-            Return value.
+            Summary table or array containing the configured statistical test results.
         """
         results = {}
 
@@ -176,7 +176,7 @@ class TestStat:
 
 class FLIDistributionTest:
     """
-    Compare high-dimensional simulated and experimental FLIM distributions. It exposes
+    Run the flidistribution test routine.
     MMD, energy distance, sliced Wasserstein, Frechet-style, and PCA-overlap metrics for
     validating whether simulations match measured data.
 
@@ -187,7 +187,7 @@ class FLIDistributionTest:
     exp_batch : np.ndarray
         Experimental result batch used for comparison.
     eps : float
-        Configuration value used by the class.
+        Small numerical tolerance used to avoid division-by-zero and boundary issues.
     """
 
     def __init__(
@@ -226,12 +226,12 @@ class FLIDistributionTest:
     # ==========================================================
     def energy_distance(self) -> Any:
         """
-        Handle energy distance.
+        Run the energy distance routine.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by energy distance.
         """
         X = self.sim
         Y = self.exp
@@ -267,12 +267,12 @@ class FLIDistributionTest:
     # ==========================================================
     def frechet_distance(self) -> np.ndarray:
         """
-        Handle frechet distance.
+        Run the frechet distance routine.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Frechet distance between the supplied curves or point sequences.
         """
         mu1 = self.sim.mean(axis=0)
         mu2 = self.exp.mean(axis=0)
@@ -298,17 +298,17 @@ class FLIDistributionTest:
     # ==========================================================
     def pca_overlap(self, n_components: int = 10) -> np.ndarray:
         """
-        Handle pca overlap.
+        Run the PCA overlap routine.
 
         Parameters
         ----------
         n_components : int
-            Input value.
+            Number of PCA components retained for the metric.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Overlap score between PCA projections of the supplied groups.
         """
         pca = PCA(n_components=n_components)
 
@@ -337,7 +337,7 @@ class FLIDistributionTest:
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by run all.
         """
         return {
             "MMD": self.mmd(),

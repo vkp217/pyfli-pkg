@@ -10,7 +10,6 @@ likelihood, CPU, GPU, binned, and global FLIM fitting routines. The module prima
 exports package symbols or constants for downstream imports.
 """
 
-from __future__ import annotations
 from .base_fitter import BaseFLIFitter
 from .cpu_processor import FLICPUProcessor
 from .gpu_processor import FLIGPUProcessor

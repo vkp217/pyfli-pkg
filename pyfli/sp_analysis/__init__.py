@@ -9,7 +9,6 @@ basis generation, acquisition simulation, and reconstruction solvers. The module
 primarily re-exports package symbols or constants for downstream imports.
 """
 
-from __future__ import annotations
 from .simulator import BasisPatterns, MeasurementSimulator, Reconstructor
 from .solvers import LinearReconstructor, TVReconstructor
 from .spad_solvers import SPADPoissonReconstructor

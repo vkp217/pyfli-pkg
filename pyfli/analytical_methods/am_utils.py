@@ -6,7 +6,6 @@ FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
 estimation. Public API includes classes :class:`AnalyticalHelpers`.
 """
 
-from __future__ import annotations
 from typing import Any
 
 
@@ -37,12 +36,12 @@ class AnalyticalHelpers:
 
     def freq_computation(self) -> list[Any]:
         """
-        Handle freq computation.
+        Compute the base and effective acquisition frequencies.
 
         Returns
         -------
         list[Any]
-            Return value.
+            List containing the base excitation frequency and the effective gated frequency.
         """
         freq = 1000.0 / self.laser_period  # laser_period in ns; freq in Hz
         if self.gate_delay is None or self.num_gate is None:

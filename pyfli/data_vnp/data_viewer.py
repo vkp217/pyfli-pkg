@@ -6,11 +6,12 @@ normalization, plotting, and mono-versus-bi-exponential comparison tools. Public
 includes classes :class:`DataViewer`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+
 from matplotlib import gridspec
 
 
@@ -43,14 +44,14 @@ class DataViewer:
         Parameters
         ----------
         ax : Any
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         coord : Any
-            Input value.
+            Pixel coordinate highlighted or summarized by the plot.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function apply marker.
         """
         if coord is not None:
             x, y = coord
@@ -76,28 +77,28 @@ class DataViewer:
         Parameters
         ----------
         data_list : np.ndarray
-            Input value.
+            List of data arrays displayed by the viewer.
         structure : tuple[int, ...]
-            Input value.
+            Layout structure that controls how data arrays are displayed.
         coord : Any | None
-            Input value.
+            Pixel coordinate highlighted or summarized by the plot.
         data_names : np.ndarray | None
-            Input value.
+            Labels assigned to displayed data arrays.
         cmaps : np.ndarray | None
-            Input value.
+            Matplotlib colormap used by the visualization.
         v_ranges : np.ndarray | None
-            Input value.
+            Per-map display ranges used by the viewer.
         figsize : np.ndarray | None
-            Input value.
+            Figure size passed to Matplotlib.
         normalize : bool
-            Input value.
+            Whether data are normalized before comparison or plotting.
         yscale : str
-            Input value.
+            Scale used for the y-axis.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing displayed data handles and summary values.
         """
         num_plots = len(data_list)
         r, c = structure
@@ -190,20 +191,20 @@ class DataViewer:
         Parameters
         ----------
         data : np.ndarray
-            Input value.
+            Data array or mapping processed by the routine.
         pixel : np.ndarray | None
-            Input value.
+            Selected pixel coordinate.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         mode : tuple[str, ...]
-            Input value.
+            Mode selector used by the fitting, loading, or plotting routine.
         esp : float
-            Input value.
+            Small epsilon used to stabilize divisions and comparisons.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by plot pyfli fit summary.
         """
         mode = set(mode)  # faster lookup
         is_3d = pixel is not None
@@ -231,17 +232,17 @@ class DataViewer:
 
         def fmt(v: np.ndarray) -> Any:
             """
-            Handle fmt.
+            Run the fmt routine.
 
             Parameters
             ----------
             v : np.ndarray
-                Input value.
+                Vector or matrix evaluated by the simplex projection.
 
             Returns
             -------
             Any
-                Return value.
+                Object produced by fmt.
             """
             try:
                 return f"{float(v):.4f}"
@@ -366,29 +367,29 @@ class DataViewer:
         esp: float = 1e0,
     ) -> tuple[Any, ...]:
         """
-        Plot fli px.
+        Plot FLI px.
 
         Parameters
         ----------
         data_list : np.ndarray
-            Input value.
+            List of data arrays displayed by the viewer.
         pixel : np.ndarray | None
-            Input value.
+            Selected pixel coordinate.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         mode : str | None
-            Input value.
+            Mode selector used by the fitting, loading, or plotting routine.
         mode2 : Any | None
-            Input value.
+            Secondary display mode used by the pixel viewer.
         names : Any | None
-            Input value.
+            Dataset names used in summaries and plots.
         esp : float
-            Input value.
+            Small epsilon used to stabilize divisions and comparisons.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing the pixel plot handles and extracted pixel values.
         """
         n_total = len(data_list)
         if mode is None:

@@ -6,8 +6,8 @@ likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API inclu
 functions :func:`decay_kernel` and :func:`model_numpy`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 
 _EPS = 1e-8
@@ -47,23 +47,23 @@ def model_numpy(
     model_type: str,
 ) -> np.ndarray:
     """
-    Handle model numpy.
+    Evaluate the NumPy FLIM forward model.
 
     Parameters
     ----------
     t : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
     irf : np.ndarray
-        Input value.
+        Instrument response function aligned with the decay signal.
     params : Any
-        Input value.
+        Model, detector, or plotting parameters used by the routine.
     model_type : str
-        Input value.
+        FLIM model family, such as mono- or bi-exponential.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Model decay evaluated with NumPy for the supplied parameters.
     """
     params = np.asarray(params, dtype=float)
 

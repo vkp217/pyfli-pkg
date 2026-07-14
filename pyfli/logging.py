@@ -1,6 +1,5 @@
 """Small logging helpers for PyFLI."""
 
-from __future__ import annotations
 from typing import Any
 import logging as _logging
 from functools import lru_cache
@@ -21,21 +20,21 @@ def configure_logging(level: int = _logging.INFO) -> _logging.Logger:
 
 def _format_message(msg: Any, *args: Any, **kwargs: Any) -> str:
     """
-    Handle format message.
+    Run the format message routine.
 
     Parameters
     ----------
     msg : Any
-        Input value.
+        Message text emitted through the PyFLI logger.
     *args : Any
-        Input value.
+        Additional positional values accepted by the routine.
     **kwargs : Any
-        Input value.
+        Additional keyword options forwarded to the underlying implementation.
 
     Returns
     -------
     str
-        Return value.
+        String path, label, or message produced by format message.
     """
     if not args and not kwargs:
         return str(msg)
@@ -44,172 +43,172 @@ def _format_message(msg: Any, *args: Any, **kwargs: Any) -> str:
 
 def _log(level: int, msg: Any, *args: Any, **kwargs: Any) -> None:
     """
-    Handle log.
+    Run the log routine.
 
     Parameters
     ----------
     level : int
-        Input value.
+        Logging severity level.
     msg : Any
-        Input value.
+        Message text emitted through the PyFLI logger.
     *args : Any
-        Input value.
+        Additional positional values accepted by the routine.
     **kwargs : Any
-        Input value.
+        Additional keyword options forwarded to the underlying implementation.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform log.
     """
     logger.log(level, _format_message(msg, *args, **kwargs))
 
 
 def critical(msg: Any, *args: Any, **kwargs: Any) -> None:
     """
-    Handle critical.
+    Run the critical routine.
 
     Parameters
     ----------
     msg : Any
-        Input value.
+        Message text emitted through the PyFLI logger.
     *args : Any
-        Input value.
+        Additional positional values accepted by the routine.
     **kwargs : Any
-        Input value.
+        Additional keyword options forwarded to the underlying implementation.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform critical.
     """
     _log(_logging.CRITICAL, msg, *args, **kwargs)
 
 
 def debug(msg: Any, *args: Any, **kwargs: Any) -> None:
     """
-    Handle debug.
+    Run the debug routine.
 
     Parameters
     ----------
     msg : Any
-        Input value.
+        Message text emitted through the PyFLI logger.
     *args : Any
-        Input value.
+        Additional positional values accepted by the routine.
     **kwargs : Any
-        Input value.
+        Additional keyword options forwarded to the underlying implementation.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform debug.
     """
     _log(_logging.DEBUG, msg, *args, **kwargs)
 
 
 def error(msg: Any, *args: Any, **kwargs: Any) -> None:
     """
-    Handle error.
+    Run the error routine.
 
     Parameters
     ----------
     msg : Any
-        Input value.
+        Message text emitted through the PyFLI logger.
     *args : Any
-        Input value.
+        Additional positional values accepted by the routine.
     **kwargs : Any
-        Input value.
+        Additional keyword options forwarded to the underlying implementation.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform error.
     """
     _log(_logging.ERROR, msg, *args, **kwargs)
 
 
 def exception(msg: Any, *args: Any, **kwargs: Any) -> None:
     """
-    Handle exception.
+    Run the exception routine.
 
     Parameters
     ----------
     msg : Any
-        Input value.
+        Message text emitted through the PyFLI logger.
     *args : Any
-        Input value.
+        Additional positional values accepted by the routine.
     **kwargs : Any
-        Input value.
+        Additional keyword options forwarded to the underlying implementation.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform exception.
     """
     logger.exception(_format_message(msg, *args, **kwargs))
 
 
 def info(msg: Any, *args: Any, **kwargs: Any) -> None:
     """
-    Handle info.
+    Run the info routine.
 
     Parameters
     ----------
     msg : Any
-        Input value.
+        Message text emitted through the PyFLI logger.
     *args : Any
-        Input value.
+        Additional positional values accepted by the routine.
     **kwargs : Any
-        Input value.
+        Additional keyword options forwarded to the underlying implementation.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform info.
     """
     _log(_logging.INFO, msg, *args, **kwargs)
 
 
 def log(level: int, msg: Any, *args: Any, **kwargs: Any) -> None:
     """
-    Handle log.
+    Run the log routine.
 
     Parameters
     ----------
     level : int
-        Input value.
+        Logging severity level.
     msg : Any
-        Input value.
+        Message text emitted through the PyFLI logger.
     *args : Any
-        Input value.
+        Additional positional values accepted by the routine.
     **kwargs : Any
-        Input value.
+        Additional keyword options forwarded to the underlying implementation.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform log.
     """
     _log(level, msg, *args, **kwargs)
 
 
 def warning(msg: Any, *args: Any, **kwargs: Any) -> None:
     """
-    Handle warning.
+    Run the warning routine.
 
     Parameters
     ----------
     msg : Any
-        Input value.
+        Message text emitted through the PyFLI logger.
     *args : Any
-        Input value.
+        Additional positional values accepted by the routine.
     **kwargs : Any
-        Input value.
+        Additional keyword options forwarded to the underlying implementation.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform warning.
     """
     _log(_logging.WARNING, msg, *args, **kwargs)
 
@@ -217,38 +216,38 @@ def warning(msg: Any, *args: Any, **kwargs: Any) -> None:
 @lru_cache(None)
 def warn_once(msg: Any, *args: Any, **kwargs: Any) -> None:
     """
-    Handle warn once.
+    Run the warn once routine.
 
     Parameters
     ----------
     msg : Any
-        Input value.
+        Message text emitted through the PyFLI logger.
     *args : Any
-        Input value.
+        Additional positional values accepted by the routine.
     **kwargs : Any
-        Input value.
+        Additional keyword options forwarded to the underlying implementation.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform warn once.
     """
     warning(msg, *args, **kwargs)
 
 
 def format_duration(seconds: float) -> str:
     """
-    Handle format duration.
+    Format an elapsed time in seconds, minutes, or hours.
 
     Parameters
     ----------
     seconds : float
-        Input value.
+        Elapsed time in seconds.
 
     Returns
     -------
     str
-        Return value.
+        String path, label, or message produced by format duration.
     """
     if seconds < 60:
         return f"{seconds:.2f} seconds"

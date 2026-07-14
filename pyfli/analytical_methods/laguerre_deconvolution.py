@@ -6,47 +6,49 @@ FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
 estimation. Public API includes classes :class:`LaguerreFLI`.
 """
 
-from __future__ import annotations
-from typing import Any
-from pyfli import logging
-from typing import Optional
+import os
+from typing import Any, Optional
+
+import h5py
 import numpy as np
 from scipy.optimize import least_squares, minimize_scalar, nnls
 from scipy.signal import lfilter, fftconvolve
 from tqdm.auto import tqdm
+
+from pyfli import logging
 from ..solver.base_static import moment_based_guess
 
 
 class LaguerreFLI:
     """
-    Fit FLIM decays with a Laguerre-basis deconvolution model. The class precomputes the
+    Run the laguerre FLI routine.
     Laguerre basis, projects decays into coefficient space, reconstructs denoised
     decays, and supports lifetime estimation from the reconstructed signal.
 
     Parameters
     ----------
     n_components : int
-        Number of items used by this workflow.
+        Number of exponential lifetime components to fit.
     n_laguerre : Optional[int]
-        Number of items used by this workflow.
+        Number of Laguerre basis functions used for reconstruction.
     alpha : float
         Regularization strength or statistical threshold value, depending on context.
     dt : float
-        Configuration value used by the class.
+        Sampling interval between adjacent decay bins.
     auto_alpha : bool
-        Configuration value used by the class.
+        If ``True``, estimate the Laguerre alpha parameter from the data.
     taus_init : Optional[np.ndarray]
-        Configuration value used by the class.
+        Initial lifetime estimates used to seed exponential fitting.
     laser_period_ns : Optional[float]
-        Configuration value used by the class.
+        Laser repetition period in nanoseconds.
     reg_strength : float
-        Configuration value used by the class.
+        Regularization weight applied to higher-order Laguerre coefficients.
     reg_power : float
-        Configuration value used by the class.
+        Exponent controlling how regularization increases across coefficient order.
     nonneg : bool
-        Configuration value used by the class.
+        If ``True``, constrain fitted coefficients or amplitudes to be non-negative.
     verbose : bool
-        Configuration value used by the class.
+        If ``True``, report progress and diagnostic messages during processing.
     """
 
     def __init__(
@@ -109,21 +111,22 @@ class LaguerreFLI:
     @staticmethod
     def _discrete_laguerre_basis(T: int, alpha: float, L: int) -> np.ndarray:
         """
-        Handle discrete laguerre basis.
+        Build the discrete Laguerre basis matrix.
 
         Parameters
         ----------
         T : int
-            Input value.
+            Time axis or acquisition period used by the calculation.
         alpha : float
-            Input value.
+            Regularization strength, fraction value, or significance threshold used by the
+        routine.
         L : int
-            Input value.
+            Number of Laguerre basis functions or coefficient dimension.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Discrete Laguerre basis matrix with basis functions along rows.
         """
         b = np.zeros((L, T), dtype=np.float64)
         n = np.arange(T)
@@ -142,19 +145,19 @@ class LaguerreFLI:
     @staticmethod
     def _convolve_with_irf(basis: np.ndarray, irf: np.ndarray) -> np.ndarray:
         """
-        Handle convolve with irf.
+        Convolve each Laguerre basis function with the IRF.
 
         Parameters
         ----------
         basis : np.ndarray
-            Input value.
+            Laguerre basis matrix before or after IRF convolution.
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Laguerre design matrix after convolution with the IRF.
         """
         _, T = basis.shape
         irf = np.asarray(irf, float).ravel()
@@ -167,19 +170,20 @@ class LaguerreFLI:
     @staticmethod
     def _unique_irf_groups(irf_2d: np.ndarray, decimals: int = 6) -> tuple[Any, ...]:
         """
-        Handle unique irf groups.
+        Group pixels that share numerically identical IRFs.
 
         Parameters
         ----------
         irf_2d : np.ndarray
-            Input value.
+            Two-dimensional array of per-pixel IRFs, flattened over pixels by time.
         decimals : int
-            Input value.
+            Decimal precision used when grouping IRFs.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing the IRF group index for each pixel and representative group
+            indices.
         """
         _, _ = irf_2d.shape
         s = irf_2d.sum(axis=1, keepdims=True)
@@ -194,35 +198,35 @@ class LaguerreFLI:
 
     def _penalty(self, L: int) -> np.ndarray:
         """
-        Handle penalty.
+        Build the coefficient regularization penalty matrix.
 
         Parameters
         ----------
         L : int
-            Input value.
+            Number of Laguerre basis functions or coefficient dimension.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Regularization weights for the Laguerre coefficients.
         """
         return (np.arange(L, dtype=float) + 1.0) ** self.reg_power
 
     def _solve_coefficients(self, V: np.ndarray, Y2d: np.ndarray) -> np.ndarray:
         """
-        Handle solve coefficients.
+        Solve Laguerre coefficients for all valid decays.
 
         Parameters
         ----------
         V : np.ndarray
-            Input value.
+            Vector or matrix evaluated by the simplex projection.
         Y2d : np.ndarray
-            Input value.
+            Flattened decay matrix solved for Laguerre coefficients.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Coefficient matrix fitted for each decay trace.
         """
         if self.reg_strength > 0.0:
             L = V.shape[1]
@@ -236,36 +240,36 @@ class LaguerreFLI:
         self, avg_decay: np.ndarray, avg_irf: np.ndarray, T: int
     ) -> float:
         """
-        Handle optimize alpha.
+        Optimize the Laguerre alpha value against an average decay.
 
         Parameters
         ----------
         avg_decay : np.ndarray
-            Input value.
+            Average decay trace used during alpha optimization.
         avg_irf : np.ndarray
-            Input value.
+            Average IRF used as the representative response for global fitting.
         T : int
-            Input value.
+            Time axis or acquisition period used by the calculation.
 
         Returns
         -------
         float
-            Return value.
+            Floating-point result computed by optimize alpha.
         """
 
         def obj(a: np.ndarray) -> float:
             """
-            Handle obj.
+            Run the obj routine.
 
             Parameters
             ----------
             a : np.ndarray
-                Input value.
+                Lower integration or interval bound.
 
             Returns
             -------
             float
-                Return value.
+                Floating-point result computed by obj.
             """
             if not (1e-3 < a < 0.999):
                 return 1e30
@@ -282,21 +286,21 @@ class LaguerreFLI:
     @staticmethod
     def _nnls_safe(E: np.ndarray, h: np.ndarray, maxiter: int) -> np.ndarray:
         """
-        Handle nnls safe.
+        Solve a non-negative least-squares problem with a fallback path.
 
         Parameters
         ----------
         E : np.ndarray
-            Input value.
+            GUI or plotting event object supplied by the framework.
         h : np.ndarray
-            Input value.
+            IRF, image height, or temporal kernel used by the routine.
         maxiter : int
-            Input value.
+            Maximum number of optimization iterations.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Non-negative least-squares solution, with zeros when fitting fails.
         """
         try:
             a, _ = nnls(E, h, maxiter=maxiter)
@@ -307,21 +311,21 @@ class LaguerreFLI:
 
     def _solve_amps(self, E: np.ndarray, h: np.ndarray, maxiter: int) -> np.ndarray:
         """
-        Handle solve amps.
+        Estimate exponential amplitudes for a fixed lifetime set.
 
         Parameters
         ----------
         E : np.ndarray
-            Input value.
+            GUI or plotting event object supplied by the framework.
         h : np.ndarray
-            Input value.
+            IRF, image height, or temporal kernel used by the routine.
         maxiter : int
-            Input value.
+            Maximum number of optimization iterations.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Estimated exponential amplitudes for the supplied lifetimes.
         """
         if self.nonneg:
             return self._nnls_safe(E, h, maxiter)
@@ -330,17 +334,17 @@ class LaguerreFLI:
 
     def _tau_bounds(self, T: int) -> tuple[Any, ...]:
         """
-        Handle tau bounds.
+        Build lifetime bounds for exponential fitting.
 
         Parameters
         ----------
         T : int
-            Input value.
+            Time axis or acquisition period used by the calculation.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing lower and upper lifetime bounds.
         """
         tau_lo = self.dt
         tau_hi = (
@@ -351,21 +355,21 @@ class LaguerreFLI:
 
     def _safe_tau0(self, tau0: np.ndarray, tau_lo: float, tau_hi: float) -> np.ndarray:
         """
-        Handle safe tau0.
+        Clip an initial lifetime guess into valid bounds.
 
         Parameters
         ----------
         tau0 : np.ndarray
-            Input value.
+            Initial lifetime guess before clipping to valid bounds.
         tau_lo : float
-            Input value.
+            Lower lifetime bound.
         tau_hi : float
-            Input value.
+            Upper lifetime bound.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Initial lifetime estimates clipped to the allowed tau bounds.
         """
         return np.clip(tau0, tau_lo + 1e-7, tau_hi - 1e-7)
 
@@ -376,12 +380,12 @@ class LaguerreFLI:
         Parameters
         ----------
         h_avg : np.ndarray
-            Input value.
+            Average reconstructed decay used to estimate global lifetimes.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Estimated global lifetime values shared across pixels.
         """
         T = h_avg.shape[0]
         n = np.arange(T)
@@ -413,17 +417,17 @@ class LaguerreFLI:
 
         def residual(params: Any) -> Any:
             """
-            Handle residual.
+            Run the residual routine.
 
             Parameters
             ----------
             params : Any
-                Input value.
+                Model, detector, or plotting parameters used by the routine.
 
             Returns
             -------
             Any
-                Return value.
+                Object produced by residual.
             """
             E = np.exp(-n[:, None] * self.dt / params[None, :])
             a = self._solve_amps(E, h_avg, 200 * N)
@@ -450,16 +454,16 @@ class LaguerreFLI:
         Parameters
         ----------
         h_stack : np.ndarray
-            Input value.
+            Stack of reconstructed decays fitted pixel by pixel.
         tau_init : np.ndarray
-            Input value.
+            Initial lifetime vector for pixel-wise exponential fitting.
         mask : Optional[np.ndarray]
-            Input value.
+            Boolean or labeled mask selecting pixels for the operation.
 
         Returns
         -------
         tuple[np.ndarray, np.ndarray, np.ndarray]
-            Return value.
+            Per-pixel fitted amplitudes, fractions, lifetimes, and convergence flags.
         """
         X, Y, T = h_stack.shape
         N = self.n_components
@@ -489,21 +493,6 @@ class LaguerreFLI:
                     if h.sum() >= 1e-10:
 
                         def residual(params: Any, h: np.ndarray = h) -> Any:
-                            """
-                            Handle residual.
-
-                            Parameters
-                            ----------
-                            params : Any
-                                Input value.
-                            h : np.ndarray
-                                Input value.
-
-                            Returns
-                            -------
-                            Any
-                                Return value.
-                            """
                             E = np.exp(-n[:, None] * self.dt / params[None, :])
                             a = self._solve_amps(E, h, 200 * N)
                             return E @ a - h
@@ -536,21 +525,21 @@ class LaguerreFLI:
         mask: Optional[np.ndarray] = None,
     ) -> "LaguerreFLI":
         """
-        Handle fit.
+        Fit the model to decay and IRF data.
 
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
         mask : Optional[np.ndarray]
-            Input value.
+            Boolean or labeled mask selecting pixels for the operation.
 
         Returns
         -------
         'LaguerreFLI'
-            Return value.
+            Object produced by fit.
         """
         decay = np.asarray(decay, dtype=np.float64)
         irf = np.asarray(irf, dtype=np.float64)
@@ -667,12 +656,12 @@ class LaguerreFLI:
         Parameters
         ----------
         data_name : str
-            Input value.
+            Label assigned to the fitted or processed dataset.
 
         Returns
         -------
         dict
-            Return value.
+            Dictionary containing the data produced by get parameters.
         """
         if self.coeffs_ is None:
             raise RuntimeError("Call .fit(decay, irf) first.")
@@ -790,17 +779,15 @@ class LaguerreFLI:
         Parameters
         ----------
         dataset : dict
-            Input value.
+            Dataset dictionary or fit result collection to save.
         folder : str
-            Input value.
+            Output directory used when saving results.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save results.
         """
-        import h5py
-        import os
 
         if dataset is None:
             return
@@ -829,19 +816,19 @@ class LaguerreFLI:
         self, h5_path: str, map_name: str = "tau1_map"
     ) -> Optional[np.ndarray]:
         """
-        Load map.
+        Load a map from a .h5 file.
 
         Parameters
         ----------
         h5_path : str
-            Input value.
+            Filesystem path used by the routine.
         map_name : str
-            Input value.
+            Name of the saved parameter map to load.
 
         Returns
         -------
         Optional[np.ndarray]
-            Return value.
+            Map array loaded from disk.
         """
         import h5py
 
@@ -854,26 +841,18 @@ class LaguerreFLI:
 
     def predict(self) -> np.ndarray:
         """
-        Handle predict.
+        Return reconstructed value.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Reconstructed decay array predicted from the fitted Laguerre model.
         """
         if self.reconstructed_ is None:
             raise RuntimeError("Call .fit(decay, irf) first.")
         return self.reconstructed_
 
     def __repr__(self) -> str:
-        """
-        Return the representation.
-
-        Returns
-        -------
-        str
-            Return value.
-        """
         period = (
             f"{self.laser_period_ns} ns"
             if self.laser_period_ns is not None
@@ -885,38 +864,3 @@ class LaguerreFLI:
             f"dt={self.dt} ns, laser_period={period}, "
             f"reg_strength={self.reg_strength})"
         )
-
-
-if __name__ == "__main__":
-    rng = np.random.default_rng(0)
-    X, Y, T = 16, 16, 256
-    dt = 0.05
-    tau_true = np.array([0.5, 2.5])
-    a1 = rng.uniform(0.2, 0.8, size=(X, Y))
-    a2 = 1.0 - a1
-    n = np.arange(T)
-    h_true = a1[..., None] * np.exp(-n * dt / tau_true[0]) + a2[..., None] * np.exp(
-        -n * dt / tau_true[1]
-    )
-    t = n * dt
-    irf = np.exp(-0.5 * ((t - 1.0) / 0.08) ** 2)
-    irf /= irf.sum()
-    y_clean = np.zeros_like(h_true)
-    for i in range(X):
-        for j in range(Y):
-            y_clean[i, j] = np.convolve(irf, h_true[i, j], mode="full")[:T]
-    y_meas = rng.poisson(y_clean * 5000).astype(float) / 5000
-    model = LaguerreFLI(
-        n_components=2,
-        n_laguerre=8,
-        alpha=0.85,
-        dt=dt,
-        auto_alpha=True,
-        laser_period_ns=12.5,
-    )
-    model.fit(y_meas, irf)
-    maps = model.get_parameters("SyntheticFLI")["results"]["maps"]
-    logging.info(model)
-    logging.info(f"  mean recovered taus (ns) = {model.taus_.mean(axis=(0, 1))}")
-    logging.info(f"  true taus (ns)           = {tau_true}")
-    logging.info(f"  mean tau_mean            = {maps['tau_mean_map'].mean():.3f} ns")

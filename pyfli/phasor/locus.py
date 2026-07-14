@@ -9,8 +9,8 @@ such curves, whether they are the canonical universal semicircle or deformed
 variants arising from gating / binning / truncation.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 

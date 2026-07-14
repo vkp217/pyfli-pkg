@@ -34,7 +34,6 @@ Colour tokens (Catppuccin Mocha palette)
 """
 
 # ── Base window / widget ──────────────────────────────────────────────────────
-from __future__ import annotations
 
 BASE = """
 QMainWindow, QWidget {

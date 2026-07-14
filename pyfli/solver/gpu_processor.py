@@ -6,14 +6,16 @@ likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API inclu
 classes :class:`FLIGPUProcessor`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
+
 import torch
 import numpy as np
 import h5py
 import os
 import time
+
 from tqdm import tqdm
 
 
@@ -47,19 +49,19 @@ class FLIGPUProcessor:
 
     def _transform_params(self, raw_p: np.ndarray, model_type: str) -> Any:
         """
-        Handle transform params.
+        Run the transform params routine.
 
         Parameters
         ----------
         raw_p : np.ndarray
-            Input value.
+            Unconstrained optimizer parameters before physical transformation.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by transform params.
         """
         shift_bound = self.T_acq / 4.0
         S = torch.exp(raw_p[:, 0:1])
@@ -79,23 +81,23 @@ class FLIGPUProcessor:
         self, params: Any, t: np.ndarray, irf: np.ndarray, model_type: str
     ) -> Any:
         """
-        Handle model kernel.
+        Run the model kernel routine.
 
         Parameters
         ----------
         params : Any
-            Input value.
+            Model, detector, or plotting parameters used by the routine.
         t : np.ndarray
-            Input value.
+            Time axis or acquisition period used by the calculation.
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by model kernel.
         """
         if model_type == "mono-exponential":
             S, tau, b, h_shift = (
@@ -139,34 +141,34 @@ class FLIGPUProcessor:
         Parameters
         ----------
         p_phys : np.ndarray
-            Input value.
+            Physical parameter tensor after constrained transformation.
         t : np.ndarray
-            Input value.
+            Time axis or acquisition period used by the calculation.
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by compute CRLB errors.
         """
         p_phys = p_phys.detach().clone().requires_grad_(True)
 
         def model_func(p: Any) -> Any:
             """
-            Handle model func.
+            Run the model func routine.
 
             Parameters
             ----------
             p : Any
-                Input value.
+                Detector parameter object or fitted parameter vector.
 
             Returns
             -------
             Any
-                Return value.
+                Object produced by model func.
             """
             return self._model_kernel(p, t, irf, model_type)
 
@@ -212,30 +214,30 @@ class FLIGPUProcessor:
         Parameters
         ----------
         image_cube : np.ndarray
-            Input value.
+            Time-resolved decay image cube.
         irf_cube : np.ndarray
-            Input value.
+            Instrument response cube aligned with the decay image cube.
         mask : np.ndarray | None
-            Input value.
+            Boolean or labeled mask selecting pixels for the operation.
         mode : str
-            Input value.
+            Mode selector used by the fitting, loading, or plotting routine.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
         max_iter : int
-            Input value.
+            Maximum number of optimization iterations.
         CRLB : bool
-            Input value.
+            If ``True``, compute Cramer-Rao lower-bound uncertainty estimates.
         data_name : str
-            Input value.
+            Label assigned to the fitted or processed dataset.
         p0 : Any | None
-            Input value.
+            Initial parameter vector supplied to the optimizer.
         **kwargs : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by fit image.
         """
         _NLSF_MODES = {"NLSF", "LSE", "WLS", "NEYMAN"}
         mode = "NLSF" if mode.upper() in _NLSF_MODES else "MLE"
@@ -291,17 +293,17 @@ class FLIGPUProcessor:
             # Neyman chi-squared: weights by measured data — matches CPU BaseFLIFitter
             def objective_fn(p_raw: np.ndarray) -> Any:
                 """
-                Handle objective fn.
+                Run the objective fn routine.
 
                 Parameters
                 ----------
                 p_raw : np.ndarray
-                    Input value.
+                    Raw unconstrained parameter tensor optimized by the objective.
 
                 Returns
                 -------
                 Any
-                    Return value.
+                    Object produced by objective fn.
                 """
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
@@ -312,17 +314,17 @@ class FLIGPUProcessor:
             # Poisson MLE (C-statistic): matches CPU MLEFLIFitter
             def objective_fn(p_raw: np.ndarray) -> Any:
                 """
-                Handle objective fn.
+                Run the objective fn routine.
 
                 Parameters
                 ----------
                 p_raw : np.ndarray
-                    Input value.
+                    Raw unconstrained parameter tensor optimized by the objective.
 
                 Returns
                 -------
                 Any
-                    Return value.
+                    Object produced by objective fn.
                 """
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
@@ -456,37 +458,37 @@ class FLIGPUProcessor:
         name: str,
     ) -> dict[Any, Any]:
         """
-        Handle reconstruct dataset.
+        Reconstruct dataset.
 
         Parameters
         ----------
         p_maps : np.ndarray
-            Input value.
+            Physical parameter maps reconstructed from flattened fit results.
         e_maps : np.ndarray
-            Input value.
+            Parameter-error maps reconstructed from flattened fit results.
         fit_map : np.ndarray
-            Input value.
+            Parameter or mask map processed by the routine.
         res_map : np.ndarray
-            Input value.
+            Parameter or mask map processed by the routine.
         chi2_raw : np.ndarray
-            Input value.
+            Raw chi-square map from the fit reconstruction.
         chi2_reduced : np.ndarray
-            Input value.
+            Reduced chi-square map from the fit reconstruction.
         r2_map : np.ndarray
-            Input value.
+            Parameter or mask map processed by the routine.
         health_map : np.ndarray
-            Input value.
+            Parameter or mask map processed by the routine.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
         mode : str
-            Input value.
+            Mode selector used by the fitting, loading, or plotting routine.
         name : str
-            Input value.
+            Dataset, experiment, figure, or output name.
 
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by reconstruct dataset.
         """
         S = p_maps[..., 0]
         common = {
@@ -543,21 +545,21 @@ class FLIGPUProcessor:
 
     def _p0_to_tensor(self, p0: Any, n_pixels: int, model_type: str) -> Any:
         """
-        Handle p0 to tensor.
+        Run the p0 to tensor routine.
 
         Parameters
         ----------
         p0 : Any
-            Input value.
+            Initial parameter vector supplied to the optimizer.
         n_pixels : int
-            Input value.
+            Number of samples, components, gates, or iterations used by the routine.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by p0 to tensor.
         """
         if isinstance(p0, dict):
             if model_type == "bi-exponential":
@@ -591,16 +593,16 @@ class FLIGPUProcessor:
         Parameters
         ----------
         data : np.ndarray
-            Input value.
+            Data array or mapping processed by the routine.
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by get sophisticated guess.
         """
         cpu_data = data.detach().cpu().numpy().astype(np.float64)
         P, T = cpu_data.shape
@@ -651,14 +653,14 @@ class FLIGPUProcessor:
         Parameters
         ----------
         dataset : np.ndarray
-            Input value.
+            Dataset dictionary or fit result collection to save.
         folder : str
-            Input value.
+            Output directory used when saving results.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save results.
         """
         if not os.path.exists(folder):
             os.makedirs(folder)

@@ -6,10 +6,11 @@ basis generation, acquisition simulation, and reconstruction solvers. Public API
 includes classes :class:`SPADPoissonReconstructor`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 from scipy.optimize import minimize
+
 from .base_reconstructor import BaseReconstructor
 
 
@@ -57,23 +58,24 @@ class SPADPoissonReconstructor(BaseReconstructor):
         self, x_flat: np.ndarray, A: np.ndarray, y: np.ndarray, alpha: float
     ) -> tuple[Any, ...]:
         """
-        Handle objective and grad.
+        Run the objective and grad routine.
 
         Parameters
         ----------
         x_flat : np.ndarray
-            Input value.
+            Flattened image or parameter vector.
         A : np.ndarray
-            Input value.
+            Lower bound or left separator value used by the helper.
         y : np.ndarray
-            Input value.
+            Observed signal, target data, or coordinate array.
         alpha : float
-            Input value.
+            Regularization strength, fraction value, or significance threshold used by the
+        routine.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing objective value and gradient.
         """
         eps = 1e-10
         Ax = np.dot(A, x_flat)
@@ -105,19 +107,19 @@ class SPADPoissonReconstructor(BaseReconstructor):
 
     def reconstruct_slice(self, y_slice: np.ndarray, A: np.ndarray) -> Any:
         """
-        Handle reconstruct slice.
+        Reconstruct slice.
 
         Parameters
         ----------
         y_slice : np.ndarray
-            Input value.
+            Single measurement slice reconstructed by the solver.
         A : np.ndarray
-            Input value.
+            Lower bound or left separator value used by the helper.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by reconstruct slice.
         """
         A = A.astype(np.float64)
         y = y_slice.astype(np.float64)

@@ -8,12 +8,13 @@ likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API inclu
 classes :class:`BaseFLIFitter`.
 """
 
-from __future__ import annotations
 from typing import Any
 import warnings
+
 import numpy as np
 from scipy.optimize import curve_fit, least_squares, OptimizeWarning
 from scipy.stats import f
+
 from .base_static import moment_based_guess, resolve_params_and_bounds
 from .forward_model import model_numpy
 from .shared_metrics import (
@@ -26,7 +27,7 @@ from .shared_metrics import (
 
 class BaseFLIFitter:
     """
-    Fit mono- and bi-exponential FLIM decays with shared least-squares machinery. The
+    Run the base flifitter routine.
     base class handles model construction, fit ranges, parameter guesses, bounds, post-
     processing, and model comparison support.
 
@@ -35,17 +36,17 @@ class BaseFLIFitter:
     freq : float
         Acquisition frequency information used to derive timing constants.
     decay_px : np.ndarray
-        Configuration value used by the class.
+        Per-pixel fluorescence decay trace supplied to the fitter.
     irf_px : np.ndarray
-        Configuration value used by the class.
+        Per-pixel instrument response function supplied to the fitter.
     white_noise : float
-        Configuration value used by the class.
+        White-noise estimate used to weight residuals.
     guess_plugin : np.ndarray
-        Configuration value used by the class.
+        Optional callable that supplies initial parameter guesses.
     custom_funcs : np.ndarray | None
-        Configuration value used by the class.
+        Optional custom model functions used by the fitter.
     shift_method : str
-        Configuration value used by the class.
+        Method used to align the IRF and decay traces.
     """
 
     def __init__(
@@ -117,25 +118,25 @@ class BaseFLIFitter:
         **kwargs: Any,
     ) -> Any:
         """
-        Handle least squares fit.
+        Run the least squares fit routine.
 
         Parameters
         ----------
         p0 : Any
-            Input value.
+            Initial parameter vector supplied to the optimizer.
         bounds : np.ndarray
-            Input value.
+            Lower and upper parameter bounds supplied to the optimizer.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
         use_weights : bool
-            Input value.
+            Whether residuals are weighted during least-squares fitting.
         **kwargs : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by least squares fit.
         """
         d_fit = self.decay[self.fit_indices]
         weights = (
@@ -146,17 +147,17 @@ class BaseFLIFitter:
 
         def residuals(params: Any) -> Any:
             """
-            Handle residuals.
+            Run the residuals routine.
 
             Parameters
             ----------
             params : Any
-                Input value.
+                Model, detector, or plotting parameters used by the routine.
 
             Returns
             -------
             Any
-                Return value.
+                Object produced by residuals.
             """
             full_model = self.model_fit(self.t, params, model_type=model_type)
             return (full_model[self.fit_indices] - d_fit) * weights
@@ -176,41 +177,41 @@ class BaseFLIFitter:
         self, p0: Any, bounds: np.ndarray, model_type: str, **kwargs: Any
     ) -> Any:
         """
-        Handle trust region.
+        Run the trust region routine.
 
         Parameters
         ----------
         p0 : Any
-            Input value.
+            Initial parameter vector supplied to the optimizer.
         bounds : np.ndarray
-            Input value.
+            Lower and upper parameter bounds supplied to the optimizer.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
         **kwargs : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by trust region.
         """
         max_nfev = kwargs.get("max_iter", kwargs.get("maxiter", 2000))
 
         def wrapper(t_sub: np.ndarray, *p: Any) -> Any:
             """
-            Handle wrapper.
+            Run the wrapper routine.
 
             Parameters
             ----------
             t_sub : np.ndarray
-                Input value.
+                Subset of the time axis used during fitting.
             *p : Any
-                Input value.
+                Detector parameter object or fitted parameter vector.
 
             Returns
             -------
             Any
-                Return value.
+                Object produced by wrapper.
             """
             return self.model_fit(self.t, p, model_type=model_type)[self.fit_indices]
 
@@ -233,41 +234,41 @@ class BaseFLIFitter:
         self, p0: Any, bounds: np.ndarray, model_type: str, **kwargs: Any
     ) -> Any:
         """
-        Handle unconstrained.
+        Run the unconstrained routine.
 
         Parameters
         ----------
         p0 : Any
-            Input value.
+            Initial parameter vector supplied to the optimizer.
         bounds : np.ndarray
-            Input value.
+            Lower and upper parameter bounds supplied to the optimizer.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
         **kwargs : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by unconstrained.
         """
         max_nfev = kwargs.get("max_iter", kwargs.get("maxiter", 2000))
 
         def wrapper(t_sub: np.ndarray, *p: Any) -> Any:
             """
-            Handle wrapper.
+            Run the wrapper routine.
 
             Parameters
             ----------
             t_sub : np.ndarray
-                Input value.
+                Subset of the time axis used during fitting.
             *p : Any
-                Input value.
+                Detector parameter object or fitted parameter vector.
 
             Returns
             -------
             Any
-                Return value.
+                Object produced by wrapper.
             """
             return self.model_fit(self.t, p, model_type=model_type)[self.fit_indices]
 
@@ -293,21 +294,21 @@ class BaseFLIFitter:
         self, t: np.ndarray, params: Any, model_type: str = "mono-exponential"
     ) -> Any:
         """
-        Handle model fit.
+        Run the model fit routine.
 
         Parameters
         ----------
         t : np.ndarray
-            Input value.
+            Time axis or acquisition period used by the calculation.
         params : Any
-            Input value.
+            Model, detector, or plotting parameters used by the routine.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by model fit.
         """
         return model_numpy(t, self.irf, params, model_type)
 
@@ -320,25 +321,25 @@ class BaseFLIFitter:
         pcov: np.ndarray | None = None,
     ) -> tuple[Any, ...]:
         """
-        Handle post process.
+        Run the post process routine.
 
         Parameters
         ----------
         popt : np.ndarray
-            Input value.
+            Optimized model parameter vector.
         jac : Any
-            Input value.
+            Jacobian matrix returned by the optimizer.
         status : np.ndarray
-            Input value.
+            Optimizer status flag used during post-processing.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
         pcov : np.ndarray | None
-            Input value.
+            Parameter covariance matrix.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing fitted parameters, errors, covariance, and quality metrics.
         """
         if model_type == "bi-exponential":
             popt, _, pcov = enforce_tau_ordering(popt, pcov=pcov)
@@ -367,18 +368,18 @@ class BaseFLIFitter:
         Parameters
         ----------
         jacobian : Any
-            Input value.
+            Jacobian matrix used to estimate parameter uncertainty.
         chi_sq : np.ndarray
-            Input value.
+            Chi-square statistic used to scale uncertainty estimates.
         n_data : int
-            Input value.
+            Number of samples, components, gates, or iterations used by the routine.
         n_params : int
-            Input value.
+            Number of fitted model parameters.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by calculate uncertainties.
         """
         try:
             dof = n_data - n_params
@@ -392,17 +393,17 @@ class BaseFLIFitter:
 
     def compare_models(self, alpha: float = 0.05) -> tuple[Any, ...]:
         """
-        Handle compare models.
+        Compare models.
 
         Parameters
         ----------
         alpha : float
-            Input value.
+            Regularization strength, fraction value, or significance threshold used by the routine.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing model-comparison statistics and selected fit results.
         """
         res_m = self.fit_with_estimator(model_type="mono-exponential")
         res_b = self.fit_with_estimator(model_type="bi-exponential")
@@ -427,12 +428,12 @@ class BaseFLIFitter:
         Parameters
         ----------
         popt : np.ndarray
-            Input value.
+            Optimized model parameter vector.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by get average lifetime.
         """
         return compute_average_lifetime(popt)
 
@@ -443,12 +444,12 @@ class BaseFLIFitter:
         Parameters
         ----------
         popt : np.ndarray
-            Input value.
+            Optimized model parameter vector.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by get FRET efficiency.
         """
         return compute_fret_efficiency(popt)
 
@@ -459,14 +460,14 @@ class BaseFLIFitter:
         Parameters
         ----------
         start_pct : int
-            Input value.
+            Start percentage of the decay range used for fitting.
         end_pct : int
-            Input value.
+            End percentage of the decay range used for fitting.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function set fit range.
         """
         start_idx = int((start_pct / 100.0) * self.N)
         end_idx = int((end_pct / 100.0) * self.N)

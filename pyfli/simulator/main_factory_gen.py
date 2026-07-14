@@ -6,10 +6,11 @@ generation, hardware noise modeling, calibration, and validation tools. Public A
 includes classes :class:`ContinuousSimulator` and :class:`PhotonCountSimulator`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 from scipy.signal import fftconvolve
+
 from .model_simulator import FLIModelSimulator
 from .noise_models import NoiseEngine
 from .distributions import ParameterSampler
@@ -53,7 +54,7 @@ class ContinuousSimulator:
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by call.
         """
         p = self.engine.sample_params()
 
@@ -193,7 +194,7 @@ class PhotonCountSimulator:
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by call.
         """
         p = self.engine.sample_params()
         n_cycles = np.random.randint(1, self.engine.params_cfg["cycles"] + 1)

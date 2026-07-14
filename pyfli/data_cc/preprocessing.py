@@ -6,8 +6,8 @@ helpers for normalization, masking, ROI extraction, and IRF alignment. Public AP
 includes classes :class:`DataPreprocessing`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 
 
@@ -26,7 +26,7 @@ class DataPreprocessing:
     *data : Any
         Additional positional values accepted by the object.
     mask : np.ndarray | None
-        Configuration value used by the class.
+        Boolean mask selecting valid pixels or samples.
     """
 
     def __init__(self, *data: Any, mask: np.ndarray | None = None) -> None:
@@ -80,12 +80,12 @@ class DataPreprocessing:
         Parameters
         ----------
         mask : np.ndarray | None
-            Input value.
+            Boolean or labeled mask selecting pixels for the operation.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing masked data and mask metadata.
         """
         if mask is None:
             mask = self.mask

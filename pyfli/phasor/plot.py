@@ -9,7 +9,6 @@ Color palette mirrors the widget colour scheme; each acquisition mode has
 a distinct colour defined in PALETTE.
 """
 
-from __future__ import annotations
 from dataclasses import replace
 from typing import Sequence
 

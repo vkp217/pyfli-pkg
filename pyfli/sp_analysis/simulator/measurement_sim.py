@@ -8,8 +8,8 @@ pixel camera basis generation, acquisition simulation, and reconstruction solver
 Public API includes classes :class:`MeasurementSimulator`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 
 

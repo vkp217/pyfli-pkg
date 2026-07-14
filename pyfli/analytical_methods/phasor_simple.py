@@ -6,9 +6,10 @@ FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
 estimation. Public API includes classes :class:`PhasorAnalyzer`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
+
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -58,17 +59,17 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
     def _phasor_numpy(self, decay: np.ndarray) -> tuple[Any, ...]:
         """
-        Handle phasor numpy.
+        Run the phasor numpy routine.
 
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing NumPy-computed phasor coordinates and intensity values.
         """
         decay = np.asarray(decay, dtype=np.float64)
         *spatial, T = decay.shape
@@ -88,17 +89,17 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
     def _phasor_torch(self, decay: np.ndarray) -> tuple[Any, ...]:
         """
-        Handle phasor torch.
+        Run the phasor torch routine.
 
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing Torch-computed phasor coordinates and intensity values.
         """
         decay_t = torch.tensor(
             np.asarray(decay), dtype=torch.float32, device=self.device
@@ -129,12 +130,12 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by create phasor CPU.
         """
         return self._phasor_numpy(decay)
 
@@ -145,12 +146,12 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing GPU-computed phasor coordinates and intensity values.
         """
         G, S = self._phasor_torch(decay)
         return G.cpu().numpy(), S.cpu().numpy()
@@ -161,21 +162,21 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         self, G: np.ndarray, S: np.ndarray, irf: np.ndarray
     ) -> tuple[Any, ...]:
         """
-        Handle calibrate.
+        Run the calibrate routine.
 
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing calibrated phasor coordinates and calibration factors.
         """
         G = np.asarray(G)
         S = np.asarray(S)
@@ -206,21 +207,21 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         self, G: np.ndarray, S: np.ndarray, irf: np.ndarray
     ) -> tuple[Any, ...]:
         """
-        Handle calibrate pixelwise.
+        Run the calibrate pixelwise routine.
 
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing per-pixel calibrated phasor coordinates and factors.
         """
         G = np.asarray(G, dtype=np.float32)
         S = np.asarray(S, dtype=np.float32)
@@ -267,19 +268,19 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         self, tau_ns: np.ndarray, frequency_hz: float
     ) -> tuple[Any, ...]:
         """
-        Handle lifetime to phasor.
+        Run the lifetime to phasor routine.
 
         Parameters
         ----------
         tau_ns : np.ndarray
-            Input value.
+            Lifetime value in nanoseconds.
         frequency_hz : float
-            Input value.
+            Excitation frequency in hertz.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing phasor coordinates for the supplied lifetime values.
         """
         tau_s = np.asarray(tau_ns) * 1e-9
         omega = 2 * np.pi * frequency_hz
@@ -293,14 +294,14 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Lifetime map derived from phasor coordinates.
         """
         G = np.asarray(G, dtype=np.float64)
         S = np.asarray(S, dtype=np.float64)
@@ -314,14 +315,14 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by compute modulation lifetime.
         """
         G = np.asarray(G, dtype=np.float64)
         S = np.asarray(S, dtype=np.float64)
@@ -348,28 +349,28 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         tau1_ns : np.ndarray
-            Input value.
+            Short lifetime component in nanoseconds.
         tau2_ns : np.ndarray
-            Input value.
+            Long lifetime component in nanoseconds.
         mask : np.ndarray | None
-            Input value.
+            Boolean or labeled mask selecting pixels for the operation.
         hexbin_color : np.ndarray | None
-            Input value.
+            Optional values used to color phasor hexbin density.
         plot_graph : bool
-            Input value.
+            Whether the phasor graph should be drawn.
         ax : Any | None
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         half_circle : bool
-            Input value.
+            Whether to draw only the upper half of the universal phasor circle.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing component fractions estimated from phasor geometry.
         """
         g1, s1 = self.lifetime_to_phasor(tau1_ns, self.frequency)
         g2, s2 = self.lifetime_to_phasor(tau2_ns, self.frequency)
@@ -409,19 +410,19 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
     def _convolve_batch(self, signal: np.ndarray, kernel: np.ndarray) -> Any:
         """
-        Handle convolve batch.
+        Run the convolve batch routine.
 
         Parameters
         ----------
         signal : np.ndarray
-            Input value.
+            Signal batch convolved with the supplied kernel.
         kernel : np.ndarray
-            Input value.
+            Convolution kernel applied to the signal batch.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by convolve batch.
         """
         N, T = signal.shape
         L = 2 * T - 1
@@ -440,18 +441,18 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         Parameters
         ----------
         A1 : Any
-            Input value.
+            Amplitude or fraction of the first exponential component.
         A2 : Any
-            Input value.
+            Amplitude or fraction of the second exponential component.
         tau1_ns : np.ndarray
-            Input value.
+            Short lifetime component in nanoseconds.
         tau2_ns : np.ndarray
-            Input value.
+            Long lifetime component in nanoseconds.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by build model decay.
         """
         t_ns = torch.tensor(self.t_s_np * 1e9, dtype=torch.float32, device=self.device)
         a1 = torch.tensor(
@@ -469,12 +470,12 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         Parameters
         ----------
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by normalize IRF.
         """
         irf_flat = np.asarray(irf, dtype=np.float32).reshape(-1, irf.shape[2])
         irf_t = torch.tensor(irf_flat, dtype=torch.float32, device=self.device)
@@ -492,29 +493,29 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         axes: Any | None = None,
     ) -> Any:
         """
-        Handle analyze biexponential and reconstruct.
+        Run the analyze biexponential and reconstruct routine.
 
         Parameters
         ----------
         G : np.ndarray
-            Input value.
+            Phasor real coordinate.
         S : np.ndarray
-            Input value.
+            Phasor imaginary coordinate or shift amount.
         irf : np.ndarray
-            Input value.
+            Instrument response function aligned with the decay signal.
         tau1_ns : np.ndarray | None
-            Input value.
+            Short lifetime component in nanoseconds.
         tau2_ns : np.ndarray | None
-            Input value.
+            Long lifetime component in nanoseconds.
         plot : bool
-            Input value.
+            Whether diagnostic plots should be generated.
         axes : Any | None
-            Input value.
+            Matplotlib axes collection used for drawing subplots.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by analyze biexponential and reconstruct.
         """
         if tau1_ns is None or tau2_ns is None:
             return None
@@ -567,12 +568,12 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         Parameters
         ----------
         decay : np.ndarray
-            Input value.
+            Time-resolved decay signal or decay cube.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Intensity image obtained by integrating the decay along the time axis.
         """
         return np.sum(decay, axis=2)
 
@@ -585,18 +586,18 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         Parameters
         ----------
         Gc : Any
-            Input value.
+            Calibrated phasor real coordinate map.
         Sc : Any
-            Input value.
+            Calibrated phasor imaginary coordinate map.
         tau_phasor : np.ndarray
-            Input value.
+            Lifetime map estimated from phasor coordinates.
         save_file : np.ndarray
-            Input value.
+            HDF5 path where phasor results are saved.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save phasors hdf5.
         """
         try:
             with h5py.File(save_file, "w") as hf:

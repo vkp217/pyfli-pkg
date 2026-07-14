@@ -9,9 +9,9 @@ aware IRF deconvolution and joint FLIM fitting utilities. Public API includes cl
 :func:`generalized_anscombe`, and :func:`make_observation`.
 """
 
-from __future__ import annotations
 from typing import Any
 from dataclasses import dataclass
+
 import numpy as np
 
 EPS = 1e-9
@@ -70,19 +70,19 @@ class ICCDParams:
 
 def tcspc_to_lambda(y: np.ndarray, p: TCSPCParams) -> Any:
     """
-    Handle tcspc to lambda.
+    Run the TCSPC to lambda routine.
 
     Parameters
     ----------
     y : np.ndarray
-        Input value.
+        Observed signal, target data, or coordinate array.
     p : TCSPCParams
-        Input value.
+        Detector parameter object or fitted parameter vector.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by TCSPC to lambda.
     """
     y = np.asarray(y, float)
     if p.n_ex is None:
@@ -96,21 +96,21 @@ def tcspc_to_lambda(y: np.ndarray, p: TCSPCParams) -> Any:
 
 def tcspc_lambda_weight(lam: np.ndarray, y: np.ndarray, p: TCSPCParams) -> Any:
     """
-    Handle tcspc lambda weight.
+    Run the TCSPC lambda weight routine.
 
     Parameters
     ----------
     lam : np.ndarray
-        Input value.
+        Wavelength, spectral axis, or expected photon-rate array.
     y : np.ndarray
-        Input value.
+        Observed signal, target data, or coordinate array.
     p : TCSPCParams
-        Input value.
+        Detector parameter object or fitted parameter vector.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by TCSPC lambda weight.
     """
     lam = np.maximum(np.asarray(lam, float), EPS)
     if p.n_ex is None:
@@ -122,19 +122,19 @@ def tcspc_lambda_weight(lam: np.ndarray, y: np.ndarray, p: TCSPCParams) -> Any:
 
 def spad_to_lambda(y: np.ndarray, p: SPADParams) -> Any:
     """
-    Handle spad to lambda.
+    Run the SPAD to lambda routine.
 
     Parameters
     ----------
     y : np.ndarray
-        Input value.
+        Observed signal, target data, or coordinate array.
     p : SPADParams
-        Input value.
+        Detector parameter object or fitted parameter vector.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by SPAD to lambda.
     """
     y = np.asarray(y, float)
     frac = np.clip(y / p.n_ex, 0.0, 1.0 - 1e-6)
@@ -143,21 +143,21 @@ def spad_to_lambda(y: np.ndarray, p: SPADParams) -> Any:
 
 def spad_lambda_weight(lam: np.ndarray, y: np.ndarray, p: SPADParams) -> Any:
     """
-    Handle spad lambda weight.
+    Run the SPAD lambda weight routine.
 
     Parameters
     ----------
     lam : np.ndarray
-        Input value.
+        Wavelength, spectral axis, or expected photon-rate array.
     y : np.ndarray
-        Input value.
+        Observed signal, target data, or coordinate array.
     p : SPADParams
-        Input value.
+        Detector parameter object or fitted parameter vector.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by SPAD lambda weight.
     """
     y = np.asarray(y, float)
     var = p.n_ex * np.maximum(y, EPS) / np.maximum(p.n_ex - y, EPS)
@@ -166,40 +166,40 @@ def spad_lambda_weight(lam: np.ndarray, y: np.ndarray, p: SPADParams) -> Any:
 
 def iccd_to_lambda(y_adu: np.ndarray, p: ICCDParams) -> Any:
     """
-    Handle iccd to lambda.
+    Run the ICCD to lambda routine.
 
     Parameters
     ----------
     y_adu : np.ndarray
-        Input value.
+        ICCD observation in analog-to-digital units.
     p : ICCDParams
-        Input value.
+        Detector parameter object or fitted parameter vector.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by ICCD to lambda.
     """
     return np.asarray(y_adu, float) / p.G0
 
 
 def iccd_lambda_weight(lam: np.ndarray, y_adu: np.ndarray, p: ICCDParams) -> Any:
     """
-    Handle iccd lambda weight.
+    Run the ICCD lambda weight routine.
 
     Parameters
     ----------
     lam : np.ndarray
-        Input value.
+        Wavelength, spectral axis, or expected photon-rate array.
     y_adu : np.ndarray
-        Input value.
+        ICCD observation in analog-to-digital units.
     p : ICCDParams
-        Input value.
+        Detector parameter object or fitted parameter vector.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by ICCD lambda weight.
     """
     lam = np.maximum(np.asarray(lam, float), EPS)
     var = p.F2 * lam + (p.sigma_r / p.G0) ** 2
@@ -208,19 +208,19 @@ def iccd_lambda_weight(lam: np.ndarray, y_adu: np.ndarray, p: ICCDParams) -> Any
 
 def generalized_anscombe(y_adu: np.ndarray, p: ICCDParams) -> Any:
     """
-    Handle generalized anscombe.
+    Run the generalized anscombe routine.
 
     Parameters
     ----------
     y_adu : np.ndarray
-        Input value.
+        ICCD observation in analog-to-digital units.
     p : ICCDParams
-        Input value.
+        Detector parameter object or fitted parameter vector.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by generalized anscombe.
     """
     alpha = p.G0 * p.F2
     arg = alpha * np.asarray(y_adu, float) + (3.0 / 8.0) * alpha**2 + p.sigma_r**2
@@ -241,16 +241,16 @@ def make_observation(y: np.ndarray, detector: str, params: Any) -> tuple[Any, ..
     Parameters
     ----------
     y : np.ndarray
-        Input value.
+        Observed signal, target data, or coordinate array.
     detector : str
-        Input value.
+        Detector model name used to select weighting or conversion logic.
     params : Any
-        Input value.
+        Model, detector, or plotting parameters used by the routine.
 
     Returns
     -------
     tuple[Any, ...]
-        Return value.
+        Tuple containing simulated observations and associated ground-truth arrays.
     """
     to_lam, lam_w = DETECTORS[detector]
     lam_obs = to_lam(y, params)

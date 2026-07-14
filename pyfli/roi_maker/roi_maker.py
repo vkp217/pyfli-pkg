@@ -10,8 +10,8 @@ Public API (unchanged):
     maker.get_binary_mask()
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 import cv2  # importing cv2 overwrites QT_QPA_PLATFORM_PLUGIN_PATH
 import os
@@ -69,15 +69,15 @@ except ImportError:
 
 class ROIObject:
     """
-    Store one polygonal ROI and its assigned integer label. It keeps the editable
+    Run the roiobject routine.
     vertex list and provides geometry operations used by the ROI GUI.
 
     Parameters
     ----------
     pts : np.ndarray
-        Configuration value used by the class.
+        ROI polygon vertices.
     roi_id : int
-        Configuration value used by the class.
+        Identifier assigned to the ROI.
     """
 
     def __init__(self, pts: np.ndarray, roi_id: int = 0) -> None:
@@ -88,36 +88,36 @@ class ROIObject:
 
     def move(self, dx: np.ndarray, dy: np.ndarray) -> None:
         """
-        Handle move.
+        Run the move routine.
 
         Parameters
         ----------
         dx : np.ndarray
-            Input value.
+            Horizontal displacement applied to ROI vertices.
         dy : np.ndarray
-            Input value.
+            Vertical displacement applied to ROI vertices.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform move.
         """
         self.pts += [int(dx), int(dy)]
         self.center = np.mean(self.pts, axis=0)
 
     def rotate(self, angle_deg: Any) -> None:
         """
-        Handle rotate.
+        Run the rotate routine.
 
         Parameters
         ----------
         angle_deg : Any
-            Input value.
+            Rotation angle in degrees.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform rotate.
         """
         rad = np.radians(angle_deg)
         c, s = np.cos(rad), np.sin(rad)
@@ -127,17 +127,17 @@ class ROIObject:
 
     def scale(self, factor: np.ndarray) -> None:
         """
-        Handle scale.
+        Run the scale routine.
 
         Parameters
         ----------
         factor : np.ndarray
-            Input value.
+            Scale factor applied to ROI geometry.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform scale.
         """
         self.pts = ((self.pts - self.center) * factor + self.center).astype(np.int32)
         self.center = np.mean(self.pts, axis=0)
@@ -161,17 +161,17 @@ _PALETTE = [
 
 def _roi_color(roi_id: int) -> QColor:
     """
-    Handle roi color.
+    Run the ROI color routine.
 
     Parameters
     ----------
     roi_id : int
-        Input value.
+        Identifier assigned to the ROI.
 
     Returns
     -------
     QColor
-        Return value.
+        Object produced by ROI color.
     """
     return _PALETTE[(roi_id - 1) % len(_PALETTE)]
 
@@ -349,12 +349,12 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _recompute_transform(self) -> None:
         """
-        Handle recompute transform.
+        Run the recompute transform routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform recompute transform.
         """
         cw, ch = self.width(), self.height()
         iw, ih = self._pixmap.width(), self._pixmap.height()
@@ -364,19 +364,19 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _w2i(self, wx: np.ndarray, wy: np.ndarray) -> tuple[Any, ...]:
         """
-        Handle w2i.
+        Run the w2i routine.
 
         Parameters
         ----------
         wx : np.ndarray
-            Input value.
+            Widget-space x coordinate.
         wy : np.ndarray
-            Input value.
+            Widget-space y coordinate.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing coordinates converted from world to image space.
         """
         return (
             (wx - self._offset_x) / self._scale,
@@ -385,52 +385,52 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _i2w(self, ix: np.ndarray, iy: np.ndarray) -> tuple[Any, ...]:
         """
-        Handle i2w.
+        Run the i2w routine.
 
         Parameters
         ----------
         ix : np.ndarray
-            Input value.
+            Image-space x coordinate.
         iy : np.ndarray
-            Input value.
+            Image-space y coordinate.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing coordinates converted from image to world space.
         """
         return (ix * self._scale + self._offset_x, iy * self._scale + self._offset_y)
 
     def _qpt_w2i(self, q: Any) -> Any:
         """
-        Handle qpt w2i.
+        Run the qpt w2i routine.
 
         Parameters
         ----------
         q : Any
-            Input value.
+            Qt point converted between widget and image coordinates.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by qpt w2i.
         """
         x, y = self._w2i(q.x(), q.y())
         return QPointF(x, y)
 
     def _pts_to_poly_w(self, pts: np.ndarray) -> Any:
         """
-        Handle pts to poly w.
+        Run the pts to poly w routine.
 
         Parameters
         ----------
         pts : np.ndarray
-            Input value.
+            ROI polygon vertices.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by pts to poly w.
         """
         return QPolygonF([QPointF(*self._i2w(float(p[0]), float(p[1]))) for p in pts])
 
@@ -468,17 +468,17 @@ class ImageCanvas(QWidget):  # noqa: F811
     @staticmethod
     def _bbox(pts: np.ndarray) -> tuple[Any, ...]:
         """
-        Handle bbox.
+        Run the bbox routine.
 
         Parameters
         ----------
         pts : np.ndarray
-            Input value.
+            ROI polygon vertices.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing bounding-box coordinates.
         """
         return (
             float(pts[:, 0].min()),
@@ -489,17 +489,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _handle_pos_i(self, pts: np.ndarray) -> list[Any]:
         """
-        Handle handle pos i.
+        Run the handle pos i routine.
 
         Parameters
         ----------
         pts : np.ndarray
-            Input value.
+            ROI polygon vertices.
 
         Returns
         -------
         list[Any]
-            Return value.
+            List containing the values produced by handle pos i.
         """
         x0, y0, x1, y1 = self._bbox(pts)
         mx, my = (x0 + x1) / 2, (y0 + y1) / 2
@@ -516,19 +516,19 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _hit_handle(self, wpt: np.ndarray, roi: Any) -> Any:
         """
-        Handle hit handle.
+        Run the hit handle routine.
 
         Parameters
         ----------
         wpt : np.ndarray
-            Input value.
+            Widget-space point tested against ROI geometry.
         roi : Any
-            Input value.
+            ROI object or identifier being transformed, drawn, or updated.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by hit handle.
         """
         thresh2 = (_HANDLE_R + 3) ** 2
         for i, (ix, iy) in enumerate(self._handle_pos_i(roi.pts)):
@@ -539,17 +539,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _hit_roi(self, wpt: np.ndarray) -> Any:
         """
-        Handle hit roi.
+        Run the hit ROI routine.
 
         Parameters
         ----------
         wpt : np.ndarray
-            Input value.
+            Widget-space point tested against ROI geometry.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by hit ROI.
         """
         ix, iy = self._w2i(wpt.x(), wpt.y())
         for i, roi in enumerate(self.rm.rois):
@@ -566,17 +566,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def paintEvent(self, _: Any) -> None:
         """
-        Handle paint event.
+        Handle paint event callbacks.
 
         Parameters
         ----------
         _ : Any
-            Input value.
+            Callback value passed through to the ROI interaction handler.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform paintevent.
         """
         self._recompute_transform()
         p = QPainter(self)
@@ -613,21 +613,21 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _paint_roi(self, p: Any, roi: Any, selected: np.ndarray) -> None:
         """
-        Handle paint roi.
+        Run the paint ROI routine.
 
         Parameters
         ----------
         p : Any
-            Input value.
+            Detector parameter object or fitted parameter vector.
         roi : Any
-            Input value.
+            ROI object or identifier being transformed, drawn, or updated.
         selected : np.ndarray
-            Input value.
+            Whether the ROI is currently selected.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform paint ROI.
         """
         if not roi.assigned:
             color = QColor(0, 220, 100) if selected else QColor(140, 140, 155)
@@ -657,19 +657,19 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _paint_handles(self, p: Any, roi: Any) -> None:
         """
-        Handle paint handles.
+        Run the paint handles routine.
 
         Parameters
         ----------
         p : Any
-            Input value.
+            Detector parameter object or fitted parameter vector.
         roi : Any
-            Input value.
+            ROI object or identifier being transformed, drawn, or updated.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform paint handles.
         """
         for ix, iy in self._handle_pos_i(roi.pts):
             wx, wy = self._i2w(ix, iy)
@@ -680,17 +680,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _paint_preview(self, p: Any) -> None:
         """
-        Handle paint preview.
+        Run the paint preview routine.
 
         Parameters
         ----------
         p : Any
-            Input value.
+            Detector parameter object or fitted parameter vector.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform paint preview.
         """
         pts = self._preview_pts()
         if len(pts) < 3:
@@ -704,12 +704,12 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _preview_pts(self) -> Any:
         """
-        Handle preview pts.
+        Run the preview pts routine.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by preview pts.
         """
         if self._start_i is None:
             return []
@@ -726,17 +726,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def mousePressEvent(self, e: Any) -> None:
         """
-        Handle mouse press event.
+        Handle mouse press event callbacks.
 
         Parameters
         ----------
         e : Any
-            Input value.
+            GUI or plotting event object supplied by the framework.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform mousepressevent.
         """
         if e.button() != Qt.MouseButton.LeftButton:
             return
@@ -794,17 +794,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def mouseMoveEvent(self, e: Any) -> None:
         """
-        Handle mouse move event.
+        Handle mouse move event callbacks.
 
         Parameters
         ----------
         e : Any
-            Input value.
+            GUI or plotting event object supplied by the framework.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform mousemoveevent.
         """
         wpt = e.position()
         self._cur_mw = wpt
@@ -857,17 +857,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def mouseReleaseEvent(self, e: Any) -> None:
         """
-        Handle mouse release event.
+        Handle mouse release event callbacks.
 
         Parameters
         ----------
         e : Any
-            Input value.
+            GUI or plotting event object supplied by the framework.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform mousereleaseevent.
         """
         if e.button() != Qt.MouseButton.LeftButton:
             return
@@ -893,19 +893,19 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _finalise_pts(self, mx: np.ndarray, my: np.ndarray) -> Any:
         """
-        Handle finalise pts.
+        Run the finalise pts routine.
 
         Parameters
         ----------
         mx : np.ndarray
-            Input value.
+            Mouse x coordinate used while finalizing ROI points.
         my : np.ndarray
-            Input value.
+            Mouse y coordinate used while finalizing ROI points.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by finalise pts.
         """
         if self._start_i is None:
             return []
@@ -925,12 +925,12 @@ class ImageCanvas(QWidget):  # noqa: F811
         Parameters
         ----------
         wpt : np.ndarray
-            Input value.
+            Widget-space point tested against ROI geometry.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function apply resize.
         """
         roi = self.rm.rois[self.selected_idx]
         dix = (wpt.x() - self._rz_start_mw.x()) / self._scale
@@ -960,29 +960,29 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def keyPressEvent(self, e: Any) -> None:
         """
-        Handle key press event.
+        Handle key press event callbacks.
 
         Parameters
         ----------
         e : Any
-            Input value.
+            GUI or plotting event object supplied by the framework.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform keypressevent.
         """
         if e.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
             self._delete_selected()
 
     def _delete_selected(self) -> None:
         """
-        Handle delete selected.
+        Run the delete selected routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform delete selected.
         """
         if 0 <= self.selected_idx < len(self.rm.rois):
             self.rm.rois.pop(self.selected_idx)
@@ -1044,7 +1044,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         Returns
         -------
         Any
-            Return value.
+            Object produced by build sidebar.
         """
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -1269,12 +1269,12 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _divider(self) -> Any:
         """
-        Handle divider.
+        Run the divider routine.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by divider.
         """
         line = QFrame()
         line.setObjectName("divider")
@@ -1283,17 +1283,17 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _section_label(self, text: np.ndarray) -> Any:
         """
-        Handle section label.
+        Run the section label routine.
 
         Parameters
         ----------
         text : np.ndarray
-            Input value.
+            Text rendered into a UI label or formatted table cell.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by section label.
         """
         lbl = QLabel(text)
         lbl.setObjectName("section_lbl")
@@ -1302,21 +1302,21 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _tool_button(self, icon: Any, label: str, shortcut: np.ndarray) -> np.ndarray:
         """
-        Handle tool button.
+        Run the tool button routine.
 
         Parameters
         ----------
         icon : Any
-            Input value.
+            Icon text shown on a UI button.
         label : str
-            Input value.
+            Display label assigned to the data or plot element.
         shortcut : np.ndarray
-            Input value.
+            Keyboard shortcut assigned to the UI button.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Qt button configured for the requested tool.
         """
         btn = QPushButton(f"{icon}  {label}")
         btn.setObjectName("tool_btn")
@@ -1328,21 +1328,21 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _action_button(self, icon: Any, label: str, shortcut: np.ndarray) -> np.ndarray:
         """
-        Handle action button.
+        Run the action button routine.
 
         Parameters
         ----------
         icon : Any
-            Input value.
+            Icon text shown on a UI button.
         label : str
-            Input value.
+            Display label assigned to the data or plot element.
         shortcut : np.ndarray
-            Input value.
+            Keyboard shortcut assigned to the UI button.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Qt button configured for the requested action.
         """
         btn = QPushButton(f"{icon}  {label}")
         btn.setObjectName("action_btn")
@@ -1352,12 +1352,12 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _refresh_below_color_btn(self) -> None:
         """
-        Handle refresh below color btn.
+        Run the refresh below color btn routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform refresh below color btn.
         """
         r, g, b = self.rm.mask_below_color
         luma = 0.299 * r + 0.587 * g + 0.114 * b
@@ -1371,12 +1371,12 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _refresh_above_color_btn(self) -> None:
         """
-        Handle refresh above color btn.
+        Run the refresh above color btn routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform refresh above color btn.
         """
         r, g, b = self.rm.mask_above_color
         luma = 0.299 * r + 0.587 * g + 0.114 * b
@@ -1392,19 +1392,19 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _on_tool_toggled(self, key: str, on: Any) -> None:
         """
-        Handle on tool toggled.
+        Run the on tool toggled routine.
 
         Parameters
         ----------
         key : str
-            Input value.
+            Dictionary key or parameter-map name to extract.
         on : Any
-            Input value.
+            Toggle state emitted by the UI control.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on tool toggled.
         """
         if on:
             self.canvas.mode = key
@@ -1414,17 +1414,17 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _on_mask_type_btn(self, btn: np.ndarray) -> None:
         """
-        Handle on mask type btn.
+        Run the on mask type btn routine.
 
         Parameters
         ----------
         btn : np.ndarray
-            Input value.
+            Button that triggered the UI callback.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on mask type btn.
         """
         labels = {"◻  Binary": "binary", "◼  Multi-ID": "multi", "⊞  Both": "both"}
         self.rm.mask_type = labels.get(btn.text(), "multi")
@@ -1432,12 +1432,12 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _toggle_bg(self) -> None:
         """
-        Handle toggle bg.
+        Run the toggle bg routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform toggle bg.
         """
         self.rm.show_bg = not self.rm.show_bg
         self._bg_btn.setStyleSheet(
@@ -1450,28 +1450,28 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _delete_selected(self) -> None:
         """
-        Handle delete selected.
+        Run the delete selected routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform delete selected.
         """
         self.canvas._delete_selected()
 
     def _on_intensity_toggled(self, active: np.ndarray) -> None:
         """
-        Handle on intensity toggled.
+        Run the on intensity toggled routine.
 
         Parameters
         ----------
         active : np.ndarray
-            Input value.
+            Whether the UI control is active.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on intensity toggled.
         """
         self.rm.intensity_active = active
         self.canvas.update_intensity_overlay()
@@ -1480,17 +1480,17 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _on_lo_changed(self, val: np.ndarray) -> None:
         """
-        Handle on lo changed.
+        Run the on lo changed routine.
 
         Parameters
         ----------
         val : np.ndarray
-            Input value.
+            Numeric value emitted by a slider or spin box.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on lo changed.
         """
         val = min(val, self.rm.intensity_high)
         self._lo_slider.blockSignals(True)
@@ -1505,33 +1505,33 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _on_lo_spin_changed(self, val: np.ndarray) -> None:
         """
-        Handle on lo spin changed.
+        Run the on lo spin changed routine.
 
         Parameters
         ----------
         val : np.ndarray
-            Input value.
+            Numeric value emitted by a slider or spin box.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on lo spin changed.
         """
         self._lo_slider.setValue(val)
 
     def _on_hi_changed(self, val: np.ndarray) -> None:
         """
-        Handle on hi changed.
+        Run the on hi changed routine.
 
         Parameters
         ----------
         val : np.ndarray
-            Input value.
+            Numeric value emitted by a slider or spin box.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on hi changed.
         """
         val = max(val, self.rm.intensity_low)
         self._hi_slider.blockSignals(True)
@@ -1546,28 +1546,28 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _on_hi_spin_changed(self, val: np.ndarray) -> None:
         """
-        Handle on hi spin changed.
+        Run the on hi spin changed routine.
 
         Parameters
         ----------
         val : np.ndarray
-            Input value.
+            Numeric value emitted by a slider or spin box.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on hi spin changed.
         """
         self._hi_slider.setValue(val)
 
     def _pick_below_color(self) -> None:
         """
-        Handle pick below color.
+        Run the pick below color routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform pick below color.
         """
         r, g, b = self.rm.mask_below_color
         chosen = QColorDialog.getColor(
@@ -1581,12 +1581,12 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _pick_above_color(self) -> None:
         """
-        Handle pick above color.
+        Run the pick above color routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform pick above color.
         """
         r, g, b = self.rm.mask_above_color
         chosen = QColorDialog.getColor(
@@ -1686,7 +1686,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save close.
         """
         if self.rm.mask_type in ("multi", "both") and self.rm.rois:
             unassigned = [r for r in self.rm.rois if not r.assigned]
@@ -1699,23 +1699,23 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _cancel(self) -> None:
         """
-        Handle cancel.
+        Run the cancel routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform cancel.
         """
         self.close()
 
     def _refresh_status(self) -> None:
         """
-        Handle refresh status.
+        Run the refresh status routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform refresh status.
         """
         n = len(self.rm.rois)
         n_assigned = sum(1 for r in self.rm.rois if r.assigned)
@@ -1754,17 +1754,17 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def keyPressEvent(self, e: Any) -> None:
         """
-        Handle key press event.
+        Handle key press event callbacks.
 
         Parameters
         ----------
         e : Any
-            Input value.
+            GUI or plotting event object supplied by the framework.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform keypressevent.
         """
         key_map = {
             Qt.Key.Key_S: "select",
@@ -1810,17 +1810,17 @@ _PALETTE = [
 
 def _roi_color(roi_id: int) -> QColor:
     """
-    Handle roi color.
+    Run the ROI color routine.
 
     Parameters
     ----------
     roi_id : int
-        Input value.
+        Identifier assigned to the ROI.
 
     Returns
     -------
     QColor
-        Return value.
+        Object produced by ROI color.
     """
     return _PALETTE[(roi_id - 1) % len(_PALETTE)]
 
@@ -2000,12 +2000,12 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _recompute_transform(self) -> None:
         """
-        Handle recompute transform.
+        Run the recompute transform routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform recompute transform.
         """
         cw, ch = self.width(), self.height()
         iw, ih = self._pixmap.width(), self._pixmap.height()
@@ -2016,17 +2016,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def wheelEvent(self, e: Any) -> None:
         """
-        Handle wheel event.
+        Handle wheel event callbacks.
 
         Parameters
         ----------
         e : Any
-            Input value.
+            GUI or plotting event object supplied by the framework.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform wheelevent.
         """
         delta = e.angleDelta().y()
         if delta == 0:
@@ -2054,12 +2054,12 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def reset_zoom(self) -> None:
         """
-        Handle reset zoom.
+        Run the reset zoom routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform reset zoom.
         """
         self._zoom = 1.0
         self._pan_x = 0.0
@@ -2068,19 +2068,19 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _w2i(self, wx: np.ndarray, wy: np.ndarray) -> tuple[Any, ...]:
         """
-        Handle w2i.
+        Run the w2i routine.
 
         Parameters
         ----------
         wx : np.ndarray
-            Input value.
+            Widget-space x coordinate.
         wy : np.ndarray
-            Input value.
+            Widget-space y coordinate.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing coordinates converted from world to image space.
         """
         return (
             (wx - self._offset_x) / self._scale,
@@ -2089,52 +2089,52 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _i2w(self, ix: np.ndarray, iy: np.ndarray) -> tuple[Any, ...]:
         """
-        Handle i2w.
+        Run the i2w routine.
 
         Parameters
         ----------
         ix : np.ndarray
-            Input value.
+            Image-space x coordinate.
         iy : np.ndarray
-            Input value.
+            Image-space y coordinate.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing coordinates converted from image to world space.
         """
         return (ix * self._scale + self._offset_x, iy * self._scale + self._offset_y)
 
     def _qpt_w2i(self, q: Any) -> Any:
         """
-        Handle qpt w2i.
+        Run the qpt w2i routine.
 
         Parameters
         ----------
         q : Any
-            Input value.
+            Qt point converted between widget and image coordinates.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by qpt w2i.
         """
         x, y = self._w2i(q.x(), q.y())
         return QPointF(x, y)
 
     def _pts_to_poly_w(self, pts: np.ndarray) -> Any:
         """
-        Handle pts to poly w.
+        Run the pts to poly w routine.
 
         Parameters
         ----------
         pts : np.ndarray
-            Input value.
+            ROI polygon vertices.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by pts to poly w.
         """
         return QPolygonF([QPointF(*self._i2w(float(p[0]), float(p[1]))) for p in pts])
 
@@ -2172,17 +2172,17 @@ class ImageCanvas(QWidget):  # noqa: F811
     @staticmethod
     def _bbox(pts: np.ndarray) -> tuple[Any, ...]:
         """
-        Handle bbox.
+        Run the bbox routine.
 
         Parameters
         ----------
         pts : np.ndarray
-            Input value.
+            ROI polygon vertices.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing bounding-box coordinates.
         """
         return (
             float(pts[:, 0].min()),
@@ -2193,17 +2193,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _handle_pos_i(self, pts: np.ndarray) -> list[Any]:
         """
-        Handle handle pos i.
+        Run the handle pos i routine.
 
         Parameters
         ----------
         pts : np.ndarray
-            Input value.
+            ROI polygon vertices.
 
         Returns
         -------
         list[Any]
-            Return value.
+            List containing the values produced by handle pos i.
         """
         x0, y0, x1, y1 = self._bbox(pts)
         mx, my = (x0 + x1) / 2, (y0 + y1) / 2
@@ -2220,19 +2220,19 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _hit_handle(self, wpt: np.ndarray, roi: Any) -> Any:
         """
-        Handle hit handle.
+        Run the hit handle routine.
 
         Parameters
         ----------
         wpt : np.ndarray
-            Input value.
+            Widget-space point tested against ROI geometry.
         roi : Any
-            Input value.
+            ROI object or identifier being transformed, drawn, or updated.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by hit handle.
         """
         thresh2 = (_HANDLE_R + 3) ** 2
         for i, (ix, iy) in enumerate(self._handle_pos_i(roi.pts)):
@@ -2243,17 +2243,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _hit_roi(self, wpt: np.ndarray) -> Any:
         """
-        Handle hit roi.
+        Run the hit ROI routine.
 
         Parameters
         ----------
         wpt : np.ndarray
-            Input value.
+            Widget-space point tested against ROI geometry.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by hit ROI.
         """
         ix, iy = self._w2i(wpt.x(), wpt.y())
         for i, roi in enumerate(self.rm.rois):
@@ -2270,17 +2270,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def paintEvent(self, _: Any) -> None:
         """
-        Handle paint event.
+        Handle paint event callbacks.
 
         Parameters
         ----------
         _ : Any
-            Input value.
+            Callback value passed through to the ROI interaction handler.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform paintevent.
         """
         self._recompute_transform()
         p = QPainter(self)
@@ -2315,21 +2315,21 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _paint_roi(self, p: Any, roi: Any, selected: np.ndarray) -> None:
         """
-        Handle paint roi.
+        Run the paint ROI routine.
 
         Parameters
         ----------
         p : Any
-            Input value.
+            Detector parameter object or fitted parameter vector.
         roi : Any
-            Input value.
+            ROI object or identifier being transformed, drawn, or updated.
         selected : np.ndarray
-            Input value.
+            Whether the ROI is currently selected.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform paint ROI.
         """
         if not roi.assigned:
             color = QColor(0, 220, 100) if selected else QColor(140, 140, 155)
@@ -2359,19 +2359,19 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _paint_handles(self, p: Any, roi: Any) -> None:
         """
-        Handle paint handles.
+        Run the paint handles routine.
 
         Parameters
         ----------
         p : Any
-            Input value.
+            Detector parameter object or fitted parameter vector.
         roi : Any
-            Input value.
+            ROI object or identifier being transformed, drawn, or updated.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform paint handles.
         """
         for ix, iy in self._handle_pos_i(roi.pts):
             wx, wy = self._i2w(ix, iy)
@@ -2382,17 +2382,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _paint_preview(self, p: Any) -> None:
         """
-        Handle paint preview.
+        Run the paint preview routine.
 
         Parameters
         ----------
         p : Any
-            Input value.
+            Detector parameter object or fitted parameter vector.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform paint preview.
         """
         pts = self._preview_pts()
         if len(pts) < 3:
@@ -2406,12 +2406,12 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _preview_pts(self) -> Any:
         """
-        Handle preview pts.
+        Run the preview pts routine.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by preview pts.
         """
         if self._start_i is None:
             return []
@@ -2428,17 +2428,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def mousePressEvent(self, e: Any) -> None:
         """
-        Handle mouse press event.
+        Handle mouse press event callbacks.
 
         Parameters
         ----------
         e : Any
-            Input value.
+            GUI or plotting event object supplied by the framework.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform mousepressevent.
         """
         if e.button() == Qt.MiddleButton:
             self._recompute_transform()
@@ -2504,17 +2504,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def mouseMoveEvent(self, e: Any) -> None:
         """
-        Handle mouse move event.
+        Handle mouse move event callbacks.
 
         Parameters
         ----------
         e : Any
-            Input value.
+            GUI or plotting event object supplied by the framework.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform mousemoveevent.
         """
         wpt = QPointF(e.pos())
         self._cur_mw = wpt
@@ -2569,17 +2569,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def mouseReleaseEvent(self, e: Any) -> None:
         """
-        Handle mouse release event.
+        Handle mouse release event callbacks.
 
         Parameters
         ----------
         e : Any
-            Input value.
+            GUI or plotting event object supplied by the framework.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform mousereleaseevent.
         """
         if e.button() == Qt.MiddleButton:
             self._panning = False
@@ -2609,19 +2609,19 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _finalise_pts(self, mx: np.ndarray, my: np.ndarray) -> Any:
         """
-        Handle finalise pts.
+        Run the finalise pts routine.
 
         Parameters
         ----------
         mx : np.ndarray
-            Input value.
+            Mouse x coordinate used while finalizing ROI points.
         my : np.ndarray
-            Input value.
+            Mouse y coordinate used while finalizing ROI points.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by finalise pts.
         """
         if self._start_i is None:
             return []
@@ -2641,12 +2641,12 @@ class ImageCanvas(QWidget):  # noqa: F811
         Parameters
         ----------
         wpt : np.ndarray
-            Input value.
+            Widget-space point tested against ROI geometry.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function apply resize.
         """
         roi = self.rm.rois[self.selected_idx]
         dix = (wpt.x() - self._rz_start_mw.x()) / self._scale
@@ -2676,17 +2676,17 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def keyPressEvent(self, e: Any) -> None:
         """
-        Handle key press event.
+        Handle key press event callbacks.
 
         Parameters
         ----------
         e : Any
-            Input value.
+            GUI or plotting event object supplied by the framework.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform keypressevent.
         """
         if e.key() in (Qt.Key_Delete, Qt.Key_Backspace):
             self._delete_selected()
@@ -2695,12 +2695,12 @@ class ImageCanvas(QWidget):  # noqa: F811
 
     def _delete_selected(self) -> None:
         """
-        Handle delete selected.
+        Run the delete selected routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform delete selected.
         """
         if 0 <= self.selected_idx < len(self.rm.rois):
             self.rm.rois.pop(self.selected_idx)
@@ -2762,7 +2762,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         Returns
         -------
         Any
-            Return value.
+            Object produced by build sidebar.
         """
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -2993,12 +2993,12 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _divider(self) -> Any:
         """
-        Handle divider.
+        Run the divider routine.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by divider.
         """
         line = QFrame()
         line.setObjectName("divider")
@@ -3007,17 +3007,17 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _section_label(self, text: np.ndarray) -> Any:
         """
-        Handle section label.
+        Run the section label routine.
 
         Parameters
         ----------
         text : np.ndarray
-            Input value.
+            Text rendered into a UI label or formatted table cell.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by section label.
         """
         lbl = QLabel(text)
         lbl.setObjectName("section_lbl")
@@ -3026,21 +3026,21 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _tool_button(self, icon: Any, label: str, shortcut: np.ndarray) -> np.ndarray:
         """
-        Handle tool button.
+        Run the tool button routine.
 
         Parameters
         ----------
         icon : Any
-            Input value.
+            Icon text shown on a UI button.
         label : str
-            Input value.
+            Display label assigned to the data or plot element.
         shortcut : np.ndarray
-            Input value.
+            Keyboard shortcut assigned to the UI button.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Qt button configured for the requested tool.
         """
         btn = QPushButton(f"{icon}  {label}")
         btn.setObjectName("tool_btn")
@@ -3052,21 +3052,21 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _action_button(self, icon: Any, label: str, shortcut: np.ndarray) -> np.ndarray:
         """
-        Handle action button.
+        Run the action button routine.
 
         Parameters
         ----------
         icon : Any
-            Input value.
+            Icon text shown on a UI button.
         label : str
-            Input value.
+            Display label assigned to the data or plot element.
         shortcut : np.ndarray
-            Input value.
+            Keyboard shortcut assigned to the UI button.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Qt button configured for the requested action.
         """
         btn = QPushButton(f"{icon}  {label}")
         btn.setObjectName("action_btn")
@@ -3076,12 +3076,12 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _refresh_below_color_btn(self) -> None:
         """
-        Handle refresh below color btn.
+        Run the refresh below color btn routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform refresh below color btn.
         """
         r, g, b = self.rm.mask_below_color
         luma = 0.299 * r + 0.587 * g + 0.114 * b
@@ -3095,12 +3095,12 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _refresh_above_color_btn(self) -> None:
         """
-        Handle refresh above color btn.
+        Run the refresh above color btn routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform refresh above color btn.
         """
         r, g, b = self.rm.mask_above_color
         luma = 0.299 * r + 0.587 * g + 0.114 * b
@@ -3116,19 +3116,19 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _on_tool_toggled(self, key: str, on: Any) -> None:
         """
-        Handle on tool toggled.
+        Run the on tool toggled routine.
 
         Parameters
         ----------
         key : str
-            Input value.
+            Dictionary key or parameter-map name to extract.
         on : Any
-            Input value.
+            Toggle state emitted by the UI control.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on tool toggled.
         """
         if on:
             self.canvas.mode = key
@@ -3138,17 +3138,17 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _on_mask_type_btn(self, btn: np.ndarray) -> None:
         """
-        Handle on mask type btn.
+        Run the on mask type btn routine.
 
         Parameters
         ----------
         btn : np.ndarray
-            Input value.
+            Button that triggered the UI callback.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on mask type btn.
         """
         labels = {"◻  Binary": "binary", "◼  Multi-ID": "multi", "⊞  Both": "both"}
         self.rm.mask_type = labels.get(btn.text(), "multi")
@@ -3156,12 +3156,12 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _toggle_bg(self) -> None:
         """
-        Handle toggle bg.
+        Run the toggle bg routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform toggle bg.
         """
         self.rm.show_bg = not self.rm.show_bg
         self._bg_btn.setStyleSheet(
@@ -3174,28 +3174,28 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _delete_selected(self) -> None:
         """
-        Handle delete selected.
+        Run the delete selected routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform delete selected.
         """
         self.canvas._delete_selected()
 
     def _on_intensity_toggled(self, active: np.ndarray) -> None:
         """
-        Handle on intensity toggled.
+        Run the on intensity toggled routine.
 
         Parameters
         ----------
         active : np.ndarray
-            Input value.
+            Whether the UI control is active.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on intensity toggled.
         """
         self.rm.intensity_active = active
         self.canvas.update_intensity_overlay()
@@ -3204,17 +3204,17 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _on_lo_changed(self, val: np.ndarray) -> None:
         """
-        Handle on lo changed.
+        Run the on lo changed routine.
 
         Parameters
         ----------
         val : np.ndarray
-            Input value.
+            Numeric value emitted by a slider or spin box.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on lo changed.
         """
         val = min(val, self.rm.intensity_high)
         self._lo_slider.blockSignals(True)
@@ -3229,33 +3229,33 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _on_lo_spin_changed(self, val: np.ndarray) -> None:
         """
-        Handle on lo spin changed.
+        Run the on lo spin changed routine.
 
         Parameters
         ----------
         val : np.ndarray
-            Input value.
+            Numeric value emitted by a slider or spin box.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on lo spin changed.
         """
         self._lo_slider.setValue(val)
 
     def _on_hi_changed(self, val: np.ndarray) -> None:
         """
-        Handle on hi changed.
+        Run the on hi changed routine.
 
         Parameters
         ----------
         val : np.ndarray
-            Input value.
+            Numeric value emitted by a slider or spin box.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on hi changed.
         """
         val = max(val, self.rm.intensity_low)
         self._hi_slider.blockSignals(True)
@@ -3270,28 +3270,28 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _on_hi_spin_changed(self, val: np.ndarray) -> None:
         """
-        Handle on hi spin changed.
+        Run the on hi spin changed routine.
 
         Parameters
         ----------
         val : np.ndarray
-            Input value.
+            Numeric value emitted by a slider or spin box.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform on hi spin changed.
         """
         self._hi_slider.setValue(val)
 
     def _pick_below_color(self) -> None:
         """
-        Handle pick below color.
+        Run the pick below color routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform pick below color.
         """
         r, g, b = self.rm.mask_below_color
         chosen = QColorDialog.getColor(
@@ -3305,12 +3305,12 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _pick_above_color(self) -> None:
         """
-        Handle pick above color.
+        Run the pick above color routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform pick above color.
         """
         r, g, b = self.rm.mask_above_color
         chosen = QColorDialog.getColor(
@@ -3410,7 +3410,7 @@ class ROIApp(QMainWindow):  # noqa: F811
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save close.
         """
         if self.rm.mask_type in ("multi", "both") and self.rm.rois:
             unassigned = [r for r in self.rm.rois if not r.assigned]
@@ -3423,23 +3423,23 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def _cancel(self) -> None:
         """
-        Handle cancel.
+        Run the cancel routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform cancel.
         """
         self.close()
 
     def _refresh_status(self) -> None:
         """
-        Handle refresh status.
+        Run the refresh status routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform refresh status.
         """
         n = len(self.rm.rois)
         n_assigned = sum(1 for r in self.rm.rois if r.assigned)
@@ -3478,17 +3478,17 @@ class ROIApp(QMainWindow):  # noqa: F811
 
     def keyPressEvent(self, e: Any) -> None:
         """
-        Handle key press event.
+        Handle key press event callbacks.
 
         Parameters
         ----------
         e : Any
-            Input value.
+            GUI or plotting event object supplied by the framework.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform keypressevent.
         """
         key_map = {
             Qt.Key_S: "select",
@@ -3643,12 +3643,12 @@ class ROIMaker:
         Parameters
         ----------
         path : str
-            Input value.
+            Filesystem path loaded or saved by the routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function load mask.
         """
         try:
             loaded = np.load(path)
@@ -3677,7 +3677,7 @@ class ROIMaker:
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save masks.
         """
         stem, _ = os.path.splitext(os.path.abspath(self.save_path))
         os.makedirs(os.path.dirname(stem) or ".", exist_ok=True)

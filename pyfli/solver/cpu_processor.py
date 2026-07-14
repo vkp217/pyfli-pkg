@@ -6,12 +6,14 @@ likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API inclu
 classes :class:`FLICPUProcessor`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
+
 import numpy as np
 import h5py
 import os
+
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
@@ -55,26 +57,26 @@ class FLICPUProcessor:
         Parameters
         ----------
         y_data : np.ndarray
-            Input value.
+            Observed decay data passed to the fitter.
         irf_p : np.ndarray
-            Input value.
+            Per-pixel IRF passed to a worker fitting task.
         coords : Any
-            Input value.
+            Pixel coordinates associated with the fit task.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
         estimator : np.ndarray
-            Input value.
+            Estimator name used to choose a fitting objective.
         p0 : Any
-            Input value.
+            Initial parameter vector supplied to the optimizer.
         bounds : np.ndarray
-            Input value.
+            Lower and upper parameter bounds supplied to the optimizer.
         kwargs : np.ndarray
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing worker fit results and pixel index metadata.
         """
         y_data = y_data.astype(np.float32)
         irf_p = irf_p.astype(np.float32)
@@ -132,32 +134,32 @@ class FLICPUProcessor:
         Parameters
         ----------
         image_cube : np.ndarray
-            Input value.
+            Time-resolved decay image cube.
         irf_cube : np.ndarray
-            Input value.
+            Instrument response cube aligned with the decay image cube.
         mask : np.ndarray | None
-            Input value.
+            Boolean or labeled mask selecting pixels for the operation.
         data_name : str
-            Input value.
+            Label assigned to the fitted or processed dataset.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
         estimator : str
-            Input value.
+            Estimator name used to choose a fitting objective.
         p0 : Any | None
-            Input value.
+            Initial parameter vector supplied to the optimizer.
         bounds : np.ndarray | None
-            Input value.
+            Lower and upper parameter bounds supplied to the optimizer.
         n_jobs : int
-            Input value.
+            Number of parallel jobs used for CPU fitting.
         backend : str
-            Input value.
+            Joblib execution backend used for parallel CPU fitting.
         **kwargs : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by process image.
         """
         H, W, T = image_cube.shape
 
@@ -300,14 +302,14 @@ class FLICPUProcessor:
         Parameters
         ----------
         dataset : np.ndarray
-            Input value.
+            Dataset dictionary or fit result collection to save.
         folder : str
-            Input value.
+            Output directory used when saving results.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save results.
         """
         if dataset is None:
             return
@@ -345,14 +347,14 @@ class FLICPUProcessor:
         Parameters
         ----------
         h5_path : str
-            Input value.
+            Filesystem path used by the routine.
         map_name : str
-            Input value.
+            Name of the saved parameter map to load.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by load map.
         """
         with h5py.File(h5_path, "r") as f:
             if f"results/maps/{map_name}" in f:

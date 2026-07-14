@@ -7,8 +7,8 @@ generation, hardware noise modeling, calibration, and validation tools. Public A
 includes classes :class:`BatchSimulator`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 
 
@@ -56,14 +56,14 @@ class BatchSimulator:
         Parameters
         ----------
         sim_func_list : np.ndarray
-            Input value.
+            Simulator functions used to generate a batch.
         num_list : int
-            Input value.
+            Number of samples generated for each simulator function.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by generate batch.
         """
         samples = []
         for sim_func, n in zip(sim_func_list, num_list):
@@ -106,16 +106,16 @@ class BatchSimulator:
         Parameters
         ----------
         sim_funcs : np.ndarray
-            Input value.
+            Simulator functions used to generate a two-dimensional batch.
         num_list : int
-            Input value.
+            Number of samples generated for each simulator function.
         shape : tuple[int, ...]
-            Input value.
+            Output shape requested for generated simulation batches.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by generate batch2d.
         """
         rows, cols = shape
         if sum(num_list) != rows * cols:

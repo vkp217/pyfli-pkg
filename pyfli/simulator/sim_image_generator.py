@@ -6,8 +6,8 @@ generation, hardware noise modeling, calibration, and validation tools. Public A
 includes classes :class:`FLIImageGenerator`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
 
 # simulator/sim_image_generator.py
@@ -15,13 +15,14 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 import itertools
+
 from .main_factory import MacroSimulator, TCSPCSimulator
 from .sim_helper import irf_picker
 
 
 class FLIImageGenerator:
     """
-    Generate full FLIM image cubes from masks, intensity images, ROI parameters, and
+    Run the fliimage generator routine.
     simulator settings. It bridges pixel-level simulation with image-shaped datasets
     used by solvers and visualizers.
 
@@ -34,13 +35,13 @@ class FLIImageGenerator:
     roi_mask_path : str | None
         Filesystem path used by this workflow.
     roi_params : Any | None
-        Configuration value used by the class.
+        Parameters defining ROI shape, position, and intensity properties.
     image_shape : tuple[int, ...]
-        Configuration value used by the class.
+        Height and width of the generated image.
     method : str
         Algorithm or model-selection method to use.
     verbose : bool
-        Configuration value used by the class.
+        If ``True``, report progress and diagnostic messages during processing.
     bool_mask : np.ndarray | None
         Boolean mask selecting pixels included in the analysis.
     """
@@ -107,7 +108,7 @@ class FLIImageGenerator:
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by generate image.
         """
         h, w = self.shape
         total_pixels = h * w

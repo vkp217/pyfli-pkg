@@ -6,33 +6,35 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`DataSaver`; functions :func:`filter_vars`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
 
 # pyfli/io/data_saving.py
 import json
 import os
+
 import numpy as np
 from datetime import datetime
+
 import matplotlib.pyplot as plt
 
 
 def filter_vars(local_vars: np.ndarray, keys: np.ndarray) -> Any:
     """
-    Handle filter vars.
+    Run the filter vars routine.
 
     Parameters
     ----------
     local_vars : np.ndarray
-        Input value.
+        Local variable dictionary filtered before saving.
     keys : np.ndarray
-        Input value.
+        Dataset keys to include in the saved output.
 
     Returns
     -------
     Any
-        Return value.
+        Object produced by filter vars.
     """
     return {k: local_vars[k] for k in keys if k in local_vars}
 
@@ -46,11 +48,11 @@ class DataSaver:
     Parameters
     ----------
     path : str
-        Configuration value used by the class.
+        Filesystem path loaded or saved by the routine.
     folder_name : str
-        Configuration value used by the class.
+        Output folder where session files are written.
     new_session : bool
-        Configuration value used by the class.
+        If ``True``, create a new timestamped session folder.
     """
 
     def __init__(
@@ -75,17 +77,17 @@ class DataSaver:
 
     def log(self, message: Any) -> None:
         """
-        Handle log.
+        Run the log routine.
 
         Parameters
         ----------
         message : Any
-            Input value.
+            Message text displayed to the user.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform log.
         """
         formatted_msg = f"{message}"
         logging.info(formatted_msg)
@@ -101,18 +103,18 @@ class DataSaver:
         Parameters
         ----------
         name : str
-            Input value.
+            Dataset, experiment, figure, or output name.
         fig : Any | None
-            Input value.
+            Matplotlib figure object to update or save.
         dpi : int
-            Input value.
+            Resolution used when saving a figure.
         close : bool
-            Input value.
+            Whether to close the figure after saving.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save plot.
         """
         path = os.path.join(self.save_dir, f"{name}.png")
         target = fig if fig is not None else plt
@@ -139,14 +141,14 @@ class DataSaver:
         Parameters
         ----------
         name : str
-            Input value.
+            Dataset, experiment, figure, or output name.
         array : np.ndarray
-            Input value.
+            Array processed by the routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save npy.
         """
         path = os.path.join(self.save_dir, f"{name}.npy")
         np.save(path, array)
@@ -164,12 +166,12 @@ class DataSaver:
         Parameters
         ----------
         **kwargs : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save params.
         """
         for key, value in kwargs.items():
             self.log(f"Parameter: >> {key}: {value}")
@@ -183,14 +185,14 @@ class DataSaver:
         Parameters
         ----------
         config_dict : np.ndarray
-            Input value.
+            Configuration dictionary written to disk.
         name : str
-            Input value.
+            Dataset, experiment, figure, or output name.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function save config.
         """
         self.log(f"--- Configuration: {name} ---")
         serializable_config = {}

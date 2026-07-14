@@ -8,8 +8,8 @@ pixel camera basis generation, acquisition simulation, and reconstruction solver
 Public API includes classes :class:`BasisPatterns`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 from scipy.linalg import hadamard
 from scipy.fftpack import dct

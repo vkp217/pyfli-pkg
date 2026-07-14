@@ -11,8 +11,6 @@ Plotter             Multi-source comparison orchestrator
 plot_2d_subplots()  Backward-compatible module function
 """
 
-from __future__ import annotations
-
 from pyfli import logging
 
 from dataclasses import dataclass, field, replace as dc_replace
@@ -50,33 +48,33 @@ class PlotConfig:
     Parameters
     ----------
     figsize : Tuple[int, int]
-        Configuration value used by the class.
+        Figure size passed to Matplotlib.
     cmap : str
-        Configuration value used by the class.
+        Matplotlib colormap used for image and map rendering.
     bins : int
-        Configuration value used by the class.
+        Histogram bin specification.
     colors : List[str]
-        Configuration value used by the class.
+        Color sequence used for plotted groups.
     imshow_source : str
-        Configuration value used by the class.
+        Data source used for image panels.
     shared_colorbar : bool
-        Configuration value used by the class.
+        If ``True``, draw one colorbar shared by comparable image panels.
     annotate_stats : bool
-        Configuration value used by the class.
+        If ``True``, annotate plots with summary statistics.
     scatter_pair : Optional[Tuple[int, int]]
-        Configuration value used by the class.
+        Pair of variables to compare in a scatter plot.
     qq_reference : str
-        Configuration value used by the class.
+        Reference distribution used for QQ plots.
     point_type : str
-        Configuration value used by the class.
+        Marker style used for plotted points.
     show_mean : bool
-        Configuration value used by the class.
+        If ``True``, draw the group mean on distribution plots.
     show_median : bool
-        Configuration value used by the class.
+        If ``True``, draw the group median on distribution plots.
     test_type : str
-        Configuration value used by the class.
+        Statistical test to apply when comparing groups.
     correction : bool
-        Configuration value used by the class.
+        Multiple-comparison correction method.
     """
 
     # ── visual ────────────────────────────────────────────────────────────────
@@ -175,14 +173,14 @@ class DataProcessor:
         Parameters
         ----------
         valid : np.ndarray
-            Input value.
+            Finite one-dimensional sample values used by a plot or statistic.
         min_samples : Optional[int]
-            Input value.
+            Minimum number of finite samples required for a group.
 
         Returns
         -------
         bool
-            Return value.
+            Boolean result computed by is valid.
         """
         n = min_samples or cls.MIN_SAMPLES
         v = np.asarray(valid)
@@ -192,17 +190,17 @@ class DataProcessor:
     @staticmethod
     def stats(valid: np.ndarray) -> Dict[str, float]:
         """
-        Handle stats.
+        Compute summary statistics for valid sample values.
 
         Parameters
         ----------
         valid : np.ndarray
-            Input value.
+            Finite one-dimensional sample values used by a plot or statistic.
 
         Returns
         -------
         Dict[str, float]
-            Return value.
+            Object produced by stats.
         """
         if not len(valid):
             return {}
@@ -252,12 +250,12 @@ class SourceLoader:
 
     def _infer_labels(self) -> List[str]:
         """
-        Handle infer labels.
+        Run the infer labels routine.
 
         Returns
         -------
         List[str]
-            Return value.
+            Object produced by infer labels.
         """
         if self.values:
             return list(self.values)
@@ -274,19 +272,19 @@ class SourceLoader:
     @staticmethod
     def _extract(source: str, key: str) -> np.ndarray:
         """
-        Handle extract.
+        Run the extract routine.
 
         Parameters
         ----------
         source : str
-            Input value.
+            Source label recorded with the loaded dataset.
         key : str
-            Input value.
+            Dictionary key or parameter-map name to extract.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Finite values extracted for plotting or statistics.
         """
         try:
             return np.asanyarray(source[key]).astype(float).flatten()
@@ -343,33 +341,33 @@ class PlotKit:
         **kw: Any,
     ) -> None:
         """
-        Handle map.
+        Draw a two-dimensional parameter map.
 
         Parameters
         ----------
         ax : Axes
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         data_map : np.ndarray
-            Input value.
+            Parameter or mask map processed by the routine.
         config : Any | None
-            Input value.
+            Plotting, fitting, or simulation configuration object.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         vmin : np.ndarray | None
-            Input value.
+            Lower color-limit value.
         vmax : np.ndarray | None
-            Input value.
+            Upper color-limit value.
         fig : Any | None
-            Input value.
+            Matplotlib figure object to update or save.
         add_colorbar : bool
-            Input value.
+            Whether to add a colorbar to the generated plot.
         **kw : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform map.
         """
         cfg = config or PlotConfig()
         im = ax.imshow(data_map, cmap=cfg.cmap, vmin=vmin, vmax=vmax, **kw)
@@ -388,25 +386,25 @@ class PlotKit:
         **kw: Any,
     ) -> None:
         """
-        Handle histogram.
+        Draw a histogram for valid sample values.
 
         Parameters
         ----------
         ax : Axes
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         valid : np.ndarray
-            Input value.
+            Finite one-dimensional sample values used by a plot or statistic.
         config : Any | None
-            Input value.
+            Plotting, fitting, or simulation configuration object.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         **kw : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform histogram.
         """
         ax.hist(valid, bins=(config or PlotConfig()).bins, **kw)
         ax.set_title(f"{title} Histogram".strip())
@@ -422,25 +420,25 @@ class PlotKit:
         **kw: Any,
     ) -> None:
         """
-        Handle log histogram.
+        Draw a logarithmic histogram for valid sample values.
 
         Parameters
         ----------
         ax : Axes
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         valid : np.ndarray
-            Input value.
+            Finite one-dimensional sample values used by a plot or statistic.
         config : Any | None
-            Input value.
+            Plotting, fitting, or simulation configuration object.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         **kw : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform log histogram.
         """
         ax.hist(valid[valid > 0], bins=(config or PlotConfig()).bins, log=True, **kw)
         ax.set_title(f"{title} Log Histogram".strip())
@@ -461,35 +459,36 @@ class PlotKit:
         **kw: Any,
     ) -> None:
         """
-        Handle kde.
+        Draw a kernel-density estimate for valid sample values.
 
         Parameters
         ----------
         ax : Axes
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         valid : np.ndarray
-            Input value.
+            Finite one-dimensional sample values used by a plot or statistic.
         config : Any | None
-            Input value.
+            Plotting, fitting, or simulation configuration object.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         color : str | None
-            Input value.
+            Matplotlib color used for drawing the plot element.
         label : str | None
-            Input value.
+            Display label assigned to the data or plot element.
         fill : bool
-            Input value.
+            Whether to fill the KDE area under the curve.
         alpha : float
-            Input value.
+            Regularization strength, fraction value, or significance threshold used by the
+        routine.
         n_points : int
-            Input value.
+            Number of points sampled for a curve or density.
         **kw : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform kde.
         """
         if len(valid) > 1:
             kf = gaussian_kde(valid)
@@ -513,25 +512,25 @@ class PlotKit:
         **kw: Any,
     ) -> None:
         """
-        Handle violinplot.
+        Draw a violin plot for valid sample values.
 
         Parameters
         ----------
         ax : Axes
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         valid : np.ndarray
-            Input value.
+            Finite one-dimensional sample values used by a plot or statistic.
         config : Any | None
-            Input value.
+            Plotting, fitting, or simulation configuration object.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         **kw : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform violinplot.
         """
         if DataProcessor.is_valid(valid):
             ax.violinplot(valid, showmeans=True, showmedians=True, **kw)
@@ -557,25 +556,25 @@ class PlotKit:
         **kw: Any,
     ) -> None:
         """
-        Handle boxplot.
+        Draw a box plot for valid sample values.
 
         Parameters
         ----------
         ax : Axes
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         valid : np.ndarray
-            Input value.
+            Finite one-dimensional sample values used by a plot or statistic.
         config : Any | None
-            Input value.
+            Plotting, fitting, or simulation configuration object.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         **kw : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform boxplot.
         """
         if DataProcessor.is_valid(valid):
             ax.boxplot(valid, orientation="vertical", **kw)
@@ -603,29 +602,29 @@ class PlotKit:
         **kw: Any,
     ) -> None:
         """
-        Handle cdf.
+        Draw an empirical cumulative distribution plot.
 
         Parameters
         ----------
         ax : Axes
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         valid : np.ndarray
-            Input value.
+            Finite one-dimensional sample values used by a plot or statistic.
         config : Any | None
-            Input value.
+            Plotting, fitting, or simulation configuration object.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         color : str | None
-            Input value.
+            Matplotlib color used for drawing the plot element.
         label : str | None
-            Input value.
+            Display label assigned to the data or plot element.
         **kw : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform CDF.
         """
         s = np.sort(valid)
         ax.plot(s, np.arange(len(s)) / len(s), color=color, label=label, **kw)
@@ -643,25 +642,25 @@ class PlotKit:
         **kw: Any,
     ) -> None:
         """
-        Handle qq.
+        Draw a quantile-quantile diagnostic plot.
 
         Parameters
         ----------
         ax : Axes
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         valid : np.ndarray
-            Input value.
+            Finite one-dimensional sample values used by a plot or statistic.
         config : Any | None
-            Input value.
+            Plotting, fitting, or simulation configuration object.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         **kw : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform QQ.
         """
         probplot(valid, dist=(config or PlotConfig()).qq_reference, plot=ax)
         ax.set_title(f"{title} QQ Plot".strip())
@@ -678,27 +677,27 @@ class PlotKit:
         **kw: Any,
     ) -> None:
         """
-        Handle scatter.
+        Draw a scatter plot for paired arrays.
 
         Parameters
         ----------
         ax : Axes
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         x : np.ndarray
-            Input value.
+            Input array, coordinate, or signal being transformed.
         y : np.ndarray
-            Input value.
+            Observed signal, target data, or coordinate array.
         config : Any | None
-            Input value.
+            Plotting, fitting, or simulation configuration object.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         **kw : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform scatter.
         """
         ax.scatter(x, y, **kw)
         ax.set_title(f"{title} Scatter".strip())
@@ -819,12 +818,12 @@ class PlotKit:
         Parameters
         ----------
         name : str
-            Input value.
+            Dataset, experiment, figure, or output name.
 
         Returns
         -------
         Callable
-            Return value.
+            Object produced by get method.
         """
         key = name.strip().lower()
         canonical = cls._NAME_MAP.get(key)
@@ -849,7 +848,7 @@ class SubplotVisualizer:
     Parameters
     ----------
     config : Optional[PlotConfig]
-        Configuration value used by the class.
+        Plotting or processing configuration object.
     **kw : Any
         Additional keyword arguments forwarded to the underlying implementation.
     """
@@ -871,27 +870,27 @@ class SubplotVisualizer:
         axes: Any | None = None,
     ) -> Figure:
         """
-        Handle plot.
+        Run the plot routine.
 
         Parameters
         ----------
         *data_arrays : Any
-            Input value.
+            Arrays used to compute shared plot ranges.
         plot_types : Sequence[str]
-            Input value.
+            Plot families requested by the caller.
         titles : np.ndarray | None
-            Input value.
+            Subplot titles displayed by the visualizer.
         operations : np.ndarray | None
-            Input value.
+            Processing operations applied before plotting or fitting.
         fig : Any | None
-            Input value.
+            Matplotlib figure object to update or save.
         axes : Any | None
-            Input value.
+            Matplotlib axes collection used for drawing subplots.
 
         Returns
         -------
         Figure
-            Return value.
+            Matplotlib figure generated by plot.
         """
         n = len(data_arrays)
         titles = titles or [f"Data {i + 1}" for i in range(n)]
@@ -945,37 +944,37 @@ class SubplotVisualizer:
         operations: np.ndarray,
     ) -> None:
         """
-        Handle render.
+        Run the render routine.
 
         Parameters
         ----------
         ax : Any
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         ptype : np.ndarray
-            Input value.
+            Plot type selected for a rendered subplot.
         data_map : np.ndarray
-            Input value.
+            Parameter or mask map processed by the routine.
         valid : np.ndarray
-            Input value.
+            Finite one-dimensional sample values used by a plot or statistic.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         fig : Any
-            Input value.
+            Matplotlib figure object to update or save.
         vmin : np.ndarray
-            Input value.
+            Lower color-limit value.
         vmax : np.ndarray
-            Input value.
+            Upper color-limit value.
         row : np.ndarray
-            Input value.
+            Subplot row index used during rendering.
         data_arrays : np.ndarray
-            Input value.
+            Arrays used to compute shared plot ranges.
         operations : np.ndarray
-            Input value.
+            Processing operations applied before plotting or fitting.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform render.
         """
         key = ptype.strip().lower()
         if key in ("map", "imshow"):
@@ -1027,19 +1026,19 @@ class SubplotVisualizer:
         self, data_arrays: np.ndarray, operations: np.ndarray
     ) -> tuple[Any, ...]:
         """
-        Handle global range.
+        Run the global range routine.
 
         Parameters
         ----------
         data_arrays : np.ndarray
-            Input value.
+            Arrays used to compute shared plot ranges.
         operations : np.ndarray
-            Input value.
+            Processing operations applied before plotting or fitting.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing global finite value range across selected datasets.
         """
         if not self.config.shared_colorbar:
             return None, None
@@ -1056,21 +1055,21 @@ class SubplotVisualizer:
     @staticmethod
     def _shared_cbar(fig: Any, axes: Any, plot_types: np.ndarray) -> None:
         """
-        Handle shared cbar.
+        Run the shared cbar routine.
 
         Parameters
         ----------
         fig : Any
-            Input value.
+            Matplotlib figure object to update or save.
         axes : Any
-            Input value.
+            Matplotlib axes collection used for drawing subplots.
         plot_types : np.ndarray
-            Input value.
+            Plot families requested by the caller.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform shared cbar.
         """
         map_cols = [
             c
@@ -1091,7 +1090,7 @@ class SubplotVisualizer:
 
 class Plotter:
     """
-    Coordinate multi-source comparison plots for fitted FLIM maps or model outputs. The
+    Run the plotter routine.
     class cleans data, applies processing operations, dispatches plot types, annotates
     significance, and exports underlying data.
 
@@ -1106,7 +1105,7 @@ class Plotter:
     source_names : np.ndarray | None
         Names assigned to plotted or compared data sources.
     operations : np.ndarray | None
-        Configuration value used by the class.
+        List of plotting or analysis operations to execute.
     """
 
     def __init__(
@@ -1292,18 +1291,18 @@ class Plotter:
         Parameters
         ----------
         groups : np.ndarray
-            Input value.
+            Grouped valid samples plotted by the comparison routine.
         n_sources : int
-            Input value.
+            Number of samples, components, gates, or iterations used by the routine.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         cfg : Any
-            Input value.
+            Configuration object or keyword dictionary used by the algorithm.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the kernel-density estimate.
         """
         n_keys = len(self.labels)
         fig, axes = plt.subplots(
@@ -1340,18 +1339,18 @@ class Plotter:
         Parameters
         ----------
         groups : np.ndarray
-            Input value.
+            Grouped valid samples plotted by the comparison routine.
         n_sources : int
-            Input value.
+            Number of samples, components, gates, or iterations used by the routine.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         cfg : Any
-            Input value.
+            Configuration object or keyword dictionary used by the algorithm.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the cumulative distribution plot.
         """
         n_keys = len(self.labels)
         fig, axes = plt.subplots(1, n_keys, figsize=cfg.figsize, squeeze=False)
@@ -1381,18 +1380,18 @@ class Plotter:
         Parameters
         ----------
         groups : np.ndarray
-            Input value.
+            Grouped valid samples plotted by the comparison routine.
         n_sources : int
-            Input value.
+            Number of samples, components, gates, or iterations used by the routine.
         title : str
-            Input value.
+            Title displayed on the generated plot.
         cfg : Any
-            Input value.
+            Configuration object or keyword dictionary used by the algorithm.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the quantile-quantile plot.
         """
         n_keys = len(self.labels)
         fig, axes = plt.subplots(
@@ -1428,24 +1427,24 @@ class Plotter:
         Parameters
         ----------
         ax : Any
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         groups : np.ndarray
-            Input value.
+            Grouped valid samples plotted by the comparison routine.
         n_sources : int
-            Input value.
+            Number of samples, components, gates, or iterations used by the routine.
         width : float
-            Input value.
+            Gate width used by the gate matrix.
         x_centers : np.ndarray
-            Input value.
+            X positions used to place grouped box or violin plots.
         graph_type : np.ndarray
-            Input value.
+            Mode or type selector used by the routine.
         cfg : Any
-            Input value.
+            Configuration object or keyword dictionary used by the algorithm.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function plot box family.
         """
         for src in range(n_sources):
             color = cfg.color(src)
@@ -1530,24 +1529,24 @@ class Plotter:
         Parameters
         ----------
         ax : Any
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         groups : np.ndarray
-            Input value.
+            Grouped valid samples plotted by the comparison routine.
         n_sources : int
-            Input value.
+            Number of samples, components, gates, or iterations used by the routine.
         width : float
-            Input value.
+            Gate width used by the gate matrix.
         x_centers : np.ndarray
-            Input value.
+            X positions used to place grouped box or violin plots.
         graph_type : np.ndarray
-            Input value.
+            Mode or type selector used by the routine.
         cfg : Any
-            Input value.
+            Configuration object or keyword dictionary used by the algorithm.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function plot violin family.
         """
         for src in range(n_sources):
             color = cfg.color(src)
@@ -1611,27 +1610,27 @@ class Plotter:
         cfg: Any,
     ) -> None:
         """
-        Handle annotate significance.
+        Run the annotate significance routine.
 
         Parameters
         ----------
         ax : Any
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         groups : np.ndarray
-            Input value.
+            Grouped valid samples plotted by the comparison routine.
         n_sources : int
-            Input value.
+            Number of samples, components, gates, or iterations used by the routine.
         x_centers : np.ndarray
-            Input value.
+            X positions used to place grouped box or violin plots.
         width : float
-            Input value.
+            Gate width used by the gate matrix.
         cfg : Any
-            Input value.
+            Configuration object or keyword dictionary used by the algorithm.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform annotate significance.
         """
         p_val_text = []
         num_comps = len(self.labels) * (n_sources - 1) if cfg.correction else 1
@@ -1688,16 +1687,16 @@ class Plotter:
         Parameters
         ----------
         ax : Any
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
         n_sources : int
-            Input value.
+            Number of samples, components, gates, or iterations used by the routine.
         cfg : Any
-            Input value.
+            Configuration object or keyword dictionary used by the algorithm.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function add legend.
         """
         elements = [
             Line2D(
@@ -2027,20 +2026,20 @@ class Plotter:
         Parameters
         ----------
         save_pdf : bool
-            Input value.
+            If ``True``, save the generated figures to a PDF file.
         save_png : bool
-            Input value.
+            Whether to export the figure as PNG.
         save_csv : bool
-            Input value.
+            Whether to export comparison data as CSV.
         filename : str
-            Input value.
+            File name used for saving or loading results.
         dpi : int
-            Input value.
+            Resolution used when saving a figure.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function export data.
         """
         if self.current_fig is not None:
             if save_pdf:
@@ -2074,7 +2073,7 @@ class DLModelComparator(Plotter):
         Returns
         -------
         List[Dict]
-            Return value.
+            Object produced by compute distribution metrics.
         """
         groups = self._apply_processing(self._loader.load())
         results = []
@@ -2109,17 +2108,17 @@ class DLModelComparator(Plotter):
 
     def annotate_distribution_metrics(self, ax: Axes) -> None:
         """
-        Handle annotate distribution metrics.
+        Run the annotate distribution metrics routine.
 
         Parameters
         ----------
         ax : Axes
-            Input value.
+            Matplotlib axes object on which the plot is drawn.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform annotate distribution metrics.
         """
         metrics = self.compute_distribution_metrics()
         lines = [

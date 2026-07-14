@@ -18,7 +18,6 @@ Public surface
 """
 # ruff: noqa: F401
 
-from __future__ import annotations
 from .config import AcquisitionConfig, AcquisitionMode
 from .phasors import (
     phasor_continuous,

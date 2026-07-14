@@ -6,8 +6,8 @@ This module belongs to :mod:`pyfli.singleshot` and is part of PyFLI single-shot 
 convenience entry points. Public API includes classes :class:`SingleShotFLI`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt

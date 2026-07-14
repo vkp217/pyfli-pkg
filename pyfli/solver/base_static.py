@@ -8,8 +8,8 @@ functions :func:`resolve_params_and_bounds`, :func:`moment_based_guess`, and
 :func:`rld_based_guess`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 
 
@@ -24,31 +24,31 @@ def resolve_params_and_bounds(
     T_acq: np.ndarray,
 ) -> tuple[Any, ...]:
     """
-    Handle resolve params and bounds.
+    Run the resolve params and bounds routine.
 
     Parameters
     ----------
     user_p0 : np.ndarray
-        Input value.
+        User-supplied initial parameter vector.
     user_bounds : np.ndarray
-        Input value.
+        User-supplied parameter bounds.
     model_type : str
-        Input value.
+        FLIM model family, such as mono- or bi-exponential.
     t : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
     decay : np.ndarray
-        Input value.
+        Time-resolved decay signal or decay cube.
     T_laser : np.ndarray
-        Input value.
+        Laser repetition period used by the initial-guess routine.
     guess_plugin : np.ndarray
-        Input value.
+        Optional callable that supplies initial parameter guesses.
     T_acq : np.ndarray
-        Input value.
+        Acquisition window length used by the initial-guess routine.
 
     Returns
     -------
     tuple[Any, ...]
-        Return value.
+        Tuple containing initial parameter guesses and optimization bounds.
     """
     smart_dict = guess_plugin(t, decay, T_acq, T_laser, model_type)
 
@@ -145,25 +145,25 @@ def moment_based_guess(
     model_type: str = "mono-exponential",
 ) -> dict[Any, Any]:
     """
-    Handle moment based guess.
+    Run the moment based guess routine.
 
     Parameters
     ----------
     t : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
     decay : np.ndarray
-        Input value.
+        Time-resolved decay signal or decay cube.
     T_acq : np.ndarray
-        Input value.
+        Acquisition window length used by the initial-guess routine.
     T_laser : np.ndarray
-        Input value.
+        Laser repetition period used by the initial-guess routine.
     model_type : str
-        Input value.
+        FLIM model family, such as mono- or bi-exponential.
 
     Returns
     -------
     dict[Any, Any]
-        Return value.
+        Dictionary containing the data produced by moment based guess.
     """
     offset_guess = np.percentile(decay, 5)
     clean_d = np.clip(decay - offset_guess, 1e-6, None)
@@ -214,25 +214,25 @@ def rld_based_guess(
     model_type: str = "mono-exponential",
 ) -> dict[Any, Any]:
     """
-    Handle rld based guess.
+    Run the RLD based guess routine.
 
     Parameters
     ----------
     t : np.ndarray
-        Input value.
+        Time axis or acquisition period used by the calculation.
     decay : np.ndarray
-        Input value.
+        Time-resolved decay signal or decay cube.
     T_acq : np.ndarray
-        Input value.
+        Acquisition window length used by the initial-guess routine.
     T_laser : np.ndarray
-        Input value.
+        Laser repetition period used by the initial-guess routine.
     model_type : str
-        Input value.
+        FLIM model family, such as mono- or bi-exponential.
 
     Returns
     -------
     dict[Any, Any]
-        Return value.
+        Dictionary containing the data produced by RLD based guess.
     """
     offset_guess = np.percentile(decay, 5)
     clean_d = np.clip(decay - offset_guess, 1e-6, None)

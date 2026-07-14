@@ -10,7 +10,6 @@ generation, hardware noise modeling, calibration, and validation tools. The modu
 primarily re-exports package symbols or constants for downstream imports.
 """
 
-from __future__ import annotations
 from .distributions import ParameterSampler
 from .main_factory import MacroSimulator, TCSPCSimulator
 from .main_factory_gen import ContinuousSimulator, PhotonCountSimulator

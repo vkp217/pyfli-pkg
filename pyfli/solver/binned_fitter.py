@@ -6,8 +6,8 @@ likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API inclu
 classes :class:`FLIBinner` and :class:`BinnedFLIFitter`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
 
 # solver/binned_fitter.py

@@ -7,8 +7,8 @@ generation, hardware noise modeling, calibration, and validation tools. Public A
 includes classes :class:`FLIValidator`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
 
 # simulator/sim_stat_test .py
@@ -39,17 +39,17 @@ class FLIValidator:
 
     def _preprocess_cube(self, data_cube: np.ndarray) -> tuple[Any, ...]:
         """
-        Handle preprocess cube.
+        Run the preprocess cube routine.
 
         Parameters
         ----------
         data_cube : np.ndarray
-            Input value.
+            Array cube processed by the routine.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing processed decay cube, mask, and normalization metadata.
         """
         if data_cube.ndim == 3:
             H, W, T = data_cube.shape
@@ -143,27 +143,27 @@ class FLIValidator:
         n: Any,
     ) -> None:
         """
-        Handle print summary.
+        Print summary.
 
         Parameters
         ----------
         cos_sim : Any
-            Input value.
+            Cosine similarity statistic printed in the validation summary.
         kl_div : np.ndarray
-            Input value.
+            Kullback-Leibler divergence values to plot or summarize.
         ks_stat : np.ndarray
-            Input value.
+            Kolmogorov-Smirnov statistic printed in the validation summary.
         p_value : np.ndarray
-            Input value.
+            P-value printed in the validation summary.
         intersection : np.ndarray
-            Input value.
+            Histogram-intersection score printed in the validation summary.
         n : Any
-            Input value.
+            Number of samples, bins, gates, or plotted items.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform print summary.
         """
         logging.info("\n" + "=" * 60)
         logging.info(f"STATISTICAL VALIDATION REPORT (N={n} Pixels)")
@@ -190,18 +190,18 @@ class FLIValidator:
         Parameters
         ----------
         sim_vec : np.ndarray
-            Input value.
+            Simulated vector used by the validation plot.
         exp_vec : np.ndarray
-            Input value.
+            Experimental vector used by the validation plot.
         sim_counts : np.ndarray
-            Input value.
+            Simulated histogram counts used by the validation plot.
         exp_counts : np.ndarray
-            Input value.
+            Experimental histogram counts used by the validation plot.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Matplotlib figure or axes containing the simulation results.
         """
         fig, ax = plt.subplots(1, 2, figsize=(14, 5))
 

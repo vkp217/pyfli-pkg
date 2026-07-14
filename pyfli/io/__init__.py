@@ -9,7 +9,6 @@ readers, saving helpers, and processed-data loaders. The module primarily re-exp
 package symbols or constants for downstream imports.
 """
 
-from __future__ import annotations
 from .detector import Detector
 from .data_operations import DataOperations
 from .data_saving import DataSaver

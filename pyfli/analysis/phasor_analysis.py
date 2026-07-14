@@ -7,9 +7,9 @@ datasets. Public API includes functions :func:`compute_freq_axis`,
 :func:`compute_phasor`, :func:`plot_phasor_figures`, and :func:`save_phasor_result`.
 """
 
-from __future__ import annotations
 from typing import Any
 import os
+
 import numpy as np
 
 from pyfli import logging
@@ -162,16 +162,16 @@ def save_phasor_result(
     Parameters
     ----------
     save_dir : str
-        Input value.
+        Directory where outputs are saved.
     tau_map_ns : np.ndarray
-        Input value.
+        Lifetime map in nanoseconds.
     saver : Any | None
-        Input value.
+        Optional saver used to persist messages or figures.
 
     Returns
     -------
     np.ndarray
-        Return value.
+        Saved phasor result arrays or metadata.
     """
     result = {
         "results": {

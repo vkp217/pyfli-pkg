@@ -6,11 +6,12 @@ normalization, plotting, and mono-versus-bi-exponential comparison tools. Public
 includes classes :class:`MonoBiClassifier` and :class:`ParamCorrelationMatrix`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
 from .color_processor import ColorProcessor
 from .data_viewer import DataViewer
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -28,17 +29,17 @@ class MonoBiClassifier:
     b_bool_mask : np.ndarray
         Mask array used to select or label pixels.
     names : Any | None
-        Configuration value used by the class.
+        Names used to label datasets, classes, or plotted groups.
     alpha_upper : float
-        Configuration value used by the class.
+        Upper alpha-fraction threshold used by the classifier.
     alpha_lower : float
-        Configuration value used by the class.
+        Lower alpha-fraction threshold used by the classifier.
     tau_tol : float
-        Configuration value used by the class.
+        Lifetime tolerance used by the mono/bi classifier.
     coord : Any | None
-        Configuration value used by the class.
+        Pixel or ROI coordinate used for lookup and plotting.
     figsize : np.ndarray | None
-        Configuration value used by the class.
+        Figure size passed to Matplotlib.
     """
 
     CMAP_NAMES = ("jet", "Spectral", "Spectral_r")
@@ -86,19 +87,19 @@ class MonoBiClassifier:
         # tau1 == tau2 almost never holds for fitted floats even when both
         # optimisers converge to the same value (e.g. 1.2000000001 != 1.2).
         """
-        Handle classify one.
+        Classify one.
 
         Parameters
         ----------
         res : Any
-            Input value.
+            Fit result object or dataset result dictionary.
         name : str
-            Input value.
+            Dataset, experiment, figure, or output name.
 
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by classify one.
         """
         tau_coincide = (
             np.abs(
@@ -142,12 +143,12 @@ class MonoBiClassifier:
         Parameters
         ----------
         result : Any
-            Input value.
+            Classification or fitting result to display.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function display one.
         """
         name = result["name"]
         DataViewer().display_data(
@@ -186,12 +187,12 @@ class MonoBiClassifier:
 
     def summary(self) -> Any:
         """
-        Handle summary.
+        Run the summary routine.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by summary.
         """
         for r in self.results:
             logging.info(
@@ -202,12 +203,12 @@ class MonoBiClassifier:
     # ════════════════════════ cross-method analysis ════════════════════════
     def _require_classified(self) -> None:
         """
-        Handle require classified.
+        Run the require classified routine.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform require classified.
         """
         if not self.results or self.all_datasets is None:
             raise RuntimeError(
@@ -426,7 +427,7 @@ class ParamCorrelationMatrix:
     bool_mask : np.ndarray
         Boolean mask selecting pixels included in the analysis.
     names : Any | None
-        Configuration value used by the class.
+        Names used to label datasets, classes, or plotted groups.
     """
 
     PALETTE = [

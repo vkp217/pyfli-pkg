@@ -13,7 +13,6 @@ Usage
     python main.py --outdir /tmp/     # custom output directory
 """
 
-from __future__ import annotations
 import argparse
 import pathlib
 from dataclasses import replace
@@ -66,17 +65,17 @@ def make_all_configs() -> list[AcquisitionConfig]:
 
 def fig_comparison(outdir: pathlib.Path) -> None:
     """
-    Handle fig comparison.
+    Run the fig comparison routine.
 
     Parameters
     ----------
     outdir : pathlib.Path
-        Input value.
+        Directory where generated figures are written.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform fig comparison.
     """
     cfgs = make_all_configs()
     fig, ax = plot_locus_comparison(
@@ -97,17 +96,17 @@ def fig_comparison(outdir: pathlib.Path) -> None:
 
 def fig_discrete_sweep(outdir: pathlib.Path) -> None:
     """
-    Handle fig discrete sweep.
+    Run the fig discrete sweep routine.
 
     Parameters
     ----------
     outdir : pathlib.Path
-        Input value.
+        Directory where generated figures are written.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform fig discrete sweep.
     """
     fig, ax = plot_discrete_N_sweep(
         BASE,
@@ -126,17 +125,17 @@ def fig_discrete_sweep(outdir: pathlib.Path) -> None:
 
 def fig_individual_modes(outdir: pathlib.Path) -> None:
     """
-    Handle fig individual modes.
+    Run the fig individual modes routine.
 
     Parameters
     ----------
     outdir : pathlib.Path
-        Input value.
+        Directory where generated figures are written.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform fig individual modes.
     """
     cfgs = make_all_configs()
     fig, axes = plt.subplots(2, 3, figsize=(14, 9), constrained_layout=True)
@@ -159,12 +158,12 @@ def fig_individual_modes(outdir: pathlib.Path) -> None:
 
 def print_summary() -> None:
     """
-    Handle print summary.
+    Print summary.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform print summary.
     """
     logging.info("\n" + "═" * 60)
     logging.info("  phasor_flim — acquisition mode summary")
@@ -195,12 +194,12 @@ def print_summary() -> None:
 
 def main() -> None:
     """
-    Handle main.
+    Run the main routine.
 
     Returns
     -------
     None
-        Return value.
+        No object is returned; the function perform main.
     """
     parser = argparse.ArgumentParser(description="phasor_flim demo")
     parser.add_argument(

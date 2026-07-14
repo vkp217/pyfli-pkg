@@ -6,16 +6,17 @@ basis generation, acquisition simulation, and reconstruction solvers. Public API
 includes classes :class:`LinearReconstructor` and :class:`TVReconstructor`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 from scipy.optimize import minimize
+
 from .base_reconstructor import BaseReconstructor
 
 
 class LinearReconstructor(BaseReconstructor):
     """
-    Perform back-projection reconstruction for four-dimensional SPAD measurements. It is
+    Run the linear reconstructor routine.
     the lightweight baseline solver for single-pixel camera data.
 
     Parameters
@@ -47,19 +48,19 @@ class LinearReconstructor(BaseReconstructor):
 
     def reconstruct_slice(self, y_slice: np.ndarray, A: np.ndarray) -> Any:
         """
-        Handle reconstruct slice.
+        Reconstruct slice.
 
         Parameters
         ----------
         y_slice : np.ndarray
-            Input value.
+            Single measurement slice reconstructed by the solver.
         A : np.ndarray
-            Input value.
+            Lower bound or left separator value used by the helper.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by reconstruct slice.
         """
         A = A.astype(np.float64)
         y = y_slice.astype(np.float64)
@@ -113,23 +114,24 @@ class TVReconstructor(BaseReconstructor):
     ) -> tuple[Any, ...]:
         # Data fidelity: 0.5 * ||Ax - y||^2
         """
-        Handle objective and grad.
+        Run the objective and grad routine.
 
         Parameters
         ----------
         x_flat : np.ndarray
-            Input value.
+            Flattened image or parameter vector.
         A : np.ndarray
-            Input value.
+            Lower bound or left separator value used by the helper.
         y : np.ndarray
-            Input value.
+            Observed signal, target data, or coordinate array.
         alpha : float
-            Input value.
+            Regularization strength, fraction value, or significance threshold used by the
+        routine.
 
         Returns
         -------
         tuple[Any, ...]
-            Return value.
+            Tuple containing objective value and gradient.
         """
         Ax_minus_y = np.dot(A, x_flat) - y
         fidelity = 0.5 * np.sum(Ax_minus_y**2)
@@ -158,19 +160,19 @@ class TVReconstructor(BaseReconstructor):
 
     def reconstruct_slice(self, y_slice: np.ndarray, A: np.ndarray) -> Any:
         """
-        Handle reconstruct slice.
+        Reconstruct slice.
 
         Parameters
         ----------
         y_slice : np.ndarray
-            Input value.
+            Single measurement slice reconstructed by the solver.
         A : np.ndarray
-            Input value.
+            Lower bound or left separator value used by the helper.
 
         Returns
         -------
         Any
-            Return value.
+            Object produced by reconstruct slice.
         """
         A = A.astype(np.float64)
         y = y_slice.astype(np.float64)

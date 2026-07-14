@@ -6,8 +6,8 @@ basis generation, acquisition simulation, and reconstruction solvers. Public API
 includes functions :func:`run_reconstruction`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from .solvers import LinearReconstructor, TVReconstructor
 from .spad_solvers import SPADPoissonReconstructor
 

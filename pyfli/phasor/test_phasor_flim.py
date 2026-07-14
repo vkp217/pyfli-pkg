@@ -9,8 +9,8 @@ or:
     python test_phasor_flim.py
 """
 
-from __future__ import annotations
 import math
+
 import numpy as np
 import pytest
 from dataclasses import replace

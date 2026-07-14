@@ -6,10 +6,11 @@ generation, hardware noise modeling, calibration, and validation tools. Public A
 includes classes :class:`MacroSimulator` and :class:`TCSPCSimulator`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 import numpy as np
 from scipy.signal import fftconvolve
+
 from .simulator_engine import FLIEngine
 from .noise_models import NoiseEngine
 from .distributions import ParameterSampler
@@ -53,7 +54,7 @@ class MacroSimulator:
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by call.
         """
         p = self.engine.sample_all_params()
 
@@ -183,7 +184,7 @@ class TCSPCSimulator:
         Returns
         -------
         dict[Any, Any]
-            Return value.
+            Dictionary containing the data produced by call.
         """
         p = self.engine.sample_all_params()
         n_cycles = np.random.randint(1, self.engine.params_cfg["cycles"] + 1)

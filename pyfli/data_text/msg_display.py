@@ -6,9 +6,10 @@ used by interactive fitting workflows. Public API includes classes
 :class:`MessageDisplay`.
 """
 
-from __future__ import annotations
 from typing import Any
+
 from pyfli import logging
+
 import numpy as np
 
 
@@ -29,17 +30,17 @@ class MessageDisplay:
 
     def _internal_log(self, message: Any) -> None:
         """
-        Handle internal log.
+        Run the internal log routine.
 
         Parameters
         ----------
         message : Any
-            Input value.
+            Message text displayed to the user.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform internal log.
         """
         if self.saver:
             self.saver.log(message)
@@ -50,19 +51,19 @@ class MessageDisplay:
         self, res_px: np.ndarray, model_type: str = "bi-exponential"
     ) -> None:
         """
-        Handle disp params.
+        Run the disp params routine.
 
         Parameters
         ----------
         res_px : np.ndarray
-            Input value.
+            Fit result dictionary for one pixel.
         model_type : str
-            Input value.
+            FLIM model family, such as mono- or bi-exponential.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function perform disp params.
         """
         if not res_px:
             raise ValueError("Data was not provided (res_px is empty or None)")
@@ -107,12 +108,12 @@ class MessageDisplay:
         Parameters
         ----------
         **kwargs : Any
-            Input value.
+            Additional keyword options forwarded to the underlying implementation.
 
         Returns
         -------
         None
-            Return value.
+            No object is returned; the function fit session.
         """
         pretty_labels = {
             "model_type": "Decay Model",
@@ -157,14 +158,14 @@ class MessageDisplay:
         Parameters
         ----------
         data_maps : np.ndarray
-            Input value.
+            Dictionary of parameter maps used to summarize a pixel.
         px : np.ndarray
-            Input value.
+            Pixel column coordinate.
 
         Returns
         -------
         np.ndarray
-            Return value.
+            Per-pixel summary values for the requested coordinate.
         """
         x, y = px
         rows = []
