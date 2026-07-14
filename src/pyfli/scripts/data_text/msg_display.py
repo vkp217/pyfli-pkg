@@ -1,32 +1,8 @@
-"""Console/log formatting helpers for FLI fit results.
-
-Provides `Msg_display`, a small presenter class that formats fitted
-decay parameters, session configuration, and per-pixel data-map summaries
-into readable text blocks, either printing them or forwarding them to a
-`DataSaver`-like logger.
-"""
 import os
 import numpy as np
 
 class Msg_display:
-    """Formats and displays/logs FLI fitting results and diagnostics.
-
-    If constructed with a `saver` object (exposing `log` and, optionally,
-    `save_params`), formatted messages are also written to that saver's
-    log in addition to (or instead of) being printed to stdout.
-
-    Attributes:
-        saver: Optional logger object used to persist displayed messages.
-    """
-
     def __init__(self, saver=None):
-        """Initialize the display helper.
-
-        Args:
-            saver: Optional object with a `log(message)` method (and
-                optionally `save_params(**kwargs)`) used to persist
-                displayed output. If None, output is only printed.
-        """
         self.saver = saver
 
     def _internal_log(self, message):
@@ -36,28 +12,6 @@ class Msg_display:
             print(message)
 
     def disp_params(self, res_px, model_type='bi-exponential'):
-        """Format and display fitted parameters for a single pixel.
-
-        Builds a bordered text block listing the fitted parameter values
-        with their uncertainties, R^2, chi-squared, reduced chi-squared,
-        and convergence status, then prints/logs it via `_internal_log`.
-
-        Args:
-            res_px: Sequence of per-pixel fit results, expected to
-                contain at least 7 elements where index 0 is the
-                parameter array, index 1 the parameter errors, indices
-                2-4 are R2/chi2/reduced-chi2, and index 6 is the
-                convergence flag.
-            model_type: Decay model used for the fit; determines the
-                parameter labels shown. Use 'bi-exponential' (default)
-                for the 5-parameter model, otherwise the 3-parameter
-                mono-exponential labels are used.
-
-        Raises:
-            ValueError: If `res_px` is empty or None.
-            IndexError: If `res_px` does not contain the expected number
-                of elements.
-        """
         if not res_px:
             raise ValueError('Data was not provided (res_px is empty or None)')
 
@@ -91,18 +45,6 @@ class Msg_display:
         self._internal_log(full_msg)
 
     def fit_session(self, **kwargs):
-        """Display/log a formatted session-configuration banner.
-
-        Prints (or logs) a bordered header, the given keyword arguments
-        as labeled settings (using friendlier labels for known keys),
-        and a footer. If a `saver` is set, the raw kwargs are also
-        recorded via `saver.save_params`.
-
-        Args:
-            **kwargs: Session configuration values to display, such as
-                `model_type`, `processor_name`, `fitter_name`, `p0`,
-                `use_initial_guess`, and `use_bounds`.
-        """
         pretty_labels = {
             'model_type': 'Decay Model',
             'processor_name': 'Processor',
@@ -140,25 +82,6 @@ class Msg_display:
     ]
 
     def get_pixel_summary(self, data_maps, px):
-        """Display/log a formatted summary of fit-result maps for one pixel.
-
-        Looks up the value at `px` in each of the known 2-D result maps
-        (photon count, alpha, tau1/tau2, R2, chi-squared variants, and
-        shifts), formats them into an aligned text block, prints it,
-        logs it via the saver if present, and returns the raw rows.
-
-        Args:
-            data_maps: Dictionary mapping map names (e.g.
-                'photon_count_map', 'alpha1_map', 'tau1_map', 'R2_map')
-                to 2-D NumPy arrays.
-            px: `(x, y)` pixel coordinate to index into each map.
-
-        Returns:
-            list[tuple[str, str]]: `(label, formatted_value)` pairs in
-            display order, where `formatted_value` is `'—'` if no
-            matching map was found, `'error'` if indexing failed, or the
-            value formatted to 4 decimal places otherwise.
-        """
         x, y = px
         rows = []
         for label, candidates in self._PIXEL_FIELDS:

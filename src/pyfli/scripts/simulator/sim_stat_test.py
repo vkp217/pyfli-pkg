@@ -1,13 +1,4 @@
 # simulator/sim_stat_test .py
-
-"""Statistical validation of simulated FLI decay data against real data.
-
-Provides ``FLIValidator``, which compares a simulated decay cube to an
-experimental reference decay cube using temporal-profile similarity
-(cosine similarity, KL divergence) and integrated-intensity distribution
-metrics (Kolmogorov-Smirnov test, histogram intersection).
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
@@ -15,24 +6,7 @@ from scipy.spatial.distance import cosine
 from scipy.special import rel_entr
 
 class FLIValidator:
-    """Compares simulated vs. experimental FLI decay data statistically.
-
-    Filters out low-signal pixels (below ``threshold`` integrated
-    intensity), then compares the mean temporal decay profile and the
-    per-pixel integrated-intensity distribution between a simulated and an
-    experimental decay cube.
-    """
-
     def __init__(self, method='analytical', threshold=10):
-        """Initializes the validator.
-
-        Args:
-            method: Simulation method label (e.g. ``'analytical'`` or
-                ``'tcspc'``), lower-cased and stored for reference/reporting.
-            threshold: Minimum integrated photon count for a pixel to be
-                considered valid; pixels with a lower total are excluded
-                from all comparisons (see ``_preprocess_cube``).
-        """
         self.method = method.lower()
         self.threshold = threshold
 

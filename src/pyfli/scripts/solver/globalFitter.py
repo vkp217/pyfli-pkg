@@ -1,11 +1,4 @@
 # solver/globalFitter.py
-"""Cluster-based global (super-pixel-seeded) fitting orchestration for FLIM images.
-
-Defines :class:`GlobalFLIFitter`, which clusters image pixels, performs
-high-SNR super-pixel fitting to obtain robust seed parameters, dispatches
-per-cluster pixel fitting to a CPU or GPU processor, and stitches the
-per-cluster results back into full-image parameter maps.
-"""
 import numpy as np
 import torch
 import time
@@ -16,26 +9,6 @@ from .comparison import FittingComparator
 from .base_static import resolve_params_and_bounds
 
 class GlobalFLIFitter:
-    """Cluster-based ("super-pixel") global fitting for FLIM images.
-
-    Groups image pixels into clusters (e.g. from a segmentation mask), fits
-    a single high-SNR "super-pixel" decay per cluster to obtain robust seed
-    parameters, then re-fits each cluster's individual pixels using those
-    seeds (optionally constraining lifetimes to a tolerance band around the
-    super-pixel values for stricter, non-global inference).
-
-    Args:
-        freq: Two-element frequency descriptor ``[laser_freq, acquisition_freq]``
-            (MHz).
-        base_fitter_class: NLSF fitter class used for super-pixel fitting
-            when a non-MLE estimator is requested.
-        mle_fitter_class: MLE fitter class used for super-pixel fitting when
-            a Poisson/Pearson/Neyman estimator is requested.
-        processor_instance: Optional CPU or GPU processor instance (or
-            class) used to fit individual cluster pixels in
-            :meth:`process_clusters`.
-    """
-
     def __init__(self, freq, base_fitter_class, mle_fitter_class, processor_instance=None):
         self.freq = freq
         self.BaseClass = base_fitter_class

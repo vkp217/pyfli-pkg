@@ -125,34 +125,12 @@ class DataProcessor:
     @classmethod
     def is_valid(cls, valid: np.ndarray,
                  min_samples: Optional[int] = None) -> bool:
-        """Check whether an array has enough finite, non-constant data to plot.
-
-        Args:
-            valid (np.ndarray): 1-D array of values (typically already
-                cleaned by `process`).
-            min_samples (int, optional): Minimum number of finite samples
-                required. Defaults to `cls.MIN_SAMPLES` (5) when None.
-
-        Returns:
-            bool: True if there are at least `min_samples` finite values and
-            their standard deviation is non-zero, False otherwise.
-        """
         n = min_samples or cls.MIN_SAMPLES
         v = np.asarray(valid); v = v[np.isfinite(v)]
         return len(v) >= n and np.nanstd(v) != 0
 
     @staticmethod
     def stats(valid: np.ndarray) -> Dict[str, float]:
-        """Compute summary statistics for a 1-D array of valid values.
-
-        Args:
-            valid (np.ndarray): 1-D array of values.
-
-        Returns:
-            Dict[str, float]: Empty dict if `valid` is empty, otherwise a
-            dict with keys 'mean', 'std', 'median', 'min', 'max', and 'n'
-            (the sample count).
-        """
         if not len(valid): return {}
         return dict(mean=float(np.mean(valid)), std=float(np.std(valid)),
                     median=float(np.median(valid)), min=float(np.min(valid)),
@@ -177,17 +155,6 @@ class SourceLoader:
     np.ndarray    1-D → single label; 2-D → each column maps to a label
     """
     def __init__(self, *args, values=None, source_names=None):
-        """Create a SourceLoader over one or more data sources.
-
-        Args:
-            *args: Data sources to ingest — each a dict, an `np.load()`
-                result (npz), or an `np.ndarray`.
-            values (list[str], optional): Explicit list of labels/keys to
-                extract. When None, labels are inferred from the sources
-                via `_infer_labels`.
-            source_names (list[str], optional): Display names for each
-                source in `args`. Defaults to "Source 1", "Source 2", ...
-        """
         self.raw_sources  = args
         self.values       = values
         self.source_names = source_names or [f"Source {i+1}" for i in range(len(args))]
@@ -253,25 +220,6 @@ class PlotKit:
     @staticmethod
     def map(ax: Axes, data_map: np.ndarray, *, config=None, title="",
             vmin=None, vmax=None, fig=None, add_colorbar=True, **kw) -> None:
-        """Draw a 2-D array as an imshow map, with an optional colorbar.
-
-        Args:
-            ax (Axes): Axes to draw into.
-            data_map (np.ndarray): 2-D array to display.
-            config (PlotConfig, optional): Supplies the colormap
-                (`config.cmap`). Defaults to a fresh `PlotConfig()`.
-            title (str): Prefix for the axes title ("{title} Map").
-            vmin (float, optional): imshow color-scale lower bound.
-            vmax (float, optional): imshow color-scale upper bound.
-            fig (Figure, optional): Figure to attach the colorbar to;
-                required (together with `add_colorbar=True`) for the
-                colorbar to be drawn.
-            add_colorbar (bool): Whether to add a colorbar. Defaults to True.
-            **kw: Extra keyword arguments forwarded to `ax.imshow`.
-
-        Returns:
-            None
-        """
         cfg = config or PlotConfig()
         im  = ax.imshow(data_map, cmap=cfg.cmap, vmin=vmin, vmax=vmax, **kw)
         if add_colorbar and fig is not None:
@@ -282,19 +230,6 @@ class PlotKit:
     @staticmethod
     def histogram(ax: Axes, valid: np.ndarray, *, config=None,
                   title="", **kw) -> None:
-        """Draw a histogram of a 1-D array.
-
-        Args:
-            ax (Axes): Axes to draw into.
-            valid (np.ndarray): 1-D array of values to histogram.
-            config (PlotConfig, optional): Supplies the bin count
-                (`config.bins`). Defaults to a fresh `PlotConfig()`.
-            title (str): Prefix for the axes title ("{title} Histogram").
-            **kw: Extra keyword arguments forwarded to `ax.hist`.
-
-        Returns:
-            None
-        """
         ax.hist(valid, bins=(config or PlotConfig()).bins, **kw)
         ax.set_title(f"{title} Histogram".strip())
 
@@ -302,20 +237,6 @@ class PlotKit:
     @staticmethod
     def log_histogram(ax: Axes, valid: np.ndarray, *, config=None,
                       title="", **kw) -> None:
-        """Draw a log-scaled histogram of the strictly positive values.
-
-        Args:
-            ax (Axes): Axes to draw into.
-            valid (np.ndarray): 1-D array of values; only values > 0 are
-                histogrammed.
-            config (PlotConfig, optional): Supplies the bin count
-                (`config.bins`). Defaults to a fresh `PlotConfig()`.
-            title (str): Prefix for the axes title ("{title} Log Histogram").
-            **kw: Extra keyword arguments forwarded to `ax.hist`.
-
-        Returns:
-            None
-        """
         ax.hist(valid[valid > 0], bins=(config or PlotConfig()).bins,
                 log=True, **kw)
         ax.set_title(f"{title} Log Histogram".strip())
@@ -325,31 +246,6 @@ class PlotKit:
     def kde(ax: Axes, valid: np.ndarray, *, config=None, title="",
             color=None, label=None, fill=False, alpha=0.35,
             n_points=1000, **kw) -> None:
-        """Draw a Gaussian kernel density estimate of a 1-D array.
-
-        No curve is drawn when `valid` has fewer than 2 points (only the
-        title is set).
-
-        Args:
-            ax (Axes): Axes to draw into.
-            valid (np.ndarray): 1-D array of values.
-            config (PlotConfig, optional): Unused directly by this method
-                (accepted for interface consistency with other PlotKit
-                methods).
-            title (str): Prefix for the axes title ("{title} KDE").
-            color: Line/fill color forwarded to matplotlib.
-            label (str, optional): Legend label for the KDE line.
-            fill (bool): If True, shade the area under the KDE curve in
-                addition to drawing the line. Defaults to False.
-            alpha (float): Fill opacity when `fill=True`. Defaults to 0.35.
-            n_points (int): Number of points to evaluate the KDE at.
-                Defaults to 1000.
-            **kw: Extra keyword arguments forwarded to `ax.plot` (only used
-                when `fill=False`).
-
-        Returns:
-            None
-        """
         if len(valid) > 1:
             kf = gaussian_kde(valid)
             x  = np.linspace(valid.min(), valid.max(), n_points)
@@ -365,22 +261,6 @@ class PlotKit:
     @staticmethod
     def violinplot(ax: Axes, valid: np.ndarray, *, config=None,
                    title="", **kw) -> None:
-        """Draw a violin plot, or an "Insufficient data" placeholder.
-
-        Falls back to a placeholder text when `DataProcessor.is_valid`
-        rejects `valid` (too few finite samples or zero variance).
-
-        Args:
-            ax (Axes): Axes to draw into.
-            valid (np.ndarray): 1-D array of values.
-            config (PlotConfig, optional): Unused directly by this method
-                (accepted for interface consistency).
-            title (str): Prefix for the axes title ("{title} Violin").
-            **kw: Extra keyword arguments forwarded to `ax.violinplot`.
-
-        Returns:
-            None
-        """
         if DataProcessor.is_valid(valid):
             ax.violinplot(valid, showmeans=True, showmedians=True, **kw)
         else:
@@ -392,22 +272,6 @@ class PlotKit:
     @staticmethod
     def boxplot(ax: Axes, valid: np.ndarray, *, config=None,
                 title="", **kw) -> None:
-        """Draw a boxplot, or an "Insufficient data" placeholder.
-
-        Falls back to a placeholder text when `DataProcessor.is_valid`
-        rejects `valid` (too few finite samples or zero variance).
-
-        Args:
-            ax (Axes): Axes to draw into.
-            valid (np.ndarray): 1-D array of values.
-            config (PlotConfig, optional): Unused directly by this method
-                (accepted for interface consistency).
-            title (str): Prefix for the axes title ("{title} Boxplot").
-            **kw: Extra keyword arguments forwarded to `ax.boxplot`.
-
-        Returns:
-            None
-        """
         if DataProcessor.is_valid(valid):
             ax.boxplot(valid, orientation="vertical", **kw)
         else:
@@ -419,21 +283,6 @@ class PlotKit:
     @staticmethod
     def cdf(ax: Axes, valid: np.ndarray, *, config=None, title="",
             color=None, label=None, **kw) -> None:
-        """Draw the empirical cumulative distribution function.
-
-        Args:
-            ax (Axes): Axes to draw into.
-            valid (np.ndarray): 1-D array of values.
-            config (PlotConfig, optional): Unused directly by this method
-                (accepted for interface consistency).
-            title (str): Prefix for the axes title ("{title} CDF").
-            color: Line color forwarded to matplotlib.
-            label (str, optional): Legend label for the CDF line.
-            **kw: Extra keyword arguments forwarded to `ax.plot`.
-
-        Returns:
-            None
-        """
         s = np.sort(valid)
         ax.plot(s, np.arange(len(s)) / len(s),
                 color=color, label=label, **kw)
@@ -443,20 +292,6 @@ class PlotKit:
     # ── QQ ────────────────────────────────────────────────────────────────────
     @staticmethod
     def qq(ax: Axes, valid: np.ndarray, *, config=None, title="", **kw) -> None:
-        """Draw a quantile-quantile plot against a reference distribution.
-
-        Args:
-            ax (Axes): Axes to draw into.
-            valid (np.ndarray): 1-D array of values.
-            config (PlotConfig, optional): Supplies the reference
-                distribution (`config.qq_reference`). Defaults to a fresh
-                `PlotConfig()` (reference "norm").
-            title (str): Prefix for the axes title ("{title} QQ Plot").
-            **kw: Accepted but unused (interface consistency).
-
-        Returns:
-            None
-        """
         probplot(valid, dist=(config or PlotConfig()).qq_reference, plot=ax)
         ax.set_title(f"{title} QQ Plot".strip())
 
@@ -464,20 +299,6 @@ class PlotKit:
     @staticmethod
     def scatter(ax: Axes, x: np.ndarray, y: np.ndarray, *,
                 config=None, title="", **kw) -> None:
-        """Draw a scatter plot of two 1-D arrays.
-
-        Args:
-            ax (Axes): Axes to draw into.
-            x (np.ndarray): X-axis values.
-            y (np.ndarray): Y-axis values.
-            config (PlotConfig, optional): Unused directly by this method
-                (accepted for interface consistency).
-            title (str): Prefix for the axes title ("{title} Scatter").
-            **kw: Extra keyword arguments forwarded to `ax.scatter`.
-
-        Returns:
-            None
-        """
         ax.scatter(x, y, **kw)
         ax.set_title(f"{title} Scatter".strip())
 
@@ -548,19 +369,6 @@ class PlotKit:
 
     @classmethod
     def get_method(cls, name: str) -> Callable:
-        """Resolve a plot-type name to its PlotKit drawing method.
-
-        Args:
-            name (str): Plot type name (case-insensitive, e.g. "hist",
-                "kde", "box", "violin", "qq", "raincloud"). See
-                `PlotKit._NAME_MAP` for all accepted aliases.
-
-        Returns:
-            Callable: The corresponding `PlotKit` static/class method.
-
-        Raises:
-            ValueError: If `name` does not match any known plot type.
-        """
         key = name.strip().lower()
         canonical = cls._NAME_MAP.get(key)
         if canonical is None:
@@ -589,17 +397,6 @@ class SubplotVisualizer:
                               {"remove_nan":True,"threshold":(0,1)}])
     """
     def __init__(self, config: Optional[PlotConfig] = None, **kw):
-        """Create a SubplotVisualizer.
-
-        Args:
-            config (PlotConfig, optional): Shared visual/statistical
-                configuration to use. When None, a `PlotConfig` is built
-                from any recognized `PlotConfig` field names passed in
-                `**kw`.
-            **kw: Individual `PlotConfig` field overrides (e.g.
-                `figsize=(20, 8), cmap="jet"`), used only when `config` is
-                None. Unrecognized keys are silently ignored.
-        """
         if config is not None:
             self.config = config
         else:
@@ -611,33 +408,6 @@ class SubplotVisualizer:
              plot_types: Sequence[str] = ("map","histogram","violinplot","boxplot"),
              titles=None, operations=None,
              fig=None, axes=None) -> Figure:
-        """Render a grid of rows (data arrays) x columns (plot types).
-
-        Each row corresponds to one array in `data_arrays`, cleaned via
-        `DataProcessor.process` using the matching `operations` entry; each
-        column renders one of `plot_types` for that row via `PlotKit`.
-
-        Args:
-            *data_arrays: 2-D arrays to visualize, one per row.
-            plot_types (Sequence[str]): Plot-type names (see
-                `PlotKit.get_method`) drawn as columns, plus the special
-                "map"/"imshow" and "scatter" types handled directly by
-                `_render`. Defaults to
-                `("map", "histogram", "violinplot", "boxplot")`.
-            titles (list[str], optional): Row titles. Defaults to
-                "Data 1", "Data 2", ...
-            operations (list[dict], optional): Per-row `DataProcessor`
-                operations dict. Defaults to an empty dict per row (no
-                cleaning).
-            fig (Figure, optional): Existing figure to draw into. When None
-                (together with `axes=None`), a new figure/axes grid is
-                created sized to `self.config.figsize`.
-            axes (np.ndarray of Axes, optional): Existing axes grid
-                matching `fig`.
-
-        Returns:
-            Figure: The created or supplied figure, after `tight_layout()`.
-        """
         n = len(data_arrays)
         titles     = titles     or [f"Data {i+1}" for i in range(n)]
         operations = operations or [{}            for _ in range(n)]
@@ -747,25 +517,6 @@ class Plotter:
 
     def __init__(self, *args, values=None, style_config=None, source_names=None,
                  operations=None):
-        """Create a Plotter over one or more comparable data sources.
-
-        Args:
-            *args: Data sources to compare — each a dict, an `np.load()`
-                result (npz), or an `np.ndarray`. Ingested via
-                `SourceLoader`.
-            values (list[str], optional): Explicit list of keys to plot.
-                Inferred from the sources when None.
-            style_config (PlotConfig | dict | list, optional): A
-                `PlotConfig` instance to use directly; or a dict/list of hex
-                color strings used to build a `PlotConfig(colors=...)`; or
-                None to fall back to a default 5-color palette.
-            source_names (list[str], optional): Legend labels for each
-                source. Defaults to "Source 1", "Source 2", ...
-            operations (dict | list[dict], optional): `DataProcessor`
-                operations applied to every array before plotting — either
-                one dict shared by all sources or a list with one dict per
-                source (index-matched).
-        """
         self.raw_data      = args
         self.source_names  = source_names or [f"Source {i+1}" for i in range(len(args))]
         self.stats_results : List[Dict]   = []
@@ -1292,28 +1043,6 @@ class Plotter:
     # ── export ─────────────────────────────────────────────────────────────────
     def export_data(self, save_pdf=False, save_png=False, save_csv=False,
                     filename="results", dpi=150) -> None:
-        """Save the most recently rendered figure and/or its stats to disk.
-
-        Requires `make_plot()` (or a subclass equivalent) to have been
-        called first to populate `self.current_fig`; if it hasn't,
-        figure-saving is silently skipped. CSV export requires
-        `self.stats_results` to be non-empty (populated by significance
-        annotation during `make_plot`/`make_cluster_plot`).
-
-        Args:
-            save_pdf (bool): If True, save `self.current_fig` as
-                "{filename}.pdf". Defaults to False.
-            save_png (bool): If True, save `self.current_fig` as
-                "{filename}.png" at `dpi` resolution. Defaults to False.
-            save_csv (bool): If True and `self.stats_results` is non-empty,
-                save it as "{filename}.csv". Defaults to False.
-            filename (str): Base filename (without extension) for all
-                exports. Defaults to "results".
-            dpi (int): Resolution for the PNG export. Defaults to 150.
-
-        Returns:
-            None
-        """
         if self.current_fig is not None:
             if save_pdf:
                 self.current_fig.savefig(f"{filename}.pdf",
@@ -1342,21 +1071,6 @@ class DLModelComparator(Plotter):
     """
 
     def compute_distribution_metrics(self) -> List[Dict]:
-        """Compute distribution-distance metrics for each model vs. ground truth.
-
-        Treats the first data source as ground truth and every subsequent
-        source as a model output. For each key and each model source,
-        computes the Wasserstein distance, energy distance, and KL
-        divergence (on 50-bin density histograms, with a 1e-10 epsilon to
-        avoid zero-division) between the ground-truth and model arrays,
-        truncated to the shorter of the two lengths.
-
-        Returns:
-            List[Dict]: One dict per (key, model) pair with keys 'Key',
-            'Model' (1-based source index), 'ModelName', 'Wasserstein',
-            'Energy', and 'KL'. Keys with no ground-truth data, or model
-            sources with no data for a key, are skipped.
-        """
         groups  = self._apply_processing(self._loader.load())
         results = []
         for key in self.labels:
@@ -1380,19 +1094,6 @@ class DLModelComparator(Plotter):
         return results
 
     def annotate_distribution_metrics(self, ax: Axes) -> None:
-        """Draw a text box of per-key/model distribution metrics next to an axes.
-
-        Calls `compute_distribution_metrics()` and renders one line per
-        (key, model) pair — Wasserstein, Energy, and KL values — as a
-        bordered text annotation just outside the right edge of `ax`.
-
-        Args:
-            ax (Axes): Axes to annotate (text is placed in axes-fraction
-                coordinates outside its right edge).
-
-        Returns:
-            None
-        """
         metrics = self.compute_distribution_metrics()
         lines   = [f"{m['Key']} / {m['ModelName']}: "
                    f"W={m['Wasserstein']:.3f}, "

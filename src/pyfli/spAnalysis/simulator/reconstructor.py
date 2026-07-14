@@ -1,32 +1,11 @@
 # spAnalysis/simulator/reconstructor.py
 
-"""Image reconstruction from simulated single-pixel measurements.
-
-Provides linear back-projection (ghost imaging), TV-regularized L-BFGS-B
-optimization, and direct Fourier/DCT-domain reconstruction for scenes
-captured by `MeasurementSimulator` using `BasisPatterns` illumination
-patterns.
-"""
-
 import numpy as np
 from scipy.optimize import minimize
 from scipy.fftpack import idct
 
 class Reconstructor:
-    """Reconstructs a 2D image from single-pixel scalar measurements.
-
-    Supports three reconstruction strategies: fast linear back-projection,
-    isotropic total-variation minimization (Gaussian noise model), and
-    direct IDCT reconstruction for Fourier-domain acquisitions.
-    """
-
     def __init__(self, resolution=(128, 128)):
-        """Initialize the reconstructor for a given image resolution.
-
-        Args:
-            resolution: (height, width) of the reconstructed image in
-                pixels.
-        """
         self.res_h, self.res_w = resolution
         self.n_pixels = self.res_h * self.res_w
 
@@ -75,22 +54,6 @@ class Reconstructor:
         return total_obj, total_grad
 
     def solve_tv(self, measurements, basis_matrix, alpha=1.0, maxiter=500):
-        """Reconstruct an image via TV-regularized L-BFGS-B minimization.
-
-        Minimizes 0.5 * ||Ax - y||^2 + alpha * TV(x), starting from a
-        pinv-like linear back-projection initial guess. Prints solver
-        progress to stdout (`disp: True`).
-
-        Args:
-            measurements: Measurement vector y (flattened if not already 1D).
-            basis_matrix: (M, N) sensing matrix A used to acquire
-                `measurements`.
-            alpha: Total-variation regularization weight.
-            maxiter: Maximum L-BFGS-B iterations.
-
-        Returns:
-            Reconstructed (res_h, res_w) image.
-        """
         A = basis_matrix.astype(np.float64)
         y = measurements.astype(np.float64).flatten()
         M, N = A.shape
@@ -112,19 +75,6 @@ class Reconstructor:
         return res.x.reshape((self.res_h, self.res_w), order='C')
 
     def reconstruct_linear(self, measurements, basis_matrix):
-        """Reconstruct an image via linear back-projection (ghost imaging).
-
-        Computes x = A^T y / M, i.e. the sensing matrix's transpose applied
-        to the measurements and normalized by the number of measurements.
-
-        Args:
-            measurements: Measurement vector y (flattened if not already 1D).
-            basis_matrix: (M, N) sensing matrix A used to acquire
-                `measurements`.
-
-        Returns:
-            Reconstructed (res_h, res_w) image.
-        """
         # Standard linear back-projection (Ghost Imaging)
         y = measurements.flatten()
         M = len(y)
@@ -133,21 +83,6 @@ class Reconstructor:
         return img_flat.reshape((self.res_h, self.res_w))
 
     def reconstruct_fourier_domain(self, measurements, sampling_indices):
-        """Reconstruct an image directly from a sparse DCT spectrum.
-
-        Places the acquired `measurements` into their corresponding
-        frequency-domain locations (given by `sampling_indices`) and
-        applies a 2D inverse DCT. Faster than iterative solvers but only
-        applicable to Fourier/DCT-domain acquisitions.
-
-        Args:
-            measurements: 1D array of measured DCT coefficients.
-            sampling_indices: Flat indices (into the (res_h * res_w) DCT
-                spectrum) at which each entry of `measurements` was sampled.
-
-        Returns:
-            Reconstructed (res_h, res_w) image.
-        """
         # Fast reconstruction for Fourier SPI.
         # Directly fills the 2D DCT spectrum and performs IDCT.
         freq_map_flat = np.zeros(self.n_pixels)

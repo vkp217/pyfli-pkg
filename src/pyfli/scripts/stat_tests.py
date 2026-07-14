@@ -1,14 +1,3 @@
-"""Statistical comparison tests for simulated vs experimental decay batches.
-
-Provides two batch-oriented test suites:
-
-- `TestStat`: shape/likelihood-based goodness-of-fit statistics (Anderson-
-  Darling, Kolmogorov-Smirnov, Poisson likelihood ratio, and a BIC-based
-  Bayesian evidence approximation) with bootstrap confidence intervals.
-- `FLIDistributionTest`: distribution-level discrepancy metrics between
-  two batches of normalized decay curves (MMD, energy distance, sliced
-  Wasserstein distance, Frechet distance, and PCA manifold overlap).
-"""
 import numpy as np
 from scipy.stats import ks_2samp
 from sklearn.metrics.pairwise import rbf_kernel
@@ -17,24 +6,6 @@ from scipy.stats import wasserstein_distance
 from scipy.linalg import sqrtm
 
 class TestStat:
-    """Batch goodness-of-fit statistics comparing simulated vs experimental decays.
-
-    Each row of `sim_batch`/`exp_batch` is normalized into a PDF and CDF
-    on construction; the various test methods then operate across the
-    batch dimension, returning one statistic per batch element (or, for
-    `bootstrap_ci`/`bayesian_evidence`, aggregated/derived values).
-
-    Attributes:
-        sim: Simulated decay batch, cast to float64.
-        exp: Experimental decay batch, cast to float64.
-        eps: Small constant used to avoid division by zero.
-        B: Batch size (number of rows).
-        n_bins: Number of time bins (columns) per decay.
-        sim_pdf: `sim` normalized to sum to 1 along each row.
-        exp_pdf: `exp` normalized to sum to 1 along each row.
-        sim_cdf: Cumulative sum of `sim_pdf` along each row.
-        exp_cdf: Cumulative sum of `exp_pdf` along each row.
-    """
 
     def __init__(self, sim_batch, exp_batch, eps=1e-12):
         """
@@ -81,13 +52,6 @@ class TestStat:
     # Kolmogorov–Smirnov Test (CDF-based)
 
     def kolmogorov_smirnov(self):
-        """Compute the per-batch Kolmogorov-Smirnov statistic.
-
-        Returns:
-            np.ndarray: Shape `(B,)` array of KS statistics, the maximum
-            absolute difference between the simulated and experimental
-            CDFs for each batch element.
-        """
         ks_stats = np.max(np.abs(self.sim_cdf - self.exp_cdf), axis=1)
         return ks_stats
 
@@ -157,16 +121,6 @@ class TestStat:
 
     # MASTER FUNCTION
     def run_all_tests(self):
-        """Run all batch statistics and bootstrap confidence intervals.
-
-        Returns:
-            dict: With keys `'anderson_darling'`, `'ks_stat'`,
-            `'likelihood_ratio'`, `'delta_BIC'` (each a `(B,)` array from
-            the corresponding method), and `'AD_CI'`, `'KS_CI'`,
-            `'LR_CI'` (each a `(lower, upper)` tuple from
-            `bootstrap_ci` applied to the Anderson-Darling, KS, and
-            likelihood-ratio statistics respectively).
-        """
         results = {}
 
         # Core statistics
@@ -187,22 +141,6 @@ class TestStat:
 
 
 class FLIDistributionTest:
-    """Distribution-level discrepancy metrics between two decay batches.
-
-    Both batches are normalized (row-wise) to PDFs on construction. The
-    methods compute complementary notions of "distance" between the
-    resulting empirical distributions of simulated vs experimental decay
-    curves: kernel-based (MMD), geometric (energy distance, sliced
-    Wasserstein), Gaussian-approximation (Frechet distance), and
-    variance-overlap in a shared PCA subspace.
-
-    Attributes:
-        sim: Simulated decay batch, row-normalized to PDFs (float64).
-        exp: Experimental decay batch, row-normalized to PDFs (float64).
-        eps: Small constant used to avoid division by zero.
-        N: Number of samples (rows) in each batch.
-        D: Number of bins (columns) per decay.
-    """
 
     def __init__(self, sim_batch, exp_batch, eps=1e-12):
         """
@@ -245,16 +183,6 @@ class FLIDistributionTest:
     # 2️⃣ Energy Distance
     # ==========================================================
     def energy_distance(self):
-        """Compute the (squared Euclidean) statistical energy distance.
-
-        Uses the standard estimator `2*E|X-Y| - E|X-X'| - E|Y-Y'|` over
-        all pairwise distances between and within the two batches.
-
-        Returns:
-            float: Energy distance between the simulated and
-            experimental distributions; 0 for identical distributions,
-            larger for more dissimilar ones.
-        """
         X = self.sim
         Y = self.exp
 
@@ -290,18 +218,6 @@ class FLIDistributionTest:
     # 4️⃣ Fréchet Distance (FID-style)
     # ==========================================================
     def frechet_distance(self):
-        """Compute the Frechet distance (FID-style) between the two batches.
-
-        Fits a multivariate Gaussian to each batch (mean and covariance
-        across samples) and computes the closed-form Frechet distance
-        between the two Gaussians, using `scipy.linalg.sqrtm` for the
-        matrix square root of the covariance product (discarding any
-        residual imaginary component for numerical stability).
-
-        Returns:
-            float: Frechet distance between the simulated and
-            experimental distributions.
-        """
         mu1 = self.sim.mean(axis=0)
         mu2 = self.exp.mean(axis=0)
 
@@ -328,21 +244,6 @@ class FLIDistributionTest:
     # 5️⃣ PCA Manifold Overlap
     # ==========================================================
     def pca_overlap(self, n_components=10):
-        """Measure variance overlap between the batches in a shared PCA subspace.
-
-        Fits PCA on the concatenation of both batches, projects each
-        batch into that subspace, and compares per-component variances.
-
-        Args:
-            n_components: Number of PCA components to fit and compare.
-
-        Returns:
-            float: Mean, over components, of the ratio
-            `min(var_sim, var_exp) / max(var_sim, var_exp)`. Values
-            close to 1 indicate similar spread along the shared
-            principal components; values close to 0 indicate divergent
-            spread.
-        """
         pca = PCA(n_components=n_components)
 
         combined = np.vstack([self.sim, self.exp])
@@ -363,14 +264,6 @@ class FLIDistributionTest:
     # MASTER FUNCTION
     # ==========================================================
     def run_all(self):
-        """Run all distribution-level discrepancy metrics.
-
-        Returns:
-            dict: With keys `'MMD'`, `'EnergyDistance'`,
-            `'SlicedWasserstein'`, `'FrechetDistance'`, and
-            `'PCA_Overlap'`, each holding the corresponding method's
-            scalar result (computed with default arguments).
-        """
         return {
             "MMD": self.mmd(),
             "EnergyDistance": self.energy_distance(),

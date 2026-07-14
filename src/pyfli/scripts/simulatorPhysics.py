@@ -9,6 +9,7 @@ import numpy as np
 from scipy.signal import fftconvolve
 from scipy.optimize import curve_fit
 from scipy.special import hyp2f1
+# from .utils_common import _load_irf
 from scipy.stats import truncnorm
 from tqdm import tqdm
 from PIL import Image
@@ -20,15 +21,6 @@ _MAX_GATE_SHIFT = 3
 
 
 class HardSimulator:
-    """Per-pixel FLI simulator using analytical IRF convolution + Poisson noise.
-
-    On each call, builds a fresh ``HeterogeneousFLISimulator`` configured
-    with a randomly chosen tau2 prior and cycle count, and generates one
-    pixel's decay via ``generate_pixel_decay`` (analytical bi-/mono-
-    exponential decay convolved with the IRF, scaled by a sampled photon
-    count, then Poisson-noised).
-    """
-
     def __init__(self,
         irf_file_path='../data/raw/ICCD/paper_IRF700nm.mat',
         tau2=None,  # Can be: None (Random), (mu, sigma), or [(mu1, sig1), (mu2, sig2)]
@@ -37,31 +29,8 @@ class HardSimulator:
         photo_count=(5, 5),
         mono_fraction=0.2,
         bit=10,
-        n_cycles=800_000
+        n_cycles=800_000 
     ):
-        """Loads the IRF and stores simulation hyperparameters.
-
-        Args:
-            irf_file_path: Path to a ``.mat`` IRF file, loaded via
-                ``DataOperations.load_irf``.
-            tau2: Controls the tau2 (donor lifetime) prior used per call:
-                ``None`` draws a random ``(mu, sigma)`` pair each call
-                (mu in [0.3, 3.0], sigma in [0.05, min(0.4, 0.4*mu)]); a
-                single ``(mu, sigma)`` tuple fixes the prior; a list of
-                ``(mu, sigma)`` tuples selects one uniformly at random
-                per call.
-            efficiency: ``(alpha, beta)`` beta prior for FRET efficiency
-                ``E``, forwarded to ``HeterogeneousFLISimulator``.
-            f_fraction: ``(alpha, beta)`` beta prior for amplitude
-                fraction ``f``, forwarded to ``HeterogeneousFLISimulator``.
-            photo_count: ``(alpha, beta)`` beta prior for photon count,
-                forwarded to ``HeterogeneousFLISimulator``.
-            mono_fraction: Probability that a pixel is sampled as
-                mono-exponential.
-            bit: ADC bit depth used to scale the sampled photon count.
-            n_cycles: Upper bound on the number of excitation cycles; the
-                actual cycle count is re-randomized on every call.
-        """
         self.irf_data_full = DataOperations(irf_path = irf_file_path).load_irf()
         self.tau2_user = tau2 
         self.efficiency = efficiency
@@ -85,23 +54,8 @@ class HardSimulator:
         return (mu, sigma)
 
     def __call__(self):
-        """Simulates one pixel and returns its parameters and decay features.
-
-        Draws a random cycle count and tau2 prior, builds a new
-        ``HeterogeneousFLISimulator``, generates the analytical decay
-        (``generate_pixel_decay``), normalizes it, and computes FFT/phasor
-        features.
-
-        Returns:
-            dict: The sampled parameter dict (``pars``) merged with
-            ``tau1_l``, ``tau2_l``, ``a_l`` (amplitude fraction), ``tau_mean_l``
-            (intensity-weighted mean lifetime), ``s_t`` (normalized decay,
-            squeezed), ``fft`` (FFT/phasor harmonic features of the
-            observed decay), and ``irf`` (the instrument response function
-            used).
-        """
         n_pixel_cycles = np.random.randint(1, self.n_cycles + 1)
-
+        
         current_tau2 = self._get_current_tau2()
         self.fli_sim = HeterogeneousFLISimulator(
             self.irf_data_full,  
@@ -144,26 +98,8 @@ class HardestSimulator:
         photo_count=(1.1, 5),
         mono_fraction=0.2,
         bit=8, ):
-        """Loads the IRF and stores simulation hyperparameters.
-
-        Args:
-            irf_file_path: Path to an IRF file (``.mat``, ``.txt``, etc.),
-                loaded via ``DataOperations.load_irf``.
-            tau2: ``(mu, sigma)`` prior for the fixed tau2 lifetime used at
-                construction time (unlike ``HardSimulator``, this is not
-                re-randomized per call here; ``__call__`` builds its own
-                ``current_tau2`` instead).
-            efficiency: ``(alpha, beta)`` beta prior for FRET efficiency
-                ``E``, forwarded to ``HeterogeneousFLISimulator``.
-            f_fraction: ``(alpha, beta)`` beta prior for amplitude
-                fraction ``f``, forwarded to ``HeterogeneousFLISimulator``.
-            photo_count: ``(alpha, beta)`` beta prior for photon count,
-                forwarded to ``HeterogeneousFLISimulator``.
-            mono_fraction: Probability that a pixel is sampled as
-                mono-exponential.
-            bit: ADC bit depth used to scale the sampled photon count.
-        """
-        self.irf_data_full = DataOperations(irf_path=irf_file_path).load_irf()
+        
+        self.irf_data_full = _load_irf(irf_file_path)
         self.efficiency = efficiency
         self.f_fraction = f_fraction
         self.photo_count = photo_count
@@ -171,22 +107,6 @@ class HardestSimulator:
         self.bit = bit
 
     def __call__(self):
-        """Simulates one pixel via photon-by-photon TCSPC Monte Carlo.
-
-        Draws a random cycle count (up to 800,000) and a random tau2 mean
-        in [0.2, 2.5] ns (fixed std 0.199999), builds a new
-        ``HeterogeneousFLISimulator``, generates the photon histogram
-        (``tcspc_pixel_decay``), normalizes it, and computes FFT/phasor
-        features.
-
-        Returns:
-            dict: The sampled parameter dict (``pars``) merged with
-            ``tau1_l``, ``tau2_l``, ``a_l`` (amplitude fraction), ``tau_mean_l``
-            (intensity-weighted mean lifetime), ``s_t`` (normalized
-            photon histogram, squeezed), ``fft`` (FFT/phasor harmonic
-            features of the observed histogram), and ``irf`` (the
-            instrument response function used).
-        """
         n_cycles = np.random.randint(800_000)
         current_tau2 = (np.random.uniform(0.2, 2.5), 0.199999)
         self.fli_sim = HeterogeneousFLISimulator(
@@ -220,22 +140,6 @@ class HardestSimulator:
 # ============================================================================
 
 class HeterogeneousFLISimulator:
-    """Core single-pixel FLI physics model: sampling, decay, TCSPC, and phasor analysis.
-
-    Models a fluorescence-lifetime pixel as a mixture of a "long" (tau2)
-    and, for non-mono pixels, a "short" (tau1, derived from a sampled FRET
-    efficiency ``E``) exponential decay component. Supports:
-
-    * Analytical decay generation with IRF convolution and Poisson noise
-      (``generate_pixel_decay``).
-    * Photon-by-photon TCSPC Monte Carlo simulation with IRF timing jitter
-      and pile-up rejection (``tcspc_pixel_decay``).
-    * Post-processing utilities: baseline-corrected/normalized decay
-      (``pixel_wise_normalisation``), FFT/phasor harmonic features
-      (``fft_features``), analytical global parameters/phasor coordinates,
-      curve-fitting-based lifetime recovery, and per-pixel Fisher
-      information for parameter estimation.
-    """
 
     def __init__(
         self,
@@ -250,35 +154,6 @@ class HeterogeneousFLISimulator:
         n_cycles=800_000,
         norm_type='pdf_robust',
     ):
-        """Resolves the IRF and stores sampling/normalization parameters.
-
-        Args:
-            irf_full: IRF data: a 1-D trace used directly, or a 3-D stack
-                ``(H, W, T)`` from which a random pixel is selected (falling
-                back to the center pixel if the randomly chosen ICCD pixel's
-                total counts are below 5000).
-            tau2: ``(mean_tau2, std_tau2)`` for the truncated-normal tau2
-                (long-lifetime) prior.
-            efficiency: ``(alpha, beta)`` beta prior for FRET efficiency
-                ``E`` (non-mono pixels).
-            f_fraction: ``(alpha, beta)`` beta prior for amplitude
-                fraction ``f`` (non-mono pixels).
-            photo_count: ``(alpha, beta)`` beta prior for photon count,
-                scaled by ``2**bit - 1``.
-            mono_fraction: Probability that a pixel is sampled as
-                mono-exponential (see ``sample_local_parameters``).
-            bit: ADC bit depth used to scale the sampled photon count.
-            omega: Angular modulation frequency (rad/ns) used in
-                ``analytical_phasor``.
-            n_cycles: Number of laser excitation cycles simulated per
-                pixel in ``tcspc_pixel_decay``.
-            norm_type: Normalization mode used by
-                ``pixel_wise_normalisation``: ``'None'``, ``'pdf'``,
-                ``'min_max'``, or ``'pdf_robust'``.
-
-        Raises:
-            ValueError: If ``irf_full`` is neither 1-D nor 3-D.
-        """
         # ---- IRF ----
         if irf_full.ndim == 3:
             x = np.random.randint(irf_full.shape[0])
@@ -319,32 +194,6 @@ class HeterogeneousFLISimulator:
     # ------------------------------------------------------------------
 
     def pixel_wise_normalisation(self, decay_series):
-        """Normalizes a decay/histogram trace according to ``self.norm_type``.
-
-        Supported modes:
-
-        * ``'None'`` — returns the input unchanged.
-        * ``'pdf'`` — divides by the total sum (probability-density-like
-          normalization); returns the input unchanged if the sum is 0.
-        * ``'min_max'`` — rescales to ``[0, 1]`` via ``(x - min) / (max -
-          min + eps)``.
-        * ``'pdf_robust'`` — subtracts a baseline (median of the last
-          ``self.baseline_pts``, default 20, samples), clips negative
-          values to 0, then normalizes to sum to 1; falls back to the raw
-          (baseline-subtracted-and-clipped) decay if the resulting total is
-          non-finite or below ``eps``.
-
-        Args:
-            decay_series: Array-like decay or photon-count histogram to
-                normalize.
-
-        Returns:
-            numpy.ndarray: The normalized decay, as ``float64``.
-
-        Raises:
-            ValueError: If ``self.norm_type`` is not one of the supported
-                modes.
-        """
         eps = 1e-12
         decay = np.asarray(decay_series, dtype=np.float64)
 
@@ -377,23 +226,6 @@ class HeterogeneousFLISimulator:
 
     @staticmethod
     def fft_features(decay, n_harmonics=5):
-        """Computes DC-normalized FFT (phasor) harmonic features of a decay.
-
-        Takes the real FFT of the decay along its last axis, normalizes
-        the first ``n_harmonics`` non-DC coefficients by the DC component
-        (total intensity), and returns their real (``g``) and imaginary
-        (``s``) parts concatenated — the same ``g``/``s`` quantities used
-        in phasor-plot lifetime analysis.
-
-        Args:
-            decay: 1-D decay array, or a 2-D batch of decays (``(B, T)``).
-            n_harmonics: Number of non-DC FFT harmonics to extract.
-
-        Returns:
-            numpy.ndarray: Shape ``(2 * n_harmonics,)`` for 1-D input, or
-            ``(B, 2 * n_harmonics)`` for 2-D input, containing the
-            harmonics' real parts followed by their imaginary parts.
-        """
         decay = np.asarray(decay, dtype=np.float64)
         scalar = decay.ndim == 1
         if scalar:
@@ -431,22 +263,6 @@ class HeterogeneousFLISimulator:
     # ------------------------------------------------------------------
 
     def sample_local_parameters(self):
-        """Samples per-pixel lifetime/amplitude parameters (mono or bi-exponential).
-
-        Always samples tau2 from the truncated-normal prior. With
-        probability ``mono_fraction``, samples a near-mono-exponential
-        pixel: with 90% chance ``E=0`` (so ``tau1 == tau2``) and a
-        dominant amplitude ``A1`` close to 1; otherwise ``E`` close to 1
-        (so ``tau1`` close to 0) with a small ``A1``. Otherwise, samples a
-        general bi-exponential pixel with ``E`` and ``f`` drawn from their
-        respective beta priors and stretched away from 0/1 by a small
-        margin (``E_min=0.1``, ``f_min=0.05``) via ``_stretch_or_squeeze``.
-
-        Returns:
-            dict: Parameter dict with keys ``mono`` (bool), ``E`` (FRET
-            efficiency), ``f`` (amplitude fraction, steady-state-corrected
-            for the mono branch), ``tau1``, ``tau2``, ``A1``, ``A2``.
-        """
         tau2 = float(self._sample_tau2()[0])
         mono = np.random.rand() < self.mono_fraction
 
@@ -505,12 +321,6 @@ class HeterogeneousFLISimulator:
         }
 
     def sample_photon_count(self):
-        """Samples a peak photon count from the beta photon-count prior.
-
-        Returns:
-            int: A photon count sampled from ``Beta(alpha_A, beta_A)`` and
-            scaled to the ``[0, 2**bit - 1]`` ADC range.
-        """
         return round(np.random.beta(self.alpha_A, self.beta_A) * (2 ** self.bit - 1))
 
     # IRF jitter
@@ -562,17 +372,6 @@ class HeterogeneousFLISimulator:
 
     # Global analytical parameters / phasor / Fisher information
     def analytical_global_parameters(self):
-        """Computes population-level (prior-mean) lifetime/fraction estimates.
-
-        Derives expected tau1, tau2, and amplitude fraction directly from
-        the configured prior hyperparameters (means of the ``f_fraction``
-        and ``efficiency`` beta distributions and the tau2 prior mean),
-        without drawing any random samples.
-
-        Returns:
-            dict: ``{"tau1_global": ..., "tau2_global": ..., "f_global":
-            ...}``.
-        """
         mu_f = self.alpha_f / (self.alpha_f + self.beta_f)
         tau2_global = self.tau2_mean
         tau1_global = tau2_global * (self.beta_E / (self.alpha_E + self.beta_E + 1))
@@ -580,54 +379,15 @@ class HeterogeneousFLISimulator:
 
     @staticmethod
     def biexponential(t, a1, tau1, a2, tau2):
-        """Bi-exponential decay model function used for curve fitting.
-
-        Args:
-            t: Time points (array-like or scalar).
-            a1: Amplitude of the first component.
-            tau1: Lifetime of the first component.
-            a2: Amplitude of the second component.
-            tau2: Lifetime of the second component.
-
-        Returns:
-            Model evaluated at ``t``: ``a1 * exp(-t/tau1) + a2 * exp(-t/tau2)``.
-        """
         return a1 * np.exp(-t / tau1) + a2 * np.exp(-t / tau2)
 
     def recover_global_lifetime(self, decay):
-        """Fits a bi-exponential model to a decay curve via least squares.
-
-        Uses ``scipy.optimize.curve_fit`` with an initial guess derived
-        from ``self.tau2_mean`` (``p0 = [0.4, 0.5*tau2_mean, 0.6,
-        tau2_mean]``).
-
-        Args:
-            decay: Decay curve (same length as ``self.t``) to fit.
-
-        Returns:
-            dict: ``{"a1": ..., "tau1": ..., "a2": ..., "tau2": ...}``
-            fitted parameters.
-
-        Raises:
-            RuntimeError: If the least-squares fit fails to converge
-                within ``maxfev=20_000`` function evaluations.
-        """
         tau2_init = self.tau2_mean
         p0 = [0.4, 0.5 * tau2_init, 0.6, tau2_init]
         popt, _ = curve_fit(self.biexponential, self.t, decay, p0=p0, maxfev=20_000)
         return {"a1": popt[0], "tau1": popt[1], "a2": popt[2], "tau2": popt[3]}
 
     def analytical_phasor(self):
-        """Computes analytical population-averaged phasor coordinates.
-
-        Analytically averages the single-exponential phasor point of the
-        long-lifetime (tau2) component with the Gauss-hypergeometric-
-        weighted phasor of the short-lifetime (tau1, via the ``E`` beta
-        prior) component, mixed by the mean amplitude fraction ``f``.
-
-        Returns:
-            tuple: ``(g, s)`` analytical phasor coordinates.
-        """
         mu_f = self.alpha_f / (self.alpha_f + self.beta_f)
         tau2 = self.tau2_mean
         c = self.omega * tau2
@@ -644,21 +404,6 @@ class HeterogeneousFLISimulator:
         )
 
     def fisher_information(self):
-        """Computes the Fisher information matrix for one sampled bi-exponential pixel.
-
-        Samples a fresh set of local parameters and, under a Poisson
-        photon-counting noise model, computes the Fisher information
-        matrix for the parameters ``(tau1, tau2, f, E)`` from the
-        analytic gradients of the expected intensity ``I(t)`` (using
-        ``I ~ Poisson``, so the per-bin Fisher contribution is
-        ``(dI/dtheta)^2 / I``).
-
-        Returns:
-            numpy.ndarray: A symmetric, non-negative ``4x4`` Fisher
-            information matrix ordered ``(tau1, tau2, f, E)``. Returns an
-            all-zero ``4x4`` matrix if the freshly sampled pixel happens
-            to be mono-exponential.
-        """
         pars = self.sample_local_parameters()
         if pars["mono"]:
             return np.zeros((4, 4))

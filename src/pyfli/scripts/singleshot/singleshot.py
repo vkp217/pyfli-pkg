@@ -1,21 +1,11 @@
 # scripts/singleshot/singleshot.py
-"""Single-shot fluorescence lifetime estimation from gated TPSF data.
-
-Contains `SingleShotFLI`, which builds a lookup table relating
-gate-ratio to lifetime and uses it to estimate a per-pixel fluorescence
-lifetime image from HDF5-stored time-point spread function (TPSF) data
-acquired in single-shot mode.
-"""
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
 class SingleShotFLI:
-    """Estimates fluorescence lifetime images from single-shot gated data."""
-
     def __init__(self):
-        """Initialize the estimator (no state is held on construction)."""
         pass
 
     def compute_lifetime(step, fname, gate_width, gate):

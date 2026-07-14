@@ -1,30 +1,10 @@
-"""Visualization helpers for FLI/FLIM data: multi-panel spatial map
-displays, per-pixel decay/fit summaries, and combined image/time-series
-plots, with optional figure saving to disk.
-"""
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 from matplotlib import gridspec
 
 class DataViewer:
-    """Renders grids of spatial maps and per-pixel decay/fit plots for
-    FLI/FLIM datasets, with optional saving of the resulting figures.
-
-    An instance can be configured with a save directory and figure name so
-    that every plotting call also persists a PNG alongside displaying it.
-    """
-
     def __init__(self, save_path=None, fig_name = None):
-        """Create a DataViewer, optionally configured to save figures.
-
-        Args:
-            save_path (str, optional): Directory to save figures into. If
-                given and it does not already exist, it is created.
-            fig_name (str, optional): Base filename (without extension)
-                used when saving figures. If not given, a method-specific
-                default name is used instead.
-        """
         self.fig_name = fig_name
         self.save_path = save_path
         if save_path and not os.path.exists(save_path):
@@ -35,46 +15,9 @@ class DataViewer:
             x, y = coord
             ax.scatter(y, x, color='red', s=40, marker='x', edgecolors='white', linewidths=1.5)
 
-    def display_data(self, data_list, structure=(1, 1), coord=None, data_names=None,
+    def display_data(self, data_list, structure=(1, 1), coord=None, data_names=None, 
                     cmaps=None, v_ranges=None, figsize=None, normalize=False, yscale='linear'):
-        """Display a grid of spatial maps, with an optional decay-plot panel.
 
-        Each entry in `data_list` is shown as an imshow panel (2-D arrays
-        shown directly; 3-D arrays are summed along the last axis first).
-        If `coord` is given and at least one array in `data_list` is 3-D, an
-        extra column is added showing the time-series ("decay") at that
-        pixel for every 3-D array, optionally normalized against the first
-        3-D array's peak at that pixel. If the instance was constructed with
-        a `save_path`, the resulting figure is also saved as a PNG there.
-
-        Args:
-            data_list (list[np.ndarray]): Arrays to display, each either 2-D
-                (H, W) or 3-D (H, W, T).
-            structure (tuple[int, int]): (rows, cols) grid layout for the
-                image panels. Defaults to (1, 1).
-            coord (tuple[int, int], optional): (x, y) pixel location used to
-                mark each image panel and, if present, drive the extra
-                decay/time-series panel.
-            data_names (list[str], optional): Titles for each panel.
-                Defaults to "Data 1", "Data 2", ...
-            cmaps (list, optional): Per-panel colormap, one per entry in
-                `data_list`. Falls back to "viridis" for missing entries.
-            v_ranges (list[tuple], optional): Per-panel (vmin, vmax) for
-                imshow. Falls back to (None, None) for missing entries.
-            figsize (tuple, optional): Figure size. Defaults to a size
-                scaled by the number of columns/rows.
-            normalize (bool): If True, normalize the image panels — either
-                against the reference pixel's peak (when `coord` and a 3-D
-                array are present) or per-panel min/max otherwise. Defaults
-                to False.
-            yscale (str): Y-axis scale ('linear', 'log', ...) for the decay
-                panel. Defaults to 'linear'.
-
-        Returns:
-            tuple: `(fig, img_axes, ax_decay)` — the created Figure, the
-            list of image-panel Axes, and the decay-panel Axes (or None if
-            no decay panel was drawn).
-        """
         num_plots = len(data_list)
         r, c = structure
         names = data_names or [f"Data {i+1}" for i in range(num_plots)]        
@@ -151,34 +94,6 @@ class DataViewer:
                                 title="FLI Fit Summary",
                                 mode=("decay", "irf", "fit", "residuals"),
                                 esp = 1e0):
-        """Plot a decay/IRF/fit/residuals summary panel for a pyfli fit result.
-
-        Expects `data` in the specific dict structure produced by pyfli's
-        image-processing / simulator pipeline (`data['raw_data']['decay']`,
-        `data['raw_data']['irf']`, `data['TR_maps']['fit_map']`,
-        `data['TR_maps']['residuals_map']`, `data['results']['maps']`).
-        Renders log-scale and linear-scale traces of the selected `mode`
-        curves side by side, a text panel listing the fitted parameter maps
-        (evaluated at `pixel` if given), and — when `pixel` is given — an
-        intensity-map panel marking that pixel.
-
-        Args:
-            data (dict): pyfli fit-result dictionary as described above.
-            pixel (tuple[int, int], optional): (x, y) pixel to index into
-                3-D data. If None, `data` is treated as already 1-D
-                (single-pixel) and no image panel is drawn.
-            title (str): Figure suptitle. Defaults to "FLI Fit Summary".
-            mode (Iterable[str]): Subset of {"decay", "irf", "fit",
-                "residuals"} selecting which curves to plot. Defaults to
-                all four.
-            esp (float): Clipping floor used before taking the log scale
-                (avoids log(0)/log(negative)). Defaults to 1e0.
-
-        Returns:
-            tuple: `(fig, (ax1, ax2, ax_text, ax3))` — the Figure and its
-            log-scale, linear-scale, text, and (if `pixel` given) image
-            Axes; `ax3` is None when `pixel` is None.
-        """
         # since simulator/pyfli img processing output is in specific disctionary
         # best to use in the simulator
         mode = set(mode)  # faster lookup
@@ -299,37 +214,7 @@ class DataViewer:
                     mode2=None, # index in the data_list which has to be displayed
                     names=None,
                     esp = 1e0):
-        """Plot selected datasets as images and, optionally, pixel time-series.
 
-        `data_list` entries indexed by `mode` are plotted as log/linear
-        time-series at `pixel` (3-D entries are indexed at `pixel`; other
-        entries are plotted as-is). `data_list` entries indexed by `mode2`
-        are shown as image panels (3-D entries summed along the last axis;
-        other entries drawn with `ax.plot`), each optionally marked at
-        `pixel`. If the instance was constructed with a `save_path`, the
-        resulting figure is also saved as a PNG there.
-
-        Args:
-            data_list (list[np.ndarray]): Candidate datasets, each 2-D or
-                3-D.
-            pixel (tuple[int, int], optional): (x, y) pixel enabling the
-                log/linear time-series panels. If None, only image panels
-                are drawn.
-            title (str): Figure suptitle. Defaults to "FLI Data Viewer".
-            mode (list[int], optional): Indices into `data_list` to include
-                in the time-series panels. Defaults to all indices.
-            mode2 (list[int], optional): Indices into `data_list` to display
-                as image panels. Defaults to `mode`.
-            names (list[str], optional): Labels for the plotted/imaged
-                datasets, shared between the time-series and image panels.
-                Defaults to "Data {index}".
-            esp (float): Clipping floor used before taking the log scale in
-                the time-series panel. Defaults to 1e0.
-
-        Returns:
-            tuple: If `pixel` is given, `(fig, (ax_log, ax_lin, img_axes))`;
-            otherwise `(fig, img_axes)`.
-        """
         n_total = len(data_list)
         if mode is None:
             mode = list(range(n_total))

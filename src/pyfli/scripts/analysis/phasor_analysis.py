@@ -1,11 +1,3 @@
-"""Phasor-based lifetime analysis utilities.
-
-Provides helpers to derive the frequency/time axis from IRF gate spacing,
-compute and calibrate phasor coordinates and apparent lifetime, generate the
-standard set of phasor figures, and save the phasor lifetime map in a format
-compatible with the fitting-results loaders in ``load_results``.
-"""
-
 import os
 import numpy as np
 

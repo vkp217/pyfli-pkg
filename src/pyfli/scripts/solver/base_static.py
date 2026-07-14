@@ -1,46 +1,6 @@
-"""Static helper functions for parameter/bounds resolution and initial-guess estimation.
-
-Provides plugin-style initial-guess generators (moment-based and rapid
-lifetime determination-based) and logic to merge user-supplied parameter
-guesses/bounds with automatically generated defaults for the FLI fitters.
-"""
 import numpy as np
 
 def resolve_params_and_bounds(user_p0, user_bounds, model_type, t, decay, T_laser, guess_plugin, T_acq):
-    """Merge user-supplied initial parameters and bounds with an automatic guess.
-
-    Calls ``guess_plugin`` to obtain a dictionary of default initial parameter
-    values, overrides it with any user-supplied ``user_p0`` (dict or
-    array-like), builds the initial parameter vector and default bounds for
-    the requested model, then applies any user-supplied ``user_bounds``
-    overrides. The resulting initial guess is clipped to lie strictly within
-    the final bounds.
-
-    Args:
-        user_p0: User-supplied initial guess, either a dict keyed by
-            parameter name (``'amp'``, ``'tau'``/``'alpha1'``/``'tau1'``/
-            ``'tau2'``, ``'v_shift'``, ``'h_shift'``) or a positional
-            list/array. May be None.
-        user_bounds: User-supplied bounds, either a dict keyed by parameter
-            name mapping to ``(low, high)`` tuples, or a positional
-            list/array of ``(low, high)`` pairs (or None entries to keep the
-            default). May be None.
-        model_type: Either ``'mono-exponential'`` or ``'bi-exponential'``.
-        t: Time axis (ns) used by the guess plugin.
-        decay: Measured decay counts used by the guess plugin.
-        T_laser: Laser period (ns), used to set upper bounds on lifetimes and
-            default guess ranges.
-        guess_plugin: Callable ``(t, decay, T_acq, T_laser, model_type) ->
-            dict`` that produces the default parameter guess (e.g.
-            ``moment_based_guess`` or ``rld_based_guess``).
-        T_acq: Acquisition window period (ns), used to bound the temporal
-            shift parameter and passed through to ``guess_plugin``.
-
-    Returns:
-        tuple: ``(p0_safe, (low_vec, high_vec))`` where ``p0_safe`` is the
-        clipped initial parameter vector and ``(low_vec, high_vec)`` are the
-        resolved lower/upper bound arrays.
-    """
     smart_dict = guess_plugin(t, decay, T_acq, T_laser, model_type)
 
     smart_dict.setdefault('h_shift', 0.0)
@@ -109,27 +69,6 @@ def resolve_params_and_bounds(user_p0, user_bounds, model_type, t, decay, T_lase
     return p0_safe, (low_vec, high_vec)
 
 def moment_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
-    """Estimate initial decay parameters from the first moment (mean arrival time) of the decay.
-
-    Estimates a baseline offset from the 5th percentile of the decay, then
-    computes the area (zeroth moment) and mean arrival time (first moment /
-    zeroth moment) of the background-subtracted, peak-aligned decay tail to
-    derive a lifetime guess. For the bi-exponential model, the early/late
-    half-split area ratio is used to seed ``alpha1``.
-
-    Args:
-        t: Time axis (ns).
-        decay: Measured decay counts.
-        T_acq: Acquisition window period (ns).
-        T_laser: Laser period (ns), used to bound the lifetime guess.
-        model_type: Either ``'mono-exponential'`` (default) or
-            ``'bi-exponential'``.
-
-    Returns:
-        dict: Initial guess dictionary. For ``'mono-exponential'``: ``amp``,
-        ``tau``, ``v_shift``. For ``'bi-exponential'``: ``amp``, ``alpha1``,
-        ``tau1``, ``tau2``, ``v_shift``.
-    """
     offset_guess = np.percentile(decay, 5)
     clean_d = np.clip(decay - offset_guess, 1e-6, None)
 
@@ -171,25 +110,6 @@ def moment_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
         }
 
 def rld_based_guess(t, decay, T_acq, T_laser, model_type='mono-exponential'):
-    """Estimate initial decay parameters using Rapid Lifetime Determination (RLD).
-
-    Splits the peak-aligned, background-subtracted decay tail into equal-width
-    bins (2 bins for mono-exponential, 4 bins for bi-exponential) and estimates
-    lifetimes from the log-ratio of integrated counts in consecutive bins.
-
-    Args:
-        t: Time axis (ns).
-        decay: Measured decay counts.
-        T_acq: Acquisition window period (ns).
-        T_laser: Laser period (ns), used to bound the lifetime guesses.
-        model_type: Either ``'mono-exponential'`` (default) or
-            ``'bi-exponential'``.
-
-    Returns:
-        dict: Initial guess dictionary. For ``'mono-exponential'``: ``amp``,
-        ``tau``, ``v_shift``. For ``'bi-exponential'``: ``amp``, ``alpha1``
-        (fixed at 0.5), ``tau1``, ``tau2``, ``v_shift``.
-    """
     offset_guess = np.percentile(decay, 5)
     clean_d = np.clip(decay - offset_guess, 1e-6, None)
 

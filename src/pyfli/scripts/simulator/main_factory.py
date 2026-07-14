@@ -1,21 +1,3 @@
-"""Per-pixel FLI decay simulators built on top of ``FLIEngine``.
-
-Provides two callable simulator classes:
-
-* ``Macro_sim`` — analytical bi-exponential decay convolved with the IRF,
-  scaled to a target peak intensity, then passed through a modular ADC-style
-  noise pipeline (jitter, quantum efficiency, dark count rate, read noise,
-  Poisson shot noise, rounding, clipping). Intended for ICCD-style,
-  integrating (macro-time) sensors.
-* ``TCSPC_sim`` — photon-by-photon TCSPC Monte Carlo simulation via
-  ``FLIEngine.simulate_tcspc``, intended for photon-counting sensors.
-
-Both are zero-argument callables that return a per-pixel result dict with
-``raw_data`` (``decay``, ``irf``) and ``results`` (``maps``, ``TR_maps``)
-keys, matching the layout consumed by ``FLIImageGenerator`` and
-``Batch_sim``.
-"""
-
 import numpy as np
 from scipy.signal import fftconvolve
 from .simulator_engine import FLIEngine
@@ -23,29 +5,7 @@ from .noise_models import NoiseEngine
 from .distributions import ParameterSampler
 
 class Macro_sim:
-    """Analytical-convolution FLI pixel simulator for integrating (ICCD-style) sensors.
-
-    On each call, samples lifetime/amplitude/fraction parameters and a peak
-    intensity from ``FLIEngine``, builds the analytical bi-exponential decay
-    convolved with the IRF, and runs it through a configurable noise
-    pipeline (jitter, quantum efficiency, dark count rate, read noise,
-    Poisson shot noise, rounding, and ADC clipping).
-    """
-
     def __init__(self, irf_data, sensor_type='ICCD', **cfg):
-        """Initializes the simulator and its underlying ``FLIEngine``.
-
-        Args:
-            irf_data: IRF data (1-D trace or 3-D IRF stack) forwarded to
-                ``FLIEngine``.
-            sensor_type: Sensor type string (e.g. ``'ICCD'``), upper-cased
-                and used to select QE/read-noise sampling behavior.
-            **cfg: Simulator configuration and noise-pipeline toggles,
-                forwarded to ``FLIEngine``. Recognized toggle keys:
-                ``jitter``, ``dcr_on``, ``poisson``, ``qe_on``,
-                ``read_noise_on``, ``round_on``, ``clip_on`` (all default
-                True).
-        """
         # Toggles
         self.use_jitter = cfg.get('jitter', True)
         self.use_dcr = cfg.get('dcr_on', True)
@@ -59,23 +19,8 @@ class Macro_sim:
         self.engine = FLIEngine(irf_data, **cfg)
 
     def __call__(self):
-        """Simulates one pixel's decay trace and ground-truth parameter maps.
-
-        Samples lifetime/amplitude parameters and a Beta-distributed peak
-        intensity, builds the IRF-convolved analytical decay scaled to that
-        peak, and applies the enabled noise stages (jitter, QE, DCR, read
-        noise, Poisson, rounding, clipping) in sequence.
-
-        Returns:
-            dict: ``{"raw_data": {"decay": ..., "irf": ...}, "results":
-            {"maps": {...lifetime/amplitude/photon-count ground truth...},
-            "TR_maps": {"fit_map": ..., "residual_map": ...}}}`` where
-            ``fit_map`` is the clean decay rescaled to match the noisy
-            observation's peak, and ``residual_map`` is
-            ``decay - fit_map``.
-        """
         p = self.engine.sample_all_params()
-
+        
         # 1. Determine target intensity (A) based on bit-depth
         alpha_pc, beta_pc = self.engine.params_cfg['pc']
         bit_depth = self.engine.params_cfg['bit']
@@ -159,30 +104,7 @@ class Macro_sim:
         }
 
 class TCSPC_sim:
-    """Photon-by-photon TCSPC FLI pixel simulator for photon-counting sensors.
-
-    On each call, samples lifetime/amplitude/fraction parameters, then
-    generates a photon histogram via ``FLIEngine.simulate_tcspc`` (inverse-
-    transform sampling of emission times, IRF convolution, and pile-up
-    filtering), with optional jitter, dark count rate, and bit-depth
-    clipping applied afterward.
-    """
-
     def __init__(self, irf_data, sensor_type='PHOTON_COUNTER', **cfg):
-        """Initializes the simulator and its underlying ``FLIEngine``.
-
-        Args:
-            irf_data: IRF data (1-D trace or 3-D IRF stack) forwarded to
-                ``FLIEngine``.
-            sensor_type: Sensor type string (e.g. ``'PHOTON_COUNTER'``),
-                upper-cased and used for QE sampling when enabled.
-            **cfg: Simulator configuration and noise-pipeline toggles,
-                forwarded to ``FLIEngine``. Recognized toggle keys:
-                ``jitter`` (default True), ``dcr_on`` (default True),
-                ``qe_on`` (default False), ``clip_on`` (default True).
-                If ``bit`` is not supplied, it defaults to 16 (TCSPC
-                counters are 16-bit by default).
-        """
         self.use_jitter = cfg.get('jitter', True)
         self.use_dcr = cfg.get('dcr_on', True)
         self.use_qe = cfg.get('qe_on', False)
@@ -196,21 +118,6 @@ class TCSPC_sim:
         self.engine = FLIEngine(irf_data, **cfg)
 
     def __call__(self):
-        """Simulates one pixel's photon histogram and ground-truth parameter maps.
-
-        Draws a random number of excitation cycles (up to the configured
-        ``cycles`` limit), runs the photon-by-photon TCSPC Monte Carlo
-        simulation for that many cycles, applies optional jitter and dark
-        count rate noise, and clips to the configured bit-depth range.
-
-        Returns:
-            dict: ``{"raw_data": {"decay": ..., "irf": ...}, "results":
-            {"maps": {...lifetime/amplitude/expected-photon-count ground
-            truth...}, "TR_maps": {"fit_map": ..., "residual_map":
-            ...}}}`` where ``fit_map`` is the analytical decay scaled to
-            the expected total photon count, and ``residual_map`` is
-            ``decay - fit_map``.
-        """
         p = self.engine.sample_all_params()
         n_cycles = np.random.randint(1, self.engine.params_cfg['cycles'] + 1)
         mu_per_cycle = 0.01 
