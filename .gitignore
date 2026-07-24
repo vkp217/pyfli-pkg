@@ -15,11 +15,14 @@ build/
 
 # Data and Notebooks (Based on your TOML exclude)
 data/
-examples/microscopy_all_methods.ipynb
 notebooks/
 *.h5
 *.sdt
 *.tif
+
+# Docs and examples
+docs/
+examples/
 
 # IDE settings
 .vscode/
