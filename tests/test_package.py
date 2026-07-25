@@ -1,97 +1,74 @@
-"""
-Smoke tests — verify that all public symbols from pyfli are importable
-and have the expected type.  These tests catch accidental breakage of
-the public API without requiring any data files.
-"""
+"""Smoke tests for the curated top-level pyfli API."""
 
-import pytest
 import pyfli
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Package metadata
-# ─────────────────────────────────────────────────────────────────────────────
-
-def test_version_string_exists():
-    assert hasattr(pyfli, "__version__")
-    assert isinstance(pyfli.__version__, str)
-    assert len(pyfli.__version__) > 0
+def test_no_manual_version_or_all_exports():
+    assert not hasattr(pyfli, "__version__")
+    assert not hasattr(pyfli, "__all__")
 
 
-def test_all_is_defined():
-    assert hasattr(pyfli, "__all__")
-    assert len(pyfli.__all__) > 0
+def test_top_level_core_symbols_are_public():
+    expected = [
+        "DataOperations",
+        "Detector",
+        "LaguerreFLI",
+        "Normalization",
+        "DataSaver",
+        "MacroSimulator",
+        "TCSPCSimulator",
+        "BasisPatterns",
+        "MeasurementSimulator",
+        "Reconstructor",
+    ]
+    for name in expected:
+        assert callable(getattr(pyfli, name))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# All public symbols are importable
-# ─────────────────────────────────────────────────────────────────────────────
-
-@pytest.mark.parametrize("symbol", pyfli.__all__)
-def test_symbol_accessible(symbol):
-    assert hasattr(pyfli, symbol), f"pyfli.{symbol} not found"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Key classes are callable (not None, not a plain module)
-# ─────────────────────────────────────────────────────────────────────────────
-
-@pytest.mark.parametrize("class_name", [
-    "LaguerreFLI",
-    "FLIFitter",
-    "PoissonLikelihoodFitter",
-    "PhasorAnalyzer",
-    "Normalization",
-    "DataSaver",
-])
-def test_class_is_callable(class_name):
-    obj = getattr(pyfli, class_name)
-    assert callable(obj), f"pyfli.{class_name} is not callable"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Simulator factory functions are callable
-# ─────────────────────────────────────────────────────────────────────────────
-
-@pytest.mark.parametrize("fn_name", ["Macro_sim", "TCSPC_sim"])
-def test_simulator_factories_callable(fn_name):
-    obj = getattr(pyfli, fn_name)
-    assert callable(obj)
+def test_top_level_phasor_helpers_are_public():
+    expected = [
+        "AcquisitionConfig",
+        "AcquisitionMode",
+        "phasor_continuous",
+        "phasor_discrete",
+        "phasor_gated_single",
+        "phasor_gated_N",
+        "phasor_truncated",
+        "phasor_offset",
+        "phasor_from_config",
+        "build_locus",
+        "build_loci",
+        "tau_grid",
+        "universal_semicircle",
+        "sepl_center_radius_discrete",
+        "phase_lifetime",
+        "modulus_lifetime",
+        "lifetime_from_phasor",
+        "phase_lifetime_gated",
+        "fractional_components",
+        "plot_phasor",
+        "plot_locus_comparison",
+        "plot_discrete_N_sweep",
+    ]
+    for name in expected:
+        assert hasattr(pyfli, name)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# SPAnalysis exports
-# ─────────────────────────────────────────────────────────────────────────────
-
-@pytest.mark.parametrize("symbol", ["BasisPatterns", "MeasurementSimulator", "Reconstructor"])
-def test_spanalysis_symbols(symbol):
-    assert hasattr(pyfli, symbol)
-    assert callable(getattr(pyfli, symbol))
+def test_subpackages_available():
+    assert pyfli.phasor is not None
+    assert pyfli.sp_analysis is not None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# LaguerreFLI — basic instantiation without fitting
-# ─────────────────────────────────────────────────────────────────────────────
+def test_logging_module_is_configured():
+    assert pyfli.logging.logger.name == "pyfli"
+    assert callable(pyfli.logging.info)
+
 
 def test_laguerre_instantiation():
-    m = pyfli.LaguerreFLI(n_components=2, alpha=0.85, dt=0.05)
-    assert m is not None
-    assert m.n_components == 2
+    model = pyfli.LaguerreFLI(n_components=2, alpha=0.85, dt=0.05)
+    assert model.n_components == 2
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Utility functions are callable
-# ─────────────────────────────────────────────────────────────────────────────
-
-@pytest.mark.parametrize("fn_name", [
-    "recovery_plot",
-    "random_true_pixel",
-    "data_masking",
-    "save_plot",
-    "load_flim_data",
-    "collapse_to_xyt",
-    "plot_xyt",
-])
-def test_utility_functions_callable(fn_name):
-    fn = getattr(pyfli, fn_name)
-    assert callable(fn)
+def test_flim_decay_cube_helpers_are_public():
+    for name in ["load_flim_data", "collapse_to_xyt", "plot_xyt"]:
+        assert callable(getattr(pyfli, name))

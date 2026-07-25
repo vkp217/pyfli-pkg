@@ -16,6 +16,7 @@ from pyfli import LaguerreFLI
 # Initialisation validation
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestInit:
     def test_defaults_accepted(self):
         m = LaguerreFLI()
@@ -67,6 +68,7 @@ class TestInit:
 # Static helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestBasis:
     def test_basis_shape(self):
         T, L = 64, 5
@@ -109,6 +111,7 @@ class TestConvolveWithIRF:
 # Fit on 1-D (single pixel) input
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestFit1D:
     @pytest.fixture
     def fitted_mono(self, mono_decay_1d, gaussian_irf, dt):
@@ -140,9 +143,7 @@ class TestFit1D:
         assert np.all(fitted_mono.taus_ > 0)
 
     def test_fractions_sum_to_one(self, fitted_mono):
-        np.testing.assert_allclose(
-            fitted_mono.fractions_.sum(axis=-1), 1.0, atol=1e-6
-        )
+        np.testing.assert_allclose(fitted_mono.fractions_.sum(axis=-1), 1.0, atol=1e-6)
 
     def test_tau_mean_positive(self, fitted_mono):
         assert np.all(fitted_mono.tau_mean_ >= 0)
@@ -155,6 +156,7 @@ class TestFit1D:
 # ─────────────────────────────────────────────────────────────────────────────
 # Fit on 3-D image cube
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestFit3D:
     @pytest.fixture
@@ -180,14 +182,10 @@ class TestFit3D:
 
     def test_taus_ascending_per_pixel(self, fitted_bi):
         # taus_ are sorted ascending within each pixel
-        assert np.all(
-            fitted_bi.taus_[..., 0] <= fitted_bi.taus_[..., 1] + 1e-12
-        )
+        assert np.all(fitted_bi.taus_[..., 0] <= fitted_bi.taus_[..., 1] + 1e-12)
 
     def test_fractions_sum_to_one(self, fitted_bi):
-        np.testing.assert_allclose(
-            fitted_bi.fractions_.sum(axis=-1), 1.0, atol=1e-6
-        )
+        np.testing.assert_allclose(fitted_bi.fractions_.sum(axis=-1), 1.0, atol=1e-6)
 
     def test_fit_curve_shape(self, fitted_bi, decay_cube):
         assert fitted_bi.fit_curve_.shape == decay_cube.shape
@@ -202,6 +200,7 @@ class TestFit3D:
 # ─────────────────────────────────────────────────────────────────────────────
 # get_parameters dict structure
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestGetParameters:
     @pytest.fixture
@@ -248,6 +247,7 @@ class TestGetParameters:
 # Input validation
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestFitValidation:
     def test_2d_decay_raises(self, gaussian_irf, dt):
         bad_decay = np.ones((4, 64))
@@ -269,6 +269,7 @@ class TestFitValidation:
 # Auto-alpha optimisation
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestAutoAlpha:
     def test_auto_alpha_updates_alpha(self, mono_decay_1d, gaussian_irf, dt):
         m = LaguerreFLI(n_components=1, alpha=0.5, dt=dt, auto_alpha=True)
@@ -286,13 +287,16 @@ class TestAutoAlpha:
 # Lifetime accuracy on noise-free synthetic data
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestLifetimeAccuracy:
     def test_mono_tau_ballpark(self, mono_decay_1d, gaussian_irf, dt):
         """Recovered tau should be within 50% of the ground truth (2 ns)."""
         m = LaguerreFLI(n_components=1, n_laguerre=8, alpha=0.85, dt=dt)
         m.fit(mono_decay_1d, gaussian_irf)
         tau_recovered = float(m.taus_.mean())
-        assert 1.0 < tau_recovered < 4.0, f"Mono tau out of range: {tau_recovered:.3f} ns"
+        assert 1.0 < tau_recovered < 4.0, (
+            f"Mono tau out of range: {tau_recovered:.3f} ns"
+        )
 
     def test_mean_lifetime_positive(self, bi_decay_1d, gaussian_irf, dt):
         m = LaguerreFLI(n_components=2, n_laguerre=6, alpha=0.85, dt=dt)
@@ -312,6 +316,7 @@ class TestLifetimeAccuracy:
 #   * output contract used by downstream plotting/saving code
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _closed_form_laguerre(T, alpha, L):
     """
     Canonical discrete orthonormal Laguerre functions (Marmarelis, 1993):
@@ -326,7 +331,13 @@ def _closed_form_laguerre(T, alpha, L):
         for n in range(T):
             s = 0.0
             for k in range(j + 1):
-                s += ((-1) ** k) * comb(n, k) * comb(j, k) * alpha ** (j - k) * (1 - alpha) ** k
+                s += (
+                    ((-1) ** k)
+                    * comb(n, k)
+                    * comb(j, k)
+                    * alpha ** (j - k)
+                    * (1 - alpha) ** k
+                )
             b[j, n] = alpha ** ((n - j) / 2.0) * np.sqrt(1.0 - alpha) * s
     return b
 
@@ -361,8 +372,9 @@ def _measured_cube_varying_irf(comps, irfs_2d, labels, dt, scale, seed=0, noise=
     for i in range(X):
         for j in range(Y):
             g = irfs_2d[labels[i, j]]
-            h = (f1[i, j] * np.exp(-n * dt / comps[0][1])
-                 + (1 - f1[i, j]) * np.exp(-n * dt / comps[1][1]))
+            h = f1[i, j] * np.exp(-n * dt / comps[0][1]) + (1 - f1[i, j]) * np.exp(
+                -n * dt / comps[1][1]
+            )
             irf_cube[i, j] = g
             decay[i, j] = np.convolve(g, h, mode="full")[:T] * scale
     if noise:
@@ -393,15 +405,19 @@ def test_irf_collapse_equivalence():
     T = 256
     dt = 12.5 / T
     irf = _reg_gaussian_irf(T, dt)
-    y = _measured_cube([(0.6, 0.5), (0.4, 1.5)], irf, dt, scale=3000,
-                       shape=(4, 4), seed=1, noise=True)
+    y = _measured_cube(
+        [(0.6, 0.5), (0.4, 1.5)], irf, dt, scale=3000, shape=(4, 4), seed=1, noise=True
+    )
 
-    kw = dict(n_components=2, n_laguerre=8, dt=dt, auto_alpha=True, laser_period_ns=12.5)
+    kw = dict(
+        n_components=2, n_laguerre=8, dt=dt, auto_alpha=True, laser_period_ns=12.5
+    )
     taus_1d = LaguerreFLI(**kw).fit(y, irf).taus_
     taus_3d = LaguerreFLI(**kw).fit(y, np.tile(irf, (4, 4, 1))).taus_
 
-    assert np.array_equal(taus_1d, taus_3d), \
+    assert np.array_equal(taus_1d, taus_3d), (
         "invariant-IRF fast path diverges from the 1-D path"
+    )
 
 
 @pytest.mark.parametrize("true_taus", [(0.5, 1.5), (0.4, 2.5)])
@@ -413,12 +429,18 @@ def test_biexp_recovery(true_taus):
     comps = [(0.55, true_taus[0]), (0.45, true_taus[1])]
     y = _measured_cube(comps, irf, dt, scale=5000, shape=(6, 6), seed=0, noise=False)
 
-    m = LaguerreFLI(n_components=2, n_laguerre=8, dt=dt, auto_alpha=True,
-                    laser_period_ns=12.5,
-                    taus_init=np.array(true_taus)).fit(y, irf)
+    m = LaguerreFLI(
+        n_components=2,
+        n_laguerre=8,
+        dt=dt,
+        auto_alpha=True,
+        laser_period_ns=12.5,
+        taus_init=np.array(true_taus),
+    ).fit(y, irf)
     got = np.sort(m.taus_, axis=-1).mean(axis=(0, 1))
-    assert np.allclose(got, sorted(true_taus), rtol=0.10, atol=0.10), \
+    assert np.allclose(got, sorted(true_taus), rtol=0.10, atol=0.10), (
         f"recovered {got}, expected {sorted(true_taus)}"
+    )
 
 
 def test_monoexp_autoalpha_not_degenerate():
@@ -430,18 +452,22 @@ def test_monoexp_autoalpha_not_degenerate():
     T = 128
     dt = 12.5 / T
     irf = _reg_gaussian_irf(T, dt, center_ns=0.3, width_ns=0.10)
-    y = _measured_cube([(1.0, 0.8)], irf, dt, scale=5000,
-                       shape=(1, 1), seed=0, noise=False)
+    y = _measured_cube(
+        [(1.0, 0.8)], irf, dt, scale=5000, shape=(1, 1), seed=0, noise=False
+    )
 
-    m = LaguerreFLI(n_components=1, n_laguerre=6, dt=dt, auto_alpha=True,
-                    laser_period_ns=12.5).fit(y, irf)
+    m = LaguerreFLI(
+        n_components=1, n_laguerre=6, dt=dt, auto_alpha=True, laser_period_ns=12.5
+    ).fit(y, irf)
     tau = float(m.taus_.mean())
     recon = m.reconstructed_[0, 0]
     neg_frac = float((recon < -0.02 * np.abs(recon).max()).mean())
 
     assert abs(tau - 0.8) < 0.08, f"mono-exp recovered tau={tau:.3f}, expected ~0.8"
     assert 0.4 < m.alpha < 0.98, f"auto_alpha selected an extreme pole: {m.alpha:.3f}"
-    assert neg_frac < 0.10, f"deconvolution went strongly negative (neg_frac={neg_frac:.2f})"
+    assert neg_frac < 0.10, (
+        f"deconvolution went strongly negative (neg_frac={neg_frac:.2f})"
+    )
 
 
 def test_pixel_variant_irf_recovery():
@@ -464,15 +490,27 @@ def test_pixel_variant_irf_recovery():
     irfs = np.array(irfs)
 
     y, irf_cube = _measured_cube_varying_irf(
-        [(0.5, true[0]), (0.5, true[1])], irfs, labels, dt, scale=4000,
-        seed=0, noise=True)
+        [(0.5, true[0]), (0.5, true[1])],
+        irfs,
+        labels,
+        dt,
+        scale=4000,
+        seed=0,
+        noise=True,
+    )
 
-    m = LaguerreFLI(n_components=2, n_laguerre=8, dt=dt, auto_alpha=True,
-                    laser_period_ns=12.5,
-                    taus_init=np.array(true)).fit(y, irf_cube)
+    m = LaguerreFLI(
+        n_components=2,
+        n_laguerre=8,
+        dt=dt,
+        auto_alpha=True,
+        laser_period_ns=12.5,
+        taus_init=np.array(true),
+    ).fit(y, irf_cube)
     got = np.sort(m.taus_, axis=-1).mean(axis=(0, 1))
-    assert np.allclose(got, sorted(true), rtol=0.12, atol=0.12), \
+    assert np.allclose(got, sorted(true), rtol=0.12, atol=0.12), (
         f"recovered {got}, expected {sorted(true)}"
+    )
 
 
 def test_pixel_variant_irf_beats_single_irf():
@@ -485,23 +523,34 @@ def test_pixel_variant_irf_beats_single_irf():
     dt = 12.5 / T
     n = np.arange(T)
     centers = np.linspace(0.4, 0.9, X)
-    irfs = np.array([(lambda g: g / g.sum())(
-        np.exp(-0.5 * ((n * dt - c) / 0.15) ** 2)) for c in centers])
+    irfs = np.array(
+        [
+            (lambda g: g / g.sum())(np.exp(-0.5 * ((n * dt - c) / 0.15) ** 2))
+            for c in centers
+        ]
+    )
     labels = np.repeat(np.arange(X), Y).reshape(X, Y)
 
     y, irf_cube = _measured_cube_varying_irf(
-        [(0.5, 0.5), (0.5, 1.6)], irfs, labels, dt, scale=4000,
-        seed=1, noise=True)
+        [(0.5, 0.5), (0.5, 1.6)], irfs, labels, dt, scale=4000, seed=1, noise=True
+    )
 
-    kw = dict(n_components=2, n_laguerre=8, dt=dt, auto_alpha=True,
-              laser_period_ns=12.5, taus_init=np.array([0.5, 1.6]))
+    kw = dict(
+        n_components=2,
+        n_laguerre=8,
+        dt=dt,
+        auto_alpha=True,
+        laser_period_ns=12.5,
+        taus_init=np.array([0.5, 1.6]),
+    )
     m_var = LaguerreFLI(**kw).fit(y, irf_cube)
     m_avg = LaguerreFLI(**kw).fit(y, irf_cube.reshape(-1, T).mean(0))
 
-    sse_var = float((m_var.residual_curve_ ** 2).sum())
-    sse_avg = float((m_avg.residual_curve_ ** 2).sum())
-    assert sse_var < 0.5 * sse_avg, \
+    sse_var = float((m_var.residual_curve_**2).sum())
+    sse_avg = float((m_avg.residual_curve_**2).sum())
+    assert sse_var < 0.5 * sse_avg, (
         f"per-pixel IRF did not improve the fit (var={sse_var:.2e}, avg={sse_avg:.2e})"
+    )
 
 
 def test_unique_irf_grouping_matches_naive_loop():
@@ -515,20 +564,32 @@ def test_unique_irf_grouping_matches_naive_loop():
     n = np.arange(T)
     n_unique = 3
     centers = np.linspace(0.4, 0.8, n_unique)
-    irfs = np.array([(lambda g: g / g.sum())(
-        np.exp(-0.5 * ((n * dt - c) / 0.15) ** 2)) for c in centers])
+    irfs = np.array(
+        [
+            (lambda g: g / g.sum())(np.exp(-0.5 * ((n * dt - c) / 0.15) ** 2))
+            for c in centers
+        ]
+    )
     rng = np.random.default_rng(2)
     labels = rng.integers(0, n_unique, (X, Y))
 
     y, irf_cube = _measured_cube_varying_irf(
-        [(0.5, 0.6), (0.5, 1.4)], irfs, labels, dt, scale=4000,
-        seed=2, noise=True)
+        [(0.5, 0.6), (0.5, 1.4)], irfs, labels, dt, scale=4000, seed=2, noise=True
+    )
 
-    kw = dict(n_components=2, n_laguerre=6, dt=dt, auto_alpha=False, alpha=0.88,
-              laser_period_ns=12.5, taus_init=np.array([0.6, 1.4]))
+    kw = dict(
+        n_components=2,
+        n_laguerre=6,
+        dt=dt,
+        auto_alpha=False,
+        alpha=0.88,
+        laser_period_ns=12.5,
+        taus_init=np.array([0.6, 1.4]),
+    )
     m = LaguerreFLI(**kw).fit(y, irf_cube)
-    assert m.n_unique_irf_ == n_unique, \
+    assert m.n_unique_irf_ == n_unique, (
         f"expected {n_unique} unique IRFs, grouped into {m.n_unique_irf_}"
+    )
 
     inst = LaguerreFLI(**kw)
     basis = inst._discrete_laguerre_basis(T, 0.88, 6)
@@ -538,8 +599,9 @@ def test_unique_irf_grouping_matches_naive_loop():
             Vp = inst._convolve_with_irf(basis, irf_cube[i, j])
             c = inst._solve_coefficients(Vp, y[i, j][:, None]).ravel()
             naive[i, j] = basis.T @ c
-    assert np.allclose(m.reconstructed_, naive, atol=1e-9), \
+    assert np.allclose(m.reconstructed_, naive, atol=1e-9), (
         "grouped reconstruction differs from naive per-pixel reconstruction"
+    )
 
 
 def test_output_contract():
@@ -547,16 +609,27 @@ def test_output_contract():
     T = 128
     dt = 12.5 / T
     irf = _reg_gaussian_irf(T, dt)
-    y = _measured_cube([(0.6, 0.5), (0.4, 1.4)], irf, dt, scale=3000,
-                       shape=(3, 3), seed=0, noise=True)
+    y = _measured_cube(
+        [(0.6, 0.5), (0.4, 1.4)], irf, dt, scale=3000, shape=(3, 3), seed=0, noise=True
+    )
 
-    out = LaguerreFLI(n_components=2, n_laguerre=6, dt=dt,
-                      laser_period_ns=12.5).fit(y, irf).get_parameters("regtest")
+    out = (
+        LaguerreFLI(n_components=2, n_laguerre=6, dt=dt, laser_period_ns=12.5)
+        .fit(y, irf)
+        .get_parameters("regtest")
+    )
 
     maps = out["results"]["maps"]
     tr = out["results"]["TR_maps"]
-    for key in ("tau1_map", "tau2_map", "alpha1_map", "alpha2_map",
-                "tau_mean_map", "R2_map", "photon_count_map"):
+    for key in (
+        "tau1_map",
+        "tau2_map",
+        "alpha1_map",
+        "alpha2_map",
+        "tau_mean_map",
+        "R2_map",
+        "photon_count_map",
+    ):
         assert key in maps, f"missing map: {key}"
     for key in ("fit_map", "residual_map", "sdf_map"):
         assert key in tr, f"missing TR map: {key}"
