@@ -17,8 +17,6 @@ import contextlib
 
 import matplotlib.pyplot as plt
 
-from pyfli import logging
-
 
 class FittingComparator:
     """
@@ -148,10 +146,14 @@ class FittingComparator:
             """
             return left + mid.join("─" * (w + 2) for _, w, _ in cols) + right
 
-        logging.info("")
-        logging.info(sep("┌", "┬", "┐"))
-        logging.info(row_str([c[0] for c in cols]))
-        logging.info(sep("├", "┼", "┤"))
+        # print(), not logging.info(): save_results() captures this table via
+        # contextlib.redirect_stdout, which only intercepts stdout -- logging
+        # records go to the logging handler (stderr by default) and would be
+        # silently dropped from the saved log otherwise.
+        print("")
+        print(sep("┌", "┬", "┐"))
+        print(row_str([c[0] for c in cols]))
+        print(sep("├", "┼", "┤"))
 
         for method, category, success, elapsed, r2, stat, red_stat, popt in rows:
             if popt is None:
@@ -197,10 +199,10 @@ class FittingComparator:
                     f"{popt[2]:.2f}",
                     f"{popt[3]:.3f}" if len(popt) > 3 else "—",
                 ]
-            logging.info(row_str(cells))
+            print(row_str(cells))
 
-        logging.info(sep("└", "┴", "┘"))
-        logging.info("")
+        print(sep("└", "┴", "┘"))
+        print("")
 
     @staticmethod
     def _weighted_residual(method: str, y: np.ndarray, model: Any) -> Any:
@@ -273,10 +275,10 @@ class FittingComparator:
         n_methods = len([m for m in methods if m in self.method_mapping])
         title = f"FLI Fitting Results  |  {model_type.upper()}"
         subtitle = f"{n_methods} method{'s' if n_methods != 1 else ''} queued"
-        logging.info(f"\n┌{'─' * W}┐")
-        logging.info(f"│  {title:<{W - 2}}│")
-        logging.info(f"│  {subtitle:<{W - 2}}│")
-        logging.info(f"└{'─' * W}┘\n")
+        print(f"\n┌{'─' * W}┐")
+        print(f"│  {title:<{W - 2}}│")
+        print(f"│  {subtitle:<{W - 2}}│")
+        print(f"└{'─' * W}┘\n")
 
         for method in methods:
             if method not in self.method_mapping:
@@ -467,30 +469,16 @@ class FittingComparator:
         None
             No object is returned; the function save results.
         """
+        # 1. Write the table to the log FILE only -- saver.log() would also
+        # echo every line through logging.info, which is noisy for a
+        # multi-row table (unlike single status messages such as
+        # "IMAGE SAVED >> ...").
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             self._print_summary_table(results_table, model_type)
         for line in buf.getvalue().splitlines():
-            saver.log(line)
+            saver.log_to_file(line)
 
         # 2. Save the diagnostic figure if one was produced
         if fig is not None:
             saver.save_plot(name, fig=fig, dpi=300, close=False)
-
-        # 3. Serialise the results table to JSON
-        rows_json = []
-        for row in results_table:
-            method, category, success, elapsed, r2, stat, red_stat, popt = row
-            rows_json.append(
-                {
-                    "method": method,
-                    "category": category,
-                    "success": success,
-                    "elapsed": elapsed,
-                    "r2": float(r2),
-                    "chi2": float(stat),
-                    "reduced_chi2": float(red_stat),
-                    "popt": popt.tolist() if hasattr(popt, "tolist") else popt,
-                }
-            )
-        saver.save_json(name, rows_json)
