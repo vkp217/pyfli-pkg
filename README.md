@@ -1,10 +1,12 @@
 <p align="center">
-  <img src="src/pyfli/PyFLI_logo.png" alt="PyFLI Logo" width="300"/>
+  <img src="pyfli/img/PyFLI_logo.png" alt="PyFLI Logo" width="300"/>
 </p>
 
 # pyfli: A Unified Platform for FLI Data Processing
 
+[![Tests](https://github.com/vkp217/pyfli-pkg/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/vkp217/pyfli-pkg/actions/workflows/tests.yml)
 [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](https://github.com/vkp217/pyfli-pkg/issues)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://img.shields.io/pypi/v/pyfli-lib.svg)](https://pypi.org/project/pyfli-lib/)
 
@@ -59,10 +61,10 @@ Even though the package is installed as `pyfli-lib`, you import it as `pyfli` in
 ```python
 from pyfli import DataOperations
 
-loader = DataOperations(    
+loader = DataOperations(
     data_path = "experimental_data.sdt",
-    irf_path = "instrument_data.txt", 
-    bg_path = "background_data.tif",   
+    irf_path = "instrument_data.txt",
+    bg_path = "background_data.tif",
     mask_path="background_data.png",
     )
 decay_data = loader.load_data()
@@ -101,4 +103,3 @@ If you use the **phasor SEPL analysis** functionality specifically, please also 
 The source code is hosted on GitHub. Please report any bugs or feature requests via the issues tracker.
 * **GitHub:** [https://github.com/vkp217/pyfli-pkg](https://github.com/vkp217/pyfli-pkg)
 * **Contact:** For any queries, reach out at [pyfli4lifetime@gmail.com](mailto:pyfli4lifetime@gmail.com)
-
