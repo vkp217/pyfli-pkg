@@ -863,41 +863,95 @@ def plot_pixel_diagnostic(
 
 
 def compute_detailed_results(
-    tau1: np.ndarray,
-    tau2: np.ndarray,
-    f: np.ndarray,
-    freq_acq: np.ndarray,
-    binned_irf: np.ndarray,
+    tau1: np.ndarray | None = None,
+    tau2: np.ndarray | None = None,
+    alpha1: np.ndarray | None = None,
+    tau: np.ndarray | None = None,
+    freq_acq: float | None = None,
+    binned_irf: np.ndarray | None = None,
     binned_decay: np.ndarray | None = None,
     data_name: str = "F-BI",
     model_type: str = "bi-exponential",
-    params: int = 3,
+    params: int | None = None,
     eps: float = 1e-8,
 ) -> dict[Any, Any]:
     """
     Reconstruct fit curves + goodness-of-fit maps from pre-estimated
-    bi-exponential parameter maps (e.g. F-BI output), packaged in the same
+    lifetime parameter maps (e.g. F-BI output), packaged in the same
     structure as FLICPUProcessor.process_image so it drops straight into
     Plotter / DataViewer.
 
+    Accepts either bi-exponential inputs (tau1, tau2, alpha1) or a single
+    mono-exponential lifetime map (tau), but not both. For the tau-only
+    case, params defaults to 1 and, in the mono-exponential model_type
+    branch, MonoBiClassifier is skipped entirely since every pixel is
+    trivially mono by construction.
+
     Parameters
     ----------
-    tau1, tau2 : np.ndarray (H, W)   lifetime maps (ns, matching 1000/freq_acq)
-    f          : np.ndarray (H, W)   fraction of component 1; component 2 = (1 - f)
-    freq_acq   : float               acquisition frequency freq[1] (MHz)
-    binned_irf : np.ndarray          IRF, shape (bins,) or (H, W, bins).
-                                     A 1-D IRF is broadcast across all pixels.
-    binned_decay : np.ndarray (H, W, bins)   measured decay histogram per pixel
-    params     : int                 free-parameter count for the reduced-chi2 dof
-    eps        : float               numerical floor for clip / safe division
+    tau1 : np.ndarray | None
+        Component-1 lifetime map (H, W), ns. Required with tau2/alpha1.
+    tau2 : np.ndarray | None
+        Component-2 lifetime map (H, W), ns. Required with tau1/alpha1.
+    alpha1 : np.ndarray | None
+        Amplitude fraction of component 1; component 2 = (1 - alpha1).
+        Required with tau1/tau2.
+    tau : np.ndarray | None
+        Single lifetime map (H, W), ns, for the mono-only input style.
+        Mutually exclusive with (tau1, tau2, alpha1).
+    freq_acq : float
+        Acquisition frequency freq[1] (MHz).
+    binned_irf : np.ndarray
+        IRF, shape (bins,) or (H, W, bins). A 1-D IRF is broadcast across
+        all pixels; normalized to sum to 1 per pixel before convolving.
+    binned_decay : np.ndarray | None
+        Measured decay histogram per pixel, shape (H, W, bins). When
+        omitted, decay-dependent outputs (photon count, residuals, chi²,
+        R²) reduce to zero.
+    data_name : str
+        Dataset name recorded in the returned result dict.
+    model_type : str
+        ``"mono-exponential"`` or ``"bi-exponential"``.
+    params : int | None
+        Free-parameter count for the reduced-chi2 dof. Defaults to 3 for
+        bi-exponential inputs, 1 for tau-only inputs.
+    eps : float
+        Numerical floor for clip / safe division.
 
     Returns
     -------
-    {'name', 'results': {'maps', 'error_maps', 'TR_maps'}}
+    dict[Any, Any]
+        ``{'name', 'results': {'maps', 'error_maps', 'TR_maps'}}``
     """
-    tau1 = np.asarray(tau1, dtype=np.float32)
-    tau2 = np.asarray(tau2, dtype=np.float32)
-    f = np.asarray(f, dtype=np.float32)
+    if model_type not in ("mono-exponential", "bi-exponential"):
+        raise ValueError(
+            f"Unknown model_type: {model_type!r}; expected "
+            "'mono-exponential' or 'bi-exponential'"
+        )
+
+    # --- Resolve tau1 / tau2 / alpha1 from the two supported input styles -----
+    have_biexp_inputs = (
+        (tau1 is not None) and (tau2 is not None) and (alpha1 is not None)
+    )
+    have_tau_only = tau is not None
+
+    if have_biexp_inputs and have_tau_only:
+        raise ValueError("Pass either (tau1, tau2, alpha1) or (tau), not both.")
+    elif have_biexp_inputs:
+        tau1 = np.asarray(tau1, dtype=np.float32)
+        tau2 = np.asarray(tau2, dtype=np.float32)
+        alpha1 = np.asarray(alpha1, dtype=np.float32)
+        if params is None:
+            params = 3
+    elif have_tau_only:
+        tau = np.asarray(tau, dtype=np.float32)
+        tau1 = tau
+        tau2 = tau
+        alpha1 = np.ones_like(tau, dtype=np.float32)
+        if params is None:
+            params = 1
+    else:
+        raise ValueError("Must supply either (tau1, tau2, alpha1) or (tau).")
 
     H, W = tau1.shape
     bins = binned_irf.shape[-1]
@@ -918,41 +972,64 @@ def compute_detailed_results(
             f"binned_irf must be 1-D (bins,) or 3-D (H,W,bins); got shape {irf.shape}"
         )
 
+    # Normalize IRF to sum to 1 per pixel. This does NOT change any final
+    # output (param_maps, chi2_map, R2_map, fret_efficiency_map, etc.) --
+    # those all pass through a per-pixel fit_sum renormalization further
+    # down that exactly cancels any constant IRF scale factor. It DOES make
+    # the intermediate diagnostic maps (sdf_map, convolved_map in TR_maps)
+    # directly comparable across pixels and consistent with
+    # forward_model.model_numpy's convention, instead of carrying each
+    # pixel's raw sum(irf) as an arbitrary scale factor.
+    irf_sum = np.sum(irf, axis=-1, keepdims=True)
+    irf = np.divide(irf, irf_sum, out=np.zeros_like(irf), where=irf_sum > eps)
+
     # ── mono-exponential branch ───────────────────────────────────────────────
     if model_type == "mono-exponential":
         photon_count = np.sum(binned_decay, axis=-1)  # (H, W)
         b_bool_mask = photon_count > 0
 
-        # Package bi-exp maps into the format MonoBiClassifier expects
-        dataset = {"alpha1_map": f, "tau1_map": tau1, "tau2_map": tau2}
-        all_datasets = [dataset]
+        if have_tau_only:
+            # Single lifetime supplied directly -> no classification needed,
+            # every pixel is trivially "mono" by construction.
+            tau_eff = np.where(b_bool_mask, tau1, 0.0).astype(np.float32)
+        else:
+            # Package bi-exp maps into the format MonoBiClassifier expects
+            dataset = {"alpha1_map": alpha1, "tau1_map": tau1, "tau2_map": tau2}
+            all_datasets = [dataset]
 
-        clf = MonoBiClassifier(
-            b_bool_mask,
-            names=[data_name],
-            alpha_upper=0.95,
-            alpha_lower=0.05,
-            tau_tol=0.05,
-            coord=None,
-        )
-        classes = clf.classify(all_datasets, display=True)
+            clf = MonoBiClassifier(
+                b_bool_mask,
+                names=[data_name],
+                alpha_upper=0.95,
+                alpha_lower=0.05,
+                tau_tol=0.05,
+                coord=None,
+            )
+            classes = clf.classify(all_datasets, display=True)
 
-        mono_mask = classes[0]["mono_mask"]  # (H, W) bool, ROI-restricted
+            mono_mask = classes[0]["mono_mask"]  # (H, W) bool, ROI-restricted
 
-        # Assign pixelwise single tau guided by classification:
-        #   mono (alpha1 > upper) → component-1 dominates → tau1
-        #   mono (alpha1 < lower) → component-2 dominates → tau2
-        #   mono (tau1 ≈ tau2)   → lifetimes coincide   → tau1
-        #   bi                   → amplitude-weighted mean lifetime
-        tau_mono = np.where(
-            f > clf.alpha_upper, tau1, np.where(f < clf.alpha_lower, tau2, tau1)
-        )  # tau1 ≈ tau2 coincidence case
-        tau_bi = f * tau1 + (1.0 - f) * tau2  # mean lifetime for bi pixels
-        tau_eff = np.where(mono_mask, tau_mono, tau_bi)
-        tau_eff = np.where(b_bool_mask, tau_eff, 0.0).astype(np.float32)
+            # Assign pixelwise single tau guided by classification:
+            #   mono (alpha1 > upper) → component-1 dominates → tau1
+            #   mono (alpha1 < lower) → component-2 dominates → tau2
+            #   mono (tau1 ≈ tau2)   → lifetimes coincide   → tau1
+            #   bi                   → amplitude-weighted mean lifetime
+            tau_mono = np.where(
+                alpha1 > clf.alpha_upper,
+                tau1,
+                np.where(alpha1 < clf.alpha_lower, tau2, tau1),
+            )  # tau1 ≈ tau2 coincidence case
+            tau_bi = (
+                alpha1 * tau1 + (1.0 - alpha1) * tau2
+            )  # mean lifetime for bi pixels
+            tau_eff = np.where(mono_mask, tau_mono, tau_bi)
+            tau_eff = np.where(b_bool_mask, tau_eff, 0.0).astype(np.float32)
 
         # Pixelwise single-exponential model
-        t = np.linspace(0, 1000.0 / freq_acq, bins, dtype=np.float32)
+        # endpoint=False matches NLSF/MLE's self.t = np.linspace(0, T_acq, N,
+        # endpoint=False) exactly, so dt = T_acq/N here too (not T_acq/(N-1)).
+        t = np.linspace(0, 1000.0 / freq_acq, bins, endpoint=False, dtype=np.float32)
+        dt = float(t[1] - t[0])  # bin width (ns) == T_acq/N
         tau_b = np.clip(tau_eff[..., np.newaxis], eps, None)  # (H, W, 1)
         sdf = np.exp(-t / tau_b)  # (H, W, bins)
 
@@ -964,9 +1041,12 @@ def compute_detailed_results(
         scaled_fit = photon_count[..., np.newaxis] * fit_pdf  # (H, W, bins)
 
         # Goodness of fit
-        variance = scaled_fit.copy()
-        variance[variance <= 0] = 1.0
-        dof = max(bins - params - 1, 1)
+        # Variance flooring matches shared_metrics.compute_fli_stats, which
+        # clips the *entire* model array at 1.0 (not just non-positive
+        # entries) -- this avoids huge chi² contributions from near-zero bins.
+        variance = np.clip(scaled_fit, 1.0, None)
+        # dof convention matches shared_metrics.compute_fli_stats (N - k).
+        dof = max(bins - params, 1)
         residuals = binned_decay - scaled_fit
         chi_sq_raw = np.sum((residuals**2) / variance, axis=-1)
         chi_sq_map = chi_sq_raw / dof
@@ -982,8 +1062,16 @@ def compute_detailed_results(
         health = b_bool_mask.astype(np.float32)
 
         # Mono-exponential param_maps (solver convention: amp, tau, v_shift, h_shift)
+        # NOTE: photon_count_map is reported here as "S" (the fitted-amplitude
+        # convention used by the NLSF/MLE popt[0]), i.e. photon_count * dt,
+        # NOT the raw measured sum(binned_decay). This makes it directly
+        # comparable to _cpu_nlsf_bi / _cpu_mle_bi's photon_count_map, which
+        # store popt[0] (S) as-is. The raw measured `photon_count` (sum of
+        # binned_decay) is still used internally above for scaled_fit, since
+        # that scaling must stay in actual-count units regardless of how the
+        # output map is reported.
         param_maps = {
-            "photon_count_map": photon_count.astype(np.float32),
+            "photon_count_map": (photon_count * dt).astype(np.float32),
             "tau_map": tau_eff,
             "v_shift_map": np.zeros((H, W), dtype=np.float32),
             "h_shift_map": np.zeros((H, W), dtype=np.float32),
@@ -1017,12 +1105,28 @@ def compute_detailed_results(
             },
         }
 
+    # ── bi-exponential branch ─────────────────────────────────────────────────
+    # (Also handles the tau-only case: tau1 == tau2 == tau, alpha1 == 1, so the
+    # second exponential term is weighted to zero and this collapses correctly
+    # to a single exponential without any special-casing needed here.)
+
     # --- Model decay (sdf) ----------------------------------------------------
     tau1_b = np.clip(tau1[..., np.newaxis], eps, None)
     tau2_b = np.clip(tau2[..., np.newaxis], eps, None)
-    f_b = f[..., np.newaxis]
-    t = np.linspace(0, 1000.0 / freq_acq, bins, dtype=np.float32)
-    sdf = f_b * np.exp(-t / tau1_b) + (1.0 - f_b) * np.exp(-t / tau2_b)
+    alpha1_b = alpha1[..., np.newaxis]
+    # endpoint=False matches NLSF/MLE's self.t = np.linspace(0, T_acq, N,
+    # endpoint=False) exactly, so dt = T_acq/N here too (not T_acq/(N-1)).
+    t = np.linspace(0, 1000.0 / freq_acq, bins, endpoint=False, dtype=np.float32)
+    dt = float(t[1] - t[0])  # bin width (ns) == T_acq/N
+    # Normalize each exponential component by its own tau, matching
+    # forward_model.decay_kernel's bi-exponential branch:
+    #   kernel = S * ((a1/tau1)*exp(-t/tau1) + ((1-a1)/tau2)*exp(-t/tau2))
+    # Without the 1/tau factors, alpha1 does not behave as a true mixture
+    # weight when tau1 != tau2 -- the resulting decay shape is wrong, and
+    # renormalizing by fit_sum afterward only fixes overall scale, not shape.
+    sdf = (alpha1_b / tau1_b) * np.exp(-t / tau1_b) + (
+        (1.0 - alpha1_b) / tau2_b
+    ) * np.exp(-t / tau2_b)
 
     # --- Convolve with IRF, crop back to bins -------------------------------
     convolved_fit = fftconvolve(sdf, irf, mode="full", axes=-1)[..., :bins]
@@ -1035,9 +1139,11 @@ def compute_detailed_results(
     scaled_fit = photon_count[..., np.newaxis] * fit_pdf  # (H, W, bins)
 
     # --- Goodness of fit ------------------------------------------------------
-    variance = scaled_fit.copy()
-    variance[variance <= 0] = 1.0  # Poisson variance can't be 0 for chi-sq
-    dof = max(bins - params - 1, 1)
+    # Same variance-flooring convention as the mono-exponential branch and as
+    # shared_metrics.compute_fli_stats (clip the whole array at 1.0).
+    variance = np.clip(scaled_fit, 1.0, None)
+    # Same dof convention as shared_metrics.compute_fli_stats (N - k).
+    dof = max(bins - params, 1)
     residuals = binned_decay - scaled_fit
     sq_err = (residuals**2) / variance
     chi_sq_raw = np.sum(sq_err, axis=-1)  # raw chi-square
@@ -1056,16 +1162,29 @@ def compute_detailed_results(
     health = (photon_count > 0).astype(np.float32)
 
     # --- Package-compatible 2-D maps ------------------------------------------
+    # NOTE: photon_count_map is reported here as "S" (the fitted-amplitude
+    # convention used by the NLSF/MLE popt[0]), i.e. photon_count * dt, NOT
+    # the raw measured sum(binned_decay). This makes it directly comparable
+    # to _cpu_nlsf_bi / _cpu_mle_bi's photon_count_map, which store popt[0]
+    # (S) as-is. The raw measured `photon_count` (sum of binned_decay) is
+    # still used above for scaled_fit, since that scaling must stay in
+    # actual-count units regardless of how the output map is reported.
     tau1_f = tau1.astype(np.float32)
     tau2_f = tau2.astype(np.float32)
-    f_f = f.astype(np.float32)
+    alpha1_f = alpha1.astype(np.float32)
+    ratio = np.divide(
+        tau1_f,
+        tau2_f,
+        out=np.zeros_like(tau1_f, dtype=np.float32),
+        where=(tau2_f > 0),
+    )
     param_maps = {
-        "photon_count_map": photon_count.astype(np.float32),
-        "alpha1_map": f_f,
+        "photon_count_map": (photon_count * dt).astype(np.float32),
+        "alpha1_map": alpha1_f,
         "tau1_map": tau1_f,
         "tau2_map": tau2_f,
-        "tau_mean_map": (f_f * tau1_f + (1.0 - f_f) * tau2_f),
-        "fret_efficiency_map": np.where(tau2_f > 0, 1.0 - tau1_f / tau2_f, 0.0).astype(
+        "tau_mean_map": (alpha1_f * tau1_f + (1.0 - alpha1_f) * tau2_f),
+        "fret_efficiency_map": np.where(tau2_f > 0, 1.0 - ratio, 0.0).astype(
             np.float32
         ),
         "v_shift_map": np.zeros((H, W), dtype=np.float32),

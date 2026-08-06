@@ -1,6 +1,7 @@
 """Smoke tests for the curated top-level pyfli API."""
 
 import pyfli
+import pyfli.io
 
 
 def test_no_manual_version_or_all_exports():
@@ -72,3 +73,21 @@ def test_laguerre_instantiation():
 def test_flim_decay_cube_helpers_are_public():
     for name in ["load_flim_data", "collapse_to_xyt", "plot_xyt"]:
         assert callable(getattr(pyfli, name))
+
+
+def test_io_subpackage_symbols_are_public():
+    expected = [
+        "Detector",
+        "DataOperations",
+        "DataSaver",
+        "AlliGprocessedImport",
+        "BHprocessedImport",
+        "DatasetPlotter",
+        "PyFliprocessedImport",
+        "DataIOUtils",
+        "load_flim_data",
+        "collapse_to_xyt",
+        "plot_xyt",
+    ]
+    for name in expected:
+        assert callable(getattr(pyfli.io, name))

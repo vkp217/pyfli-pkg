@@ -210,8 +210,8 @@ class DataViewer:
         is_3d = pixel is not None
         decay = data["raw_data"]["decay"]
         irf = data["raw_data"]["irf"]
-        fit = data["TR_maps"]["fit_map"]
-        residuals = data["TR_maps"]["residuals_map"]
+        fit = data["results"]["TR_maps"]["fit_map"]
+        residuals = data["results"]["TR_maps"]["residual_map"]
         maps = data["results"]["maps"]
         if is_3d:
             x, y = pixel

@@ -37,6 +37,7 @@ from .fit_analysis import (
     run_mono_bi_classifier,
 )
 from .stat_tests import TestStat
+from .factor_analysis import FactorAnalysis
 
 # FBI module is proprietary and excluded from the public repo.
 # The filename constants are always available so that saved FBI results
