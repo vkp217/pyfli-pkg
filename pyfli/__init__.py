@@ -51,4 +51,5 @@ from .phasor import (
     universal_semicircle,
 )
 from .simulator.main_factory import MacroSimulator, TCSPCSimulator
+from .simulator.sim_model_image_generator import FLIModelImageGenerator
 from .sp_analysis import BasisPatterns, MeasurementSimulator, Reconstructor
