@@ -23,6 +23,10 @@ notebooks/
 # Docs and examples
 docs/
 examples/
+!examples/
+!examples/*.ipynb
+docsrc/_build/
+docsrc/api/generated/
 
 # IDE settings
 .vscode/

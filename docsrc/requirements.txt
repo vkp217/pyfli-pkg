@@ -1,0 +1,5 @@
+sphinx>=7.0
+pydata-sphinx-theme
+myst-nb
+sphinx-copybutton
+sphinx-design
