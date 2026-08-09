@@ -308,7 +308,9 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
         if ref_lifetime_ns is not None:
             harmonic_freqs = self.frequency * np.arange(1, self.n_harmonics + 1)
-            G_theory, S_theory = self.lifetime_to_phasor(ref_lifetime_ns, harmonic_freqs)
+            G_theory, S_theory = self.lifetime_to_phasor(
+                ref_lifetime_ns, harmonic_freqs
+            )
         else:
             G_theory = np.ones(self.n_harmonics)
             S_theory = np.zeros(self.n_harmonics)

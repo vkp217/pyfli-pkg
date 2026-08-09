@@ -462,7 +462,10 @@ class DataViewer:
                     ax_log.plot(t, np.clip(signal, eps, None), lw=2, color=color)
                     ax_lin.plot(t, signal, lw=2, color=color, label=label)
 
-                for ax, scale_title in ((ax_log, "Log Scale"), (ax_lin, "Linear Scale")):
+                for ax, scale_title in (
+                    (ax_log, "Log Scale"),
+                    (ax_lin, "Linear Scale"),
+                ):
                     ax.set_title(scale_title)
                     ax.set_xlabel("Time Bin")
                     ax.spines["top"].set_visible(False)
