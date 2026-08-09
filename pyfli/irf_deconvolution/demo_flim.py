@@ -13,7 +13,7 @@ from pyfli import logging
 
 import numpy as np
 from detector_weights import ICCDParams, SPADParams, TCSPCParams
-from flim_solver import (
+from fli_solver import (
     SolverConfig,
     solve_flim,
     build_gate_matrix,
