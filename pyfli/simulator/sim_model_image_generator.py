@@ -9,6 +9,8 @@ interest (ROI) in an optional label mask, and simulating every pixel
 individually.
 """
 
+from typing import Any
+
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
@@ -148,8 +150,7 @@ class FLIModelImageGenerator:
         fit_cube = np.zeros((h, w, t_len), dtype=np.float32)
         irf_cube = np.zeros((h, w, t_len), dtype=np.float32)
 
-        param_keys = sample["results"]["maps"].keys()
-        param_maps = {k: np.zeros((h, w), dtype=np.float32) for k in param_keys}
+        param_maps: dict[Any, np.ndarray] = {}
 
         if self.verbose:
             print(f"Generating {self.method.upper()} FLI Image [{h}x{w}x{t_len}]...")
@@ -185,10 +186,12 @@ class FLIModelImageGenerator:
                 fit_cube[i, j, :] = pixel_data["results"]["TR_maps"]["fit_map"] * m
                 irf_cube[i, j, :] = norm_irf
 
-                for k in param_keys:
-                    param_maps[k][i, j] = pixel_data["results"]["maps"][k]
+                if roi_val != 0:
+                    for k, v in pixel_data["results"]["maps"].items():
+                        if k not in param_maps:
+                            param_maps[k] = np.full((h, w), np.nan, dtype=np.float32)
+                        param_maps[k][i, j] = v
 
-                # Manually update the bar
                 pbar.update(1)
 
         if self.bool_mask is not None:

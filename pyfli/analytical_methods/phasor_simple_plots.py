@@ -10,6 +10,7 @@ estimation. Public API includes classes :class:`PhasorPlotsMixin`.
 from typing import Any
 
 import numpy as np
+import seaborn as sns
 import torch
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -21,6 +22,7 @@ from .phasor_simple_utils import (
     _universal_circle_xy,
     _draw_lifetime_ticks,
     _style_phasor_ax,
+    _add_frequency_label,
 )
 
 
@@ -157,6 +159,11 @@ class PhasorPlotsMixin:
         title: str = "Phasor Diagram",
         xlim: tuple[float, ...] = (-0.1, 1.1),
         ylim: tuple[float, ...] = (0.0, 0.6),
+        kdeplot: bool = False,
+        kde_color: str = "white",
+        kde_levels: int = 5,
+        kde_linewidths: float = 1,
+        kde_alpha: float = 0.5,
     ) -> np.ndarray:
         """
         Plot phasor diagram.
@@ -185,6 +192,16 @@ class PhasorPlotsMixin:
             X-axis limits for the phasor plot.
         ylim : tuple[float, ...]
             Y-axis limits for the phasor plot.
+        kdeplot : bool
+            Whether to overlay a KDE density contour on the phasor points.
+        kde_color : str
+            Color used for the KDE density contour lines.
+        kde_levels : int
+            Number of contour levels drawn for the KDE overlay.
+        kde_linewidths : float
+            Line width of the KDE contour lines.
+        kde_alpha : float
+            Opacity of the KDE contour lines.
 
         Returns
         -------
@@ -221,7 +238,9 @@ class PhasorPlotsMixin:
 
         if colors is None:
             cmap_to_use = hexbin_color if hexbin_color is not None else "autumn"
-            hb = ax.hexbin(g_plot, s_plot, gridsize=100, cmap=cmap_to_use, mincnt=1)
+            hb = ax.hexbin(
+                g_plot, s_plot, gridsize=[800, 400], cmap=cmap_to_use, mincnt=1
+            )
             fig.colorbar(hb, ax=ax).set_label("Pixel Count")
         else:
             if isinstance(colors, str):
@@ -238,11 +257,23 @@ class PhasorPlotsMixin:
                     c_plot = c_flat[valid]
                 ax.scatter(g_plot, s_plot, c=c_plot, s=8, marker="o")
 
+        if kdeplot:
+            sns.kdeplot(
+                x=g_plot,
+                y=s_plot,
+                ax=ax,
+                levels=kde_levels,
+                color=kde_color,
+                linewidths=kde_linewidths,
+                alpha=kde_alpha,
+            )
+
         G_mark, S_mark = self.lifetime_to_phasor(_TAU_MARKS_NS, self.frequency)
         _draw_lifetime_ticks(
             ax, G_mark, S_mark, color="black", lw=4, fontsize=10, show_units=True
         )
         _style_phasor_ax(ax, title=title, xlim=xlim, ylim=ylim, half_circle=half_circle)
+        _add_frequency_label(ax, self.frequency)
 
         if created_fig:
             plt.tight_layout()
@@ -561,18 +592,22 @@ class PhasorPlotsMixin:
         ax5.plot(ug, us, "k--", alpha=0.8, zorder=1)
         if len(g_v):
             ax5.scatter(g_v, s_v, c=c_v, s=2, alpha=0.6, edgecolors="none", zorder=2)
+            sns.kdeplot(
+                x=g_v, y=s_v, ax=ax5, levels=5, color="w", linewidths=1, zorder=3
+            )
         if G_mark is not None:
             _draw_lifetime_ticks(ax5, G_mark, S_mark, color="black", lw=2, fontsize=9)
         _style_phasor_ax(
-            ax5, title="Phasor (colour)", xlim=xlim, ylim=ylim, half_circle=half_circle
+            ax5, title="Phasor (color)", xlim=xlim, ylim=ylim, half_circle=half_circle
         )
+        _add_frequency_label(ax5, self.frequency)
 
         # ax6 (1,2): phasor hexbin density plot
         ax6 = fig.add_subplot(gs[1, 2])
         ax6.plot(ug, us, "k--", alpha=0.8, zorder=1)
         if len(g_v):
             hb = ax6.hexbin(
-                g_v, s_v, gridsize=100, cmap=colormaps[3], mincnt=1, zorder=2
+                g_v, s_v, gridsize=[800, 400], cmap=colormaps[3], mincnt=1, zorder=2
             )
             fig.colorbar(hb, ax=ax6, fraction=0.046, pad=0.04).set_label("Pixel count")
         if G_mark is not None:
@@ -580,6 +615,7 @@ class PhasorPlotsMixin:
         _style_phasor_ax(
             ax6, title="Phasor (density)", xlim=xlim, ylim=ylim, half_circle=half_circle
         )
+        _add_frequency_label(ax6, self.frequency)
 
         plt.tight_layout()
         return fig
@@ -870,7 +906,9 @@ class PhasorPlotsMixin:
 
             if colors is None:
                 cmap_to_use = hexbin_color if hexbin_color is not None else "jet"
-                hb = ax.hexbin(g_plot, s_plot, gridsize=100, cmap=cmap_to_use, mincnt=1)
+                hb = ax.hexbin(
+                    g_plot, s_plot, gridsize=[800, 400], cmap=cmap_to_use, mincnt=1
+                )
                 fig.colorbar(hb, ax=ax, fraction=0.046, pad=0.04).set_label(
                     "Pixel Count"
                 )
@@ -916,6 +954,7 @@ class PhasorPlotsMixin:
                 ylim=ylim,
                 half_circle=half_circle,
             )
+            _add_frequency_label(ax, k * self.frequency)
 
         if created_fig:
             fig.suptitle(
@@ -1043,6 +1082,7 @@ class PhasorPlotsMixin:
             ylim=ylim,
             half_circle=half_circle,
         )
+        _add_frequency_label(axes[1], self.frequency)
 
         if created_fig:
             plt.tight_layout()

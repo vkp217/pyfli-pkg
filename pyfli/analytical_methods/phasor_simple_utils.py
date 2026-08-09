@@ -106,6 +106,43 @@ def _draw_lifetime_ticks(
         )
 
 
+def _add_frequency_label(
+    ax: Any,
+    frequency_hz: float,
+    fontsize: int = 8,
+    color: str = "gray",
+) -> None:
+    """
+    Add frequency label.
+
+    Parameters
+    ----------
+    ax : Any
+        Matplotlib axes object on which the plot is drawn.
+    frequency_hz : float
+        Excitation frequency in hertz to display on the plot.
+    fontsize : int
+        Font size used for the frequency label.
+    color : str
+        Matplotlib color used for the frequency label text.
+
+    Returns
+    -------
+    None
+        No object is returned; the function perform add frequency label.
+    """
+    ax.text(
+        1.0,
+        -0.14,
+        f"{frequency_hz / 1e6:.2f} MHz",
+        transform=ax.transAxes,
+        ha="right",
+        va="top",
+        fontsize=fontsize,
+        color=color,
+    )
+
+
 def _style_phasor_ax(
     ax: Any,
     title: str = "Phasor Diagram",
