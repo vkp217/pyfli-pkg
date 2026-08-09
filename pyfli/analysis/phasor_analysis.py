@@ -109,7 +109,22 @@ def plot_phasor_figures(
     figs = {}
 
     figs["phasor_diagram"] = phasor_obj.plot_phasor_diagram(
-        Gc[0], Sc[0], mask=mask, hexbin_color=colorset, half_circle=True
+        Gc[0],
+        Sc[0],
+        mask=mask,
+        colors=None,
+        hexbin_color=colorset,
+        ax=None,
+        figsize=(8, 3),
+        half_circle=True,
+        title="Phasor Diagram",
+        xlim=(-0.1, 1.1),
+        ylim=(0.0, 0.6),
+        kdeplot=False,
+        kde_color="white",
+        kde_levels=5,
+        kde_linewidths=1,
+        kde_alpha=0.5,
     )
     if saver:
         saver.save_plot("Phasor_Plot", fig=figs["phasor_diagram"], close=False)

@@ -262,6 +262,145 @@ class PhasorAnalyzer(PhasorPlotsMixin):
 
         return np.stack(Gc_list), np.stack(Sc_list)
 
+    def calibratre_reference(
+        self,
+        G: np.ndarray,
+        S: np.ndarray,
+        ref_data: np.ndarray,
+        ref_lifetime_ns: float | None = None,
+    ) -> tuple[Any, ...]:
+        """
+        Run the calibratre reference routine.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Phasor real coordinate.
+        S : np.ndarray
+            Phasor imaginary coordinate or shift amount.
+        ref_data : np.ndarray
+            Decay trace of a reference sample used for calibration.
+        ref_lifetime_ns : float | None
+            Known lifetime of the reference sample in nanoseconds. When None, the
+            reference is treated as a zero-lifetime instrument response, matching
+            :meth:`calibrate`.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Tuple containing calibrated phasor coordinates and calibration factors.
+        """
+        G = np.asarray(G)
+        S = np.asarray(S)
+        ref_data = np.asarray(ref_data)
+        if ref_data.ndim == 3:
+            ref_data = ref_data.mean(axis=(0, 1))
+
+        denom = np.clip(np.sum(ref_data), self.eps, None)
+        G_ref, S_ref = [], []
+        for k in range(1, self.n_harmonics + 1):
+            omega_k = k * self.omega
+            G_ref.append(np.sum(ref_data * np.cos(omega_k * self.t_s_np)) / denom)
+            S_ref.append(np.sum(ref_data * np.sin(omega_k * self.t_s_np)) / denom)
+
+        G_ref = np.array(G_ref)
+        S_ref = np.array(S_ref)
+
+        if ref_lifetime_ns is not None:
+            harmonic_freqs = self.frequency * np.arange(1, self.n_harmonics + 1)
+            G_theory, S_theory = self.lifetime_to_phasor(ref_lifetime_ns, harmonic_freqs)
+        else:
+            G_theory = np.ones(self.n_harmonics)
+            S_theory = np.zeros(self.n_harmonics)
+
+        P = G + 1j * S
+        P_ref = G_ref[:, None, None] + 1j * S_ref[:, None, None]
+        P_theory = G_theory[:, None, None] + 1j * S_theory[:, None, None]
+        P_ref_abs_sq = np.clip(
+            G_ref[:, None, None] ** 2 + S_ref[:, None, None] ** 2, self.eps, None
+        )
+        P_true = P * np.conj(P_ref) * P_theory / P_ref_abs_sq
+
+        return np.real(P_true), np.imag(P_true)
+
+    def calibratre_reference_pixelwise(
+        self,
+        G: np.ndarray,
+        S: np.ndarray,
+        ref_data: np.ndarray,
+        ref_lifetime_ns: float | None = None,
+    ) -> tuple[Any, ...]:
+        """
+        Run the calibratre reference pixelwise routine.
+
+        Parameters
+        ----------
+        G : np.ndarray
+            Phasor real coordinate.
+        S : np.ndarray
+            Phasor imaginary coordinate or shift amount.
+        ref_data : np.ndarray
+            Per-pixel decay cube of a reference sample used for calibration.
+        ref_lifetime_ns : float | None
+            Known lifetime of the reference sample in nanoseconds. When None, the
+            reference is treated as a zero-lifetime instrument response, matching
+            :meth:`calibrate_pixelwise`.
+
+        Returns
+        -------
+        tuple[Any, ...]
+            Tuple containing per-pixel calibrated phasor coordinates and factors.
+        """
+        G = np.asarray(G, dtype=np.float32)
+        S = np.asarray(S, dtype=np.float32)
+        ref_data = np.asarray(ref_data, dtype=np.float32)
+
+        H, W, T = ref_data.shape
+        K = self.n_harmonics
+        ref_flat = torch.tensor(ref_data.reshape(-1, T), device=self.device)
+        I_sum = ref_flat.sum(dim=1, keepdim=True).clamp(min=self.eps)
+        ref_norm = ref_flat / I_sum
+        t_s = self.t_s_torch
+
+        Gc_list, Sc_list = [], []
+
+        for k in range(1, K + 1):
+            omega_k = k * self.omega
+            cos_k = torch.cos(
+                torch.tensor(omega_k, dtype=torch.float32, device=self.device) * t_s
+            )
+            sin_k = torch.sin(
+                torch.tensor(omega_k, dtype=torch.float32, device=self.device) * t_s
+            )
+
+            G_ref_flat = (ref_norm * cos_k).sum(dim=1)
+            S_ref_flat = (ref_norm * sin_k).sum(dim=1)
+            G_ref = G_ref_flat.reshape(H, W)
+            S_ref = S_ref_flat.reshape(H, W)
+
+            G_meas = torch.tensor(G[k - 1], device=self.device)
+            S_meas = torch.tensor(S[k - 1], device=self.device)
+            denom = (G_ref**2 + S_ref**2).clamp(min=self.eps)
+
+            Gc_k = (G_meas * G_ref + S_meas * S_ref) / denom
+            Sc_k = (S_meas * G_ref - G_meas * S_ref) / denom
+
+            if ref_lifetime_ns is not None:
+                G_theory, S_theory = self.lifetime_to_phasor(
+                    ref_lifetime_ns, k * self.frequency
+                )
+                G_theory = float(G_theory)
+                S_theory = float(S_theory)
+                Gc_k, Sc_k = (
+                    Gc_k * G_theory - Sc_k * S_theory,
+                    Gc_k * S_theory + Sc_k * G_theory,
+                )
+
+            Gc_list.append(Gc_k.cpu().numpy())
+            Sc_list.append(Sc_k.cpu().numpy())
+
+        return np.stack(Gc_list), np.stack(Sc_list)
+
     # ── lifetime conversion ───────────────────────────────────────────────────
 
     def lifetime_to_phasor(
@@ -382,11 +521,20 @@ class PhasorAnalyzer(PhasorPlotsMixin):
             self.plot_phasor_diagram(
                 G,
                 S,
-                colors=None,
                 mask=mask,
+                colors=None,
                 hexbin_color="jet_r",
                 ax=ax,
+                figsize=(8, 3),
                 half_circle=half_circle,
+                title="Phasor Diagram",
+                xlim=(-0.1, 1.1),
+                ylim=(0.0, 0.6),
+                kdeplot=False,
+                kde_color="white",
+                kde_levels=5,
+                kde_linewidths=1,
+                kde_alpha=0.5,
             )
             ax.plot(
                 [g1, g2], [s1, s2], color="#2C0F02", linestyle="--", lw=2, zorder=10

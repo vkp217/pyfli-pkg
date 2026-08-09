@@ -16,7 +16,7 @@ from .detector_weights import (
     make_observation,
     generalized_anscombe,
 )
-from .flim_solver import (
+from .fli_solver import (
     SolverConfig,
     solve_flim,
     build_gate_matrix,

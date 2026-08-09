@@ -3,7 +3,7 @@
 Three files:
 
 - `detector_weights.py` — detector-specific weight/transform pair for each sensor.
-- `flim_solver.py` — cyclic-convolution + gate operators, VARPRO decay fit,
+- `fli_solver.py` — cyclic-convolution + gate operators, VARPRO decay fit,
   projected-gradient IRF update with TV + spatial coupling, alternating loop.
 - `demo_flim.py` — synthetic verification across all three detectors.
 
@@ -76,7 +76,7 @@ must be used with care (it can destabilize a two-component fit if mis-targeted).
 
 ```python
 from detector_weights import ICCDParams
-from flim_solver import SolverConfig, solve_flim
+from fli_solver import SolverConfig, solve_flim
 
 cfg = SolverConfig(T=12.5, n_models=2, rho1=0.02, rho2=0.10,
                    estimate_irf=True)            # or False for reference mode

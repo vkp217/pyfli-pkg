@@ -356,6 +356,14 @@ class DataViewer:
         plt.show()
         return fig, (ax1, ax2, ax_text, ax3)
 
+    # Fixed, CVD-validated categorical order — assigned by series identity
+    # (never cycled/re-ranked), so "decay" is always the same hue across calls.
+    _SERIES_COLORS = ("#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#4a3aa7")
+    _INK = "#0b0b0b"
+    _MUTED = "#898781"
+    _AXIS = "#c3c2b7"
+    _GRID = "#e1e0d9"
+
     def plot_fli_px(
         self,
         data_list: np.ndarray,
@@ -365,6 +373,7 @@ class DataViewer:
         mode2: Any | None = None,  # index in the data_list which has to be displayed
         names: Any | None = None,
         esp: float = 1e0,
+        cmap: str = "viridis",
     ) -> tuple[Any, ...]:
         """
         Plot FLI px.
@@ -385,6 +394,8 @@ class DataViewer:
             Dataset names used in summaries and plots.
         esp : float
             Small epsilon used to stabilize divisions and comparisons.
+        cmap : str
+            Colormap used for the image panels.
 
         Returns
         -------
@@ -405,61 +416,105 @@ class DataViewer:
 
         is_pixel = pixel is not None
         n_imgs = len(selected_img)
-        if is_pixel:
-            fig = plt.figure(figsize=(5 * (n_imgs + 2), 4), layout="constrained")
-            gs = gridspec.GridSpec(1, n_imgs + 2, figure=fig)
-            ax_log = fig.add_subplot(gs[0])
-            ax_lin = fig.add_subplot(gs[1])
-            img_axes = [fig.add_subplot(gs[i + 2]) for i in range(n_imgs)]
-        else:
-            fig = plt.figure(figsize=(5 * n_imgs, 4), layout="constrained")
-            gs = gridspec.GridSpec(1, n_imgs, figure=fig)
-            img_axes = [fig.add_subplot(gs[i]) for i in range(n_imgs)]
 
-        eps = esp
-        if is_pixel:
-            x, y = pixel
-            for i, data in enumerate(selected_plot):
-                label = labels_plot[i]
-                if data.ndim == 3:
-                    signal = data[x, y, :]
-                else:
-                    signal = data
-                t = np.arange(len(signal))
-                ax_log.plot(t, np.clip(signal, eps, None), lw=1.5, label=label)
-                ax_lin.plot(t, signal, lw=1.5, label=label)
+        rc = {
+            "axes.edgecolor": self._AXIS,
+            "axes.labelcolor": self._INK,
+            "axes.linewidth": 1.0,
+            "axes.titlecolor": self._INK,
+            "axes.titleweight": "normal",
+            "axes.titlesize": 11,
+            "axes.labelsize": 10,
+            "xtick.color": self._MUTED,
+            "ytick.color": self._MUTED,
+            "xtick.labelsize": 9,
+            "ytick.labelsize": 9,
+            "grid.color": self._GRID,
+            "legend.frameon": False,
+            "legend.fontsize": 9,
+            "figure.facecolor": "white",
+            "savefig.facecolor": "white",
+        }
 
-            ax_log.set_yscale("log")
-            ax_log.set_title("Log Scale")
-            ax_log.grid(True, alpha=0.3)
-            ax_log.legend(fontsize=8)
-
-            ax_lin.set_title("Linear Scale")
-            ax_lin.grid(True, alpha=0.3)
-            ax_lin.legend(fontsize=8)
-
-        if is_pixel:
-            x, y = pixel
-        for i, data in enumerate(selected_img):
-            label = labels_img[i]
-            if data.ndim == 3:
-                img = np.sum(data, axis=2)
-                im = img_axes[i].imshow(img)
-                if is_pixel:
-                    img_axes[i].plot(y, x, "rx", markersize=8, mew=2)
-                plt.colorbar(im, ax=img_axes[i], fraction=0.046, pad=0.02)
+        with plt.rc_context(rc):
+            if is_pixel:
+                fig = plt.figure(figsize=(5 * (n_imgs + 2), 4), layout="constrained")
+                gs = gridspec.GridSpec(1, n_imgs + 2, figure=fig)
+                ax_log = fig.add_subplot(gs[0])
+                ax_lin = fig.add_subplot(gs[1])
+                img_axes = [fig.add_subplot(gs[i + 2]) for i in range(n_imgs)]
             else:
-                img_axes[i].plot(data)
-            img_axes[i].set_title(label)
-        fig.suptitle(title, fontsize=14)
+                fig = plt.figure(figsize=(5 * n_imgs, 4), layout="constrained")
+                gs = gridspec.GridSpec(1, n_imgs, figure=fig)
+                img_axes = [fig.add_subplot(gs[i]) for i in range(n_imgs)]
 
-        if self.save_path:
-            fname = (self.fig_name if self.fig_name else "fli_px_display") + ".png"
-            plt.savefig(
-                os.path.join(self.save_path, fname), dpi=300, bbox_inches="tight"
-            )
+            eps = esp
+            if is_pixel:
+                x, y = pixel
+                for i, data in enumerate(selected_plot):
+                    label = labels_plot[i]
+                    color = self._SERIES_COLORS[i % len(self._SERIES_COLORS)]
+                    if data.ndim == 3:
+                        signal = data[x, y, :]
+                    else:
+                        signal = data
+                    t = np.arange(len(signal))
+                    ax_log.plot(t, np.clip(signal, eps, None), lw=2, color=color)
+                    ax_lin.plot(t, signal, lw=2, color=color, label=label)
 
-        plt.show()
+                for ax, scale_title in ((ax_log, "Log Scale"), (ax_lin, "Linear Scale")):
+                    ax.set_title(scale_title)
+                    ax.set_xlabel("Time Bin")
+                    ax.spines["top"].set_visible(False)
+                    ax.spines["right"].set_visible(False)
+                    ax.grid(True, alpha=0.6, lw=0.6)
+                    ax.set_axisbelow(True)
+
+                ax_log.set_yscale("log")
+                ax_log.set_ylabel("Counts (log)")
+                ax_lin.set_ylabel("Counts")
+                if len(selected_plot) > 1:
+                    ax_lin.legend(loc="best")
+
+            for i, data in enumerate(selected_img):
+                label = labels_img[i]
+                ax = img_axes[i]
+                if data.ndim == 3:
+                    img = np.sum(data, axis=2)
+                    im = ax.imshow(img, cmap=cmap)
+                    if is_pixel:
+                        ax.plot(
+                            y,
+                            x,
+                            marker="x",
+                            markersize=10,
+                            markeredgewidth=2.5,
+                            color="white",
+                            zorder=5,
+                        )
+                    cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.02)
+                    cbar.set_label("Total Counts", size=9)
+                    cbar.ax.tick_params(labelsize=8)
+                    ax.set_xlabel("X (px)")
+                    ax.set_ylabel("Y (px)")
+                else:
+                    ax.plot(data, lw=2, color=self._SERIES_COLORS[0])
+                    ax.spines["top"].set_visible(False)
+                    ax.spines["right"].set_visible(False)
+                    ax.grid(True, alpha=0.6, lw=0.6)
+                    ax.set_axisbelow(True)
+                ax.set_title(label)
+
+            fig.suptitle(title, fontsize=14, fontweight="bold", color=self._INK)
+
+            if self.save_path:
+                fname = (self.fig_name if self.fig_name else "fli_px_display") + ".png"
+                plt.savefig(
+                    os.path.join(self.save_path, fname), dpi=300, bbox_inches="tight"
+                )
+
+            plt.show()
+
         if is_pixel:
             return fig, (ax_log, ax_lin, img_axes)
         return fig, img_axes
