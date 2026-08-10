@@ -17,7 +17,6 @@ from pyfli import logging
 
 import numpy as np
 from scipy.integrate import quad
-from scipy.signal import fftconvolve
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
 import math
@@ -27,6 +26,7 @@ import tifffile
 
 from ..data_vnp.color_processor import ColorProcessor
 from ..data_vnp.mono_bi_classifier import MonoBiClassifier
+from ..reconstruction import ParameterToDecayReconstruction
 
 
 def circular_convolution_fft(
@@ -956,32 +956,19 @@ def compute_detailed_results(
     H, W = tau1.shape
     bins = binned_irf.shape[-1]
 
-    # When binned_decay is absent, all decay-dependent outputs (photon count,
-    # scaling, residuals, chi², R²) reduce to zero naturally.
     if binned_decay is None:
         binned_decay = np.zeros((H, W, bins), dtype=np.float32)
     else:
         binned_decay = np.asarray(binned_decay, dtype=np.float32)
 
-    # --- IRF shape handling: make it broadcastable with sdf (H, W, bins) ------
-    irf = np.asarray(binned_irf, dtype=np.float32)
-    if irf.ndim == 1:
-        irf = irf[np.newaxis, np.newaxis, :]  # (1, 1, bins) -> broadcasts
-    elif irf.ndim != 3:
+    binned_irf = np.asarray(binned_irf, dtype=np.float32)
+    if binned_irf.ndim not in (1, 3):
         raise ValueError(
-            f"binned_irf must be 1-D (bins,) or 3-D (H,W,bins); got shape {irf.shape}"
+            f"binned_irf must be 1-D (bins,) or 3-D (H,W,bins); got shape "
+            f"{binned_irf.shape}"
         )
 
-    # Normalize IRF to sum to 1 per pixel. This does NOT change any final
-    # output (param_maps, chi2_map, R2_map, fret_efficiency_map, etc.) --
-    # those all pass through a per-pixel fit_sum renormalization further
-    # down that exactly cancels any constant IRF scale factor. It DOES make
-    # the intermediate diagnostic maps (sdf_map, convolved_map in TR_maps)
-    # directly comparable across pixels and consistent with
-    # forward_model.model_numpy's convention, instead of carrying each
-    # pixel's raw sum(irf) as an arbitrary scale factor.
-    irf_sum = np.sum(irf, axis=-1, keepdims=True)
-    irf = np.divide(irf, irf_sum, out=np.zeros_like(irf), where=irf_sum > eps)
+    recon = ParameterToDecayReconstruction(model_type, freq_acq, irf=binned_irf)
 
     # ── mono-exponential branch ───────────────────────────────────────────────
     if model_type == "mono-exponential":
@@ -1025,20 +1012,23 @@ def compute_detailed_results(
             tau_eff = np.where(mono_mask, tau_mono, tau_bi)
             tau_eff = np.where(b_bool_mask, tau_eff, 0.0).astype(np.float32)
 
-        # Pixelwise single-exponential model
-        # endpoint=False matches NLSF/MLE's self.t = np.linspace(0, T_acq, N,
-        # endpoint=False) exactly, so dt = T_acq/N here too (not T_acq/(N-1)).
-        t = np.linspace(0, 1000.0 / freq_acq, bins, endpoint=False, dtype=np.float32)
-        dt = float(t[1] - t[0])  # bin width (ns) == T_acq/N
-        tau_b = np.clip(tau_eff[..., np.newaxis], eps, None)  # (H, W, 1)
-        sdf = np.exp(-t / tau_b)  # (H, W, bins)
+        unit_params = {
+            "photon_count_map": np.ones((H, W), dtype=np.float32),
+            "tau_map": tau_eff,
+            "v_shift_map": np.zeros((H, W), dtype=np.float32),
+            "h_shift_map": np.zeros((H, W), dtype=np.float32),
+        }
+        unit = recon.reconstruct_unit_amplitude(unit_params)
+        sdf, convolved_fit = unit["kernel_map"], unit["convolved_map"]
 
-        # Convolve with IRF and scale to measured photon counts
-        convolved_fit = fftconvolve(sdf, irf, mode="full", axes=-1)[..., :bins]
-        fit_sum = np.sum(convolved_fit, axis=-1, keepdims=True)
-        fit_pdf = np.zeros_like(convolved_fit)
-        np.divide(convolved_fit, fit_sum, out=fit_pdf, where=fit_sum > eps)
-        scaled_fit = photon_count[..., np.newaxis] * fit_pdf  # (H, W, bins)
+        # Scale to measured photon counts
+        scaled_fit = recon.rescale_fit_to_measured_totals(
+            convolved_fit, binned_decay, eps=eps
+        )
+
+        fit_sum = np.sum(convolved_fit, axis=-1)
+        s_reported = np.zeros_like(photon_count, dtype=np.float32)
+        np.divide(photon_count, fit_sum, out=s_reported, where=fit_sum > eps)
 
         # Goodness of fit
         # Variance flooring matches shared_metrics.compute_fli_stats, which
@@ -1061,17 +1051,8 @@ def compute_detailed_results(
 
         health = b_bool_mask.astype(np.float32)
 
-        # Mono-exponential param_maps (solver convention: amp, tau, v_shift, h_shift)
-        # NOTE: photon_count_map is reported here as "S" (the fitted-amplitude
-        # convention used by the NLSF/MLE popt[0]), i.e. photon_count * dt,
-        # NOT the raw measured sum(binned_decay). This makes it directly
-        # comparable to _cpu_nlsf_bi / _cpu_mle_bi's photon_count_map, which
-        # store popt[0] (S) as-is. The raw measured `photon_count` (sum of
-        # binned_decay) is still used internally above for scaled_fit, since
-        # that scaling must stay in actual-count units regardless of how the
-        # output map is reported.
         param_maps = {
-            "photon_count_map": (photon_count * dt).astype(np.float32),
+            "photon_count_map": s_reported,
             "tau_map": tau_eff,
             "v_shift_map": np.zeros((H, W), dtype=np.float32),
             "h_shift_map": np.zeros((H, W), dtype=np.float32),
@@ -1104,45 +1085,29 @@ def compute_detailed_results(
                 "TR_maps": tr_maps,
             },
         }
-
     # ── bi-exponential branch ─────────────────────────────────────────────────
-    # (Also handles the tau-only case: tau1 == tau2 == tau, alpha1 == 1, so the
-    # second exponential term is weighted to zero and this collapses correctly
-    # to a single exponential without any special-casing needed here.)
-
-    # --- Model decay (sdf) ----------------------------------------------------
-    tau1_b = np.clip(tau1[..., np.newaxis], eps, None)
-    tau2_b = np.clip(tau2[..., np.newaxis], eps, None)
-    alpha1_b = alpha1[..., np.newaxis]
-    # endpoint=False matches NLSF/MLE's self.t = np.linspace(0, T_acq, N,
-    # endpoint=False) exactly, so dt = T_acq/N here too (not T_acq/(N-1)).
-    t = np.linspace(0, 1000.0 / freq_acq, bins, endpoint=False, dtype=np.float32)
-    dt = float(t[1] - t[0])  # bin width (ns) == T_acq/N
-    # Normalize each exponential component by its own tau, matching
-    # forward_model.decay_kernel's bi-exponential branch:
-    #   kernel = S * ((a1/tau1)*exp(-t/tau1) + ((1-a1)/tau2)*exp(-t/tau2))
-    # Without the 1/tau factors, alpha1 does not behave as a true mixture
-    # weight when tau1 != tau2 -- the resulting decay shape is wrong, and
-    # renormalizing by fit_sum afterward only fixes overall scale, not shape.
-    sdf = (alpha1_b / tau1_b) * np.exp(-t / tau1_b) + (
-        (1.0 - alpha1_b) / tau2_b
-    ) * np.exp(-t / tau2_b)
-
-    # --- Convolve with IRF, crop back to bins -------------------------------
-    convolved_fit = fftconvolve(sdf, irf, mode="full", axes=-1)[..., :bins]
+    unit_params = {
+        "photon_count_map": np.ones((H, W), dtype=np.float32),
+        "alpha1_map": alpha1,
+        "tau1_map": tau1,
+        "tau2_map": tau2,
+        "v_shift_map": np.zeros((H, W), dtype=np.float32),
+        "h_shift_map": np.zeros((H, W), dtype=np.float32),
+    }
+    unit = recon.reconstruct_unit_amplitude(unit_params)
+    sdf, convolved_fit = unit["kernel_map"], unit["convolved_map"]
 
     # --- Scale model PDF to measured photon counts ----------------------------
     photon_count = np.sum(binned_decay, axis=-1)  # (H, W)
-    fit_sum = np.sum(convolved_fit, axis=-1, keepdims=True)
-    fit_pdf = np.zeros_like(convolved_fit)
-    np.divide(convolved_fit, fit_sum, out=fit_pdf, where=fit_sum > eps)
-    scaled_fit = photon_count[..., np.newaxis] * fit_pdf  # (H, W, bins)
+    scaled_fit = recon.rescale_fit_to_measured_totals(
+        convolved_fit, binned_decay, eps=eps
+    )
 
-    # --- Goodness of fit ------------------------------------------------------
-    # Same variance-flooring convention as the mono-exponential branch and as
-    # shared_metrics.compute_fli_stats (clip the whole array at 1.0).
+    fit_sum = np.sum(convolved_fit, axis=-1)
+    s_reported = np.zeros_like(photon_count, dtype=np.float32)
+    np.divide(photon_count, fit_sum, out=s_reported, where=fit_sum > eps)
+
     variance = np.clip(scaled_fit, 1.0, None)
-    # Same dof convention as shared_metrics.compute_fli_stats (N - k).
     dof = max(bins - params, 1)
     residuals = binned_decay - scaled_fit
     sq_err = (residuals**2) / variance
@@ -1157,18 +1122,8 @@ def compute_detailed_results(
     r2_map = np.ones((H, W), dtype=np.float32)
     np.divide(ss_res, ss_tot, out=r2_map, where=ss_tot > eps)
     r2_map = 1.0 - r2_map
-
-    # params are given -> treat every valid pixel as "converged / healthy"
     health = (photon_count > 0).astype(np.float32)
 
-    # --- Package-compatible 2-D maps ------------------------------------------
-    # NOTE: photon_count_map is reported here as "S" (the fitted-amplitude
-    # convention used by the NLSF/MLE popt[0]), i.e. photon_count * dt, NOT
-    # the raw measured sum(binned_decay). This makes it directly comparable
-    # to _cpu_nlsf_bi / _cpu_mle_bi's photon_count_map, which store popt[0]
-    # (S) as-is. The raw measured `photon_count` (sum of binned_decay) is
-    # still used above for scaled_fit, since that scaling must stay in
-    # actual-count units regardless of how the output map is reported.
     tau1_f = tau1.astype(np.float32)
     tau2_f = tau2.astype(np.float32)
     alpha1_f = alpha1.astype(np.float32)
@@ -1179,7 +1134,7 @@ def compute_detailed_results(
         where=(tau2_f > 0),
     )
     param_maps = {
-        "photon_count_map": (photon_count * dt).astype(np.float32),
+        "photon_count_map": s_reported,
         "alpha1_map": alpha1_f,
         "tau1_map": tau1_f,
         "tau2_map": tau2_f,
