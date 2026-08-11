@@ -34,6 +34,7 @@ docsrc/api/generated/
 
 
 .claude/
+CLAUDE.md
 # Pytest / coverage cache
 .pytest_cache/
 .coverage
