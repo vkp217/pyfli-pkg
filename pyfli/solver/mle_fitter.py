@@ -130,11 +130,13 @@ class MLEFLIFitter(BaseFLIFitter):
             self.fit_indices
         ]
 
-        ssr, chi_sq, red_chi_sq, r_sq = compute_fli_stats(final_model, data, len(popt))
+        ssr, chi_sq, red_chi_sq, r_sq, rmse = compute_fli_stats(
+            final_model, data, len(popt)
+        )
 
         perr = manual_perr if manual_perr is not None else np.full(len(popt), np.nan)
 
-        return popt, perr, r_sq, chi_sq, red_chi_sq, ssr, (1 if status > 0 else 0)
+        return popt, perr, r_sq, chi_sq, red_chi_sq, ssr, (1 if status > 0 else 0), rmse
 
     def compare_models(
         self, alpha: float = 0.05, estimator: str = "poisson"

@@ -67,9 +67,15 @@ def test_tau_only_mono_branch_skips_classifier_and_matches_input(irf_delta):
         "R2_map",
         "chi2_map",
         "reduced_chi2_map",
+        "rmse_map",
     }
     assert set(tr_maps) == {"fit_map", "residual_map", "sdf_map", "convolved_map"}
     np.testing.assert_allclose(maps["tau_map"], tau)
+    np.testing.assert_allclose(
+        maps["rmse_map"],
+        np.sqrt(np.mean(tr_maps["residual_map"] ** 2, axis=-1)),
+        rtol=1e-4,
+    )
 
 
 def test_biexponential_sdf_uses_per_tau_normalization(irf_delta):
@@ -97,7 +103,10 @@ def test_biexponential_sdf_uses_per_tau_normalization(irf_delta):
     np.testing.assert_allclose(sdf[0, 0], expected, rtol=1e-4)
 
 
-def test_photon_count_map_scaled_by_dt(irf_delta):
+def test_photon_count_map_scales_convolved_fit_to_decay(irf_delta):
+    """photon_count_map (S) must be exactly the factor that scales the
+    unit-amplitude convolved_map up to fit_map: S * convolved_map == fit_map,
+    and fit_map's total must match binned_decay's total at every pixel."""
     H, W, bins = 2, 2, irf_delta.shape[-1]
     tau = np.full((H, W), 1.0, dtype=np.float32)
     decay = np.full((H, W, bins), 2.0, dtype=np.float32)
@@ -110,9 +119,52 @@ def test_photon_count_map_scaled_by_dt(irf_delta):
         binned_decay=decay,
         model_type="mono-exponential",
     )
-    t = np.linspace(0, 1000.0 / freq_acq, bins, endpoint=False, dtype=np.float32)
-    dt = float(t[1] - t[0])
-    expected_photon_count = decay.sum(axis=-1) * dt
+    maps = out["results"]["maps"]
+    tr_maps = out["results"]["TR_maps"]
+
+    S = maps["photon_count_map"]
+    reconstructed = S[..., np.newaxis] * tr_maps["convolved_map"]
+    np.testing.assert_allclose(reconstructed, tr_maps["fit_map"], rtol=1e-4)
     np.testing.assert_allclose(
-        out["results"]["maps"]["photon_count_map"], expected_photon_count
+        tr_maps["fit_map"].sum(axis=-1), decay.sum(axis=-1), rtol=1e-4
+    )
+    np.testing.assert_allclose(
+        maps["rmse_map"],
+        np.sqrt(np.mean(tr_maps["residual_map"] ** 2, axis=-1)),
+        rtol=1e-4,
+    )
+
+
+def test_photon_count_map_scales_convolved_fit_to_decay_biexp(irf_delta):
+    """Same invariant as the mono-exponential test, for the bi-exponential
+    branch: S * convolved_map == fit_map, fit_map totals match decay totals."""
+    H, W, bins = 2, 2, irf_delta.shape[-1]
+    tau1 = np.full((H, W), 0.4, dtype=np.float32)
+    tau2 = np.full((H, W), 1.6, dtype=np.float32)
+    alpha1 = np.full((H, W), 0.3, dtype=np.float32)
+    decay = np.full((H, W, bins), 3.0, dtype=np.float32)
+    freq_acq = 80.0
+
+    out = compute_detailed_results(
+        tau1=tau1,
+        tau2=tau2,
+        alpha1=alpha1,
+        freq_acq=freq_acq,
+        binned_irf=irf_delta,
+        binned_decay=decay,
+        model_type="bi-exponential",
+    )
+    maps = out["results"]["maps"]
+    tr_maps = out["results"]["TR_maps"]
+
+    S = maps["photon_count_map"]
+    reconstructed = S[..., np.newaxis] * tr_maps["convolved_map"]
+    np.testing.assert_allclose(reconstructed, tr_maps["fit_map"], rtol=1e-4)
+    np.testing.assert_allclose(
+        tr_maps["fit_map"].sum(axis=-1), decay.sum(axis=-1), rtol=1e-4
+    )
+    np.testing.assert_allclose(
+        maps["rmse_map"],
+        np.sqrt(np.mean(tr_maps["residual_map"] ** 2, axis=-1)),
+        rtol=1e-4,
     )
