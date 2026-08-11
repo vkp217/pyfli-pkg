@@ -1048,6 +1048,7 @@ def compute_detailed_results(
         r2_map = np.ones((H, W), dtype=np.float32)
         np.divide(ss_res, ss_tot, out=r2_map, where=ss_tot > eps)
         r2_map = 1.0 - r2_map
+        rmse_map = np.sqrt(np.mean(residuals**2, axis=-1))
 
         health = b_bool_mask.astype(np.float32)
 
@@ -1059,6 +1060,7 @@ def compute_detailed_results(
             "R2_map": r2_map.astype(np.float32),
             "chi2_map": chi_sq_raw.astype(np.float32),
             "reduced_chi2_map": chi_sq_map.astype(np.float32),
+            "rmse_map": rmse_map.astype(np.float32),
             "convergence_map": health.copy(),
             "pixel_health_map": health,
         }
@@ -1122,6 +1124,7 @@ def compute_detailed_results(
     r2_map = np.ones((H, W), dtype=np.float32)
     np.divide(ss_res, ss_tot, out=r2_map, where=ss_tot > eps)
     r2_map = 1.0 - r2_map
+    rmse_map = np.sqrt(np.mean(residuals**2, axis=-1))
     health = (photon_count > 0).astype(np.float32)
 
     tau1_f = tau1.astype(np.float32)
@@ -1147,6 +1150,7 @@ def compute_detailed_results(
         "R2_map": r2_map.astype(np.float32),
         "chi2_map": chi_sq_raw.astype(np.float32),
         "reduced_chi2_map": chi_sq_map.astype(np.float32),
+        "rmse_map": rmse_map.astype(np.float32),
         "convergence_map": health.copy(),
         "pixel_health_map": health,
     }

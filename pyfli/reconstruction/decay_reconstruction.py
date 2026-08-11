@@ -40,9 +40,12 @@ class ParameterToDecayReconstruction:
     optional — missing ones default to 1.0, 0.0, and 0.0 respectively (see
     :attr:`PARAM_MAP_DEFAULTS`), except ``"photon_count_map"``: if it's
     omitted *and* ``decay`` is supplied to :meth:`reconstruct`, it is instead
-    derived as ``decay.sum(axis=-1)`` rather than falling back to 1.0. The
-    lifetime map(s) (``"tau_map"`` for mono-exponential; ``"alpha1_map"``,
-    ``"tau1_map"``, ``"tau2_map"`` for bi-exponential) are always required.
+    solved for as the amplitude that makes the model's own convolved-kernel
+    discrete sum match ``decay``'s discrete sum at each pixel (*not* simply
+    ``decay.sum(axis=-1)`` — see :meth:`_fill_photon_count_from_decay`),
+    rather than falling back to 1.0. The lifetime map(s) (``"tau_map"`` for
+    mono-exponential; ``"alpha1_map"``, ``"tau1_map"``, ``"tau2_map"`` for
+    bi-exponential) are always required.
 
     A 2-D boolean ``bool_mask`` can be passed to :meth:`reconstruct` to only
     reconstruct pixels where it is ``True``; every output map is ``NaN``
@@ -195,14 +198,36 @@ class ParameterToDecayReconstruction:
         self, params: dict[str, np.ndarray], decay: np.ndarray | None
     ) -> dict[str, np.ndarray]:
         """
-        When ``"photon_count_map"`` is omitted but ``decay`` is supplied, derive
-        it by summing the measured decay along the time axis, instead of
+        When ``"photon_count_map"`` is omitted but ``decay`` is supplied, solve
+        for the amplitude S that makes the model's own convolved-kernel
+        discrete sum match ``decay``'s discrete sum at each pixel, instead of
         falling back to the constant default in :attr:`PARAM_MAP_DEFAULTS`.
+
+        This is *not* the same as ``decay.sum(axis=-1)``: the model kernel's
+        own discrete sum at unit amplitude is generally not 1 (it depends on
+        tau, the acquisition window, dt, and any convolution truncation), so
+        equating S directly to the raw decay total would silently over/under-
+        scale the reconstructed fit by that same factor.
         """
         if "photon_count_map" in params or decay is None:
             return params
+        unit_params = dict(params)
+        unit_params["photon_count_map"] = np.ones(
+            np.asarray(params[self.required_keys[0]]).shape, dtype=np.float32
+        )
+        kernel = self._kernel_vectorized(unit_params)
+        convolved = (
+            self._convolve_with_irf_vectorized(kernel)
+            if self.irf is not None
+            else kernel
+        )
+        fit_sum = np.sum(convolved, axis=-1)
+        decay_total = np.asarray(decay).sum(axis=-1)
+        S = np.zeros_like(decay_total, dtype=np.float64)
+        np.divide(decay_total, fit_sum, out=S, where=fit_sum > _EPS)
+
         params = dict(params)
-        params["photon_count_map"] = np.asarray(decay).sum(axis=-1)
+        params["photon_count_map"] = S
         return params
 
     def _pixel_params(
@@ -275,7 +300,7 @@ class ParameterToDecayReconstruction:
         :class:`pyfli.solver.FLIGPUProcessor`'s convention (``decay - fit``);
         the accompanying ``fit_stats_maps`` use the same key names those two
         processors expose in their ``maps`` dict (``R2_map``, ``chi2_map``,
-        ``reduced_chi2_map``), and are computed per pixel via
+        ``reduced_chi2_map``, ``rmse_map``), and are computed per pixel via
         :func:`compute_fli_stats` — the same function :class:`BaseFLIFitter`
         uses — so goodness-of-fit numbers stay in lockstep with the rest of
         the solver package. Pixels outside ``bool_mask`` (or wherever
@@ -291,16 +316,18 @@ class ParameterToDecayReconstruction:
         chi2_map = np.full((h, w), np.nan, dtype=np.float32)
         reduced_chi2_map = np.full((h, w), np.nan, dtype=np.float32)
         r2_map = np.full((h, w), np.nan, dtype=np.float32)
+        rmse_map = np.full((h, w), np.nan, dtype=np.float32)
 
         for i, j in itertools.product(range(h), range(w)):
             if bool_mask is not None and not bool_mask[i, j]:
                 continue
-            _ssr, chi_sq, red_chi_sq, r_sq = compute_fli_stats(
+            _ssr, chi_sq, red_chi_sq, r_sq, rmse = compute_fli_stats(
                 fit_map[i, j, :], decay[i, j, :], n_params
             )
             chi2_map[i, j] = chi_sq
             reduced_chi2_map[i, j] = red_chi_sq
             r2_map[i, j] = r_sq
+            rmse_map[i, j] = rmse
 
         return {
             "TR_maps": {"fit_map": fit_map, "residual_map": residual_map},
@@ -308,6 +335,7 @@ class ParameterToDecayReconstruction:
                 "R2_map": r2_map,
                 "chi2_map": chi2_map,
                 "reduced_chi2_map": reduced_chi2_map,
+                "rmse_map": rmse_map,
             },
         }
 
@@ -390,11 +418,13 @@ class ParameterToDecayReconstruction:
         r2_map = np.where(
             ss_tot > 0, 1.0 - ssr / np.where(ss_tot > 0, ss_tot, 1.0), 0.0
         )
+        rmse_map = np.sqrt(np.mean(residual_map**2, axis=-1))
 
         if bool_mask is not None:
             chi2_map = np.where(bool_mask, chi2_map, np.nan)
             reduced_chi2_map = np.where(bool_mask, reduced_chi2_map, np.nan)
             r2_map = np.where(bool_mask, r2_map, np.nan)
+            rmse_map = np.where(bool_mask, rmse_map, np.nan)
 
         return {
             "TR_maps": {
@@ -405,6 +435,7 @@ class ParameterToDecayReconstruction:
                 "R2_map": r2_map.astype(np.float32),
                 "chi2_map": chi2_map.astype(np.float32),
                 "reduced_chi2_map": reduced_chi2_map.astype(np.float32),
+                "rmse_map": rmse_map.astype(np.float32),
             },
         }
 

@@ -201,6 +201,7 @@ class TestGPUOutputStructure:
             "chi2_map",
             "reduced_chi2_map",
             "R2_map",
+            "rmse_map",
             "pixel_health_map",
             "convergence_map",
         ):
@@ -216,6 +217,7 @@ class TestGPUOutputStructure:
             "chi2_map",
             "reduced_chi2_map",
             "R2_map",
+            "rmse_map",
             "pixel_health_map",
             "convergence_map",
         ):
@@ -265,7 +267,7 @@ class TestGPUOutputStructure:
 
 class TestCPUNLSFRecovery:
     def test_mono_tau_recovered(self, cpu_nlsf_mono):
-        popt, _, r2, _, _, _, conv = cpu_nlsf_mono
+        popt, _, r2, _, _, _, conv, _ = cpu_nlsf_mono
         assert conv == 1
         assert abs(popt[1] - _MONO["tau"]) / _MONO["tau"] < _TOL, (
             f"CPU NLSF mono tau={popt[1]:.4f}, truth={_MONO['tau']}"
@@ -273,7 +275,7 @@ class TestCPUNLSFRecovery:
         assert r2 > 0.95
 
     def test_biexp_tau1_recovered(self, cpu_nlsf_biexp):
-        popt, _, r2, _, _, _, conv = cpu_nlsf_biexp
+        popt, _, r2, _, _, _, conv, _ = cpu_nlsf_biexp
         assert conv == 1
         assert abs(popt[2] - _BIEXP["tau1"]) / _BIEXP["tau1"] < _TOL, (
             f"CPU NLSF biexp tau1={popt[2]:.4f}, truth={_BIEXP['tau1']}"
@@ -332,7 +334,7 @@ class TestCPUNLSFRecovery:
 
 class TestCPUMLERecovery:
     def test_mono_tau_recovered(self, cpu_mle_mono):
-        popt, _, r2, _, _, _, conv = cpu_mle_mono
+        popt, _, r2, _, _, _, conv, _ = cpu_mle_mono
         assert conv == 1
         assert abs(popt[1] - _MONO["tau"]) / _MONO["tau"] < _TOL, (
             f"CPU MLE mono tau={popt[1]:.4f}, truth={_MONO['tau']}"
@@ -340,7 +342,7 @@ class TestCPUMLERecovery:
         assert r2 > 0.95
 
     def test_biexp_tau1_recovered(self, cpu_mle_biexp):
-        popt, _, r2, _, _, _, conv = cpu_mle_biexp
+        popt, _, r2, _, _, _, conv, _ = cpu_mle_biexp
         assert conv == 1
         assert abs(popt[2] - _BIEXP["tau1"]) / _BIEXP["tau1"] < _TOL, (
             f"CPU MLE biexp tau1={popt[2]:.4f}, truth={_BIEXP['tau1']}"
@@ -413,6 +415,17 @@ class TestGPUNLSFRecovery:
         if not health.any():
             pytest.skip("No healthy GPU pixels")
         assert np.all(maps["R2_map"][health] > 0.90)
+
+    def test_mono_rmse_matches_residual_map(self, gpu_nlsf_mono):
+        maps = gpu_nlsf_mono["results"]["maps"]
+        tr = gpu_nlsf_mono["results"]["TR_maps"]
+        health = maps["pixel_health_map"] > 0
+        if not health.any():
+            pytest.skip("No healthy GPU pixels")
+        expected = np.sqrt(np.mean(tr["residual_map"] ** 2, axis=-1))
+        np.testing.assert_allclose(
+            maps["rmse_map"][health], expected[health], rtol=1e-3
+        )
 
     def test_biexp_tau1_recovered(self, gpu_nlsf_biexp):
         tau1 = self._median_healthy(gpu_nlsf_biexp, "tau1_map")

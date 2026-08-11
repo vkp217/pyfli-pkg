@@ -145,16 +145,47 @@ class TestParamsAndDefaults:
         out_s1 = recon.reconstruct(with_s1, verbose=False)["fit_map"]
         np.testing.assert_allclose(out_minimal, out_s1)
 
-    def test_photon_count_derived_from_decay_sum(self):
-        recon = ParameterToDecayReconstruction(
-            "mono-exponential", _FREQ_ACQ, _gaussian_irf()
-        )
+    def test_photon_count_derived_from_decay_matches_decay_total(self):
+        """Auto-derived S must make fit_map's own total match decay's total
+        per pixel -- NOT equal decay.sum(axis=-1) directly (the model
+        kernel's own discrete sum at unit amplitude is not 1 in general, so
+        naively equating S to the raw decay sum would over/under-scale the
+        fit by that factor)."""
+        irf = _gaussian_irf()
+        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
         H, W = 3, 3
-        decay = np.random.default_rng(0).uniform(0, 50, (H, W, _N))
-        minimal = {"tau_map": np.full((H, W), 2.0)}
+        rng = np.random.default_rng(0)
+        decay = rng.uniform(0, 500, (H, W, _N)).astype(np.float32)
+        minimal = {"tau_map": np.full((H, W), 2.0, dtype=np.float32)}
+
         filled = recon._fill_photon_count_from_decay(minimal, decay)
-        np.testing.assert_array_equal(filled["photon_count_map"], decay.sum(axis=-1))
         assert "photon_count_map" not in minimal, "must not mutate caller's dict"
+        assert not np.allclose(filled["photon_count_map"], decay.sum(axis=-1)), (
+            "S should NOT simply equal the raw decay sum"
+        )
+
+        out = recon.reconstruct(minimal, decay=decay, verbose=False)
+        np.testing.assert_allclose(
+            out["fit_map"].sum(axis=-1), decay.sum(axis=-1), rtol=1e-4
+        )
+
+    def test_photon_count_derived_matches_between_loop_and_vectorized(self):
+        irf = _gaussian_irf()
+        recon = ParameterToDecayReconstruction("bi-exponential", _FREQ_ACQ, irf)
+        H, W = 3, 3
+        rng = np.random.default_rng(1)
+        decay = rng.uniform(0, 500, (H, W, _N)).astype(np.float32)
+        minimal = {
+            "tau1_map": np.full((H, W), 0.5, dtype=np.float32),
+            "tau2_map": np.full((H, W), 2.5, dtype=np.float32),
+            "alpha1_map": np.full((H, W), 0.4, dtype=np.float32),
+        }
+        loop_out = recon.reconstruct(minimal, decay=decay, verbose=False)["fit_map"]
+        vec_out = recon.reconstruct_vectorized(minimal, decay=decay, verbose=False)[
+            "fit_map"
+        ]
+        np.testing.assert_allclose(loop_out, vec_out, atol=1e-3)
+        np.testing.assert_allclose(loop_out.sum(axis=-1), decay.sum(axis=-1), rtol=1e-4)
 
     def test_explicit_photon_count_takes_priority_over_decay(self):
         recon = ParameterToDecayReconstruction(
@@ -262,6 +293,7 @@ class TestTRMapsAndStats:
             "R2_map",
             "chi2_map",
             "reduced_chi2_map",
+            "rmse_map",
         }
 
     def test_fit_stats_match_compute_fli_stats_directly(self):
@@ -272,7 +304,7 @@ class TestTRMapsAndStats:
         decay = fit + np.random.default_rng(2).normal(0, 1.0, fit.shape)
         out = recon.reconstruct(params, decay=decay, verbose=False)
 
-        _ssr, chi_sq, red_chi_sq, r_sq = compute_fli_stats(
+        _ssr, chi_sq, red_chi_sq, r_sq, rmse = compute_fli_stats(
             fit[0, 0, :], decay[0, 0, :], n_params=6
         )
         assert out["fit_stats_maps"]["chi2_map"][0, 0] == pytest.approx(chi_sq)
@@ -280,6 +312,7 @@ class TestTRMapsAndStats:
             red_chi_sq
         )
         assert out["fit_stats_maps"]["R2_map"][0, 0] == pytest.approx(r_sq)
+        assert out["fit_stats_maps"]["rmse_map"][0, 0] == pytest.approx(rmse)
 
 
 # ---------------------------------------------------------------------------
