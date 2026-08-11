@@ -10,8 +10,27 @@ posterior-sample parameter combinations against measured decay
 predictive fit (:func:`plot_pixel_posterior_fit`).
 """
 
-from .inference import BiPipeline
 from .param_combinations import BestParamFitSelector
 from .posterior_pixel_plot import plot_pixel_posterior_fit
+
+# BiPipeline needs Keras (the "tf" extra) -- keep the rest of this package
+# importable without it, matching pyfli.analysis's fbi_analysis fallback.
+try:
+    from .inference import BiPipeline
+
+    _KERAS_AVAILABLE = True
+except ImportError:
+    _KERAS_AVAILABLE = False
+
+    class BiPipeline:  # type: ignore[no-redef]
+        """Placeholder raised in place of :class:`BiPipeline` when Keras
+        (the ``tf`` extra, ``pip install pyfli-lib[tf]``) isn't installed."""
+
+        def __init__(self, *_args, **_kwargs) -> None:
+            raise ImportError(
+                "BiPipeline requires the 'tf' extra (Keras/TensorFlow). "
+                "Install it with: pip install pyfli-lib[tf]"
+            )
+
 
 __all__ = ["BiPipeline", "BestParamFitSelector", "plot_pixel_posterior_fit"]

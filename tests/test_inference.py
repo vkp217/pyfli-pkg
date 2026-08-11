@@ -15,6 +15,11 @@ matplotlib.use("Agg")
 import numpy as np
 import pytest
 
+# inference.py imports keras at module level (the "tf" extra) even though
+# none of these tests touch a real Keras model -- skip cleanly rather than
+# erroring collection when it isn't installed.
+pytest.importorskip("keras")
+
 from pyfli.bayes_utils.inference import BiPipeline
 
 _KEY_BASE = {"tau1": 0.8, "tau2": 2.5, "alpha1": 0.4, "tau": 1.2}
