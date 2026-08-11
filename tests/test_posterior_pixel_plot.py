@@ -19,7 +19,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pyfli.bayes_utils.inference import BiPipeline
 from pyfli.bayes_utils.param_combinations import BestParamFitSelector
 from pyfli.bayes_utils.posterior_pixel_plot import (
     _MODEL_PARAM_KEYS,
@@ -97,6 +96,9 @@ def test_bipipeline_keys_match_posterior_plot_param_keys():
     match posterior_pixel_plot's own registry, or output_samples from
     inference.py silently won't work as plot_pixel_posterior_fit's
     output_combination."""
+    pytest.importorskip("keras")
+    from pyfli.bayes_utils.inference import BiPipeline
+
     assert set(BiPipeline.MODEL_KEYS) == set(_MODEL_PARAM_KEYS)
     for model_type, keys in BiPipeline.MODEL_KEYS.items():
         assert set(keys) == set(_MODEL_PARAM_KEYS[model_type])
