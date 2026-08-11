@@ -45,6 +45,8 @@ source_suffix = {
 autodoc_mock_imports = [
     "torch",
     "tensorflow",
+    "keras",
+    "bayesflow",
     "PySide6",
     "cv2",
     "nvidia",

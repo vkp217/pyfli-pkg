@@ -109,7 +109,16 @@ class FLICPUProcessor:
 
         except Exception:
             n_params = 6 if model_type == "bi-exponential" else 4
-            dummy_res = (np.zeros(n_params), np.zeros(n_params), 0.0, 0.0, 0.0, 0.0, 0)
+            dummy_res = (
+                np.zeros(n_params),
+                np.zeros(n_params),
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0,
+                0.0,
+            )
             dummy_curve = np.zeros_like(y_data)
             health = 0
             return coords, dummy_res, dummy_curve, dummy_curve, health
@@ -227,6 +236,7 @@ class FLICPUProcessor:
         red_stat_map = np.zeros((H, W), dtype=np.float32)
         conv_map = np.zeros((H, W), dtype=np.float32)
         pixel_health_map = np.zeros((H, W), dtype=np.float32)
+        rmse_map = np.zeros((H, W), dtype=np.float32)
 
         fit_map = np.zeros((H, W, T), dtype=np.float32)
         res_map = np.zeros((H, W, T), dtype=np.float32)
@@ -240,6 +250,7 @@ class FLICPUProcessor:
             stat_map[r, c] = res[3]
             red_stat_map[r, c] = res[4]
             conv_map[r, c] = res[6]
+            rmse_map[r, c] = res[7]
             fit_map[r, c, :] = f_curve
             res_map[r, c, :] = r_curve
 
@@ -280,6 +291,7 @@ class FLICPUProcessor:
                 "R2_map": r2_map,
                 "chi2_map": stat_map,
                 "reduced_chi2_map": red_stat_map,
+                "rmse_map": rmse_map,
                 "convergence_map": conv_map,
                 "pixel_health_map": pixel_health_map,
             }

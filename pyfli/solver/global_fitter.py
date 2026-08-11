@@ -328,6 +328,7 @@ class GlobalFLIFitter:
             "chi2_map": _z2(),
             "R2_map": _z2(),
             "reduced_chi2_map": _z2(),
+            "rmse_map": _z2(),
             "convergence_map": _z2(),
             "pixel_health_map": _z2(),
         }

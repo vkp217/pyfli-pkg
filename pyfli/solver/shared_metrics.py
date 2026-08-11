@@ -70,7 +70,8 @@ def compute_fli_stats(
     Returns
     -------
     tuple[Any, ...]
-        Tuple containing SSR, chi-square, reduced chi-square, and R-squared statistics.
+        Tuple containing SSR, chi-square, reduced chi-square, R-squared, and
+        RMSE statistics.
     """
     residuals = final_model - d_fit
     ssr = float(np.sum(residuals**2))
@@ -79,7 +80,8 @@ def compute_fli_stats(
     red_chi_sq = chi_sq / dof
     ss_tot = float(np.sum((d_fit - np.mean(d_fit)) ** 2))
     r_sq = 1.0 - ssr / ss_tot if ss_tot > 0 else 0.0
-    return ssr, chi_sq, red_chi_sq, r_sq
+    rmse = float(np.sqrt(np.mean(residuals**2)))
+    return ssr, chi_sq, red_chi_sq, r_sq, rmse
 
 
 def compute_average_lifetime(popt: np.ndarray) -> float:

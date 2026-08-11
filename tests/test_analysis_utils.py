@@ -67,9 +67,15 @@ def test_tau_only_mono_branch_skips_classifier_and_matches_input(irf_delta):
         "R2_map",
         "chi2_map",
         "reduced_chi2_map",
+        "rmse_map",
     }
     assert set(tr_maps) == {"fit_map", "residual_map", "sdf_map", "convolved_map"}
     np.testing.assert_allclose(maps["tau_map"], tau)
+    np.testing.assert_allclose(
+        maps["rmse_map"],
+        np.sqrt(np.mean(tr_maps["residual_map"] ** 2, axis=-1)),
+        rtol=1e-4,
+    )
 
 
 def test_biexponential_sdf_uses_per_tau_normalization(irf_delta):
@@ -122,6 +128,11 @@ def test_photon_count_map_scales_convolved_fit_to_decay(irf_delta):
     np.testing.assert_allclose(
         tr_maps["fit_map"].sum(axis=-1), decay.sum(axis=-1), rtol=1e-4
     )
+    np.testing.assert_allclose(
+        maps["rmse_map"],
+        np.sqrt(np.mean(tr_maps["residual_map"] ** 2, axis=-1)),
+        rtol=1e-4,
+    )
 
 
 def test_photon_count_map_scales_convolved_fit_to_decay_biexp(irf_delta):
@@ -151,4 +162,9 @@ def test_photon_count_map_scales_convolved_fit_to_decay_biexp(irf_delta):
     np.testing.assert_allclose(reconstructed, tr_maps["fit_map"], rtol=1e-4)
     np.testing.assert_allclose(
         tr_maps["fit_map"].sum(axis=-1), decay.sum(axis=-1), rtol=1e-4
+    )
+    np.testing.assert_allclose(
+        maps["rmse_map"],
+        np.sqrt(np.mean(tr_maps["residual_map"] ** 2, axis=-1)),
+        rtol=1e-4,
     )

@@ -387,6 +387,7 @@ class FLIGPUProcessor:
             r2_flat = torch.where(
                 ss_tot > 0, 1.0 - ss_res / ss_tot, torch.zeros_like(ss_tot)
             )
+            rmse_flat = torch.sqrt(torch.mean(res_flat**2, dim=1))
 
             perr_flat = torch.zeros_like(p_final)
             if CRLB:
@@ -401,6 +402,7 @@ class FLIGPUProcessor:
         full_chi2_raw = np.zeros(H * W)
         full_chi2_red = np.zeros(H * W)
         full_r2 = np.zeros(H * W)
+        full_rmse = np.zeros(H * W)
 
         full_popt[valid_idx] = p_final.detach().cpu().numpy()
         full_perr[valid_idx] = perr_flat.detach().cpu().numpy()
@@ -409,6 +411,7 @@ class FLIGPUProcessor:
         full_chi2_raw[valid_idx] = chi2_raw_flat.detach().cpu().numpy()
         full_chi2_red[valid_idx] = chi2_red_flat.detach().cpu().numpy()
         full_r2[valid_idx] = r2_flat.detach().cpu().numpy()
+        full_rmse[valid_idx] = rmse_flat.detach().cpu().numpy()
 
         logging.info(f"Fit Finished in {time.time() - start_time:.2f}s")
 
@@ -437,6 +440,7 @@ class FLIGPUProcessor:
             full_chi2_raw.reshape(H, W),
             full_chi2_red.reshape(H, W),
             full_r2.reshape(H, W),
+            full_rmse.reshape(H, W),
             health_mask.reshape(H, W),
             model_type,
             mode,
@@ -452,6 +456,7 @@ class FLIGPUProcessor:
         chi2_raw: np.ndarray,
         chi2_reduced: np.ndarray,
         r2_map: np.ndarray,
+        rmse_map: np.ndarray,
         health_map: np.ndarray,
         model_type: str,
         mode: str,
@@ -476,6 +481,8 @@ class FLIGPUProcessor:
             Reduced chi-square map from the fit reconstruction.
         r2_map : np.ndarray
             Parameter or mask map processed by the routine.
+        rmse_map : np.ndarray
+            Root-mean-square-error map from the fit reconstruction.
         health_map : np.ndarray
             Parameter or mask map processed by the routine.
         model_type : str
@@ -495,6 +502,7 @@ class FLIGPUProcessor:
             "chi2_map": chi2_raw,
             "reduced_chi2_map": chi2_reduced,
             "R2_map": r2_map,
+            "rmse_map": rmse_map,
             "pixel_health_map": health_map,
             "convergence_map": health_map,
         }

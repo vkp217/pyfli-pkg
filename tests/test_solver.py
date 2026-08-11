@@ -71,7 +71,7 @@ class TestBaseFLIFitterStructure:
         result = BaseFLIFitter(_FREQ, decay, irf).fit_with_estimator(
             model_type="mono-exponential"
         )
-        popt, perr, r2, chi2, red_chi2, ssr, converged = result
+        popt, perr, r2, chi2, red_chi2, ssr, converged, rmse = result
         # [S, tau, offset, h_shift] — 4 parameters
         assert len(popt) == 4
         assert len(perr) == 4
@@ -81,7 +81,7 @@ class TestBaseFLIFitterStructure:
         result = BaseFLIFitter(_FREQ, decay, irf).fit_with_estimator(
             model_type="bi-exponential"
         )
-        popt, perr, r2, chi2, red_chi2, ssr, converged = result
+        popt, perr, r2, chi2, red_chi2, ssr, converged, rmse = result
         # [S, a1, tau1, tau2, offset, h_shift] — 6 parameters
         assert len(popt) == 6
         assert len(perr) == 6
@@ -104,7 +104,7 @@ class TestBaseFLIFitterStructure:
     def test_chi2_raw_greater_than_reduced(self):
         """chi2 (raw) divided by dof must equal red_chi2; raw > reduced when dof > 1."""
         decay, irf = _make_mono()
-        _, _, _, chi2, red_chi2, _, _ = BaseFLIFitter(
+        _, _, _, chi2, red_chi2, _, _, _ = BaseFLIFitter(
             _FREQ, decay, irf
         ).fit_with_estimator(model_type="mono-exponential")
         dof = _N - 4  # N bins − 4 params [S, tau, offset, h_shift]
@@ -120,7 +120,7 @@ class TestBaseFLIFitterStructure:
 
     def test_ssr_non_negative(self):
         decay, irf = _make_biexp()
-        _, _, _, _, _, ssr, _ = BaseFLIFitter(_FREQ, decay, irf).fit_with_estimator(
+        _, _, _, _, _, ssr, _, _ = BaseFLIFitter(_FREQ, decay, irf).fit_with_estimator(
             model_type="bi-exponential"
         )
         assert ssr >= 0.0
@@ -130,7 +130,7 @@ class TestBaseFLIFitterStructure:
         result = BaseFLIFitter(_FREQ, decay, irf).fit_with_estimator(
             estimator_type="trust_region", model_type="mono-exponential"
         )
-        assert len(result) == 7
+        assert len(result) == 8
 
 
 class TestBaseFLIFitterRecovery:
@@ -140,7 +140,7 @@ class TestBaseFLIFitterRecovery:
     def test_mono_tau_recovered(self):
         tau_true = 2.0
         decay, irf = _make_mono(tau=tau_true, S=8000, seed=0)
-        popt, _, r2, _, red_chi2, _, converged = BaseFLIFitter(
+        popt, _, r2, _, red_chi2, _, converged, _ = BaseFLIFitter(
             _FREQ, decay, irf
         ).fit_with_estimator(model_type="mono-exponential")
         assert converged == 1
@@ -150,7 +150,7 @@ class TestBaseFLIFitterRecovery:
     def test_biexp_taus_recovered(self):
         tau1_true, tau2_true = 0.5, 2.5
         decay, irf = _make_biexp(tau1=tau1_true, tau2=tau2_true, S=10000, seed=1)
-        popt, _, r2, _, red_chi2, _, converged = BaseFLIFitter(
+        popt, _, r2, _, red_chi2, _, converged, _ = BaseFLIFitter(
             _FREQ, decay, irf
         ).fit_with_estimator(model_type="bi-exponential")
         assert converged == 1
@@ -161,7 +161,7 @@ class TestBaseFLIFitterRecovery:
     def test_reduced_chi2_near_one_for_good_fit(self):
         """A well-fitted Poisson dataset should give reduced chi2 ≈ 1."""
         decay, irf = _make_mono(S=10000, seed=2)
-        _, _, _, _, red_chi2, _, _ = BaseFLIFitter(
+        _, _, _, _, red_chi2, _, _, _ = BaseFLIFitter(
             _FREQ, decay, irf
         ).fit_with_estimator(model_type="mono-exponential")
         assert 0.5 < red_chi2 < 3.0, (
@@ -238,6 +238,21 @@ class TestCPUProcessorOutputKeys:
 
     def test_r2_map_present(self, biexp_result):
         assert "R2_map" in biexp_result["results"]["maps"]
+
+    def test_rmse_map_present(self, biexp_result):
+        assert "rmse_map" in biexp_result["results"]["maps"]
+
+    def test_rmse_map_matches_residual_map(self, biexp_result):
+        """rmse_map must equal sqrt(mean(residual_map**2, axis=-1)) per pixel."""
+        maps = biexp_result["results"]["maps"]
+        tr = biexp_result["results"]["TR_maps"]
+        health = maps["pixel_health_map"] > 0
+        if not health.any():
+            pytest.skip("No healthy pixels")
+        expected = np.sqrt(np.mean(tr["residual_map"] ** 2, axis=-1))
+        np.testing.assert_allclose(
+            maps["rmse_map"][health], expected[health], rtol=1e-4
+        )
 
     def test_pixel_health_map_present(self, biexp_result):
         assert "pixel_health_map" in biexp_result["results"]["maps"]

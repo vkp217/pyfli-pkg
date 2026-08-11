@@ -348,7 +348,9 @@ class BaseFLIFitter:
         final_model = self.model_fit(self.t, popt, model_type=model_type)[
             self.fit_indices
         ]
-        ssr, chi_sq, red_chi_sq, r_sq = compute_fli_stats(final_model, d_fit, len(popt))
+        ssr, chi_sq, red_chi_sq, r_sq, rmse = compute_fli_stats(
+            final_model, d_fit, len(popt)
+        )
 
         if pcov is not None:
             perr = np.sqrt(np.maximum(np.diag(pcov), 0))
@@ -357,7 +359,7 @@ class BaseFLIFitter:
         else:
             perr = np.full(len(popt), np.nan)
 
-        return popt, perr, r_sq, chi_sq, red_chi_sq, ssr, (1 if status > 0 else 0)
+        return popt, perr, r_sq, chi_sq, red_chi_sq, ssr, (1 if status > 0 else 0), rmse
 
     def calculate_uncertainties(
         self, jacobian: Any, chi_sq: np.ndarray, n_data: int, n_params: int

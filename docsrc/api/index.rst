@@ -11,4 +11,4 @@ recursively walking all subpackages (:mod:`pyfli.io`, :mod:`pyfli.solver`,
    :template: module
    :recursive:
 
-   PyFli
+   pyfli
