@@ -86,6 +86,14 @@ ENVIRONMENT = {
     "local": Environment.factory(),
 }
 
+
+async def selector(rev, keys):
+    """Select the ENVIRONMENT entry for a revision: 'local' for local/mock builds, else the shared config."""
+    if rev.name == "local":
+        return "local"
+    return None
+
+
 CustomDriver(
     root,
     OUTPUT_DIR,
@@ -96,6 +104,7 @@ CustomDriver(
         pre_cmd=["python", str(root / src / "pre-build.py"), Placeholder.SOURCE_DIR],
     ),
     env=ENVIRONMENT,
+    selector=selector,
     encoder=PyDataVersionEncoder(),
     data_factory=data,
     root_data_factory=root_data,
