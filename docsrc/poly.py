@@ -13,7 +13,7 @@ from polyversion_patches import (
 
 from sphinx_polyversion.api import apply_overrides
 from sphinx_polyversion.git import Git, GitRef, GitRefType, file_predicate
-from sphinx_polyversion.pyvenv import Environment
+from sphinx_polyversion.pyvenv import Environment, VenvWrapper
 from sphinx_polyversion.sphinx import SphinxBuilder, Placeholder
 from datetime import datetime
 
@@ -80,7 +80,10 @@ vcs = Git(
     predicate=file_predicate([src]),
 )
 
-shared_env_kwargs = dict(temporary=SEQUENTIAL, venv=Path(VENV_DIR_NAME))
+creator = VenvWrapper(with_pip=True)
+shared_env_kwargs = dict(
+    temporary=SEQUENTIAL, creator=creator, venv=Path(VENV_DIR_NAME)
+)
 ENVIRONMENT = {
     None: DynamicPip.factory(**shared_env_kwargs, args=["-e", "."] + SPHINX_DEPS),
     "local": Environment.factory(),
