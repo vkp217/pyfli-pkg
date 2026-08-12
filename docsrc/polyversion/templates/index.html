@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>PyFli Documentation</title>
+    <meta http-equiv="refresh" content="0; url=/{{ latest.name }}/" />
+    <link rel="canonical" href="/{{ latest.name }}/" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 4rem auto;
+            max-width: 28rem;
+            text-align: center;
+            color: #1a1a1a;
+        }
+        a { color: #2b7cff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        ul { list-style: none; padding: 0; margin-top: 1.5rem; }
+        li { margin: 0.4rem 0; }
+    </style>
+</head>
+<body>
+    <p>Redirecting to the <a href="/{{ latest.name }}/">latest PyFli docs</a>&hellip;</p>
+    <p>Available versions:</p>
+    <ul>
+    {% for rev in revisions %}
+        <li><a href="/{{ rev.name }}/">{{ rev.name }}</a></li>
+    {% endfor %}
+    </ul>
+</body>
+</html>

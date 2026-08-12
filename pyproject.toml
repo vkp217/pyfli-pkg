@@ -67,6 +67,16 @@ dev = [
     "pre-commit",
 ]
 
+docs = [
+    "sphinx>=7.0",
+    "pydata-sphinx-theme",
+    "myst-nb",
+    "sphinx-copybutton",
+    "sphinx-design",
+    "sphinx-polyversion==1.1.0",
+    "packaging",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["pyfli*"]

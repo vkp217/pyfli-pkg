@@ -9,13 +9,31 @@ from datetime import datetime
 # add the repo root to sys.path for autodoc/autosummary to import ``pyfli``.
 sys.path.insert(0, os.path.abspath(".."))
 
+try:
+    from sphinx_polyversion import load
+
+    # Imported for its side effect only: this registers GitRef with the
+    # package's JSON decoder, so load()["current"] below deserializes to a
+    # GitRef (with .name) instead of a plain dict.
+    from sphinx_polyversion.git import GitRef  # noqa: F401
+
+    USE_POLYVERSION = True
+    current = load(globals())["current"].name
+except ImportError:
+    USE_POLYVERSION = False
+    current = "local"
+
 import pyfli  # noqa: E402
 
 # -- Project information ------------------------------------------------------
 project = "PyFli"
 author = "Vikas Pandey"
 copyright = f"2025-{datetime.now().year}, PyFli authors (lead maintainer: {author})"
-release = getattr(pyfli, "__version__", "0.1.19")
+release = (
+    current
+    if USE_POLYVERSION and current != "local"
+    else getattr(pyfli, "__version__", "0.1.19")
+)
 version = release
 
 # -- General configuration ----------------------------------------------------
@@ -119,7 +137,12 @@ html_theme_options = {
         "image_dark": "../pyfli/img/PyFLI_logo_dark.png",
     },
     "github_url": "https://github.com/vkp217/pyfli-pkg",
-    "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    "navbar_end": ["theme-switcher", "navbar-icon-links", "version-switcher"],
+    "switcher": {
+        "json_url": "https://pyfli.org/versions.json",
+        "version_match": current,
+    },
+    "check_switcher": False,
     "navbar_align": "left",
     "navigation_with_keys": True,
     "show_prev_next": False,
@@ -133,7 +156,7 @@ html_theme_options = {
 html_context = {
     "github_user": "vkp217",
     "github_repo": "pyfli-pkg",
-    "github_version": "main",
+    "github_version": current,
     "doc_path": "docsrc",
 }
 

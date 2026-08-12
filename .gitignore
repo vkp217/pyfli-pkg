@@ -27,6 +27,8 @@ examples/
 !examples/*.ipynb
 docsrc/_build/
 docsrc/api/generated/
+docsrc/_build_polyversion/
+.docs_venvs/
 
 # IDE settings
 .vscode/
