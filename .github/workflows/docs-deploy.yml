@@ -43,7 +43,10 @@ jobs:
         with:
           path: gh-pages
           ref: gh-pages
-          persist-credentials: false
+          # This step needs to push back to gh-pages below, so (unlike the
+          # other checkouts in this workflow) it must keep the token-based
+          # credential helper actions/checkout sets up by default.
+          persist-credentials: true
 
       - name: Commit and push built docs
         run: |
