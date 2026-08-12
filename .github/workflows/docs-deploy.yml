@@ -1,0 +1,62 @@
+name: docs-deploy
+
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+jobs:
+  build_docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          path: repo
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@f98e06938123ccabd21905ea5d0069192241f9f1 # v8.3.1
+
+      - name: Setup environment
+        working-directory: repo
+        run: uv venv
+
+      - name: Install dependencies
+        working-directory: repo
+        run: uv sync --extra docs
+
+      - name: Build the Sphinx docs (all versions)
+        run: |
+          cd repo/docsrc
+          uv run make clean
+          uv run make production-docs-sequential
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          path: gh-pages
+          ref: gh-pages
+          persist-credentials: false
+
+      - name: Commit and push built docs
+        run: |
+          cd gh-pages
+          git rm --quiet -rf .
+          cp -r ../repo/docs/. ./
+          echo "pyfli.org" > CNAME
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "auto: rebuild docs"
+            git push
+          else
+            echo "No commit made — docs unchanged."
+          fi
