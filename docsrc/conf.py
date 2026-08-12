@@ -12,6 +12,11 @@ sys.path.insert(0, os.path.abspath(".."))
 try:
     from sphinx_polyversion import load
 
+    # Imported for its side effect only: this registers GitRef with the
+    # package's JSON decoder, so load()["current"] below deserializes to a
+    # GitRef (with .name) instead of a plain dict.
+    from sphinx_polyversion.git import GitRef  # noqa: F401
+
     USE_POLYVERSION = True
     current = load(globals())["current"].name
 except ImportError:
