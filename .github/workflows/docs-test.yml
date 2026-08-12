@@ -1,0 +1,35 @@
+name: test-docs
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  build_docs:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@f98e06938123ccabd21905ea5d0069192241f9f1 # v8.3.1
+
+      - name: Setup environment
+        run: uv venv
+
+      - name: Install dependencies
+        run: uv sync --extra docs
+
+      - name: Build docs from local state
+        run: |
+          cd docsrc
+          uv run make clean
+          uv run make local-docs
+
+      - name: Clean up
+        run: |
+          cd docsrc
+          uv run make clean-all
