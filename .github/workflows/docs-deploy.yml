@@ -48,7 +48,7 @@ jobs:
       - name: Commit and push built docs
         run: |
           cd gh-pages
-          git rm --quiet -rf .
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
           cp -r ../repo/docs/. ./
           echo "pyfli.org" > CNAME
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
