@@ -53,6 +53,10 @@ jobs:
           cd gh-pages
           find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
           cp -r ../repo/docs/. ./
+          # Must be at the branch root (not nested in a version subfolder)
+          # or GitHub Pages' Jekyll processor silently drops every
+          # underscore-prefixed dir (_static/, _images/, etc.) at serve time.
+          touch .nojekyll
           echo "pyfli.org" > CNAME
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
