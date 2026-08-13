@@ -47,7 +47,7 @@ FLI is a mature quantitative imaging modality used widely in biophysics, microsc
 high count rates. Each platform therefore demands a tailored forward model and produces data with different geometry, noise statistics, and file conventions.
 
 The analytical landscape is equally fragmented. Iterative reconvolution fitting methods non-linear least squares and maximum-likelihood estimation fit explicit exponential models and yield interpretable lifetimes and amplitudes, but require an assumed number of components and good initialization [@Kollner1992]; phasor analysis [@Digman2008] maps each decay to a point in a two-dimensional plane without fitting, enabling fast, model-free, visually intuitive species separation, and is preferred in
-lipid microscopy; Laguerre-expansion techniques [@Jo2005] deconvolve the IRF using an orthonormal basis without committing to a fixed multi-exponential form; rapid lifetime determination trades accuracy for the speed needed in real-time or high-throughput settings; and deep-learning approaches [@Smith2019] offer real-time inference when paired with calibrated simulators. 
+lipid microscopy; Laguerre-expansion techniques [@Jo2005] deconvolve the IRF using an orthonormal basis without committing to a fixed multi-exponential form; rapid lifetime determination trades accuracy for the speed needed in real-time or high-throughput settings; and deep-learning approaches [@Smith2019; @Pandey2024] offer real-time inference when paired with calibrated simulators. 
 These methods answer different scientific questions and have different failure modes, so being able to apply and compare them on identical data is valuable, yet in most workflows each method lives in a
 separate package with its own input conventions, scattered across vendor software, academic prototypes, and disconnected community packages, with inconsistent APIs and few common benchmarks.
 
@@ -60,23 +60,16 @@ benchmarking new lifetime estimators.
 
 # State of the field
 
-Several open packages address parts of the FLI workflow. `FLUTE` [@Gottlieb2023] and `PhasorPy` [@PhasorPy2024] provide phasor-based analysis with strong visualisation; `FLIMfit` [@Warren2013] delivers a mature graphical environment for least-squares FLIM fitting; `napari-flim-phasor-plotter` integrates phasor analysis into the napari ecosystem. On the fitting based analysis side, `flimlib` provides fast curve-fitting primitives but no end-to-end pipeline. None of these packages simultaneously target (a) data ingestion across all three major detector families, (b) multiple estimator families behind a common API, (c) GPU-accelerated per-pixel fitting, and (d) a calibrated noise simulator designed for generating deep-learning training data. Where a code-free graphical interface excels at guiding a specific downstream
-workflow, `PyFli` targets the upstream, method-rich, multi-detector
-processing problem and is built to be scripted, batched, and extended; the
-two are not mutually exclusive, since `PyFli` can serve as the processing
-engine beneath a graphical front end.
+Several open packages address parts of the FLI workflow. `FLUTE` [@Gottlieb2023], `PhasorPy` [@PhasorPy2024], and `AlliGator` [@Michalet2025] provide phasor-based analysis with strong visualisation; `FLIMfit` [@Warren2013] delivers a mature graphical environment for least-squares FLIM fitting; `napari-flim-phasor-plotter` integrates phasor analysis into the napari ecosystem. On the fitting based analysis side, `flimlib` provides fast curve-fitting primitives but no end-to-end pipeline. None of these packages simultaneously target (a) data ingestion across all three major detector families, (b) multiple estimator families behind a common API, (c) GPU-accelerated per-pixel fitting, and (d) a calibrated noise simulator designed for generating deep-learning training data. Where a code-free graphical interface excels at guiding a specific downstream workflow, `PyFli` targets the upstream, method-rich, multi-detector processing problem and is built to be scripted, batched, and extended; the two are not mutually exclusive, since `PyFli` can serve as the processing engine beneath a graphical front end.
 
-`PyFli` occupies this combined niche. To our knowledge it is the first
-package that bundles least-squares, phasor, maximum-likelihood, rapid
-lifetime determination, and Laguerre deconvolution behind a unified Python
-interface with GPU support, a detector-physics-aware deconvolution engine,
-and an integrated simulator.
+`PyFli` occupies this combined niche. To our knowledge it is the first package that bundles least-squares, phasor, maximum-likelihood, rapid lifetime determination, and Laguerre deconvolution behind a unified Python
+interface with GPU support, a detector-physics-aware deconvolution engine, and an integrated simulator.
 
 # Software design
 
 `PyFli` is implemented in pure Python (≥3.11) and, following a major refactor after the 0.1.18 PyPI release, comprises 94 modules and approximately 32,000 lines of code, organised into more than a dozen thematic sub-packages exposed under a single top-level `pyfli` namespace (the package root re-exports the most commonly used entry points directly, while more specialized classes are imported from their owning sub-package):
 
-- **`io`** — universal data and IRF loaders (`DataOperations`, `Detector`, `DataSaver`) for `.sdt`, `.mat`, `.tif`, `.npy`, `.txt`, `.asc`, and compressed Leica `.lif`, with a detector-abstracted import path for ICCD, SwissSPAD2/3, and TCSPC outputs.
+- **`io`** — universal data and IRF loaders (`DataOperations`, `Detector`, `DataSaver`) for `.sdt`, `.mat`, `.tif`, `.npy`, `.txt`, `.asc`, and compressed `.lif`, with a detector-abstracted import path for ICCD, SwissSPAD2/3, and TCSPC outputs.
 - **`data_cc`** — IRF alignment (`IRFAligner`), normalisation (`Normalization`), preprocessing, and region-of-interest operations (`ROIOperations`).
 - **`analytical_methods`** — the class-based `PhasorAnalyzer`, the `LaguerreFLI` Laguerre Expansion Technique (LET) fitter for model-free IRF deconvolution, and shared analytical helpers.
 - **`phasor`** — a newer, acquisition-mode-aware phasor-geometry toolkit (functional API) built on the universal-circle formalism.
@@ -145,20 +138,19 @@ Table 1.
 | `SS2` | SwissSPAD2 SPAD array | Massively parallel gated single-photon counts; binomial per-gate detection |
 | `SS3` | SwissSPAD3 SPAD array | Higher-resolution gated SPAD photon counting |
 | `ICCD` | Intensified CCD camera | Wide-field nanosecond time-gating; multichannel-plate gain noise |
-| `BH_TCSPC` | Becker \& Hickl TCSPC (`.sdt`) | Photon-by-photon arrival-time histogramming; pile-up at high rate |
+| `BH_TCSPC` | TCSPC (`.sdt`) | Photon-by-photon arrival-time histogramming; pile-up at high rate |
 | `generic` | TIFF / NPY / MAT / TXT / HDF5 | Format-only import for arbitrary pipelines |
-| Leica LIF | Light-sheet FLIM (compressed) | Decodes reduced time-tagged photon streams to a decay cube |
+| `LIF` | Compressed FLIM (`.lif`) | Decodes reduced time-tagged photon streams to a decay cube |
 
-A distinctive capability is native decoding of compressed Leica light-sheet
-FLIM data: `PyFli` decompresses the "reduced Time Tagged" record stream
-described in Leica's own patent filings (US20230344447A1 / US12278654B2) and
+A distinctive capability is native decoding of a compressed, proprietary
+FLIM format: `PyFli` decompresses the "reduced Time Tagged" record stream
+described in the format's own patent filings (US20230344447A1 / US12278654B2) and
 reconstructs a four-dimensional decay cube indexed by mosaic/frame, image
 height, image width, and TCSPC histogram bin, while also exposing the
 vendor-computed parameter maps for reference, with helper routines to
-collapse the frame axis and inspect the result interactively. Becker \&
-Hickl `.sdt` files are read through an integrated, established parsing
-engine, whereas `.lif` decoding uses a custom internal layer written for
-this package. ICCD and SPAD acquisitions are assembled from their gate or
+collapse the frame axis and inspect the result interactively. `.sdt` files
+are read through an integrated, established parsing engine, whereas `.lif`
+decoding uses a custom internal layer written for this package. ICCD and SPAD acquisitions are assembled from their gate or
 frame stacks, and the generic reader covers TIFF, NumPy, MATLAB, text, and
 HDF5 containers for pipelines that have already exported to a neutral
 format. Background subtraction supports either a single file or the mean of
@@ -563,8 +555,8 @@ The package includes a pytest test suite, spanning 19 test modules, covering par
 
 Four capabilities are unusual among existing FLI tools. First, the breadth
 of native detector support, particularly the inclusion of SPAD arrays and
-compressed light-sheet data alongside conventional TCSPC and ICCD, within
-one ingestion layer. Second, the detector-physics-aware deconvolution
+compressed, proprietary FLIM data alongside conventional TCSPC and ICCD,
+within one ingestion layer. Second, the detector-physics-aware deconvolution
 engine, which applies pile-up, dead-time, and multichannel-plate
 excess-noise models rather than a universal Gaussian assumption, under
 shared edge-preserving regularization. Third, the integration of a
@@ -609,9 +601,9 @@ and TCSPC: the `bayes_utils` direct-inference pathway and the
 `DLModelComparator` interface already provide the infrastructure, but
 shipping ready-to-use trained models, benchmarked against the analytical
 baselines through `DLModelComparator`, remains ongoing work. Second,
-expansion of the supported vendor formats to include Becker \& Hickl `.spc`
-raw photon streams and PicoQuant `.ptu` files, both common in TCSPC
-microscopy, alongside frequency-domain acquisition support. Third,
+expansion of the supported vendor formats to include `.spc` raw photon
+streams and `.ptu` files, both common in TCSPC microscopy, alongside
+frequency-domain acquisition support. Third,
 provenance metadata in the existing HDF5 result outputs (already used
 throughout the solver, Laguerre, and phasor modules) so downstream tools and
 reviewers can recover the exact processing pipeline applied to any cube,
