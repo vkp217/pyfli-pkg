@@ -142,13 +142,12 @@ Table 1.
 | `generic` | TIFF / NPY / MAT / TXT / HDF5 | Format-only import for arbitrary pipelines |
 | `LIF` | Compressed FLIM (`.lif`) | Decodes reduced time-tagged photon streams to a decay cube |
 
-A distinctive capability is native decoding of a compressed, proprietary
-FLIM format: `PyFli` decompresses the "reduced Time Tagged" record stream
+<!-- A distinctive capability is native decoding of a compressed, proprietary FLIM format: `PyFli` decompresses the "reduced Time Tagged" record stream
 described in the format's own patent filings (US20230344447A1 / US12278654B2) and
 reconstructs a four-dimensional decay cube indexed by mosaic/frame, image
 height, image width, and TCSPC histogram bin, while also exposing the
 vendor-computed parameter maps for reference, with helper routines to
-collapse the frame axis and inspect the result interactively. `.sdt` files
+collapse the frame axis and inspect the result interactively. `.sdt` files -->
 are read through an integrated, established parsing engine, whereas `.lif`
 decoding uses a custom internal layer written for this package. ICCD and SPAD acquisitions are assembled from their gate or
 frame stacks, and the generic reader covers TIFF, NumPy, MATLAB, text, and
