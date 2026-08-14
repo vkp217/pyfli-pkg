@@ -12,6 +12,7 @@ venv/
 dist/
 build/
 *.egg-info/
+src/
 
 # Data and Notebooks (Based on your TOML exclude)
 data/

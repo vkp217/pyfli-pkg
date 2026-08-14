@@ -21,6 +21,13 @@ from .sim_model_image_generator import FLIModelImageGenerator
 from .sim_stat_test import FLIValidator
 from .calibration_engine import FLICalibrator
 from .batch_sim import BatchSimulator
+from .sim_workflow import (
+    SimGenerator,
+    SimOutput,
+    SimOutputWithIRFOffset,
+    concat_sim_data,
+    make_simulator,
+)
 
 
 # [FLICalibrator, FLIValidator, ParameterSampler,
