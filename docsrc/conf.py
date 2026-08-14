@@ -148,7 +148,14 @@ html_theme_options = {
     "show_prev_next": False,
     "show_toc_level": 2,
     "collapse_navigation": True,
-    "secondary_sidebar_items": ["page-toc", "sourcelink"],
+    # "sourcelink" (the "Show Source" link) is dropped just for the index
+    # page, where it only ever offered to download index.rst; every other
+    # page keeps it, since examples.md relies on it to let readers download
+    # and re-run the notebooks.
+    "secondary_sidebar_items": {
+        "**": ["page-toc", "sourcelink"],
+        "index": ["page-toc"],
+    },
     "footer_start": ["copyright"],
     "footer_end": ["sphinx-version"],
 }
