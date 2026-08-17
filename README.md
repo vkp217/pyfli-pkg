@@ -36,7 +36,7 @@ The platform provides native support for several high-end imaging systems:
 * **Phasor Plot Analysis:** Graphical, model-free transformation of fluorescence decay into a 2D polar plot for easy species separation.
 * **Maximum Likelihood Estimation (MLE):** Statistical estimator optimized for low-photon regimes.
 * **Rapid Lifetime Determination (RLD):** Computationally efficient method for real-time applications and high-frame-rate data.
-* **Laguerre Method (LET):** Laguerre Expansion Technique for model-free IRF deconvolution followed by multi-exponential lifetime extraction on a per-pixel basis.
+* **Laguerre Method:** Model-free IRF deconvolution followed by multi-exponential lifetime extraction on a per-pixel basis.
 
 ---
 

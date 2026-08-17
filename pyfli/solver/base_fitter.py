@@ -1,10 +1,10 @@
 # solver/base_fitter.py
 """
-Implement the shared least-squares FLIM fitter used by CPU, GPU, and model-comparison
+Implement the shared least-squares FLI fitter used by CPU, GPU, and model-comparison
 workflows.
 
 This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
-likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includes
 classes :class:`BaseFLIFitter`.
 """
 
@@ -127,7 +127,7 @@ class BaseFLIFitter:
         bounds : np.ndarray
             Lower and upper parameter bounds supplied to the optimizer.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
         use_weights : bool
             Whether residuals are weighted during least-squares fitting.
         **kwargs : Any
@@ -186,7 +186,7 @@ class BaseFLIFitter:
         bounds : np.ndarray
             Lower and upper parameter bounds supplied to the optimizer.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
         **kwargs : Any
             Additional keyword options forwarded to the underlying implementation.
 
@@ -243,7 +243,7 @@ class BaseFLIFitter:
         bounds : np.ndarray
             Lower and upper parameter bounds supplied to the optimizer.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
         **kwargs : Any
             Additional keyword options forwarded to the underlying implementation.
 
@@ -303,7 +303,7 @@ class BaseFLIFitter:
         params : Any
             Model, detector, or plotting parameters used by the routine.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
 
         Returns
         -------
@@ -332,7 +332,7 @@ class BaseFLIFitter:
         status : np.ndarray
             Optimizer status flag used during post-processing.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
         pcov : np.ndarray | None
             Parameter covariance matrix.
 

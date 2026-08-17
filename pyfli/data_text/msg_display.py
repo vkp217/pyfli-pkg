@@ -58,7 +58,7 @@ class MessageDisplay:
         res_px : np.ndarray
             Fit result dictionary for one pixel.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
 
         Returns
         -------

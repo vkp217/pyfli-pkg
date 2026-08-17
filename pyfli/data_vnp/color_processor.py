@@ -1,5 +1,5 @@
 """
-Build Matplotlib colormap variants for FLIM map visualization.
+Build Matplotlib colormap variants for FLI map visualization.
 
 This module belongs to :mod:`pyfli.data_vnp` and is part of PyFLI visualization,
 normalization, plotting, and mono-versus-bi-exponential comparison tools. Public API
@@ -15,7 +15,7 @@ import numpy as np
 
 class ColorProcessor:
     """
-    Create Matplotlib colormaps tailored for FLIM maps. It can force the lowest value to
+    Create Matplotlib colormaps tailored for FLI maps. It can force the lowest value to
     black or clip a colormap range to improve visual contrast.
     """
 

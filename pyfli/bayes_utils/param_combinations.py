@@ -1,9 +1,8 @@
 import numpy as np
-from pyfli.analysis.utils import compute_detailed_results
-from pyfli.reconstruction import ParameterToDecayReconstruction
+from pyfli.reconstruction import ParamToDecay, DetailedRecon
 
 
-class BestParamFitSelector:
+class ParamSelector:
     """
     Evaluate a stack of posterior-sample parameter combinations against
     measured decay data, and select the best-fitting combination per pixel
@@ -31,8 +30,9 @@ class BestParamFitSelector:
     backend : str
         Which implementation reconstructs each sample's fit/residual/
         goodness-of-fit maps: ``"compute_detailed_results"`` (default, the
-        original vectorized implementation in :mod:`pyfli.analysis.utils`)
-        or ``"reconstructor"`` (:class:`pyfli.reconstruction.ParameterToDecayReconstruction`'s
+        rescale-to-measured-totals implementation in
+        :mod:`pyfli.reconstruction.detailed_results`)
+        or ``"reconstructor"`` (:class:`pyfli.reconstruction.ParamToDecay`'s
         vectorized path). Both return the same
         ``{"name", "method", "results": {"maps", "error_maps", "TR_maps"}}``
         shape, so switching backends doesn't change any downstream code.
@@ -84,6 +84,8 @@ class BestParamFitSelector:
         self.bool_mask = bool_mask
         # Lazily built on first use of the "reconstructor" backend.
         self._reconstructor = None
+        # Lazily built on first use of the "compute_detailed_results" backend.
+        self._detailed_reconstructor = None
 
     @staticmethod
     def _apply_bool_mask(result, bool_mask):
@@ -126,29 +128,26 @@ class BestParamFitSelector:
         return self._run_via_compute_detailed_results(params, data_name)
 
     def _run_via_compute_detailed_results(self, params, data_name):
-        if self.model_type == "bi-exponential":
-            return compute_detailed_results(
-                tau1=params["tau1"],
-                tau2=params["tau2"],
-                alpha1=params["alpha1"],
-                freq_acq=self.freq_acq,
-                binned_irf=self.irf,
-                binned_decay=self.decay,
-                data_name=data_name,
-                model_type="bi-exponential",
+        if self._detailed_reconstructor is None:
+            self._detailed_reconstructor = DetailedRecon(
+                self.freq_acq, self.irf, binned_decay=self.decay
             )
-        return compute_detailed_results(
-            tau=params["tau"],
-            freq_acq=self.freq_acq,
-            binned_irf=self.irf,
-            binned_decay=self.decay,
-            data_name=data_name,
-            model_type="mono-exponential",
+
+        if self.model_type == "bi-exponential":
+            cdr_params = {
+                "tau1_map": params["tau1"],
+                "tau2_map": params["tau2"],
+                "alpha1_map": params["alpha1"],
+            }
+        else:
+            cdr_params = {"tau_map": params["tau"]}
+        return self._detailed_reconstructor.reconstruct(
+            cdr_params, self.model_type, data_name=data_name
         )
 
     def _run_via_reconstructor(self, params, data_name):
         if self._reconstructor is None:
-            self._reconstructor = ParameterToDecayReconstruction(
+            self._reconstructor = ParamToDecay(
                 self.model_type, self.freq_acq, irf=self.irf
             )
 
@@ -171,7 +170,7 @@ class BestParamFitSelector:
         # know which backend actually ran.
         return {
             "name": data_name,
-            "method": "ParameterToDecayReconstruction",
+            "method": "ParamToDecay",
             "results": {
                 "maps": {
                     "R2_map": fit_stats["R2_map"],
@@ -230,9 +229,9 @@ class BestParamFitSelector:
 
         per_sample_results = [] if keep_per_sample_results else None
 
-        for s in range(num_samples):
-            print(f"Evaluating sample {s + 1}/{num_samples}")
+        print(f"Evaluating {num_samples} sample(s)...")
 
+        for s in range(num_samples):
             if self.model_type == "bi-exponential":
                 params_s = {
                     "tau1": output_combination["tau1"][..., s],
@@ -255,6 +254,8 @@ class BestParamFitSelector:
 
             if keep_per_sample_results:
                 per_sample_results.append(result_s)
+
+        print(f"Evaluated {num_samples} sample(s).")
 
         return {
             "chi2_stack": chi2_stack,

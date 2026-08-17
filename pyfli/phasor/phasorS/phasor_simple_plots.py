@@ -2,9 +2,9 @@
 Provide plotting mixins for phasor maps, overlays, pixel fits, and harmonic
 visualizations.
 
-This module belongs to :mod:`pyfli.analytical_methods` and is part of PyFLI analytical
-FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
-estimation. Public API includes classes :class:`PhasorPlotsMixin`.
+This module belongs to :mod:`pyfli.phasor.phasorS` and is part of PyFLI's compact
+phasor analyzer for CPU and optional GPU FLI workflows. Public API includes classes
+:class:`PhasorPlotsMixin`.
 """
 
 from typing import Any

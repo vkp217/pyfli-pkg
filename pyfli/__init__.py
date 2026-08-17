@@ -11,7 +11,7 @@ def setup() -> None:
     None
         No object is returned; package logging is configured for later imports.
     """
-    from .logging import configure_logging
+    from .log_save.logging import configure_logging
 
     configure_logging()
 
@@ -19,8 +19,9 @@ def setup() -> None:
 setup()
 del setup
 
-from . import logging, phasor, sp_analysis
-from .analytical_methods.laguerre_deconvolution import LaguerreFLI
+from .log_save import logging
+from . import phasor, sp_analysis
+from .laguerre.laguerre_method import LaguerreFLI
 from .data_cc.norm import Normalization
 from .io.data_operations import DataOperations
 from .io.detector import Detector

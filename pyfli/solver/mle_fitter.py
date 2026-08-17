@@ -3,7 +3,7 @@
 Extend the base fitter with Poisson and chi-square maximum-likelihood estimators.
 
 This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
-likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includes
 classes :class:`MLEFLIFitter`.
 """
 
@@ -20,7 +20,7 @@ from .shared_metrics import enforce_tau_ordering, compute_fli_stats
 
 class MLEFLIFitter(BaseFLIFitter):
     """
-    Extend the base FLIM fitter with Poisson, Pearson, and Neyman objective functions.
+    Extend the base FLI fitter with Poisson, Pearson, and Neyman objective functions.
     It supports MLE-style fitting, uncertainty extraction from optimizer curvature, and
     likelihood-based model comparison.
     """

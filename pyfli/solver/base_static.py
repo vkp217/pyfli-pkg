@@ -3,7 +3,7 @@ Provide static initial-guess, bounds, convolution, and parameter-resolution help
 solvers.
 
 This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
-likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includes
 functions :func:`resolve_params_and_bounds`, :func:`moment_based_guess`, and
 :func:`rld_based_guess`.
 """
@@ -33,7 +33,7 @@ def resolve_params_and_bounds(
     user_bounds : np.ndarray
         User-supplied parameter bounds.
     model_type : str
-        FLIM model family, such as mono- or bi-exponential.
+        FLI model family, such as mono- or bi-exponential.
     t : np.ndarray
         Time axis or acquisition period used by the calculation.
     decay : np.ndarray
@@ -158,7 +158,7 @@ def moment_based_guess(
     T_laser : np.ndarray
         Laser repetition period used by the initial-guess routine.
     model_type : str
-        FLIM model family, such as mono- or bi-exponential.
+        FLI model family, such as mono- or bi-exponential.
 
     Returns
     -------
@@ -227,7 +227,7 @@ def rld_based_guess(
     T_laser : np.ndarray
         Laser repetition period used by the initial-guess routine.
     model_type : str
-        FLIM model family, such as mono- or bi-exponential.
+        FLI model family, such as mono- or bi-exponential.
 
     Returns
     -------

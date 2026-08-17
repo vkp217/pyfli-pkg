@@ -1,5 +1,5 @@
 """
-Load raw decay, IRF, background, mask, and hot-pixel data from common FLIM sources.
+Load raw decay, IRF, background, mask, and hot-pixel data from common FLI sources.
 
 This module belongs to :mod:`pyfli.io` and is part of PyFLI detector importers, file
 readers, saving helpers, and processed-data loaders. Public API includes classes
@@ -23,7 +23,7 @@ from .data_ops_static import StaticDataOps as ds
 
 class DataOperations:
     """
-    Load primary data, IRF, background, masks, and hot-pixel maps from common FLIM file
+    Load primary data, IRF, background, masks, and hot-pixel maps from common FLI file
     formats. It provides a path-centric interface for raw loading, correction, and
     packaging into PyFLI-ready structures.
 

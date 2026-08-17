@@ -1,8 +1,8 @@
 """
 Build generalized continuous and photon-counting simulation workflows.
 
-This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
-generation, hardware noise modeling, calibration, and validation tools. Public API
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLI/FLIM
+data generation, hardware noise modeling, calibration, and validation tools. Public API
 includes classes :class:`ContinuousSimulator` and :class:`PhotonCountSimulator`.
 """
 
@@ -18,9 +18,9 @@ from .distributions import ParameterSampler
 
 class ContinuousSimulator:
     """
-    Generate continuous/intensity-style FLIM simulations using the generalized simulator
-    factory. It mirrors the macro simulator interface while separating continuous
-    detector assumptions.
+    Generate continuous/intensity-style FLI/FLIM simulations using the generalized
+    simulator factory. It mirrors the macro simulator interface while separating
+    continuous detector assumptions.
 
     Parameters
     ----------

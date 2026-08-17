@@ -2,7 +2,7 @@
 Evaluate exponential decay kernels and convolved NumPy forward models.
 
 This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
-likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includes
 functions :func:`decay_kernel` and :func:`model_numpy`.
 """
 
@@ -47,7 +47,7 @@ def model_numpy(
     model_type: str,
 ) -> np.ndarray:
     """
-    Evaluate the NumPy FLIM forward model.
+    Evaluate the NumPy FLI forward model.
 
     Parameters
     ----------
@@ -58,7 +58,7 @@ def model_numpy(
     params : Any
         Model, detector, or plotting parameters used by the routine.
     model_type : str
-        FLIM model family, such as mono- or bi-exponential.
+        FLI model family, such as mono- or bi-exponential.
 
     Returns
     -------

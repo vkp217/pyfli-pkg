@@ -1,15 +1,14 @@
 """
 factor_analysis.py
 -------------------
-FactorAnalysis: bins pixel-wise FLIM results by a factor and compares how
+FactorAnalysis: bins pixel-wise FLI/FLIM results by a factor and compares how
 each fitting method's estimated parameters vary across that factor.
 
 Key idea
 --------
 `decay`, `irf`, and `mask` are the RAW / SHARED inputs that feed every
 fitting method in `all_datasets` / `all_fitset` -- they are the same arrays
-regardless of which method (fbi, cpu_nlsf, cpu_mle, ...) produced a given
-result. Because of that, any factor computed directly from decay/irf (e.g.
+regardless of which method produced a givenresult. Because of that, any factor computed directly from decay/irf (e.g.
 `total_photons = decay.sum(time_axis)`) is *guaranteed* to be pixel-for-pixel
 identical across methods -- giving a true, common x-axis to compare methods
 against. This is different from (and safer than) binning by a method's own
@@ -122,9 +121,6 @@ class FactorAnalysis:
         self.all_fitset = list(all_fitset)
         self.method_names = list(method_names)
 
-        # all_fitset[i] is a dict per method (e.g. {'fit_map':..., 'residual_map':...,
-        # possibly 'sdf_map'/'convolved_map' too -- but those aren't guaranteed across
-        # every method, so only 'fit_map' and 'residual_map' are required/used here).
         self._fitset_required_keys = ("fit_map", "residual_map")
         for i, fs in enumerate(self.all_fitset):
             if not isinstance(fs, dict):
@@ -157,26 +153,21 @@ class FactorAnalysis:
                         f"{arr_pixel_shape} does not match decay's pixel shape {self.pixel_shape}"
                     )
 
-        # factor maps derived from the shared decay/irf (name -> 2D array)
         self._factors = {}
         self._register_default_factors()
-
-        # fitset-derived target functions (name -> fn(decay, fitset_dict, irf) -> 2D array)
         self._fitset_target_fns = {}
         self._register_default_fitset_targets()
 
-        # seaborn styling, shared everywhere so line plots, legends, and spatial
-        # panel titles all use the SAME color per method
         sns.set_theme(style=sns_style)
         colors = sns.color_palette(sns_palette, n_colors=len(self.method_names))
         self.palette = {m: c for m, c in zip(self.method_names, colors)}
 
-    # ------------------------------------------------------------------ #
-    # factor maps (x-axis) -- derived from the shared decay/irf
-    # ------------------------------------------------------------------ #
     def _register_default_factors(self):
         self.add_factor("total_photons", self.decay.sum(axis=self.time_axis))
-        self.add_factor("peak_counts", self.decay.max(axis=self.time_axis))
+        peak_counts = self.decay.max(axis=self.time_axis)
+        self.add_factor("peak_counts", peak_counts)
+        mean_counts = self.decay.mean(axis=self.time_axis)
+        self.add_factor("peak_to_mean_ratio", peak_counts / (mean_counts + 1e-8))
         if self.irf is not None and np.asarray(self.irf).shape == self.decay.shape:
             self.add_factor(
                 "total_irf_photons", np.asarray(self.irf).sum(axis=self.time_axis)
@@ -242,7 +233,6 @@ class FactorAnalysis:
         return maps[method_index]
 
     def _register_default_fitset_targets(self):
-        eps = 1e-8
         self._fitset_target_fns["fit_total_photons"] = lambda decay, fs, irf: (
             np.asarray(fs["fit_map"]).sum(axis=self.time_axis)
         )
@@ -250,7 +240,8 @@ class FactorAnalysis:
             fs["residual_map"]
         ).sum(axis=self.time_axis)
         self._fitset_target_fns["residual_chi2"] = lambda decay, fs, irf: (
-            (np.asarray(fs["residual_map"]) ** 2) / (np.asarray(fs["fit_map"]) + eps)
+            (np.asarray(fs["residual_map"]) ** 2)
+            / np.clip(np.asarray(fs["fit_map"]), 1.0, None)
         ).sum(axis=self.time_axis)
         self._fitset_target_fns["residual_abs_mean"] = lambda decay, fs, irf: np.abs(
             np.asarray(fs["residual_map"])
@@ -358,14 +349,14 @@ class FactorAnalysis:
 
     @staticmethod
     def _exponent_suffix(exponent):
-        return f"  (Ã10^{exponent})" if exponent else ""
+        return f"  (×10^{exponent})" if exponent else ""
 
     @staticmethod
     def _apply_compact_ticks(ax, axis="both"):
         """
         Apply matplotlib's native compact/scientific tick formatting to a
         NUMERIC axis: large numbers collapse to short tick labels plus one
-        shared 'Ã10^n' offset text in the corner, instead of each tick
+        shared '×10^n' offset text in the corner, instead of each tick
         repeating a long number. Silently no-ops on axes that don't support it
         (e.g. categorical axes -- those are handled via _fmt_bin_range instead).
         """
@@ -826,6 +817,7 @@ class FactorAnalysis:
         df.attrs["factor_is_shared"] = factor_is_shared
         df.attrs["target_source"] = target_source
         df.attrs["bin_scope"] = bin_scope
+        df.attrs["_edges_by_method"] = dict(zip(self.method_names, edges_per_method))
         return df, returned_edges
 
     # ------------------------------------------------------------------ #
@@ -847,22 +839,14 @@ class FactorAnalysis:
         return get_map
 
     def _reconstruct_edges(self, df, method):
-        """Rebuild a method's bin edges from the bin_low/bin_high columns already in df."""
-        sub = (
-            df[df["method"] == method][["bin_rank", "bin_low", "bin_high"]]
-            .drop_duplicates()
-            .sort_values("bin_rank")
-        )
-        if sub.empty:
-            return None
-        return np.append(sub["bin_low"].values, sub["bin_high"].values[-1])
+        return df.attrs.get("_edges_by_method", {}).get(method)
 
     def _raw_binned_long(self, df, target_keys, exponent=None):
         """
         Raw per-pixel values re-associated with the SAME bins already computed
         in df. Bin labels use a single shared power-of-10 exponent (computed
         across ALL methods' edges, or passed explicitly) so large numbers
-        collapse to short labels with one common 'Ã10^n' scale factor instead
+        collapse to short labels with one common '×10^n' scale factor instead
         of each label repeating a long number.
 
         Returns (raw_df, exponent).
@@ -1367,164 +1351,3 @@ class FactorAnalysis:
             name=name,
         )
         return df, edges, fig, axes
-
-
-if __name__ == "__main__":
-    # ---- minimal smoke test with synthetic data ----
-    rng = np.random.default_rng(0)
-    H, W, T = 40, 40, 256
-    t = np.linspace(0, 12, T)
-
-    irf = np.exp(-0.5 * ((t - 1.0) / 0.15) ** 2)
-    irf /= irf.sum()
-
-    def make_decay(tau, amp_scale):
-        amp = rng.gamma(2.0, amp_scale, size=(H, W))
-        decay = amp[..., None] * np.exp(-t[None, None, :] / tau)
-        decay = np.array(
-            [
-                np.convolve(decay[i, j], irf, mode="same")
-                for i in range(H)
-                for j in range(W)
-            ]
-        ).reshape(H, W, T)
-        decay = rng.poisson(np.clip(decay, 0, None)).astype(float)
-        return decay
-
-    decay = make_decay(tau=2.2, amp_scale=150.0)
-    mask = (
-        decay.sum(axis=-1) > 50
-    )  # shared boolean mask, e.g. thresholded on total photons
-
-    def fake_tr(decay, bias, noise):
-        fit_map = np.clip(
-            decay * (1 + bias) + rng.normal(0, noise, decay.shape), 0, None
-        )
-        residual_map = decay - fit_map
-        return {"fit_map": fit_map, "residual_map": residual_map}
-
-    def fake_dataset(bias, fret_scale):
-        total_photons = decay.sum(axis=-1)
-        tau1 = (
-            2.2
-            + bias
-            + rng.normal(
-                0, 0.05 / np.sqrt(np.clip(total_photons, 10, None) / 100), (H, W)
-            )
-        )
-        tau2 = (
-            4.0
-            + bias
-            + rng.normal(
-                0, 0.08 / np.sqrt(np.clip(total_photons, 10, None) / 100), (H, W)
-            )
-        )
-        tau_mean = 0.5 * (tau1 + tau2)
-        chi2 = 1.0 + rng.normal(0, 0.05, (H, W))
-        # simulate a per-method factor map on a DIFFERENT scale per method,
-        # like fret_efficiency_map might be if methods disagree on range
-        fret = np.clip(rng.beta(2, 5, (H, W)) * fret_scale, 0, None)
-        return {
-            "tau1_map": tau1,
-            "tau2_map": tau2,
-            "tau_mean_map": tau_mean,
-            "chi2_map": chi2,
-            "fret_efficiency_map": fret,
-        }
-
-    all_datasets = [
-        fake_dataset(0.0, 1.0),
-        fake_dataset(0.03, 0.6),
-        fake_dataset(-0.02, 1.3),
-    ]
-    all_fitset = [
-        fake_tr(decay, 0.0, 2.0),
-        fake_tr(decay, 0.05, 3.0),
-        fake_tr(decay, -0.03, 1.5),
-    ]
-    all_fitset[0]["sdf_map"] = (
-        decay * 0.9
-    )  # extra, method-specific key (mirrors real data)
-    method_names = ["_fbi_fit_bi", "_cpu_nlsf_bi", "_cpu_mle_bi"]
-
-    fa = FactorAnalysis(
-        decay=decay,
-        irf=None,
-        mask=mask,
-        all_datasets=all_datasets,
-        all_fitset=all_fitset,
-        method_names=method_names,
-        time_axis=-1,
-    )
-
-    print("factors:", fa.list_factors())
-    print("fitset targets:", fa.list_fitset_targets())
-    print("fitset keys per method:", [fa.list_fitset_keys(i) for i in range(3)])
-
-    df, edges = fa.analyze(
-        factor_key="total_photons", target_keys=["tau1_map", "chi2_map"]
-    )
-    print(df.head())
-    fig, axes = fa.plot(df)
-    fig.savefig("/tmp/factor_analysis_class_smoketest_datasets.png", dpi=100)
-
-    df2, edges2 = fa.analyze(
-        factor_key="total_photons",
-        target_source="fitset",
-        target_keys=["residual_chi2", "fit_total_photons"],
-    )
-    print(df2.head())
-    fig2, axes2 = fa.plot(df2)
-    fig2.savefig("/tmp/factor_analysis_class_smoketest_fitset.png", dpi=100)
-
-    # individual per-method factor (different scale per method) -> auto picks bin_scope='per_method'
-    df3, edges3 = fa.analyze(
-        factor_key="fret_efficiency_map",
-        target_keys=["tau1_map", "tau2_map", "tau_mean_map"],
-    )
-    print("bin_scope used:", df3.attrs["bin_scope"])
-    print("per-method edges:", {k: (v.min(), v.max()) for k, v in edges3.items()})
-    fig3, axes3 = fa.plot(
-        df3
-    )  # x_axis='auto' -> bin_rank, since bin_scope='per_method'
-    fig3.savefig("/tmp/factor_analysis_class_smoketest_fret.png", dpi=100)
-
-    # spatial: which pixels fall in a chosen total_photons range (shared factor -> 1 panel)
-    lo, hi = np.quantile(fa.factor_values("total_photons")[mask], [0.6, 0.9])
-    fig4, axes4 = fa.plot_spatial_selection("total_photons", (lo, hi))
-    fig4.savefig("/tmp/factor_analysis_spatial_shared.png", dpi=100)
-
-    # spatial: which pixels fall in a chosen fret_efficiency_map range (per-method -> 3 panels)
-    lo2, hi2 = 0.1, 0.3
-    fig5, axes5 = fa.plot_spatial_selection("fret_efficiency_map", (lo2, hi2))
-    fig5.savefig("/tmp/factor_analysis_spatial_fret.png", dpi=100)
-
-    # combined grid: selection row + estimate maps restricted to that selection
-    fig6, axes6 = fa.plot_range_selection_grid(
-        "total_photons",
-        (lo, hi),
-        target_keys=["tau1_map", "tau2_map"],
-        cmap=["jet", "plasma", "plasma"],  # one colormap per row: [factor, tau1, tau2]
-    )
-    fig6.savefig("/tmp/factor_analysis_range_grid.png", dpi=100)
-
-    # raw per-pixel distribution comparison (violin) across bins/methods
-    fig7, ax7, raw_df = fa.plot_bin_distribution("total_photons", "tau1_map", n_bins=5)
-    fig7.savefig("/tmp/factor_analysis_violin.png", dpi=100)
-
-    # plot() kind options: line (mean/median), box, scatter
-    df8, edges8 = fa.analyze(
-        factor_key="total_photons",
-        target_source="fitset",
-        target_keys=["residual_chi2", "fit_total_photons"],
-    )
-    fig8a, _ = fa.plot(df8, kind="line", stat="mean")
-    fig8a.savefig("/tmp/factor_analysis_kind_line_mean.png", dpi=100)
-    fig8b, _ = fa.plot(df8, kind="line", stat="median")
-    fig8b.savefig("/tmp/factor_analysis_kind_line_median.png", dpi=100)
-    fig8c, _ = fa.plot(df8, kind="box")
-    fig8c.savefig("/tmp/factor_analysis_kind_box.png", dpi=100)
-    fig8d, _ = fa.plot(df8, kind="scatter", max_scatter_points=200)
-    fig8d.savefig("/tmp/factor_analysis_kind_scatter.png", dpi=100)
-
-    print("Smoke test OK.")

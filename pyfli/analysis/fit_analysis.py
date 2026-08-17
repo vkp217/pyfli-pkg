@@ -3,7 +3,7 @@ Plot fitted parameter maps, diagnostics, classifier summaries, and two-dimension
 comparisons.
 
 This module belongs to :mod:`pyfli.analysis` and is part of PyFLI post-processing,
-diagnostics, statistical comparison, and result-loading utilities for fitted FLIM
+diagnostics, statistical comparison, and result-loading utilities for fitted FLI/FLIM
 datasets. Public API includes functions :func:`plot_fitting_maps`,
 :func:`plot_diagnostics`, :func:`plot_pixel_evidence`,
 :func:`plot_statistical_comparison`, :func:`plot_2d_analysis`, and

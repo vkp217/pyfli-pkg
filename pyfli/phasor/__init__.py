@@ -1,25 +1,25 @@
 """
 phasor
 ===========
-Modular implementation of the phasor / universal-circle formalism for
-fluorescence lifetime analysis, following:
+Phasor-domain lifetime analysis, split into two implementations:
 
-    Michalet X. "Continuous and discrete phasor analysis of binned or
-    time-gated periodic decays." AIP Advances 11, 035331 (2021).
-    https://doi.org/10.1063/5.0027834
+    phasorSEPL – the full phasor / universal-circle (SEPL) formalism, following:
 
-Public surface
---------------
-    config          – AcquisitionConfig dataclass
-    phasors         – phasor coordinate calculators (one per mode)
-    locus           – build (g, s, tau) arrays for a full SEPL curve
-    lifetimes       – phase / modulus lifetime inversion
-    plot            – matplotlib rendering helpers
+        Michalet X. "Continuous and discrete phasor analysis of binned or
+        time-gated periodic decays." AIP Advances 11, 035331 (2021).
+        https://doi.org/10.1063/5.0027834
+
+    phasorS   – a compact phasor analyzer for CPU and optional GPU workflows
+                (:class:`~pyfli.phasor.phasorS.PhasorAnalyzer`).
+
+The names below re-export the ``phasorSEPL`` public surface directly on
+:mod:`pyfli.phasor` for backward compatibility.
 """
 # ruff: noqa: F401
 
-from .config import AcquisitionConfig, AcquisitionMode
-from .phasors import (
+from .phasorSEPL import (
+    AcquisitionConfig,
+    AcquisitionMode,
     phasor_continuous,
     phasor_discrete,
     phasor_gated_single,
@@ -27,19 +27,17 @@ from .phasors import (
     phasor_truncated,
     phasor_offset,
     phasor_from_config,
-)
-from .locus import (
     build_locus,
     build_loci,
     tau_grid,
     universal_semicircle,
     sepl_center_radius_discrete,
-)
-from .lifetimes import (
     phase_lifetime,
     modulus_lifetime,
     lifetime_from_phasor,
     phase_lifetime_gated,
     fractional_components,
+    plot_phasor,
+    plot_locus_comparison,
+    plot_discrete_N_sweep,
 )
-from .plot import plot_phasor, plot_locus_comparison, plot_discrete_N_sweep

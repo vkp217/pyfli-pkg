@@ -1,7 +1,7 @@
 """
 Tests for pyfli.bayes_utils.posterior_pixel_plot, including its compatibility
 with the other two modules in pyfli.bayes_utils:
-  - BestParamFitSelector (param_combinations.py) -- backs center="best" and
+  - ParamSelector (param_combinations.py) -- backs center="best" and
     must agree with posterior_pixel_plot's own reconstruction on which sample
     wins and what its scaled curve looks like.
   - BiPipeline (inference.py) -- its `output_samples` dict is exactly the
@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pyfli.bayes_utils.param_combinations import BestParamFitSelector
+from pyfli.bayes_utils.param_combinations import ParamSelector
 from pyfli.bayes_utils.posterior_pixel_plot import (
     _MODEL_PARAM_KEYS,
     _reconstruct_sample_stack,
@@ -224,8 +224,8 @@ def test_reconstructed_samples_match_measured_photon_totals(
 ):
     """Every posterior sample's reconstructed curve must sum to the same
     total as the measured decay at that pixel -- the same
-    rescale-to-measured-totals convention analysis.utils.compute_detailed_results
-    uses (see ParameterToDecayReconstruction.rescale_fit_to_measured_totals)."""
+    rescale-to-measured-totals convention pyfli.reconstruction.compute_detailed_results
+    uses (see ParamToDecay.rescale_fit_to_measured_totals)."""
     pixel = (1, 2)
     decay_px = decay[pixel].astype(np.float64)
     stack = _reconstruct_sample_stack(
@@ -262,10 +262,10 @@ def test_median_center_lies_within_its_own_bands(irf, decay, output_combination)
 def test_best_center_agrees_with_best_param_fit_selector(
     irf, decay, output_combination
 ):
-    """center="best" must pick the same sample BestParamFitSelector itself
+    """center="best" must pick the same sample ParamSelector itself
     would pick, and its plotted curve must equal that sample's reconstructed
-    curve -- posterior_pixel_plot's own ParameterToDecayReconstruction path
-    and BestParamFitSelector's compute_detailed_results path must agree."""
+    curve -- posterior_pixel_plot's own ParamToDecay path
+    and ParamSelector's compute_detailed_results path must agree."""
     pixel = (1, 1)
     metric = "reduced_chi2"
 
@@ -273,8 +273,8 @@ def test_best_center_agrees_with_best_param_fit_selector(
         output_combination, pixel, irf, decay, _FREQ_ACQ, "bi-exponential", metric
     )
 
-    # Cross-check independently via the public BestParamFitSelector API too.
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay, model_type="bi-exponential")
+    # Cross-check independently via the public ParamSelector API too.
+    selector = ParamSelector(_FREQ_ACQ, irf, decay, model_type="bi-exponential")
     stacks = selector.evaluate_all_samples(output_combination)
     selection = selector.select_best_combination(
         output_combination, stacks, metric=metric

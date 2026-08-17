@@ -35,7 +35,7 @@ class ROIOperations:
         multi_roi_mask : np.ndarray
             Labeled ROI mask used to split global results.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
 
         Returns
         -------

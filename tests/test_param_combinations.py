@@ -1,5 +1,5 @@
 """
-Tests for pyfli.bayes_utils.param_combinations.BestParamFitSelector.
+Tests for pyfli.bayes_utils.param_combinations.ParamSelector.
 
 All tests use purely synthetic numpy arrays; no file I/O or GPU required.
 """
@@ -7,7 +7,7 @@ All tests use purely synthetic numpy arrays; no file I/O or GPU required.
 import numpy as np
 import pytest
 
-from pyfli.bayes_utils.param_combinations import BestParamFitSelector
+from pyfli.bayes_utils.param_combinations import ParamSelector
 from pyfli.solver.forward_model import model_numpy
 
 _H, _W, _T, _NUM_SAMPLES = 3, 3, 64, 5
@@ -71,16 +71,16 @@ def mono_output_combination(rng):
 
 def test_rejects_unknown_model_type(irf, decay):
     with pytest.raises(ValueError, match="model_type"):
-        BestParamFitSelector(_FREQ_ACQ, irf, decay, model_type="tri-exponential")
+        ParamSelector(_FREQ_ACQ, irf, decay, model_type="tri-exponential")
 
 
 def test_rejects_unknown_backend(irf, decay):
     with pytest.raises(ValueError, match="backend"):
-        BestParamFitSelector(_FREQ_ACQ, irf, decay, backend="nope")
+        ParamSelector(_FREQ_ACQ, irf, decay, backend="nope")
 
 
 def test_bool_mask_defaults_to_none(irf, decay):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     assert selector.bool_mask is None
 
 
@@ -90,7 +90,7 @@ def test_bool_mask_defaults_to_none(irf, decay):
 
 
 def test_evaluate_all_samples_rejects_non_ndarray(irf, decay, output_combination):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     bad = dict(output_combination)
     bad["tau1"] = [1, 2, 3]  # not an ndarray
     with pytest.raises(TypeError):
@@ -98,7 +98,7 @@ def test_evaluate_all_samples_rejects_non_ndarray(irf, decay, output_combination
 
 
 def test_evaluate_all_samples_rejects_wrong_ndim(irf, decay, output_combination):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     bad = dict(output_combination)
     bad["tau1"] = bad["tau1"][..., 0]  # (H, W), not (H, W, NUM_SAMPLES)
     with pytest.raises(ValueError, match="expected 3D"):
@@ -106,7 +106,7 @@ def test_evaluate_all_samples_rejects_wrong_ndim(irf, decay, output_combination)
 
 
 def test_evaluate_all_samples_stack_shapes(irf, decay, output_combination):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     stacks = selector.evaluate_all_samples(output_combination)
     for key in ("chi2_stack", "reduced_chi2_stack", "rmse_stack", "r2_stack"):
         assert stacks[key].shape == (_H, _W, _NUM_SAMPLES)
@@ -114,7 +114,7 @@ def test_evaluate_all_samples_stack_shapes(irf, decay, output_combination):
 
 
 def test_evaluate_all_samples_keep_per_sample_results(irf, decay, output_combination):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     stacks = selector.evaluate_all_samples(
         output_combination, keep_per_sample_results=True
     )
@@ -124,9 +124,7 @@ def test_evaluate_all_samples_keep_per_sample_results(irf, decay, output_combina
 
 
 def test_evaluate_all_samples_mono_exponential(irf, decay, mono_output_combination):
-    selector = BestParamFitSelector(
-        _FREQ_ACQ, irf, decay, model_type="mono-exponential"
-    )
+    selector = ParamSelector(_FREQ_ACQ, irf, decay, model_type="mono-exponential")
     stacks = selector.evaluate_all_samples(mono_output_combination)
     assert stacks["chi2_stack"].shape == (_H, _W, _NUM_SAMPLES)
 
@@ -137,7 +135,7 @@ def test_evaluate_all_samples_mono_exponential(irf, decay, mono_output_combinati
 
 
 def test_select_best_combination_rejects_unknown_metric(irf, decay, output_combination):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     stacks = selector.evaluate_all_samples(output_combination)
     with pytest.raises(ValueError, match="metric"):
         selector.select_best_combination(
@@ -157,7 +155,7 @@ def test_select_best_combination_rejects_unknown_metric(irf, decay, output_combi
 def test_select_best_combination_picks_correct_extremum(
     irf, decay, output_combination, metric, arg_extremum
 ):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     stacks = selector.evaluate_all_samples(output_combination)
     selection = selector.select_best_combination(
         output_combination, stacks, metric=metric
@@ -181,7 +179,7 @@ def test_select_best_combination_picks_correct_extremum(
 
 
 def test_compute_best_model_fit_result_structure(irf, decay, output_combination):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     result = selector.compute_best_model_fit_result(
         output_combination, metric="reduced_chi2"
     )
@@ -202,7 +200,7 @@ def test_compute_best_model_fit_result_structure(irf, decay, output_combination)
 def test_compute_best_model_fit_result_no_mask_introduces_no_nans(
     irf, decay, output_combination
 ):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     result = selector.compute_best_model_fit_result(
         output_combination, metric="reduced_chi2"
     )
@@ -215,7 +213,7 @@ def test_compute_best_model_fit_result_constructor_bool_mask_nans_excluded_pixel
 ):
     mask = np.ones((_H, _W), dtype=bool)
     mask[0, 0] = False
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay, bool_mask=mask)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay, bool_mask=mask)
     result = selector.compute_best_model_fit_result(
         output_combination, metric="reduced_chi2"
     )
@@ -245,7 +243,7 @@ def test_compute_best_model_fit_result_per_call_bool_mask_overrides_constructor(
     call_mask = np.ones((_H, _W), dtype=bool)
     call_mask[2, 2] = False
 
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay, bool_mask=ctor_mask)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay, bool_mask=ctor_mask)
     result = selector.compute_best_model_fit_result(
         output_combination, metric="reduced_chi2", bool_mask=call_mask
     )
@@ -262,7 +260,7 @@ def test_compute_best_model_fit_result_per_call_bool_mask_overrides_constructor(
 def test_compute_aggregate_model_fit_result_rejects_unknown_method(
     irf, decay, output_combination
 ):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     with pytest.raises(ValueError, match="method"):
         selector.compute_aggregate_model_fit_result(output_combination, method="mode")
 
@@ -270,7 +268,7 @@ def test_compute_aggregate_model_fit_result_rejects_unknown_method(
 def test_compute_aggregate_model_fit_result_best_matches_compute_best_model_fit_result(
     irf, decay, output_combination
 ):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     via_aggregate = selector.compute_aggregate_model_fit_result(
         output_combination, method="best", metric="RMSE", data_name="x"
     )
@@ -287,7 +285,7 @@ def test_compute_aggregate_model_fit_result_best_matches_compute_best_model_fit_
 def test_compute_aggregate_model_fit_result_reducer_matches_manual_reduction(
     irf, decay, output_combination, method
 ):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
     result = selector.compute_aggregate_model_fit_result(
         output_combination, method=method
     )
@@ -305,7 +303,7 @@ def test_compute_aggregate_model_fit_result_reducer_applies_bool_mask(
 ):
     mask = np.ones((_H, _W), dtype=bool)
     mask[1, 2] = False
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay, bool_mask=mask)
+    selector = ParamSelector(_FREQ_ACQ, irf, decay, bool_mask=mask)
     result = selector.compute_aggregate_model_fit_result(
         output_combination, method="mean"
     )
@@ -319,7 +317,7 @@ def test_compute_aggregate_model_fit_result_reducer_applies_bool_mask(
 
 
 def test_reconstructor_backend_self_consistent(irf, decay, output_combination):
-    selector = BestParamFitSelector(_FREQ_ACQ, irf, decay, backend="reconstructor")
+    selector = ParamSelector(_FREQ_ACQ, irf, decay, backend="reconstructor")
     result = selector.compute_best_model_fit_result(
         output_combination, metric="reduced_chi2"
     )
@@ -345,7 +343,7 @@ def test_reconstructor_backend_with_bool_mask_does_not_crash_on_none_error_maps(
 ):
     mask = np.ones((_H, _W), dtype=bool)
     mask[0, 0] = False
-    selector = BestParamFitSelector(
+    selector = ParamSelector(
         _FREQ_ACQ, irf, decay, backend="reconstructor", bool_mask=mask
     )
     result = selector.compute_best_model_fit_result(

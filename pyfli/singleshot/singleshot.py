@@ -1,8 +1,8 @@
 # pyfli/singleshot/singleshot.py
 """
-Provide singleshot tools for PyFLI single-shot FLIM convenience entry points.
+Provide singleshot tools for PyFLI single-shot FLI convenience entry points.
 
-This module belongs to :mod:`pyfli.singleshot` and is part of PyFLI single-shot FLIM
+This module belongs to :mod:`pyfli.singleshot` and is part of PyFLI single-shot FLI
 convenience entry points. Public API includes classes :class:`SingleShotFLI`.
 """
 
@@ -16,7 +16,7 @@ from scipy.interpolate import interp1d
 
 class SingleShotFLI:
     """
-    Provide a compact single-shot FLIM API. The class groups the minimal state needed
+    Provide a compact single-shot FLI API. The class groups the minimal state needed
     for single-shot lifetime estimation workflows.
     """
 

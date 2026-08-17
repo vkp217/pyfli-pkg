@@ -1,5 +1,5 @@
 """
-Tests for ParameterToDecayReconstruction (pyfli.reconstruction).
+Tests for ParamToDecay (pyfli.reconstruction).
 
 All tests use purely synthetic numpy arrays; no file I/O or GPU required.
 Where relevant, outputs are cross-checked directly against
@@ -11,7 +11,7 @@ class is to stay in lockstep with pyfli.solver's conventions.
 import numpy as np
 import pytest
 
-from pyfli.reconstruction import ParameterToDecayReconstruction
+from pyfli.reconstruction import ParamToDecay
 from pyfli.solver.base_fitter import BaseFLIFitter
 from pyfli.solver.forward_model import decay_kernel, model_numpy
 from pyfli.solver.shared_metrics import compute_fli_stats
@@ -21,7 +21,7 @@ from pyfli.solver.shared_metrics import compute_fli_stats
 # ---------------------------------------------------------------------------
 _N = 64
 _FREQ = (80.0, 80.0)  # (laser MHz, acq MHz) -- for BaseFLIFitter only
-_FREQ_ACQ = 80.0  # acquisition frequency (MHz) -- for ParameterToDecayReconstruction
+_FREQ_ACQ = 80.0  # acquisition frequency (MHz) -- for ParamToDecay
 
 
 def _gaussian_irf(n=_N, center=15, sigma=3.0):
@@ -60,55 +60,45 @@ def _biexp_params(
 class TestConstruction:
     def test_unknown_model_type_raises(self):
         with pytest.raises(ValueError):
-            ParameterToDecayReconstruction(
-                "tri-exponential", _FREQ_ACQ, _gaussian_irf()
-            )
+            ParamToDecay("tri-exponential", _FREQ_ACQ, _gaussian_irf())
 
     def test_missing_num_gates_without_irf_raises(self):
         with pytest.raises(ValueError):
-            ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf=None)
+            ParamToDecay("mono-exponential", _FREQ_ACQ, irf=None)
 
     def test_num_gates_from_1d_irf(self):
-        recon = ParameterToDecayReconstruction(
-            "mono-exponential", _FREQ_ACQ, _gaussian_irf(n=_N)
-        )
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, _gaussian_irf(n=_N))
         assert recon.num_gates == _N
 
     def test_num_gates_from_3d_irf(self):
         irf_cube = np.tile(_gaussian_irf(), (3, 3, 1))
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf_cube)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf_cube)
         assert recon.num_gates == _N
 
     def test_num_gates_explicit_without_irf(self):
-        recon = ParameterToDecayReconstruction(
-            "mono-exponential", _FREQ_ACQ, irf=None, num_gates=_N
-        )
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf=None, num_gates=_N)
         assert recon.num_gates == _N
         assert recon.irf is None
 
     def test_time_axis_matches_base_fitter(self):
         """T_acq must match BaseFLIFitter's own t for the same acquisition freq."""
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         dummy_decay = np.zeros(_N)
         bf = BaseFLIFitter(_FREQ, dummy_decay, irf)
         np.testing.assert_allclose(recon.t, bf.t)
 
     def test_t_acq_computed_from_freq(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", 80.0, irf)
+        recon = ParamToDecay("mono-exponential", 80.0, irf)
         assert recon.T_acq == pytest.approx(1000.0 / 80.0)
 
     def test_required_keys_mono(self):
-        recon = ParameterToDecayReconstruction(
-            "mono-exponential", _FREQ_ACQ, _gaussian_irf()
-        )
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, _gaussian_irf())
         assert recon.required_keys == ("tau_map",)
 
     def test_required_keys_biexp(self):
-        recon = ParameterToDecayReconstruction(
-            "bi-exponential", _FREQ_ACQ, _gaussian_irf()
-        )
+        recon = ParamToDecay("bi-exponential", _FREQ_ACQ, _gaussian_irf())
         assert recon.required_keys == ("alpha1_map", "tau1_map", "tau2_map")
 
 
@@ -119,16 +109,12 @@ class TestConstruction:
 
 class TestParamsAndDefaults:
     def test_missing_required_key_raises(self):
-        recon = ParameterToDecayReconstruction(
-            "bi-exponential", _FREQ_ACQ, _gaussian_irf()
-        )
+        recon = ParamToDecay("bi-exponential", _FREQ_ACQ, _gaussian_irf())
         with pytest.raises(KeyError):
             recon.reconstruct({"photon_count_map": np.ones((2, 2))}, verbose=False)
 
     def test_optional_keys_default_correctly(self):
-        recon = ParameterToDecayReconstruction(
-            "mono-exponential", _FREQ_ACQ, _gaussian_irf()
-        )
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, _gaussian_irf())
         full = _mono_params(S=1.0, v_shift=0.0, h_shift=0.0)
         minimal = {"tau_map": full["tau_map"]}
         out_full = recon.reconstruct(full, verbose=False)["fit_map"]
@@ -136,9 +122,7 @@ class TestParamsAndDefaults:
         np.testing.assert_allclose(out_full, out_minimal)
 
     def test_photon_count_defaults_to_one_without_decay(self):
-        recon = ParameterToDecayReconstruction(
-            "mono-exponential", _FREQ_ACQ, _gaussian_irf()
-        )
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, _gaussian_irf())
         minimal = {"tau_map": np.full((2, 2), 2.0)}
         with_s1 = _mono_params(H=2, W=2, S=1.0)
         out_minimal = recon.reconstruct(minimal, verbose=False)["fit_map"]
@@ -152,7 +136,7 @@ class TestParamsAndDefaults:
         naively equating S to the raw decay sum would over/under-scale the
         fit by that factor)."""
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         H, W = 3, 3
         rng = np.random.default_rng(0)
         decay = rng.uniform(0, 500, (H, W, _N)).astype(np.float32)
@@ -171,7 +155,7 @@ class TestParamsAndDefaults:
 
     def test_photon_count_derived_matches_between_loop_and_vectorized(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("bi-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("bi-exponential", _FREQ_ACQ, irf)
         H, W = 3, 3
         rng = np.random.default_rng(1)
         decay = rng.uniform(0, 500, (H, W, _N)).astype(np.float32)
@@ -188,9 +172,7 @@ class TestParamsAndDefaults:
         np.testing.assert_allclose(loop_out.sum(axis=-1), decay.sum(axis=-1), rtol=1e-4)
 
     def test_explicit_photon_count_takes_priority_over_decay(self):
-        recon = ParameterToDecayReconstruction(
-            "mono-exponential", _FREQ_ACQ, _gaussian_irf()
-        )
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, _gaussian_irf())
         H, W = 2, 2
         explicit = _mono_params(H=H, W=W, S=42.0)
         decay = np.full((H, W, _N), 999.0)
@@ -207,7 +189,7 @@ class TestParamsAndDefaults:
 class TestForwardModelCorrectness:
     def test_mono_matches_model_numpy_directly(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         params = _mono_params(H=1, W=1, S=500.0, tau=1.5, v_shift=2.0, h_shift=0.3)
         out = recon.reconstruct(params, verbose=False)["fit_map"][0, 0, :]
         direct = model_numpy(
@@ -217,7 +199,7 @@ class TestForwardModelCorrectness:
 
     def test_biexp_matches_model_numpy_directly(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("bi-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("bi-exponential", _FREQ_ACQ, irf)
         params = _biexp_params(
             H=1, W=1, S=800.0, alpha1=0.3, tau1=0.4, tau2=3.0, v_shift=1.0, h_shift=-0.2
         )
@@ -228,9 +210,7 @@ class TestForwardModelCorrectness:
         np.testing.assert_allclose(out, direct)
 
     def test_no_irf_matches_decay_kernel_directly(self):
-        recon = ParameterToDecayReconstruction(
-            "mono-exponential", _FREQ_ACQ, irf=None, num_gates=_N
-        )
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf=None, num_gates=_N)
         params = _mono_params(H=1, W=1, S=200.0, tau=2.0, v_shift=5.0, h_shift=0.0)
         out = recon.reconstruct(params, verbose=False)["fit_map"][0, 0, :]
         kernel, v_shift = decay_kernel(
@@ -240,7 +220,7 @@ class TestForwardModelCorrectness:
 
     def test_output_shape(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("bi-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("bi-exponential", _FREQ_ACQ, irf)
         H, W = 5, 3
         out = recon.reconstruct(_biexp_params(H=H, W=W), verbose=False)["fit_map"]
         assert out.shape == (H, W, _N)
@@ -248,7 +228,7 @@ class TestForwardModelCorrectness:
     def test_scaling_by_photon_count_is_linear(self):
         """Doubling S must double the (v_shift-free) fit."""
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         p1 = _mono_params(H=1, W=1, S=100.0, tau=2.0)
         p2 = _mono_params(H=1, W=1, S=200.0, tau=2.0)
         f1 = recon.reconstruct(p1, verbose=False)["fit_map"]
@@ -263,16 +243,14 @@ class TestForwardModelCorrectness:
 
 class TestTRMapsAndStats:
     def test_no_decay_no_tr_maps(self):
-        recon = ParameterToDecayReconstruction(
-            "mono-exponential", _FREQ_ACQ, _gaussian_irf()
-        )
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, _gaussian_irf())
         out = recon.reconstruct(_mono_params(), verbose=False)
         assert "TR_maps" not in out
         assert "fit_stats_maps" not in out
 
     def test_residual_map_is_decay_minus_fit(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         params = _mono_params(H=2, W=2)
         fit = recon.reconstruct(params, verbose=False)["fit_map"]
         decay = fit + 3.0
@@ -284,7 +262,7 @@ class TestTRMapsAndStats:
     def test_fit_stats_keys_match_solver_convention(self):
         """Keys must match FLICPUProcessor/FLIGPUProcessor's own map names."""
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         params = _mono_params(H=2, W=2)
         fit = recon.reconstruct(params, verbose=False)["fit_map"]
         decay = fit + np.random.default_rng(1).normal(0, 0.5, fit.shape)
@@ -298,7 +276,7 @@ class TestTRMapsAndStats:
 
     def test_fit_stats_match_compute_fli_stats_directly(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("bi-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("bi-exponential", _FREQ_ACQ, irf)
         params = _biexp_params(H=1, W=1)
         fit = recon.reconstruct(params, verbose=False)["fit_map"]
         decay = fit + np.random.default_rng(2).normal(0, 1.0, fit.shape)
@@ -323,7 +301,7 @@ class TestTRMapsAndStats:
 class TestBoolMask:
     def test_masked_out_pixels_are_nan(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         H, W = 3, 3
         params = _mono_params(H=H, W=W)
         mask = np.zeros((H, W), dtype=bool)
@@ -335,7 +313,7 @@ class TestBoolMask:
 
     def test_masked_out_stats_are_nan(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         H, W = 3, 3
         params = _mono_params(H=H, W=W)
         decay = recon.reconstruct(params, verbose=False)["fit_map"] + 1.0
@@ -354,7 +332,7 @@ class TestBoolMask:
 class TestSinglePixel:
     def test_scalar_params_give_1d_output(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         out = recon.reconstruct(
             {
                 "photon_count_map": 500.0,
@@ -368,7 +346,7 @@ class TestSinglePixel:
 
     def test_single_pixel_matches_1x1_image(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("bi-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("bi-exponential", _FREQ_ACQ, irf)
         scalar_params = {
             "photon_count_map": 800.0,
             "alpha1_map": 0.4,
@@ -388,7 +366,7 @@ class TestSinglePixel:
 
     def test_single_pixel_fit_stats_are_floats(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         sp = {
             "photon_count_map": 500.0,
             "tau_map": 2.0,
@@ -410,7 +388,7 @@ class TestSinglePixel:
 class TestVectorizedParity:
     def test_mono_vectorized_matches_loop(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         params = _mono_params(H=4, W=4, S=750.0, tau=1.8, v_shift=1.0, h_shift=0.4)
         loop_out = recon.reconstruct(params, verbose=False)["fit_map"]
         vec_out = recon.reconstruct_vectorized(params, verbose=False)["fit_map"]
@@ -418,7 +396,7 @@ class TestVectorizedParity:
 
     def test_biexp_with_decay_and_mask_matches_loop(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("bi-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("bi-exponential", _FREQ_ACQ, irf)
         H, W = 4, 4
         params = _biexp_params(H=H, W=W)
         rng = np.random.default_rng(5)
@@ -444,7 +422,7 @@ class TestVectorizedParity:
 
     def test_single_pixel_vectorized_matches_loop(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         sp = {
             "photon_count_map": 500.0,
             "tau_map": 2.0,
@@ -463,16 +441,14 @@ class TestVectorizedParity:
 
 class TestUnitAmplitudeAndRescale:
     def test_convolved_equals_kernel_without_irf(self):
-        recon = ParameterToDecayReconstruction(
-            "mono-exponential", _FREQ_ACQ, irf=None, num_gates=_N
-        )
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf=None, num_gates=_N)
         params = {"tau_map": np.full((2, 2), 2.0)}
         out = recon.reconstruct_unit_amplitude(params)
         np.testing.assert_array_equal(out["kernel_map"], out["convolved_map"])
 
     def test_rescale_matches_target_totals(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         H, W = 3, 3
         unit_params = {
             "photon_count_map": np.ones((H, W), dtype=np.float32),
@@ -489,7 +465,7 @@ class TestUnitAmplitudeAndRescale:
 
     def test_rescale_is_shape_preserving(self):
         irf = _gaussian_irf()
-        recon = ParameterToDecayReconstruction("mono-exponential", _FREQ_ACQ, irf)
+        recon = ParamToDecay("mono-exponential", _FREQ_ACQ, irf)
         H, W = 2, 2
         unit_params = {
             "photon_count_map": np.ones((H, W), dtype=np.float32),

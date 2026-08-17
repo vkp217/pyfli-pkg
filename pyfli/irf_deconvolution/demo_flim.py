@@ -1,9 +1,9 @@
 """
-Provide demo flim tools for PyFLI detector-aware IRF deconvolution and joint FLIM
+Provide demo flim tools for PyFLI detector-aware IRF deconvolution and joint FLI
 fitting utilities.
 
 This module belongs to :mod:`pyfli.irf_deconvolution` and is part of PyFLI detector-
-aware IRF deconvolution and joint FLIM fitting utilities. Public API includes functions
+aware IRF deconvolution and joint FLI fitting utilities. Public API includes functions
 :func:`make_counts` and :func:`report`.
 """
 
