@@ -15,7 +15,7 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 
 from tqdm import tqdm
-
+from .spad_io import SpadConfig, SpadIO
 from pyfli import logging
 from .data_ops_static import StaticDataOps as ds
 
@@ -308,6 +308,117 @@ class Detector:
             make_hp_map=make_hp_map,
             bit_size=self.bit_size,
             threshold_sigma=threshold_sigma,
+        )
+
+    def SPAD(
+        self,
+        name: str = "Experiment_1",
+        config: SpadConfig | dict[str, Any] | None = None,
+    ) -> Any:
+        """
+        Generic SPAD detector loader for HDF5 and native SwissSPAD2 binary data.
+
+        HDF5 files are discovered from their structure, dimensions, attributes, and
+        numeric ordering rather than fixed detector-specific group names. SwissSPAD2
+        binary acquisitions are decoded from matched topN.bin / btmN.bin chunks and
+        stitched into a 512 x 512 detector cube.
+
+        Optional pile-up correction is applied before optional periodic temporal
+        folding. Folding detects or uses an explicit circular phase shift, aligns the
+        complete acquisition on the time axis, and sums repeated excitation periods.
+        Background subtraction is not performed by this loader.
+
+        Parameters
+        ----------
+        name : str
+            Dataset or experiment name stored in the returned PyFLI package.
+        config : SpadConfig | dict[str, Any] | None
+            SPAD input, pile-up, HDF5 discovery, SwissSPAD2 binary, and folding options.
+
+        Returns
+        -------
+        Any
+            Standard PyFLI dataset package containing SPAD decay, optional
+            IRF/background, mask, and complete import metadata.
+        """
+        if not self.data_path or not os.path.exists(self.data_path):
+            raise ValueError("SPAD: data_path must be provided and must exist.")
+
+        resolved_config = SpadConfig.from_value(
+            config,
+            default_bit_depth=self.bit_size,
+        )
+
+        decay_result = SpadIO.load(
+            self.data_path,
+            config=resolved_config,
+            default_bit_depth=self.bit_size,
+        )
+
+        shared_fold_layout = decay_result.fold_layout if resolved_config.fold else None
+
+        irf_result = None
+
+        if self.irf_path:
+            if not os.path.exists(self.irf_path):
+                raise ValueError(f"SPAD: irf_path does not exist: {self.irf_path}")
+
+            irf_result = SpadIO.load(
+                self.irf_path,
+                config=resolved_config,
+                default_bit_depth=self.bit_size,
+                fold_layout=shared_fold_layout,
+            )
+
+            if irf_result.data.shape != decay_result.data.shape:
+                raise ValueError(
+                    f"SPAD: IRF shape {irf_result.data.shape} "
+                    f"does not match data shape "
+                    f"{decay_result.data.shape}."
+                )
+
+        background_result = None
+
+        if self.bg_path:
+            if not os.path.exists(self.bg_path):
+                raise ValueError(f"SPAD: bg_path does not exist: {self.bg_path}")
+
+            background_result = SpadIO.load(
+                self.bg_path,
+                config=resolved_config,
+                default_bit_depth=self.bit_size,
+                fold_layout=shared_fold_layout,
+            )
+
+            if background_result.data.shape != decay_result.data.shape:
+                raise ValueError(
+                    f"SPAD: background shape "
+                    f"{background_result.data.shape} does not "
+                    f"match data shape {decay_result.data.shape}."
+                )
+
+        mask = self._load_mask()
+
+        spad_metadata = {
+            "decay": decay_result.metadata,
+            "irf": (irf_result.metadata if irf_result is not None else None),
+            "background": (
+                background_result.metadata if background_result is not None else None
+            ),
+        }
+
+        return self._package(
+            decay_result.data,
+            (irf_result.data if irf_result is not None else None),
+            (background_result.data if background_result is not None else None),
+            mask,
+            name,
+            source="SPAD",
+            sub_bg=False,
+            pile_up=resolved_config.pile_up,
+            fold=resolved_config.fold,
+            bit_size=resolved_config.bit_depth,
+            spad_metadata=spad_metadata,
         )
 
     def ICCD(self, name: str = "Experiment_1") -> Any:
@@ -762,21 +873,26 @@ class Detector:
         """
         if not file_path or not os.path.exists(file_path):
             return None
+
         ext = os.path.splitext(file_path)[-1].lower()
+
         try:
-            # SwissSPAD3 — dedicated HDF5 reader, corrections applied inside
             if ext in (".hdf5", ".h5"):
-                return self._read_ss3_hdf5(
-                    file_path, pile_up=pile_up, hot_pixel=hot_pixel
+                return ds.spad_hdf5_read(
+                    file_path,
+                    gate_prefix=None,
+                    pile_up=pile_up,
+                    bit_size=self.bit_size,
                 )
 
-            # TCSPC SDT: channel selects measurement block
             if ext == ".sdt":
                 from sdtfile import SdtFile
 
-                return np.asarray(SdtFile(file_path).data[channel], dtype=np.float32)
+                return np.asarray(
+                    SdtFile(file_path).data[channel],
+                    dtype=np.float32,
+                )
 
-            # PicoQuant ASCII (time col 0, counts col 1), tiled to spatial dims
             if ext == ".asc":
                 return ds.load_asc_file(file_path).astype(np.float32)
 
@@ -786,9 +902,10 @@ class Detector:
                 ".tif": ds.load_tiff_file,
                 ".tiff": ds.load_tiff_file,
                 ".txt": ds.load_txt_file,
-                # '.roiN': ds.load_roiN_file,  # TODO: register once loader is implemented
             }
+
             loader = loaders.get(ext)
+
             if loader is None:
                 logging.warning(
                     f"[WARN] Unsupported format '{ext}': {os.path.basename(file_path)}"
@@ -796,10 +913,19 @@ class Detector:
                 return None
 
             data = loader(file_path).astype(np.float32)
+
             if pile_up:
-                data = ds.pileup_correction(data, bit_size=self.bit_size)
+                data = ds.pileup_correction(
+                    data,
+                    bit_size=self.bit_size,
+                )
+
             if hot_pixel:
-                data = ds.apply_interpolation_mask(data, hp_path=self.hp_path)
+                data = ds.apply_interpolation_mask(
+                    data,
+                    hp_path=self.hp_path,
+                )
+
             return data
 
         except Exception as e:

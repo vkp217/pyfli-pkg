@@ -38,34 +38,53 @@ class StaticDataOps:
 
     @staticmethod
     def spad_hdf5_read(
-        fname: str, gate_prefix: np.ndarray, pile_up: bool = True, bit_size: int = 10
+        fname: str,
+        gate_prefix: str | None = None,
+        pile_up: bool = True,
+        bit_size: int = 10,
     ) -> np.ndarray:
         """
-        Generic SPAD HDF5 reader shared by SS2 and SS3.
-        gate_prefix : key prefix used to identify gate datasets inside 'Gate Images'
-            SS3 → 'Bottom G2 Gate'
-            SS2 → 'Gate '
-        Reads datasets matching gate_prefix, sorts numerically, stacks → (H, W, T) float32.
+        Read SPAD HDF5 data and normalize it to (H, W, T).
+
+        The reader discovers split gate datasets or stacked 3D cubes from HDF5
+        structure and metadata instead of requiring a fixed "Gate Images" group.
+        gate_prefix remains available as a backwards-compatible discovery hint for
+        existing SwissSPAD2 and SwissSPAD3 callers.
+
+        Parameters
+        ----------
+        fname : str
+            HDF5 file containing SPAD image data.
+        gate_prefix : str | None
+            Optional split-gate dataset prefix used as a discovery hint.
+        pile_up : bool
+            Whether pile-up correction should be applied after loading.
+        bit_size : int
+            Detector digitization bit depth used for pile-up correction.
+
+        Returns
+        -------
+        np.ndarray
+            SPAD image cube with shape (H, W, T) and float32 dtype.
         """
-        with h5py.File(fname, "r") as f:
-            gate_grp = f.get("Gate Images")
-            if gate_grp is None:
-                raise KeyError(f"'Gate Images' group not found in {fname}")
-            gate_keys = sorted(
-                (k for k in gate_grp.keys() if k.startswith(gate_prefix)),
-                key=lambda k: int(k.split("Gate ")[-1]),
-            )
-            if not gate_keys:
-                raise KeyError(
-                    f"No '{gate_prefix}N' datasets found in 'Gate Images' in {fname}"
-                )
-            tpsfs = np.zeros(
-                (*gate_grp[gate_keys[0]].shape, len(gate_keys)), dtype=np.float32
-            )
-            for i, key in enumerate(gate_keys):
-                tpsfs[:, :, i] = gate_grp[key][:]
+        from .spad_hdf5 import read_spad_hdf5
+
+        result = read_spad_hdf5(
+            fname,
+            gate_prefix=gate_prefix,
+        )
+
+        tpsfs = result.data.astype(
+            np.float32,
+            copy=False,
+        )
+
         if pile_up:
-            tpsfs = StaticDataOps.pileup_correction(tpsfs, bit_size=bit_size)
+            tpsfs = StaticDataOps.pileup_correction(
+                tpsfs,
+                bit_size=bit_size,
+            )
+
         return tpsfs
 
     @staticmethod
