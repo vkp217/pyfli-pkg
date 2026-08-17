@@ -110,11 +110,7 @@ class SpadConfig:
 
     def __post_init__(self) -> None:
         """Validate SPAD import configuration values."""
-        self.input_format = (
-            self.input_format
-            .lower()
-            .replace("-", "_")
-        )
+        self.input_format = self.input_format.lower().replace("-", "_")
 
         aliases = {
             "auto": "auto",
@@ -132,103 +128,49 @@ class SpadConfig:
                 f"got '{self.input_format}'."
             )
 
-        self.input_format = aliases[
-            self.input_format
-        ]
+        self.input_format = aliases[self.input_format]
 
         if self.bit_depth < 1:
-            raise ValueError(
-                f"bit_depth must be >= 1, "
-                f"got {self.bit_depth}."
-            )
+            raise ValueError(f"bit_depth must be >= 1, got {self.bit_depth}.")
 
-        if (
-            self.detector_frequency_mhz is not None
-            and self.detector_frequency_mhz <= 0
-        ):
-            raise ValueError(
-                "detector_frequency_mhz must be positive when provided."
-            )
+        if self.detector_frequency_mhz is not None and self.detector_frequency_mhz <= 0:
+            raise ValueError("detector_frequency_mhz must be positive when provided.")
 
-        if (
-            self.laser_frequency_mhz is not None
-            and self.laser_frequency_mhz <= 0
-        ):
-            raise ValueError(
-                "laser_frequency_mhz must be positive when provided."
-            )
+        if self.laser_frequency_mhz is not None and self.laser_frequency_mhz <= 0:
+            raise ValueError("laser_frequency_mhz must be positive when provided.")
 
-        if (
-            self.fold_repetitions is not None
-            and self.fold_repetitions < 2
-        ):
-            raise ValueError(
-                "fold_repetitions must be >= 2 when provided."
-            )
+        if self.fold_repetitions is not None and self.fold_repetitions < 2:
+            raise ValueError("fold_repetitions must be >= 2 when provided.")
 
-        if (
-            self.period_bins is not None
-            and self.period_bins < 2
-        ):
-            raise ValueError(
-                "period_bins must be >= 2 when provided."
-            )
+        if self.period_bins is not None and self.period_bins < 2:
+            raise ValueError("period_bins must be >= 2 when provided.")
 
-        if not (
-            0
-            <= self.min_fold_confidence
-            <= 1
-        ):
-            raise ValueError(
-                "min_fold_confidence must be in [0, 1]."
-            )
+        if not (0 <= self.min_fold_confidence <= 1):
+            raise ValueError("min_fold_confidence must be in [0, 1].")
 
-        if not (
-            0
-            < self.period_search_radius
-            <= 0.5
-        ):
-            raise ValueError(
-                "period_search_radius must be in (0, 0.5]."
-            )
+        if not (0 < self.period_search_radius <= 0.5):
+            raise ValueError("period_search_radius must be in (0, 0.5].")
 
         if self.fold_smoothing_sigma < 0:
-            raise ValueError(
-                "fold_smoothing_sigma must be >= 0."
-            )
+            raise ValueError("fold_smoothing_sigma must be >= 0.")
 
-        if not (
-            0
-            < self.onset_threshold_fraction
-            < 1
-        ):
-            raise ValueError(
-                "onset_threshold_fraction must be in (0, 1)."
-            )
+        if not (0 < self.onset_threshold_fraction < 1):
+            raise ValueError("onset_threshold_fraction must be in (0, 1).")
 
         if self.hdf5_folder_mode not in (
             "sum",
             "mean",
         ):
-            raise ValueError(
-                "hdf5_folder_mode must be 'sum' or 'mean'."
-            )
+            raise ValueError("hdf5_folder_mode must be 'sum' or 'mean'.")
 
         if (
             self.ss2_expected_gate_count is not None
             and self.ss2_expected_gate_count < 1
         ):
-            raise ValueError(
-                "ss2_expected_gate_count must be >= 1 when provided."
-            )
+            raise ValueError("ss2_expected_gate_count must be >= 1 when provided.")
 
-        if (
-            not self.ss2_top_prefix
-            or not self.ss2_bottom_prefix
-        ):
-            raise ValueError(
-                "SwissSPAD2 top/bottom filename prefixes cannot be empty."
-            )
+        if not self.ss2_top_prefix or not self.ss2_bottom_prefix:
+            raise ValueError("SwissSPAD2 top/bottom filename prefixes cannot be empty.")
 
     @classmethod
     def from_value(
@@ -255,9 +197,7 @@ class SpadConfig:
             return value
 
         if value is None:
-            return cls(
-                bit_depth=default_bit_depth
-            )
+            return cls(bit_depth=default_bit_depth)
 
         if not isinstance(value, dict):
             raise TypeError(
@@ -266,19 +206,12 @@ class SpadConfig:
                 f"got {type(value).__name__}."
             )
 
-        valid_fields = set(
-            cls.__dataclass_fields__
-        )
+        valid_fields = set(cls.__dataclass_fields__)
 
-        unknown = sorted(
-            set(value)
-            - valid_fields
-        )
+        unknown = sorted(set(value) - valid_fields)
 
         if unknown:
-            raise ValueError(
-                f"Unknown SPAD config keys: {unknown}"
-            )
+            raise ValueError(f"Unknown SPAD config keys: {unknown}")
 
         config_values = dict(value)
 
@@ -287,9 +220,7 @@ class SpadConfig:
             default_bit_depth,
         )
 
-        return cls(
-            **config_values
-        )
+        return cls(**config_values)
 
     def to_metadata(self) -> dict[str, Any]:
         """Return the validated configuration as serializable metadata."""
@@ -314,12 +245,7 @@ def _natural_sort_key(
         value.lower(),
     )
 
-    return [
-        int(part)
-        if part.isdigit()
-        else part
-        for part in parts
-    ]
+    return [int(part) if part.isdigit() else part for part in parts]
 
 
 def _resolve_expected_repeats(
@@ -329,38 +255,24 @@ def _resolve_expected_repeats(
     if config.fold_repetitions is not None:
         return config.fold_repetitions
 
-    if (
-        config.detector_frequency_mhz is None
-        and config.laser_frequency_mhz is None
-    ):
+    if config.detector_frequency_mhz is None and config.laser_frequency_mhz is None:
         return None
 
-    if (
-        config.detector_frequency_mhz is None
-        or config.laser_frequency_mhz is None
-    ):
+    if config.detector_frequency_mhz is None or config.laser_frequency_mhz is None:
         raise ValueError(
             "Both detector_frequency_mhz and laser_frequency_mhz "
             "are required when frequency-based folding is requested."
         )
 
-    ratio = (
-        config.laser_frequency_mhz
-        / config.detector_frequency_mhz
-    )
+    ratio = config.laser_frequency_mhz / config.detector_frequency_mhz
 
-    repetitions = int(
-        round(ratio)
-    )
+    repetitions = int(round(ratio))
 
-    if (
-        repetitions < 2
-        or not np.isclose(
-            ratio,
-            repetitions,
-            rtol=0.02,
-            atol=0.02,
-        )
+    if repetitions < 2 or not np.isclose(
+        ratio,
+        repetitions,
+        rtol=0.02,
+        atol=0.02,
     ):
         raise ValueError(
             "laser_frequency_mhz / detector_frequency_mhz must be "
@@ -379,14 +291,10 @@ def _detect_input_format(
     if configured_format != "auto":
         return configured_format
 
-    absolute_path = os.path.abspath(
-        path
-    )
+    absolute_path = os.path.abspath(path)
 
     if os.path.isfile(absolute_path):
-        extension = os.path.splitext(
-            absolute_path
-        )[1].lower()
+        extension = os.path.splitext(absolute_path)[1].lower()
 
         if extension in (
             ".h5",
@@ -397,24 +305,14 @@ def _detect_input_format(
         if extension == ".bin":
             return "ss2_bin"
 
-        raise ValueError(
-            f"Unsupported SPAD file extension: "
-            f"'{extension}'."
-        )
+        raise ValueError(f"Unsupported SPAD file extension: '{extension}'.")
 
     if not os.path.isdir(absolute_path):
-        raise FileNotFoundError(
-            f"SPAD input path not found: {absolute_path}"
-        )
+        raise FileNotFoundError(f"SPAD input path not found: {absolute_path}")
 
-    filenames = os.listdir(
-        absolute_path
-    )
+    filenames = os.listdir(absolute_path)
 
-    has_bin = any(
-        filename.lower().endswith(".bin")
-        for filename in filenames
-    )
+    has_bin = any(filename.lower().endswith(".bin") for filename in filenames)
 
     has_hdf5 = any(
         filename.lower().endswith(
@@ -439,8 +337,7 @@ def _detect_input_format(
         return "hdf5"
 
     raise FileNotFoundError(
-        f"No supported SPAD BIN or HDF5 files found in: "
-        f"{absolute_path}"
+        f"No supported SPAD BIN or HDF5 files found in: {absolute_path}"
     )
 
 
@@ -465,13 +362,9 @@ def _load_hdf5_path(
     dict[str, Any],
 ]:
     """Load one HDF5 file or combine a directory of normalized HDF5 SPAD cubes."""
-    absolute_path = os.path.abspath(
-        path
-    )
+    absolute_path = os.path.abspath(path)
 
-    reader_kwargs = _hdf5_reader_kwargs(
-        config
-    )
+    reader_kwargs = _hdf5_reader_kwargs(config)
 
     if os.path.isfile(absolute_path):
         result = read_spad_hdf5(
@@ -485,16 +378,12 @@ def _load_hdf5_path(
         )
 
     if not os.path.isdir(absolute_path):
-        raise FileNotFoundError(
-            f"SPAD HDF5 path not found: {absolute_path}"
-        )
+        raise FileNotFoundError(f"SPAD HDF5 path not found: {absolute_path}")
 
     filenames = sorted(
         (
             filename
-            for filename in os.listdir(
-                absolute_path
-            )
+            for filename in os.listdir(absolute_path)
             if filename.lower().endswith(
                 (
                     ".h5",
@@ -506,9 +395,7 @@ def _load_hdf5_path(
     )
 
     if not filenames:
-        raise FileNotFoundError(
-            f"No HDF5 files found in: {absolute_path}"
-        )
+        raise FileNotFoundError(f"No HDF5 files found in: {absolute_path}")
 
     first_result = read_spad_hdf5(
         os.path.join(
@@ -534,9 +421,7 @@ def _load_hdf5_path(
         copy=True,
     )
 
-    file_metadata = [
-        first_result.to_metadata()
-    ]
+    file_metadata = [first_result.to_metadata()]
 
     for filename in filenames[1:]:
         result = read_spad_hdf5(
@@ -554,19 +439,14 @@ def _load_hdf5_path(
                 f"in '{filename}'."
             )
 
-        if (
-            np.issubdtype(
-                accumulator.dtype,
-                np.integer,
-            )
-            and not np.issubdtype(
-                result.data.dtype,
-                np.integer,
-            )
+        if np.issubdtype(
+            accumulator.dtype,
+            np.integer,
+        ) and not np.issubdtype(
+            result.data.dtype,
+            np.integer,
         ):
-            accumulator = accumulator.astype(
-                np.float64
-            )
+            accumulator = accumulator.astype(np.float64)
             accumulator_dtype = np.float64
 
         accumulator += result.data.astype(
@@ -574,18 +454,13 @@ def _load_hdf5_path(
             copy=False,
         )
 
-        file_metadata.append(
-            result.to_metadata()
-        )
+        file_metadata.append(result.to_metadata())
 
     if config.hdf5_folder_mode == "mean":
-        data = (
-            accumulator.astype(
-                np.float64,
-                copy=False,
-            )
-            / len(filenames)
-        )
+        data = accumulator.astype(
+            np.float64,
+            copy=False,
+        ) / len(filenames)
     else:
         data = accumulator
 
@@ -610,9 +485,7 @@ def _load_hdf5_folder_with_pileup(
     config: SpadConfig,
 ) -> np.ndarray:
     """Load an HDF5 folder with pile-up correction before file combination."""
-    absolute_path = os.path.abspath(
-        path
-    )
+    absolute_path = os.path.abspath(path)
 
     if not os.path.isdir(absolute_path):
         raise ValueError(
@@ -623,9 +496,7 @@ def _load_hdf5_folder_with_pileup(
     filenames = sorted(
         (
             filename
-            for filename in os.listdir(
-                absolute_path
-            )
+            for filename in os.listdir(absolute_path)
             if filename.lower().endswith(
                 (
                     ".h5",
@@ -637,13 +508,9 @@ def _load_hdf5_folder_with_pileup(
     )
 
     if not filenames:
-        raise FileNotFoundError(
-            f"No HDF5 files found in: {absolute_path}"
-        )
+        raise FileNotFoundError(f"No HDF5 files found in: {absolute_path}")
 
-    reader_kwargs = _hdf5_reader_kwargs(
-        config
-    )
+    reader_kwargs = _hdf5_reader_kwargs(config)
 
     accumulator = None
     reference_shape = None
@@ -684,16 +551,12 @@ def _load_hdf5_folder_with_pileup(
             )
 
     if accumulator is None:
-        raise RuntimeError(
-            "HDF5 folder pile-up accumulation did not produce data."
-        )
+        raise RuntimeError("HDF5 folder pile-up accumulation did not produce data.")
 
     if config.hdf5_folder_mode == "mean":
         accumulator /= len(filenames)
 
-    return accumulator.astype(
-        np.float32
-    )
+    return accumulator.astype(np.float32)
 
 
 def _load_raw_spad(
@@ -706,18 +569,12 @@ def _load_raw_spad(
 ]:
     """Load SPAD input without pile-up correction or temporal folding."""
     if not path:
-        raise ValueError(
-            "SPAD input path must be provided."
-        )
+        raise ValueError("SPAD input path must be provided.")
 
-    absolute_path = os.path.abspath(
-        path
-    )
+    absolute_path = os.path.abspath(path)
 
     if not os.path.exists(absolute_path):
-        raise FileNotFoundError(
-            f"SPAD input path not found: {absolute_path}"
-        )
+        raise FileNotFoundError(f"SPAD input path not found: {absolute_path}")
 
     input_format = _detect_input_format(
         absolute_path,
@@ -743,16 +600,10 @@ def _load_raw_spad(
         metadata = result.to_metadata()
 
     else:
-        raise ValueError(
-            f"Unsupported SPAD input format: "
-            f"{input_format}"
-        )
+        raise ValueError(f"Unsupported SPAD input format: {input_format}")
 
     if data.ndim != 3:
-        raise ValueError(
-            f"SPAD reader must return (H, W, T), "
-            f"got shape {data.shape}."
-        )
+        raise ValueError(f"SPAD reader must return (H, W, T), got shape {data.shape}.")
 
     return (
         data,
@@ -800,21 +651,13 @@ def load_spad(
         resolved_config,
     )
 
-    raw_shape = tuple(
-        raw_data.shape
-    )
+    raw_shape = tuple(raw_data.shape)
 
-    detected_layout = (
-        fold_layout
-        if resolved_config.fold
-        else None
-    )
+    detected_layout = fold_layout if resolved_config.fold else None
 
     if resolved_config.fold:
         if detected_layout is None:
-            expected_repeats = _resolve_expected_repeats(
-                resolved_config
-            )
+            expected_repeats = _resolve_expected_repeats(resolved_config)
 
             detected_layout = analyze_fold_layout(
                 raw_data,
@@ -828,10 +671,7 @@ def load_spad(
                 threshold_fraction=resolved_config.onset_threshold_fraction,
             )
 
-        elif (
-            raw_data.shape[-1]
-            != detected_layout.original_bins
-        ):
+        elif raw_data.shape[-1] != detected_layout.original_bins:
             raise ValueError(
                 f"Reused fold layout expects "
                 f"{detected_layout.original_bins} temporal gates, "
@@ -844,17 +684,14 @@ def load_spad(
     if resolved_config.pile_up:
         if (
             input_format == "hdf5"
-            and source_metadata.get("source_format")
-            == "hdf5_folder"
+            and source_metadata.get("source_format") == "hdf5_folder"
         ):
             processed = _load_hdf5_folder_with_pileup(
                 path,
                 resolved_config,
             )
 
-            pile_up_scope = (
-                "per_file_before_folder_combine"
-            )
+            pile_up_scope = "per_file_before_folder_combine"
 
         else:
             processed = ds.pileup_correction(
@@ -866,9 +703,7 @@ def load_spad(
 
     if resolved_config.fold:
         if detected_layout is None:
-            raise RuntimeError(
-                "SPAD fold layout was not resolved."
-            )
+            raise RuntimeError("SPAD fold layout was not resolved.")
 
         processed = apply_fold_layout(
             processed,
@@ -887,9 +722,7 @@ def load_spad(
         "pile_up_scope": pile_up_scope,
         "fold_applied": resolved_config.fold,
         "fold": (
-            detected_layout.to_metadata()
-            if detected_layout is not None
-            else None
+            detected_layout.to_metadata() if detected_layout is not None else None
         ),
         "config": resolved_config.to_metadata(),
     }

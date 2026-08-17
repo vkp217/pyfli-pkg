@@ -14,9 +14,7 @@ def test_reads_existing_ss2_gate_structure_in_numeric_order(
         path,
         "w",
     ) as file_handle:
-        group = file_handle.create_group(
-            "Gate Images"
-        )
+        group = file_handle.create_group("Gate Images")
 
         for gate in (
             1,
@@ -70,9 +68,7 @@ def test_reads_existing_ss3_gate_structure_in_numeric_order(
         path,
         "w",
     ) as file_handle:
-        group = file_handle.create_group(
-            "Gate Images"
-        )
+        group = file_handle.create_group("Gate Images")
 
         for gate in (
             2,
@@ -131,9 +127,7 @@ def test_reads_arbitrary_nested_gate_names_from_attributes(
             0,
             50,
         ):
-            group = file_handle.create_group(
-                f"acquisition/position_{delay}"
-            )
+            group = file_handle.create_group(f"acquisition/position_{delay}")
 
             dataset = group.create_dataset(
                 "image",
@@ -147,13 +141,9 @@ def test_reads_arbitrary_nested_gate_names_from_attributes(
                 ),
             )
 
-            dataset.attrs[
-                "delay_ps"
-            ] = delay
+            dataset.attrs["delay_ps"] = delay
 
-    result = read_spad_hdf5(
-        str(path)
-    )
+    result = read_spad_hdf5(str(path))
 
     assert result.data.shape == (
         3,
@@ -175,10 +165,7 @@ def test_reads_arbitrary_nested_gate_names_from_attributes(
         ),
     )
 
-    assert (
-        result.candidate.ordering_source
-        == "attribute:delay_ps"
-    )
+    assert result.candidate.ordering_source == "attribute:delay_ps"
 
 
 def test_reads_stacked_cube_using_axes_metadata(
@@ -204,13 +191,9 @@ def test_reads_stacked_cube_using_axes_metadata(
             data=source,
         )
 
-        dataset.attrs[
-            "axes"
-        ] = "TYX"
+        dataset.attrs["axes"] = "TYX"
 
-    result = read_spad_hdf5(
-        str(path)
-    )
+    result = read_spad_hdf5(str(path))
 
     assert result.data.shape == (
         3,
@@ -241,9 +224,7 @@ def test_rejects_ambiguous_multiple_gate_groups(
             "raw",
             "background",
         ):
-            group = file_handle.create_group(
-                group_name
-            )
+            group = file_handle.create_group(group_name)
 
             for gate in range(3):
                 group.create_dataset(
@@ -262,9 +243,7 @@ def test_rejects_ambiguous_multiple_gate_groups(
         ValueError,
         match="Ambiguous SPAD HDF5 structure",
     ):
-        read_spad_hdf5(
-            str(path)
-        )
+        read_spad_hdf5(str(path))
 
 
 def test_rejects_stacked_cube_when_time_axis_is_ambiguous(
@@ -292,6 +271,4 @@ def test_rejects_stacked_cube_when_time_axis_is_ambiguous(
         ValueError,
         match="No deterministic SPAD layout",
     ):
-        read_spad_hdf5(
-            str(path)
-        )
+        read_spad_hdf5(str(path))

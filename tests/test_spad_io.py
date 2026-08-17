@@ -16,13 +16,7 @@ def test_load_spad_applies_pileup_before_circular_folding(
         dtype=np.float64,
     )
 
-    period = (
-        5.0
-        + 120.0
-        * np.exp(
-            -time / 10.0
-        )
-    )
+    period = 5.0 + 120.0 * np.exp(-time / 10.0)
 
     raw_trace = np.roll(
         np.tile(
@@ -39,9 +33,7 @@ def test_load_spad_applies_pileup_before_circular_folding(
             2,
             raw_trace.size,
         ),
-    ).astype(
-        np.uint16
-    )
+    ).astype(np.uint16)
 
     path = tmp_path / "stacked.h5"
 
@@ -54,9 +46,7 @@ def test_load_spad_applies_pileup_before_circular_folding(
             data=raw_cube,
         )
 
-        dataset.attrs[
-            "axes"
-        ] = "YXT"
+        dataset.attrs["axes"] = "YXT"
 
     result = load_spad(
         str(path),
@@ -84,9 +74,7 @@ def test_load_spad_applies_pileup_before_circular_folding(
         2,
         4,
         70,
-    ).sum(
-        axis=-2
-    )
+    ).sum(axis=-2)
 
     assert result.data.shape == (
         2,
@@ -96,10 +84,7 @@ def test_load_spad_applies_pileup_before_circular_folding(
 
     assert result.fold_layout is not None
 
-    assert (
-        result.fold_layout.phase_shift
-        == -phase_offset
-    )
+    assert result.fold_layout.phase_shift == -phase_offset
 
     np.testing.assert_allclose(
         result.data,
@@ -132,9 +117,7 @@ def test_load_spad_does_not_apply_pileup_when_disabled(
             data=source,
         )
 
-        dataset.attrs[
-            "axes"
-        ] = "YXT"
+        dataset.attrs["axes"] = "YXT"
 
     result = load_spad(
         str(path),
@@ -149,19 +132,9 @@ def test_load_spad_does_not_apply_pileup_when_disabled(
         source,
     )
 
-    assert (
-        result.metadata[
-            "pile_up_applied"
-        ]
-        is False
-    )
+    assert result.metadata["pile_up_applied"] is False
 
-    assert (
-        result.metadata[
-            "fold_applied"
-        ]
-        is False
-    )
+    assert result.metadata["fold_applied"] is False
 
 
 def test_hdf5_folder_applies_pileup_before_file_sum(
@@ -193,10 +166,7 @@ def test_hdf5_folder_applies_pileup_before_file_sum(
             second,
         )
     ):
-        path = (
-            tmp_path
-            / f"frame{index}.h5"
-        )
+        path = tmp_path / f"frame{index}.h5"
 
         with h5py.File(
             path,
@@ -207,9 +177,7 @@ def test_hdf5_folder_applies_pileup_before_file_sum(
                 data=source,
             )
 
-            dataset.attrs[
-                "axes"
-            ] = "YXT"
+            dataset.attrs["axes"] = "YXT"
 
     result = load_spad(
         str(tmp_path),
@@ -221,15 +189,12 @@ def test_hdf5_folder_applies_pileup_before_file_sum(
         },
     )
 
-    expected = (
-        ds.pileup_correction(
-            first,
-            bit_size=10,
-        )
-        + ds.pileup_correction(
-            second,
-            bit_size=10,
-        )
+    expected = ds.pileup_correction(
+        first,
+        bit_size=10,
+    ) + ds.pileup_correction(
+        second,
+        bit_size=10,
     )
 
     np.testing.assert_allclose(
@@ -239,9 +204,4 @@ def test_hdf5_folder_applies_pileup_before_file_sum(
         atol=1e-6,
     )
 
-    assert (
-        result.metadata[
-            "pile_up_scope"
-        ]
-        == "per_file_before_folder_combine"
-    )
+    assert result.metadata["pile_up_scope"] == "per_file_before_folder_combine"

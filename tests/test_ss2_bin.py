@@ -29,9 +29,7 @@ def test_deinterleave_ss2_columns_matches_matlab_mapping():
     raw[0, 0, 256] = 33
     raw[0, 0, 384] = 44
 
-    physical = deinterleave_ss2_columns(
-        raw
-    )
+    physical = deinterleave_ss2_columns(raw)
 
     np.testing.assert_array_equal(
         physical[
@@ -65,9 +63,7 @@ def test_combine_ss2_10bit_subframes_sums_each_group_of_four():
     frames[2].fill(4)
     frames[3].fill(8)
 
-    decoded = combine_ss2_10bit_subframes(
-        frames
-    )
+    decoded = combine_ss2_10bit_subframes(frames)
 
     assert decoded.dtype == np.uint16
 
@@ -77,9 +73,7 @@ def test_combine_ss2_10bit_subframes_sums_each_group_of_four():
         SS2_WIDTH,
     )
 
-    assert np.all(
-        decoded == 15
-    )
+    assert np.all(decoded == 15)
 
 
 def test_read_ss2_bin_file_10bit_decodes_four_raw_frames(
@@ -101,9 +95,7 @@ def test_read_ss2_bin_file_10bit_decodes_four_raw_frames(
 
     path = tmp_path / "top0.bin"
 
-    frames.tofile(
-        path
-    )
+    frames.tofile(path)
 
     decoded = read_ss2_bin_file(
         str(path),
@@ -118,9 +110,7 @@ def test_read_ss2_bin_file_10bit_decodes_four_raw_frames(
 
     assert decoded.dtype == np.uint16
 
-    assert np.all(
-        decoded == 10
-    )
+    assert np.all(decoded == 10)
 
 
 def test_read_ss2_bin_acquisition_stitches_top_and_bottom(
@@ -146,13 +136,9 @@ def test_read_ss2_bin_acquisition_stitches_top_and_bottom(
         dtype=np.uint8,
     )
 
-    top.tofile(
-        tmp_path / "top0.bin"
-    )
+    top.tofile(tmp_path / "top0.bin")
 
-    bottom.tofile(
-        tmp_path / "btm0.bin"
-    )
+    bottom.tofile(tmp_path / "btm0.bin")
 
     result = read_ss2_bin_acquisition(
         str(tmp_path),
@@ -198,55 +184,25 @@ def test_discover_ss2_bin_files_sorts_chunk_indices_numerically(
     )
 
     for index in range(11):
-        frame.tofile(
-            tmp_path
-            / f"top{index}.bin"
-        )
+        frame.tofile(tmp_path / f"top{index}.bin")
 
-        frame.tofile(
-            tmp_path
-            / f"btm{index}.bin"
-        )
+        frame.tofile(tmp_path / f"btm{index}.bin")
 
     (
         top_files,
         bottom_files,
         indices,
-    ) = discover_ss2_bin_files(
-        str(tmp_path)
-    )
+    ) = discover_ss2_bin_files(str(tmp_path))
 
-    assert indices == tuple(
-        range(11)
-    )
+    assert indices == tuple(range(11))
 
-    assert (
-        os.path.basename(
-            top_files[2]
-        )
-        == "top2.bin"
-    )
+    assert os.path.basename(top_files[2]) == "top2.bin"
 
-    assert (
-        os.path.basename(
-            top_files[10]
-        )
-        == "top10.bin"
-    )
+    assert os.path.basename(top_files[10]) == "top10.bin"
 
-    assert (
-        os.path.basename(
-            bottom_files[2]
-        )
-        == "btm2.bin"
-    )
+    assert os.path.basename(bottom_files[2]) == "btm2.bin"
 
-    assert (
-        os.path.basename(
-            bottom_files[10]
-        )
-        == "btm10.bin"
-    )
+    assert os.path.basename(bottom_files[10]) == "btm10.bin"
 
 
 def test_read_ss2_bin_acquisition_rejects_top_bottom_mismatch(
@@ -261,17 +217,11 @@ def test_read_ss2_bin_acquisition_rejects_top_bottom_mismatch(
         dtype=np.uint8,
     )
 
-    frame.tofile(
-        tmp_path / "top0.bin"
-    )
+    frame.tofile(tmp_path / "top0.bin")
 
-    frame.tofile(
-        tmp_path / "top1.bin"
-    )
+    frame.tofile(tmp_path / "top1.bin")
 
-    frame.tofile(
-        tmp_path / "btm0.bin"
-    )
+    frame.tofile(tmp_path / "btm0.bin")
 
     with pytest.raises(
         ValueError,
@@ -299,15 +249,9 @@ def test_read_ss2_bin_acquisition_rejects_missing_chunk_index(
         0,
         2,
     ):
-        frame.tofile(
-            tmp_path
-            / f"top{index}.bin"
-        )
+        frame.tofile(tmp_path / f"top{index}.bin")
 
-        frame.tofile(
-            tmp_path
-            / f"btm{index}.bin"
-        )
+        frame.tofile(tmp_path / f"btm{index}.bin")
 
     with pytest.raises(
         ValueError,

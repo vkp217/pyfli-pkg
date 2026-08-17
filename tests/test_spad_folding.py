@@ -17,13 +17,7 @@ def _periodic_decay(
         dtype=np.float64,
     )
 
-    period = (
-        3.0
-        + 180.0
-        * np.exp(
-            -time / 9.0
-        )
-    )
+    period = 3.0 + 180.0 * np.exp(-time / 9.0)
 
     acquisition = np.roll(
         np.tile(period, 4),
@@ -39,20 +33,9 @@ def _periodic_decay(
         dtype=np.float64,
     )
 
-    for row in range(
-        cube.shape[0]
-    ):
-        for col in range(
-            cube.shape[1]
-        ):
-            cube[row, col] = (
-                acquisition
-                * (
-                    1.0
-                    + 0.05 * row
-                    + 0.02 * col
-                )
-            )
+    for row in range(cube.shape[0]):
+        for col in range(cube.shape[1]):
+            cube[row, col] = acquisition * (1.0 + 0.05 * row + 0.02 * col)
 
     return (
         period,
@@ -61,9 +44,7 @@ def _periodic_decay(
 
 
 def test_circular_align_matches_matlab_negative_circshift():
-    data = np.arange(
-        6
-    ).reshape(
+    data = np.arange(6).reshape(
         1,
         1,
         6,
@@ -171,9 +152,7 @@ def test_fold_rejects_incompatible_manual_period():
 
 
 def test_fold_rejects_low_confidence_nonperiodic_signal():
-    rng = np.random.default_rng(
-        42
-    )
+    rng = np.random.default_rng(42)
 
     cube = rng.poisson(
         3.0,

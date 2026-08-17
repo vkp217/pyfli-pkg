@@ -15,13 +15,7 @@ def test_detector_spad_packages_generic_hdf5_and_fold_metadata(
         dtype=np.float64,
     )
 
-    period = (
-        4.0
-        + 150.0
-        * np.exp(
-            -time / 8.0
-        )
-    )
+    period = 4.0 + 150.0 * np.exp(-time / 8.0)
 
     trace = np.roll(
         np.tile(
@@ -38,9 +32,7 @@ def test_detector_spad_packages_generic_hdf5_and_fold_metadata(
             4,
             trace.size,
         ),
-    ).astype(
-        np.uint16
-    )
+    ).astype(np.uint16)
 
     path = tmp_path / "spad.h5"
 
@@ -53,13 +45,9 @@ def test_detector_spad_packages_generic_hdf5_and_fold_metadata(
             data=cube,
         )
 
-        dataset.attrs[
-            "axes"
-        ] = "YXT"
+        dataset.attrs["axes"] = "YXT"
 
-    result = Detector(
-        data_path=str(path)
-    ).SPAD(
+    result = Detector(data_path=str(path)).SPAD(
         config={
             "fold": True,
             "pile_up": False,
@@ -67,63 +55,23 @@ def test_detector_spad_packages_generic_hdf5_and_fold_metadata(
         }
     )
 
-    assert (
-        result["source"]
-        == "SPAD"
+    assert result["source"] == "SPAD"
+
+    assert result["raw_data"]["decay"].shape == (
+        4,
+        4,
+        70,
     )
 
-    assert (
-        result[
-            "raw_data"
-        ][
-            "decay"
-        ].shape
-        == (
-            4,
-            4,
-            70,
-        )
-    )
+    processing = result["metadata"]["processing"]
 
-    processing = result[
-        "metadata"
-    ][
-        "processing"
-    ]
+    assert processing["sub_bg"] is False
 
-    assert (
-        processing[
-            "sub_bg"
-        ]
-        is False
-    )
+    assert processing["pile_up"] is False
 
-    assert (
-        processing[
-            "pile_up"
-        ]
-        is False
-    )
+    assert processing["fold"] is True
 
-    assert (
-        processing[
-            "fold"
-        ]
-        is True
-    )
-
-    assert (
-        processing[
-            "spad_metadata"
-        ][
-            "decay"
-        ][
-            "fold"
-        ][
-            "phase_shift"
-        ]
-        == -11
-    )
+    assert processing["spad_metadata"]["decay"]["fold"]["phase_shift"] == -11
 
 
 def test_existing_ss2_detector_method_still_reads_gate_images(
@@ -135,9 +83,7 @@ def test_existing_ss2_detector_method_still_reads_gate_images(
         path,
         "w",
     ) as file_handle:
-        group = file_handle.create_group(
-            "Gate Images"
-        )
+        group = file_handle.create_group("Gate Images")
 
         for gate in range(3):
             group.create_dataset(
@@ -152,25 +98,16 @@ def test_existing_ss2_detector_method_still_reads_gate_images(
                 ),
             )
 
-    result = Detector(
-        data_path=str(path)
-    ).SS2(
+    result = Detector(data_path=str(path)).SS2(
         sub_bg=False,
         pile_up=False,
         hot_pixel=False,
     )
 
-    assert (
-        result[
-            "raw_data"
-        ][
-            "decay"
-        ].shape
-        == (
-            4,
-            5,
-            3,
-        )
+    assert result["raw_data"]["decay"].shape == (
+        4,
+        5,
+        3,
     )
 
 
@@ -183,9 +120,7 @@ def test_existing_ss3_detector_method_still_reads_gate_images(
         path,
         "w",
     ) as file_handle:
-        group = file_handle.create_group(
-            "Gate Images"
-        )
+        group = file_handle.create_group("Gate Images")
 
         for gate in range(3):
             group.create_dataset(
@@ -200,23 +135,14 @@ def test_existing_ss3_detector_method_still_reads_gate_images(
                 ),
             )
 
-    result = Detector(
-        data_path=str(path)
-    ).SS3(
+    result = Detector(data_path=str(path)).SS3(
         sub_bg=False,
         pile_up=False,
         hot_pixel=False,
     )
 
-    assert (
-        result[
-            "raw_data"
-        ][
-            "decay"
-        ].shape
-        == (
-            4,
-            5,
-            3,
-        )
+    assert result["raw_data"]["decay"].shape == (
+        4,
+        5,
+        3,
     )

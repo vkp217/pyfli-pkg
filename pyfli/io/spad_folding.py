@@ -140,11 +140,7 @@ def _circular_autocorrelation(trace: np.ndarray) -> np.ndarray:
 
 def _valid_period_divisors(n_bins: int) -> list[int]:
     """Return period lengths that divide n_bins into at least two full periods."""
-    return [
-        period
-        for period in range(2, (n_bins // 2) + 1)
-        if n_bins % period == 0
-    ]
+    return [period for period in range(2, (n_bins // 2) + 1) if n_bins % period == 0]
 
 
 def _period_score(
@@ -162,9 +158,7 @@ def _period_score(
     if repeat_count < 2:
         raise ValueError("At least two excitation periods are required for folding.")
 
-    repeated_lags = [
-        period_bins * index for index in range(1, repeat_count)
-    ]
+    repeated_lags = [period_bins * index for index in range(1, repeat_count)]
     score = float(np.mean(correlation[repeated_lags]))
     return float(np.clip(score, -1.0, 1.0))
 
@@ -201,13 +195,10 @@ def estimate_period_bins(
             "At least four temporal gates are required for period detection."
         )
     if not (0 < search_radius <= 0.5):
-        raise ValueError(
-            f"search_radius must be in (0, 0.5], got {search_radius}."
-        )
+        raise ValueError(f"search_radius must be in (0, 0.5], got {search_radius}.")
     if expected_repeats is not None and expected_repeats < 2:
         raise ValueError(
-            f"expected_repeats must be >= 2 when provided, "
-            f"got {expected_repeats}."
+            f"expected_repeats must be >= 2 when provided, got {expected_repeats}."
         )
 
     correlation = _circular_autocorrelation(values)
@@ -222,28 +213,19 @@ def estimate_period_bins(
         target = values.size / expected_repeats
         lower = target * (1.0 - search_radius)
         upper = target * (1.0 + search_radius)
-        candidates = [
-            period
-            for period in candidates
-            if lower <= period <= upper
-        ]
+        candidates = [period for period in candidates if lower <= period <= upper]
         if not candidates:
             raise ValueError(
                 "No integer period compatible with the temporal length falls within "
                 f"{search_radius:.0%} of the expected {target:.3f} bins."
             )
 
-    scores = {
-        period: _period_score(correlation, period)
-        for period in candidates
-    }
+    scores = {period: _period_score(correlation, period) for period in candidates}
 
     best_score = max(scores.values())
     tolerance = 0.03
     near_best = [
-        period
-        for period, score in scores.items()
-        if score >= best_score - tolerance
+        period for period, score in scores.items() if score >= best_score - tolerance
     ]
 
     selected_period = min(near_best)
@@ -308,15 +290,12 @@ def detect_signal_onset(
     """
     values = np.asarray(folded_trace, dtype=np.float64)
     if values.ndim != 1:
-        raise ValueError(
-            f"Expected a 1D folded trace, got shape {values.shape}."
-        )
+        raise ValueError(f"Expected a 1D folded trace, got shape {values.shape}.")
     if values.size < 3:
         raise ValueError("At least three bins are required for onset detection.")
     if not (0 < threshold_fraction < 1):
         raise ValueError(
-            f"threshold_fraction must be in (0, 1), got "
-            f"{threshold_fraction}."
+            f"threshold_fraction must be in (0, 1), got {threshold_fraction}."
         )
 
     smoothed = _smooth_circular_trace(values, smoothing_sigma)
@@ -337,11 +316,7 @@ def detect_signal_onset(
         baseline_values = smoothed
 
     baseline_center = float(np.median(baseline_values))
-    mad = float(
-        np.median(
-            np.abs(baseline_values - baseline_center)
-        )
-    )
+    mad = float(np.median(np.abs(baseline_values - baseline_center)))
     noise = max(
         1.4826 * mad,
         np.finfo(np.float64).eps * scale,
@@ -362,11 +337,7 @@ def detect_signal_onset(
         below_index = (peak_index - step) % values.size
         above_index = (below_index + 1) % values.size
 
-        if (
-            smoothed[below_index]
-            <= threshold
-            < smoothed[above_index]
-        ):
+        if smoothed[below_index] <= threshold < smoothed[above_index]:
             threshold_onset = above_index
             break
 
@@ -382,9 +353,7 @@ def detect_signal_onset(
     elif threshold_onset is not None:
         onset = threshold_onset
     else:
-        raise ValueError(
-            "Folded temporal trace has no detectable rising edge."
-        )
+        raise ValueError("Folded temporal trace has no detectable rising edge.")
 
     return int(onset), signal_score
 
@@ -411,13 +380,10 @@ def circular_align(
     """
     array = np.asarray(data)
     if array.ndim != 3:
-        raise ValueError(
-            f"Expected a 3D (H, W, T) cube, got shape {array.shape}."
-        )
+        raise ValueError(f"Expected a 3D (H, W, T) cube, got shape {array.shape}.")
     if not isinstance(phase_shift, (int, np.integer)):
         raise TypeError(
-            "phase_shift must be an integer, "
-            f"got {type(phase_shift).__name__}."
+            f"phase_shift must be an integer, got {type(phase_shift).__name__}."
         )
 
     return np.roll(
@@ -527,9 +493,7 @@ def analyze_fold_layout(
         Validated folding layout and detection diagnostics.
     """
     if not (0 <= min_confidence <= 1):
-        raise ValueError(
-            f"min_confidence must be in [0, 1], got {min_confidence}."
-        )
+        raise ValueError(f"min_confidence must be in [0, 1], got {min_confidence}.")
 
     trace = build_temporal_trace(data)
     smoothed_trace = _smooth_circular_trace(
@@ -551,9 +515,7 @@ def analyze_fold_layout(
         detected_period = int(period_bins)
 
         if detected_period < 2:
-            raise ValueError(
-                f"period_bins must be >= 2, got {detected_period}."
-            )
+            raise ValueError(f"period_bins must be >= 2, got {detected_period}.")
         if original_bins % detected_period != 0:
             raise ValueError(
                 f"period_bins={detected_period} does not divide "
@@ -567,13 +529,9 @@ def analyze_fold_layout(
 
     repeat_count = original_bins // detected_period
 
-    if (
-        expected_repeats is not None
-        and repeat_count != expected_repeats
-    ):
+    if expected_repeats is not None and repeat_count != expected_repeats:
         raise ValueError(
-            f"Detected {repeat_count} periods but "
-            f"expected_repeats={expected_repeats}."
+            f"Detected {repeat_count} periods but expected_repeats={expected_repeats}."
         )
 
     phase_trace = make_phase_folded_trace(
@@ -603,7 +561,8 @@ def analyze_fold_layout(
     )
 
     confidence = (
-        0.45 * float(
+        0.45
+        * float(
             np.clip(
                 period_score,
                 0.0,
@@ -615,11 +574,7 @@ def analyze_fold_layout(
     )
 
     pulse_positions = tuple(
-        (
-            phase_origin
-            + detected_period * repeat
-        )
-        % original_bins
+        (phase_origin + detected_period * repeat) % original_bins
         for repeat in range(repeat_count)
     )
 
@@ -662,8 +617,7 @@ def analyze_fold_layout(
             f"Detected period={layout.period_bins}, "
             f"phase_shift={layout.phase_shift}, "
             f"period_score={layout.period_score:.3f}, "
-            f"cycle_similarity={layout.cycle_similarity:.3f}. "
-            + guidance
+            f"cycle_similarity={layout.cycle_similarity:.3f}. " + guidance
         )
 
     return layout
@@ -691,9 +645,7 @@ def apply_fold_layout(
     array = np.asarray(data)
 
     if array.ndim != 3:
-        raise ValueError(
-            f"Expected a 3D (H, W, T) cube, got shape {array.shape}."
-        )
+        raise ValueError(f"Expected a 3D (H, W, T) cube, got shape {array.shape}.")
 
     if array.shape[-1] != layout.original_bins:
         raise ValueError(
@@ -701,10 +653,7 @@ def apply_fold_layout(
             f"but data has {array.shape[-1]}."
         )
 
-    if (
-        layout.period_bins * layout.repeat_count
-        != layout.original_bins
-    ):
+    if layout.period_bins * layout.repeat_count != layout.original_bins:
         raise ValueError("Fold layout is internally inconsistent.")
 
     aligned = circular_align(

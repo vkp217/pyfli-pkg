@@ -16,9 +16,7 @@ import h5py
 import numpy as np
 
 
-_NUMERIC_PATTERN = re.compile(
-    r"[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?"
-)
+_NUMERIC_PATTERN = re.compile(r"[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?")
 
 _TIME_ATTRIBUTE_NAMES = (
     "gate_delay",
@@ -151,20 +149,12 @@ def _python_scalar(value: Any) -> Any:
 
     if isinstance(value, np.ndarray):
         if value.ndim == 0:
-            return _python_scalar(
-                value.item()
-            )
+            return _python_scalar(value.item())
 
-        return tuple(
-            _python_scalar(item)
-            for item in value.tolist()
-        )
+        return tuple(_python_scalar(item) for item in value.tolist())
 
     if isinstance(value, (list, tuple)):
-        return tuple(
-            _python_scalar(item)
-            for item in value
-        )
+        return tuple(_python_scalar(item) for item in value)
 
     return value
 
@@ -197,29 +187,17 @@ def _collect_numeric_datasets(
         name: str,
         obj: h5py.Dataset | h5py.Group,
     ) -> None:
-        if (
-            not isinstance(obj, h5py.Dataset)
-            or not _is_numeric_dataset(obj)
-        ):
+        if not isinstance(obj, h5py.Dataset) or not _is_numeric_dataset(obj):
             return
 
-        attributes = {
-            key: _python_scalar(value)
-            for key, value in obj.attrs.items()
-        }
+        attributes = {key: _python_scalar(value) for key, value in obj.attrs.items()}
 
-        labels = tuple(
-            str(dimension.label or "")
-            for dimension in obj.dims
-        )
+        labels = tuple(str(dimension.label or "") for dimension in obj.dims)
 
         datasets.append(
             HDF5DatasetInfo(
                 path=_normalize_path(name),
-                shape=tuple(
-                    int(size)
-                    for size in obj.shape
-                ),
+                shape=tuple(int(size) for size in obj.shape),
                 dtype=str(obj.dtype),
                 attributes=attributes,
                 dimension_labels=labels,
@@ -236,14 +214,9 @@ def _keyword_score(
     """Return a small semantic bonus without making names part of the schema."""
     text = " ".join(paths).lower()
 
-    matches = sum(
-        keyword in text
-        for keyword in _SPAD_KEYWORDS
-    )
+    matches = sum(keyword in text for keyword in _SPAD_KEYWORDS)
 
-    return float(
-        min(matches, 5)
-    )
+    return float(min(matches, 5))
 
 
 def _numeric_path_pattern(path: str) -> str:
@@ -258,10 +231,7 @@ def _extract_numeric_tokens(
     path: str,
 ) -> tuple[float, ...]:
     """Extract numeric tokens from an HDF5 path in left-to-right order."""
-    return tuple(
-        float(token)
-        for token in _NUMERIC_PATTERN.findall(path)
-    )
+    return tuple(float(token) for token in _NUMERIC_PATTERN.findall(path))
 
 
 def _attribute_lookup(
@@ -283,13 +253,8 @@ def _numeric_scalar(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
 
-    if (
-        isinstance(value, (tuple, list))
-        and len(value) == 1
-    ):
-        return _numeric_scalar(
-            value[0]
-        )
+    if isinstance(value, (tuple, list)) and len(value) == 1:
+        return _numeric_scalar(value[0])
 
     if isinstance(
         value,
@@ -311,11 +276,14 @@ def _numeric_scalar(value: Any) -> float | None:
 def _infer_attribute_order(
     infos: list[HDF5DatasetInfo],
     requested_attribute: str | None,
-) -> tuple[
-    list[HDF5DatasetInfo],
-    tuple[float, ...],
-    str,
-] | None:
+) -> (
+    tuple[
+        list[HDF5DatasetInfo],
+        tuple[float, ...],
+        str,
+    ]
+    | None
+):
     """Infer gate ordering from a shared scalar numeric dataset attribute."""
     attribute_names = (
         (requested_attribute,)
@@ -340,10 +308,7 @@ def _infer_attribute_order(
 
             values.append(numeric)
 
-        if (
-            len(values) != len(infos)
-            or len(set(values)) != len(values)
-        ):
+        if len(values) != len(infos) or len(set(values)) != len(values):
             continue
 
         ordered_pairs = sorted(
@@ -351,15 +316,9 @@ def _infer_attribute_order(
             key=lambda item: item[0],
         )
 
-        ordered_infos = [
-            info
-            for _, info in ordered_pairs
-        ]
+        ordered_infos = [info for _, info in ordered_pairs]
 
-        ordered_values = tuple(
-            float(value)
-            for value, _ in ordered_pairs
-        )
+        ordered_values = tuple(float(value) for value, _ in ordered_pairs)
 
         return (
             ordered_infos,
@@ -372,73 +331,48 @@ def _infer_attribute_order(
 
 def _infer_path_order(
     infos: list[HDF5DatasetInfo],
-) -> tuple[
-    list[HDF5DatasetInfo],
-    tuple[float, ...],
-    str,
-] | None:
-    """Infer ordering from the numeric path component that varies across datasets."""
-    numeric_tokens = [
-        _extract_numeric_tokens(info.path)
-        for info in infos
+) -> (
+    tuple[
+        list[HDF5DatasetInfo],
+        tuple[float, ...],
+        str,
     ]
+    | None
+):
+    """Infer ordering from the numeric path component that varies across datasets."""
+    numeric_tokens = [_extract_numeric_tokens(info.path) for info in infos]
 
-    if (
-        not numeric_tokens
-        or any(
-            not tokens
-            for tokens in numeric_tokens
-        )
-    ):
+    if not numeric_tokens or any(not tokens for tokens in numeric_tokens):
         return None
 
-    token_count = len(
-        numeric_tokens[0]
-    )
+    token_count = len(numeric_tokens[0])
 
-    if any(
-        len(tokens) != token_count
-        for tokens in numeric_tokens
-    ):
+    if any(len(tokens) != token_count for tokens in numeric_tokens):
         return None
 
     varying_positions = []
 
     for position in range(token_count):
-        values = [
-            tokens[position]
-            for tokens in numeric_tokens
-        ]
+        values = [tokens[position] for tokens in numeric_tokens]
 
         if len(set(values)) == len(values):
-            varying_positions.append(
-                position
-            )
+            varying_positions.append(position)
 
     if not varying_positions:
         return None
 
     position = varying_positions[-1]
 
-    values = [
-        tokens[position]
-        for tokens in numeric_tokens
-    ]
+    values = [tokens[position] for tokens in numeric_tokens]
 
     ordered_pairs = sorted(
         zip(values, infos),
         key=lambda item: item[0],
     )
 
-    ordered_infos = [
-        info
-        for _, info in ordered_pairs
-    ]
+    ordered_infos = [info for _, info in ordered_pairs]
 
-    ordered_values = tuple(
-        float(value)
-        for value, _ in ordered_pairs
-    )
+    ordered_values = tuple(float(value) for value, _ in ordered_pairs)
 
     return (
         ordered_infos,
@@ -450,11 +384,14 @@ def _infer_path_order(
 def _infer_split_order(
     infos: list[HDF5DatasetInfo],
     gate_order_attribute: str | None,
-) -> tuple[
-    list[HDF5DatasetInfo],
-    tuple[float, ...],
-    str,
-] | None:
+) -> (
+    tuple[
+        list[HDF5DatasetInfo],
+        tuple[float, ...],
+        str,
+    ]
+    | None
+):
     """Infer deterministic gate ordering using metadata first and path numbers second."""
     attribute_order = _infer_attribute_order(
         infos,
@@ -499,10 +436,7 @@ def _parse_axis_tokens(
         else:
             return None
 
-        return [
-            _normalize_name(token)
-            for token in tokens
-        ]
+        return [_normalize_name(token) for token in tokens]
 
     if isinstance(value, tuple):
         tokens = []
@@ -511,9 +445,7 @@ def _parse_axis_tokens(
             if not isinstance(item, str):
                 return None
 
-            tokens.append(
-                _normalize_name(item)
-            )
+            tokens.append(_normalize_name(item))
 
         return tokens
 
@@ -536,8 +468,7 @@ def _infer_time_axis(
 
         if axis not in (0, 1, 2):
             raise ValueError(
-                "hdf5_time_axis must resolve to 0, 1, or 2, "
-                f"got {requested_time_axis}."
+                f"hdf5_time_axis must resolve to 0, 1, or 2, got {requested_time_axis}."
             )
 
         return axis, "user_hint"
@@ -553,16 +484,11 @@ def _infer_time_axis(
 
         tokens = _parse_axis_tokens(value)
 
-        if (
-            tokens is None
-            or len(tokens) != 3
-        ):
+        if tokens is None or len(tokens) != 3:
             continue
 
         time_axes = [
-            index
-            for index, token in enumerate(tokens)
-            if token in _TIME_AXIS_NAMES
+            index for index, token in enumerate(tokens) if token in _TIME_AXIS_NAMES
         ]
 
         if len(time_axes) == 1:
@@ -571,15 +497,10 @@ def _infer_time_axis(
                 f"attribute:{attribute_name}",
             )
 
-    labels = [
-        _normalize_name(label)
-        for label in info.dimension_labels
-    ]
+    labels = [_normalize_name(label) for label in info.dimension_labels]
 
     time_axes = [
-        index
-        for index, label in enumerate(labels)
-        if label in _TIME_AXIS_NAMES
+        index for index, label in enumerate(labels) if label in _TIME_AXIS_NAMES
     ]
 
     if len(time_axes) == 1:
@@ -618,26 +539,15 @@ def _build_split_candidates(
     gate_prefix: str | None,
 ) -> list[HDF5Candidate]:
     """Build candidate split-gate layouts from repeated 2D numeric datasets."""
-    two_dimensional = [
-        info
-        for info in infos
-        if len(info.shape) == 2
-    ]
+    two_dimensional = [info for info in infos if len(info.shape) == 2]
 
     if gate_group_path is not None:
-        group_path = _normalize_path(
-            gate_group_path
-        ).rstrip("/")
+        group_path = _normalize_path(gate_group_path).rstrip("/")
 
         two_dimensional = [
             info
             for info in two_dimensional
-            if (
-                info.path == group_path
-                or info.path.startswith(
-                    f"{group_path}/"
-                )
-            )
+            if (info.path == group_path or info.path.startswith(f"{group_path}/"))
         ]
 
     if gate_prefix is not None:
@@ -687,10 +597,7 @@ def _build_split_candidates(
         if len(group) < 2:
             continue
 
-        key = frozenset(
-            info.path
-            for info in group
-        )
+        key = frozenset(info.path for info in group)
 
         unique_groups.setdefault(
             key,
@@ -719,16 +626,9 @@ def _build_split_candidates(
                 ordering_source,
             ) = ordering
 
-        paths = tuple(
-            info.path
-            for info in ordered_infos
-        )
+        paths = tuple(info.path for info in ordered_infos)
 
-        score = (
-            60.0
-            + min(len(paths), 20)
-            + _keyword_score(paths)
-        )
+        score = 60.0 + min(len(paths), 20) + _keyword_score(paths)
 
         if ordering_source is not None:
             score += 20.0
@@ -744,10 +644,7 @@ def _build_split_candidates(
                 kind="split",
                 dataset_paths=paths,
                 score=score,
-                spatial_shape=tuple(
-                    int(value)
-                    for value in ordered_infos[0].shape
-                ),
+                spatial_shape=tuple(int(value) for value in ordered_infos[0].shape),
                 time_axis=None,
                 gate_values=gate_values,
                 ordering_source=ordering_source,
@@ -764,11 +661,7 @@ def _build_stacked_candidates(
     time_axis: int | None,
 ) -> list[HDF5Candidate]:
     """Build candidate stacked-cube layouts from 3D numeric datasets."""
-    normalized_dataset_path = (
-        _normalize_path(dataset_path)
-        if dataset_path
-        else None
-    )
+    normalized_dataset_path = _normalize_path(dataset_path) if dataset_path else None
 
     candidates = []
 
@@ -776,11 +669,7 @@ def _build_stacked_candidates(
         if len(info.shape) != 3:
             continue
 
-        if (
-            normalized_dataset_path is not None
-            and info.path
-            != normalized_dataset_path
-        ):
+        if normalized_dataset_path is not None and info.path != normalized_dataset_path:
             continue
 
         (
@@ -796,18 +685,11 @@ def _build_stacked_candidates(
         if detected_axis is not None:
             spatial_shape = tuple(
                 int(size)
-                for index, size in enumerate(
-                    info.shape
-                )
+                for index, size in enumerate(info.shape)
                 if index != detected_axis
             )
 
-        score = (
-            55.0
-            + _keyword_score(
-                (info.path,)
-            )
-        )
+        score = 55.0 + _keyword_score((info.path,))
 
         if detected_axis is not None:
             score += 20.0
@@ -863,29 +745,21 @@ def inspect_spad_hdf5(
         Candidate layouts sorted from highest to lowest discovery score.
     """
     if not fname:
-        raise ValueError(
-            "HDF5 filename must be provided."
-        )
+        raise ValueError("HDF5 filename must be provided.")
 
     absolute_path = os.path.abspath(fname)
 
     if not os.path.isfile(absolute_path):
-        raise FileNotFoundError(
-            f"HDF5 file not found: {absolute_path}"
-        )
+        raise FileNotFoundError(f"HDF5 file not found: {absolute_path}")
 
     with h5py.File(
         absolute_path,
         "r",
     ) as file_handle:
-        infos = _collect_numeric_datasets(
-            file_handle
-        )
+        infos = _collect_numeric_datasets(file_handle)
 
     if not infos:
-        raise ValueError(
-            f"No numeric HDF5 datasets found in: {absolute_path}"
-        )
+        raise ValueError(f"No numeric HDF5 datasets found in: {absolute_path}")
 
     has_split_hint = any(
         value is not None
@@ -896,17 +770,11 @@ def inspect_spad_hdf5(
         )
     )
 
-    has_stacked_hint = (
-        dataset_path is not None
-        or time_axis is not None
-    )
+    has_stacked_hint = dataset_path is not None or time_axis is not None
 
     split_candidates = []
 
-    if (
-        not has_stacked_hint
-        or has_split_hint
-    ):
+    if not has_stacked_hint or has_split_hint:
         split_candidates = _build_split_candidates(
             infos,
             gate_group_path=gate_group_path,
@@ -916,10 +784,7 @@ def inspect_spad_hdf5(
 
     stacked_candidates = []
 
-    if (
-        not has_split_hint
-        or has_stacked_hint
-    ):
+    if not has_split_hint or has_stacked_hint:
         stacked_candidates = _build_stacked_candidates(
             infos,
             dataset_path=dataset_path,
@@ -927,8 +792,7 @@ def inspect_spad_hdf5(
         )
 
     return sorted(
-        split_candidates
-        + stacked_candidates,
+        split_candidates + stacked_candidates,
         key=lambda candidate: candidate.score,
         reverse=True,
     )
@@ -940,15 +804,11 @@ def _candidate_is_readable(
     """Return whether a candidate has enough information for deterministic loading."""
     if candidate.kind == "split":
         return (
-            candidate.gate_values is not None
-            and candidate.ordering_source is not None
+            candidate.gate_values is not None and candidate.ordering_source is not None
         )
 
     if candidate.kind == "stacked":
-        return (
-            candidate.time_axis
-            is not None
-        )
+        return candidate.time_axis is not None
 
     return False
 
@@ -982,28 +842,20 @@ def _select_candidate(
 ) -> HDF5Candidate:
     """Select one deterministic HDF5 layout, rejecting missing or ambiguous discovery."""
     readable = [
-        candidate
-        for candidate in candidates
-        if _candidate_is_readable(candidate)
+        candidate for candidate in candidates if _candidate_is_readable(candidate)
     ]
 
     if not readable:
         descriptions = "\n  - ".join(
-            _candidate_description(candidate)
-            for candidate in candidates[:8]
+            _candidate_description(candidate) for candidate in candidates[:8]
         )
 
-        suffix = (
-            f"\n  - {descriptions}"
-            if descriptions
-            else ""
-        )
+        suffix = f"\n  - {descriptions}" if descriptions else ""
 
         raise ValueError(
             "No deterministic SPAD layout could be inferred from the HDF5 file. "
             "Provide dataset_path/time_axis for a stacked cube, or "
-            "gate_group_path/gate_order_attribute for split gate images."
-            + suffix
+            "gate_group_path/gate_order_attribute for split gate images." + suffix
         )
 
     readable.sort(
@@ -1017,21 +869,16 @@ def _select_candidate(
     best = readable[0]
     second = readable[1]
 
-    if (
-        best.score - second.score
-        >= 15.0
-    ):
+    if best.score - second.score >= 15.0:
         return best
 
     descriptions = "\n  - ".join(
-        _candidate_description(candidate)
-        for candidate in readable[:8]
+        _candidate_description(candidate) for candidate in readable[:8]
     )
 
     raise ValueError(
         "Ambiguous SPAD HDF5 structure; multiple layouts are similarly plausible. "
-        "Provide an explicit dataset/group hint. Candidates:\n  - "
-        + descriptions
+        "Provide an explicit dataset/group hint. Candidates:\n  - " + descriptions
     )
 
 
@@ -1044,21 +891,12 @@ def _read_split_candidate(
     expected_shape = candidate.spatial_shape
 
     for path in candidate.dataset_paths:
-        array = np.asarray(
-            file_handle[path][...]
-        )
+        array = np.asarray(file_handle[path][...])
 
         if array.ndim != 2:
-            raise ValueError(
-                f"Split SPAD dataset '{path}' is not 2D: "
-                f"{array.shape}."
-            )
+            raise ValueError(f"Split SPAD dataset '{path}' is not 2D: {array.shape}.")
 
-        if (
-            expected_shape is not None
-            and tuple(array.shape)
-            != expected_shape
-        ):
+        if expected_shape is not None and tuple(array.shape) != expected_shape:
             raise ValueError(
                 f"Split SPAD dataset '{path}' has shape "
                 f"{array.shape}, expected {expected_shape}."
@@ -1079,20 +917,14 @@ def _read_stacked_candidate(
     """Read one stacked 3D dataset and move its temporal axis to the last dimension."""
     path = candidate.dataset_paths[0]
 
-    array = np.asarray(
-        file_handle[path][...]
-    )
+    array = np.asarray(file_handle[path][...])
 
     if array.ndim != 3:
-        raise ValueError(
-            f"Stacked SPAD dataset '{path}' is not 3D: "
-            f"{array.shape}."
-        )
+        raise ValueError(f"Stacked SPAD dataset '{path}' is not 3D: {array.shape}.")
 
     if candidate.time_axis is None:
         raise ValueError(
-            f"Temporal axis for stacked SPAD dataset "
-            f"'{path}' is unresolved."
+            f"Temporal axis for stacked SPAD dataset '{path}' is unresolved."
         )
 
     return np.moveaxis(
@@ -1133,9 +965,7 @@ def read_spad_hdf5(
     SpadHDF5ReadResult
         Normalized HDF5 data cube and discovery metadata.
     """
-    absolute_path = os.path.abspath(
-        fname
-    )
+    absolute_path = os.path.abspath(fname)
 
     candidates = inspect_spad_hdf5(
         absolute_path,
@@ -1146,9 +976,7 @@ def read_spad_hdf5(
         gate_prefix=gate_prefix,
     )
 
-    candidate = _select_candidate(
-        candidates
-    )
+    candidate = _select_candidate(candidates)
 
     with h5py.File(
         absolute_path,
@@ -1167,16 +995,10 @@ def read_spad_hdf5(
             )
 
         else:
-            raise ValueError(
-                f"Unsupported HDF5 SPAD candidate kind: "
-                f"{candidate.kind}"
-            )
+            raise ValueError(f"Unsupported HDF5 SPAD candidate kind: {candidate.kind}")
 
     if data.ndim != 3:
-        raise ValueError(
-            f"SPAD HDF5 output must be 3D (H, W, T), "
-            f"got {data.shape}."
-        )
+        raise ValueError(f"SPAD HDF5 output must be 3D (H, W, T), got {data.shape}.")
 
     return SpadHDF5ReadResult(
         data=data,
