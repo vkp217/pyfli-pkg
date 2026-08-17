@@ -33,8 +33,11 @@ from pyfli.phasor import (
     modulus_lifetime,
     lifetime_from_phasor,
 )
-from pyfli.phasor.locus import universal_semicircle, sepl_center_radius_discrete
-from pyfli.phasor.lifetimes import fractional_components
+from pyfli.phasor.phasorSEPL.locus import (
+    universal_semicircle,
+    sepl_center_radius_discrete,
+)
+from pyfli.phasor.phasorSEPL.lifetimes import fractional_components
 
 
 # ─────────────────────────────────────────────────────────────────────────────

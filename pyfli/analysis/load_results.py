@@ -2,7 +2,7 @@
 Load saved PyFLI fitting sessions and inject derived analysis results.
 
 This module belongs to :mod:`pyfli.analysis` and is part of PyFLI post-processing,
-diagnostics, statistical comparison, and result-loading utilities for fitted FLIM
+diagnostics, statistical comparison, and result-loading utilities for fitted FLI/FLIM
 datasets. Public API includes functions :func:`load_session_arrays`,
 :func:`scan_session_results`, :func:`load_fitting_results`,
 :func:`save_laguerre_result`, :func:`inject_phasor_result`, and
@@ -148,7 +148,7 @@ def save_laguerre_result(saver: Any, lag_results: np.ndarray, model_type: str) -
     lag_results : np.ndarray
         Laguerre deconvolution results written into the saver.
     model_type : str
-        FLIM model family, such as mono- or bi-exponential.
+        FLI/FLIM model family, such as mono- or bi-exponential.
 
     Returns
     -------

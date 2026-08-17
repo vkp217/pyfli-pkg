@@ -1,10 +1,9 @@
 """
 Provide shared phasor plotting geometry and axis styling helpers.
 
-This module belongs to :mod:`pyfli.analytical_methods` and is part of PyFLI analytical
-FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
-estimation. The module primarily re-exports package symbols or constants for downstream
-imports.
+This module belongs to :mod:`pyfli.phasor.phasorS` and is part of PyFLI's compact
+phasor analyzer for CPU and optional GPU FLI workflows. The module primarily re-exports
+package symbols or constants for downstream imports.
 """
 
 from typing import Any

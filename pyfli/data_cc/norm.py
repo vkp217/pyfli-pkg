@@ -1,7 +1,7 @@
 # pyfli/data_cc/norm.py
 
 """
-Normalize FLIM arrays with zero-one, min-max, reference-scale, peak, and PDF transforms.
+Normalize FLI arrays with zero-one, min-max, reference-scale, peak, and PDF transforms.
 
 This module belongs to :mod:`pyfli.data_cc` and is part of PyFLI array preprocessing
 helpers for normalization, masking, ROI extraction, and IRF alignment. Public API

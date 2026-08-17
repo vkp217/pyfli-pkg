@@ -2,7 +2,7 @@
 Centralize tau ordering, lifetime summaries, FRET efficiency, and fit-quality metrics.
 
 This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
-likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includes
 functions :func:`enforce_tau_ordering`, :func:`compute_fli_stats`,
 :func:`compute_average_lifetime`, and :func:`compute_fret_efficiency`.
 """
@@ -56,7 +56,7 @@ def compute_fli_stats(
     final_model: np.ndarray, d_fit: np.ndarray, n_params: int
 ) -> tuple[Any, ...]:
     """
-    Compute FLIM fit statistics.
+    Compute FLI fit statistics.
 
     Parameters
     ----------

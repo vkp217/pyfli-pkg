@@ -2,10 +2,10 @@
 
 """
 Provide irf deconvolution tools for PyFLI detector-aware IRF deconvolution and joint
-FLIM fitting utilities.
+FLI fitting utilities.
 
 This module belongs to :mod:`pyfli.irf_deconvolution` and is part of PyFLI detector-
-aware IRF deconvolution and joint FLIM fitting utilities. The module primarily re-
+aware IRF deconvolution and joint FLI fitting utilities. The module primarily re-
 exports package symbols or constants for downstream imports.
 """
 

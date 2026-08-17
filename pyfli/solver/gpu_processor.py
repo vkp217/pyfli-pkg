@@ -1,8 +1,8 @@
 """
-Fit FLIM image cubes with Torch-based GPU optimization and optional CRLB estimates.
+Fit FLI image cubes with Torch-based GPU optimization and optional CRLB estimates.
 
 This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
-likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includes
 classes :class:`FLIGPUProcessor`.
 """
 
@@ -21,7 +21,7 @@ from tqdm import tqdm
 
 class FLIGPUProcessor:
     """
-    Fit FLIM image cubes with Torch on GPU or CPU fallback. It vectorizes parameter
+    Fit FLI image cubes with Torch on GPU or CPU fallback. It vectorizes parameter
     transforms, model evaluation, optimization, CRLB estimation, reconstruction, and
     result saving.
 
@@ -56,7 +56,7 @@ class FLIGPUProcessor:
         raw_p : np.ndarray
             Unconstrained optimizer parameters before physical transformation.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
 
         Returns
         -------
@@ -92,7 +92,7 @@ class FLIGPUProcessor:
         irf : np.ndarray
             Instrument response function aligned with the decay signal.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
 
         Returns
         -------
@@ -147,7 +147,7 @@ class FLIGPUProcessor:
         irf : np.ndarray
             Instrument response function aligned with the decay signal.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
 
         Returns
         -------
@@ -222,7 +222,7 @@ class FLIGPUProcessor:
         mode : str
             Mode selector used by the fitting, loading, or plotting routine.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
         max_iter : int
             Maximum number of optimization iterations.
         CRLB : bool
@@ -486,7 +486,7 @@ class FLIGPUProcessor:
         health_map : np.ndarray
             Parameter or mask map processed by the routine.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
         mode : str
             Mode selector used by the fitting, loading, or plotting routine.
         name : str
@@ -562,7 +562,7 @@ class FLIGPUProcessor:
         n_pixels : int
             Number of samples, components, gates, or iterations used by the routine.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
 
         Returns
         -------
@@ -605,7 +605,7 @@ class FLIGPUProcessor:
         irf : np.ndarray
             Instrument response function aligned with the decay signal.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
 
         Returns
         -------

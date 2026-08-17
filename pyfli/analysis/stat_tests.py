@@ -1,9 +1,9 @@
 """
-Compare simulated and experimental FLIM distributions with classical and multivariate
-tests.
+Compare simulated and experimental FLI/FLIM distributions with classical and
+multivariate tests.
 
 This module belongs to :mod:`pyfli.analysis` and is part of PyFLI post-processing,
-diagnostics, statistical comparison, and result-loading utilities for fitted FLIM
+diagnostics, statistical comparison, and result-loading utilities for fitted FLI/FLIM
 datasets. Public API includes classes :class:`TestStat` and
 :class:`FLIDistributionTest`.
 """

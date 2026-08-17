@@ -1,8 +1,8 @@
 """
-Process FLIM image cubes on CPU with parallel pixel-level fitting.
+Process FLI image cubes on CPU with parallel pixel-level fitting.
 
 This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
-likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includes
 classes :class:`FLICPUProcessor`.
 """
 
@@ -25,7 +25,7 @@ except ImportError:
 
 class FLICPUProcessor:
     """
-    Run pixel-wise FLIM fitting on CPU. The processor parallelizes fitting across image
+    Run pixel-wise FLI fitting on CPU. The processor parallelizes fitting across image
     pixels, reconstructs parameter maps, saves results, and loads saved maps.
 
     Parameters
@@ -63,7 +63,7 @@ class FLICPUProcessor:
         coords : Any
             Pixel coordinates associated with the fit task.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
         estimator : np.ndarray
             Estimator name used to choose a fitting objective.
         p0 : Any
@@ -151,7 +151,7 @@ class FLICPUProcessor:
         data_name : str
             Label assigned to the fitted or processed dataset.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
         estimator : str
             Estimator name used to choose a fitting objective.
         p0 : Any | None

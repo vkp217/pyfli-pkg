@@ -1,11 +1,11 @@
 """
-Reconstruct per-pixel modeled decay curves from fitted FLIM parameter maps.
+Reconstruct per-pixel modeled decay curves from fitted FLI parameter maps.
 
 This module belongs to :mod:`pyfli.reconstruction` and sits downstream of
 :mod:`pyfli.solver`: it reuses the solver's mono-/bi-exponential forward-model
 kernels and fit-quality metrics to turn a dictionary of fitted parameter maps
 (shaped like :class:`pyfli.solver.FLICPUProcessor`'s output) back into decay
-cubes. Public API includes class :class:`ParameterToDecayReconstruction`.
+cubes. Public API includes class :class:`ParamToDecay`.
 """
 
 import itertools
@@ -23,7 +23,7 @@ from pyfli.solver.shared_metrics import compute_fli_stats
 _EPS = 1e-8
 
 
-class ParameterToDecayReconstruction:
+class ParamToDecay:
     """
     Reconstruct per-pixel modeled decay curves from fitted parameter maps.
 
@@ -61,7 +61,7 @@ class ParameterToDecayReconstruction:
     Parameters
     ----------
     model_type : str
-        FLIM model family; one of the keys in :attr:`PARAM_MAP_KEYS`
+        FLI model family; one of the keys in :attr:`PARAM_MAP_KEYS`
         (``"mono-exponential"`` or ``"bi-exponential"``).
     freq : float
         Acquisition frequency in MHz — i.e. ``freq[1]`` in
@@ -452,7 +452,7 @@ class ParameterToDecayReconstruction:
         parameter maps don't carry a meaningful literal amplitude (e.g.
         lifetime-only estimator output) and need the final scale pinned to a
         measured photon count instead — see
-        :func:`pyfli.analysis.utils.compute_detailed_results`.
+        :meth:`pyfli.reconstruction.DetailedRecon.reconstruct`.
 
         Returns
         -------
@@ -496,7 +496,7 @@ class ParameterToDecayReconstruction:
         amplitude (e.g. lifetime-only estimator output) and the fit's total
         should instead be pinned to the measured photon count — this also
         compensates for any convolution-truncation loss the way
-        :func:`pyfli.analysis.utils.compute_detailed_results` requires.
+        :meth:`pyfli.reconstruction.DetailedRecon.reconstruct` requires.
         """
         fit_map = np.asarray(fit_map, dtype=float)
         decay = np.asarray(decay, dtype=float)

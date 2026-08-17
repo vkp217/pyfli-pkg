@@ -2,10 +2,10 @@
 
 """
 Provide analysis tools for PyFLI post-processing, diagnostics, statistical comparison,
-and result-loading utilities for fitted FLIM datasets.
+and result-loading utilities for fitted FLI/FLIM datasets.
 
 This module belongs to :mod:`pyfli.analysis` and is part of PyFLI post-processing,
-diagnostics, statistical comparison, and result-loading utilities for fitted FLIM
+diagnostics, statistical comparison, and result-loading utilities for fitted FLI/FLIM
 datasets. The module primarily re-exports package symbols or constants for downstream
 imports.
 """

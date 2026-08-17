@@ -4,7 +4,7 @@ Compare least-squares and maximum-likelihood fitters across selected pixels and
 datasets.
 
 This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
-likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includes
 classes :class:`FittingComparator`.
 """
 
@@ -248,7 +248,7 @@ class FittingComparator:
         irf_data : np.ndarray
             Instrument response data used to convolve or simulate decays.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
         p0 : Any | None
             Initial parameter vector supplied to the optimizer.
         bounds : np.ndarray | None
@@ -361,7 +361,7 @@ class FittingComparator:
         irf_data : np.ndarray
             Instrument response data used to convolve or simulate decays.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
         p0 : Any | None
             Initial parameter vector supplied to the optimizer.
         bounds : np.ndarray | None
@@ -400,7 +400,7 @@ class FittingComparator:
         yscale : np.ndarray
             Scale used for the y-axis.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
 
         Returns
         -------
@@ -460,7 +460,7 @@ class FittingComparator:
         fig : Any | None
             Matplotlib figure object to update or save.
         model_type : str
-            FLIM model family, such as mono- or bi-exponential.
+            FLI model family, such as mono- or bi-exponential.
         name : str
             Dataset, experiment, figure, or output name.
 

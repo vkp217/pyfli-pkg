@@ -2,7 +2,7 @@
 Compute phasor coordinates from binned decay data and save phasor-derived lifetime maps.
 
 This module belongs to :mod:`pyfli.analysis` and is part of PyFLI post-processing,
-diagnostics, statistical comparison, and result-loading utilities for fitted FLIM
+diagnostics, statistical comparison, and result-loading utilities for fitted FLI/FLIM
 datasets. Public API includes functions :func:`compute_freq_axis`,
 :func:`compute_phasor`, :func:`plot_phasor_figures`, and :func:`save_phasor_result`.
 """
@@ -14,7 +14,7 @@ import numpy as np
 
 from pyfli import logging
 
-from ..analytical_methods import PhasorAnalyzer, AnalyticalHelpers
+from ..analyticalWorkflow import PhasorAnalyzer, AnalyticalHelpers
 from ..data_vnp import ColorProcessor
 
 
