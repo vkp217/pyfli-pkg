@@ -5,18 +5,18 @@ interval bands plus a chosen central curve (best-fitting sample, median, or
 mean), overlaid on the actual measured decay.
 
 Belongs to :mod:`pyfli.bayes_utils`, downstream of
-:class:`pyfli.bayes_utils.param_combinations.BestParamFitSelector` and
-:class:`pyfli.reconstruction.ParameterToDecayReconstruction`.
+:class:`pyfli.bayes_utils.param_combinations.ParamSelector` and
+:class:`pyfli.reconstruction.ParamToDecay`.
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pyfli.bayes_utils.param_combinations import BestParamFitSelector
-from pyfli.reconstruction import ParameterToDecayReconstruction
+from pyfli.bayes_utils.param_combinations import ParamSelector
+from pyfli.reconstruction import ParamToDecay
 
 #: Registry of {model_type: output_combination keys}, matching
-#: BestParamFitSelector's own params dicts (no "_map" suffix).
+#: ParamSelector's own params dicts (no "_map" suffix).
 _MODEL_PARAM_KEYS: dict[str, tuple[str, ...]] = {
     "bi-exponential": ("alpha1", "tau1", "tau2"),
     "mono-exponential": ("tau",),
@@ -43,7 +43,7 @@ def _reconstruct_sample_stack(
     """
     Reconstruct every posterior sample's decay curve at one pixel, scaled to
     that pixel's measured photon count the same way
-    :func:`pyfli.analysis.utils.compute_detailed_results` scales its fits
+    :func:`pyfli.reconstruction.compute_detailed_results` scales its fits
     (unit-amplitude reconstruction, then rescaled so its sum matches the
     measured decay's sum).
 
@@ -66,7 +66,7 @@ def _reconstruct_sample_stack(
     recon_params["photon_count_map"] = np.ones((1, num_samples), dtype=np.float32)
 
     irf_px = irf[x, y, :] if np.ndim(irf) == 3 else irf
-    recon = ParameterToDecayReconstruction(model_type, freq_acq, irf=irf_px)
+    recon = ParamToDecay(model_type, freq_acq, irf=irf_px)
 
     unit = recon.reconstruct_unit_amplitude(recon_params)
     convolved = unit["convolved_map"]  # (1, NUM_SAMPLES, T)
@@ -87,7 +87,7 @@ def _select_best_sample_idx(
 ) -> int:
     """
     Pick the posterior sample that best fits this one pixel, by delegating to
-    :class:`BestParamFitSelector` on a 1x1-pixel crop -- reuses its tested
+    :class:`ParamSelector` on a 1x1-pixel crop -- reuses its tested
     per-sample goodness-of-fit logic instead of duplicating it here.
     """
     x, y = pixel
@@ -95,7 +95,7 @@ def _select_best_sample_idx(
     sub_decay = decay[x : x + 1, y : y + 1, :]
     sub_irf = irf[x : x + 1, y : y + 1, :] if np.ndim(irf) == 3 else irf
 
-    selector = BestParamFitSelector(freq_acq, sub_irf, sub_decay, model_type=model_type)
+    selector = ParamSelector(freq_acq, sub_irf, sub_decay, model_type=model_type)
     stacks = selector.evaluate_all_samples(sub_combo)
     selection = selector.select_best_combination(sub_combo, stacks, metric=metric)
     return int(selection["best_sample_idx"][0, 0])
@@ -124,7 +124,7 @@ def plot_pixel_posterior_fit(
         Posterior-sample parameter maps, e.g.
         ``{'tau1': (H,W,NUM_SAMPLES), 'tau2': (H,W,NUM_SAMPLES), 'alpha1': (H,W,NUM_SAMPLES)}``
         for bi-exponential, or ``{'tau': (H,W,NUM_SAMPLES)}`` for mono-exponential
-        -- same shape convention as :class:`BestParamFitSelector`.
+        -- same shape convention as :class:`ParamSelector`.
     decay : np.ndarray
         Measured decay, ``(H, W, T)``.
     irf : np.ndarray
@@ -139,10 +139,10 @@ def plot_pixel_posterior_fit(
         Which curve to draw as the central line: ``"median"`` or ``"mean"``
         across posterior samples, or ``"best"`` (the single sample that
         optimizes ``metric`` at this pixel, via
-        :meth:`BestParamFitSelector.select_best_combination`).
+        :meth:`ParamSelector.select_best_combination`).
     metric : str
         Only used when ``center="best"``; one of
-        :attr:`BestParamFitSelector.METRICS` (``"chi2"``, ``"reduced_chi2"``,
+        :attr:`ParamSelector.METRICS` (``"chi2"``, ``"reduced_chi2"``,
         ``"RMSE"``, ``"R2"``).
     ci_levels : tuple[int, ...]
         Nested credible-interval widths to shade, e.g. ``(92, 68)`` shades a

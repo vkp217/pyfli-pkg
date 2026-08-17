@@ -64,32 +64,57 @@ GitHub. Version numbers and dates below follow the releases published on
 
 *(not yet published to PyPI)*
 
+```{card}
+:class-card: sd-bg-info sd-text-white sd-font-weight-bold
+:text-align: center
+
+⚡ A major refactor in the library
+```
+
+```{card}
+:class-card: sd-bg-success sd-text-white
+
+**Features added:**
 - *(add notes for this release)*
+```
+
+```{card}
+:class-card: sd-bg-warning sd-text-dark
+
+**Bugs Fixed:**
+- *(add notes for this release)*
+```
 
 ### [0.1.18](https://pypi.org/project/pyfli-lib/0.1.18/) — 2026-06-25
 
+```{card}
+:class-card: sd-bg-success sd-text-white
+
+**Features added:**
 - *(add notes for this release)*
+```
+
+```{card}
+:class-card: sd-bg-warning sd-text-dark
+
+**Bugs Fixed:**
+- *(add notes for this release)*
+```
 
 ### [0.1.17](https://pypi.org/project/pyfli-lib/0.1.17/) — 2026-06-03
 
-- *(add notes for this release)*
+```{card}
+:class-card: sd-bg-success sd-text-white
 
-### [0.1.16](https://pypi.org/project/pyfli-lib/0.1.16/) — 2026-06-02
+**Features added:**
+- Simulator
+- Detailed Phasor Method
+- NLSF, MLE, and plotting methods
+```
 
-- *(add notes for this release)*
+```{card}
+:class-card: sd-bg-warning sd-text-dark
 
-### [0.1.15b0](https://pypi.org/project/pyfli-lib/0.1.15b0/) — 2026-06-02
-
-- *(add notes for this release)*
-
-### [0.1.2](https://pypi.org/project/pyfli-lib/0.1.2/) — 2026-05-22
-
-- *(add notes for this release)*
-
-### [0.1.1](https://pypi.org/project/pyfli-lib/0.1.1/) — 2026-05-19
-
-- *(add notes for this release)*
-
-### [0.1.0](https://pypi.org/project/pyfli-lib/0.1.0/) — 2026-05-19
-
-- Initial release
+**Bugs Fixed:**
+- Subplotting placement error
+```

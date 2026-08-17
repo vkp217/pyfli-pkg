@@ -1,9 +1,8 @@
 """
-Implement Laguerre-basis deconvolution for FLIM decay reconstruction.
+Implement Laguerre-basis deconvolution for FLI decay reconstruction.
 
-This module belongs to :mod:`pyfli.analytical_methods` and is part of PyFLI analytical
-FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
-estimation. Public API includes classes :class:`LaguerreFLI`.
+This module belongs to :mod:`pyfli.laguerre` and is part of PyFLI's Laguerre-basis
+deconvolution and fitting method. Public API includes classes :class:`LaguerreFLI`.
 """
 
 import os

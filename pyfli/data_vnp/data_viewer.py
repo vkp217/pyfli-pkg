@@ -1,5 +1,5 @@
 """
-Render FLIM maps, fit summaries, and selected-pixel traces.
+Render FLI maps, fit summaries, and selected-pixel traces.
 
 This module belongs to :mod:`pyfli.data_vnp` and is part of PyFLI visualization,
 normalization, plotting, and mono-versus-bi-exponential comparison tools. Public API

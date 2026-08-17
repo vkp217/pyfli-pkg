@@ -1,9 +1,9 @@
 """
 Implement a compact phasor analyzer for CPU and optional GPU workflows.
 
-This module belongs to :mod:`pyfli.analytical_methods` and is part of PyFLI analytical
-FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
-estimation. Public API includes classes :class:`PhasorAnalyzer`.
+This module belongs to :mod:`pyfli.phasor.phasorS` and is part of PyFLI's compact
+phasor analyzer for CPU and optional GPU FLI workflows. Public API includes classes
+:class:`PhasorAnalyzer`.
 """
 
 from typing import Any
@@ -20,7 +20,7 @@ from .phasor_simple_plots import PhasorPlotsMixin
 
 class PhasorAnalyzer(PhasorPlotsMixin):
     """
-    Compute, calibrate, and interpret FLIM phasors from decay data. The analyzer
+    Compute, calibrate, and interpret FLI phasors from decay data. The analyzer
     supports NumPy and optional Torch execution, multi-harmonic phasors, IRF
     calibration, lifetime conversion, fractional component estimates, and plotting
     through the phasor mixin.

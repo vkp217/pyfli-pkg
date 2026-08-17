@@ -2,7 +2,7 @@
 Convert detector observations to expected photon rates and inverse-variance weights.
 
 This module belongs to :mod:`pyfli.irf_deconvolution` and is part of PyFLI detector-
-aware IRF deconvolution and joint FLIM fitting utilities. Public API includes classes
+aware IRF deconvolution and joint FLI fitting utilities. Public API includes classes
 :class:`TCSPCParams`, :class:`SPADParams`, and :class:`ICCDParams`; functions
 :func:`tcspc_to_lambda`, :func:`tcspc_lambda_weight`, :func:`spad_to_lambda`,
 :func:`spad_lambda_weight`, :func:`iccd_to_lambda`, :func:`iccd_lambda_weight`,

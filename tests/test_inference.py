@@ -77,7 +77,7 @@ def decay_irf(n_bins):
     decay = (
         np.random.default_rng(0).poisson(5.0, size=(H, W, n_bins)).astype(np.float32)
     )
-    # Shared (N_BINS,) IRF -- same convention ParameterToDecayReconstruction/
+    # Shared (N_BINS,) IRF -- same convention ParamToDecay/
     # compute_detailed_results accept.
     irf = np.ones(n_bins, dtype=np.float32) / n_bins
     return decay, irf
@@ -272,7 +272,7 @@ def test_run_inference_multi_patch_stitching_and_masking(decay_irf):
         np.testing.assert_allclose(output_samples[key][:, :, s], expected, rtol=1e-6)
 
     # The masked-out pixel and the skipped patch are indistinguishable by
-    # value alone (both 0.0) -- this is the gap BestParamFitSelector's
+    # value alone (both 0.0) -- this is the gap ParamSelector's
     # bool_mask passthrough exists to address downstream.
     assert output_maps[key][0, 0] == 0.0
     assert output_maps[key][2, 1] == 0.0
@@ -342,7 +342,7 @@ def test_save_detailed(decay_irf):
 
 
 # ---------------------------------------------------------------------------
-# compute_detailed (real pyfli.analysis.utils.compute_detailed_results)
+# compute_detailed (real pyfli.reconstruction.compute_detailed_results)
 # ---------------------------------------------------------------------------
 
 

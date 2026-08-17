@@ -1,9 +1,9 @@
 """
-Provide batch sim tools for PyFLI synthetic FLIM data generation, hardware noise
+Provide batch sim tools for PyFLI synthetic FLI/FLIM data generation, hardware noise
 modeling, calibration, and validation tools.
 
-This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
-generation, hardware noise modeling, calibration, and validation tools. Public API
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLI/FLIM
+data generation, hardware noise modeling, calibration, and validation tools. Public API
 includes classes :class:`BatchSimulator`.
 """
 
@@ -14,7 +14,7 @@ import numpy as np
 
 class BatchSimulator:
     """
-    Run repeated FLIM simulations across parameter sets. The class is a convenience
+    Run repeated FLI/FLIM simulations across parameter sets. The class is a convenience
     layer for generating batches of synthetic datasets for validation or model training.
     """
 

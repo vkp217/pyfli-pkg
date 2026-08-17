@@ -1,9 +1,8 @@
 """
 Provide small analytical helper routines for acquisition frequency calculations.
 
-This module belongs to :mod:`pyfli.analytical_methods` and is part of PyFLI analytical
-FLIM reconstruction helpers, Laguerre deconvolution, and phasor-based lifetime
-estimation. Public API includes classes :class:`AnalyticalHelpers`.
+This module belongs to :mod:`pyfli.analyticalWorkflow` and is part of PyFLI analytical
+FLI reconstruction helpers. Public API includes classes :class:`AnalyticalHelpers`.
 """
 
 from typing import Any

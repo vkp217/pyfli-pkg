@@ -13,7 +13,7 @@ Class-based wrapper around the Bi direct-inference pipeline:
     (`output_samples`) so downstream code can compute other statistics
     from the same posterior draws without re-running inference
   - optionally saves outputs via a `saver` object
-  - optionally runs pyfli.compute_detailed_results on the outputs
+  - optionally runs DetailedRecon.reconstruct on the outputs
   - optionally visualizes results via DataViewer
 
 Usage
@@ -51,12 +51,12 @@ import numpy as np
 import keras
 from scipy.stats import median_abs_deviation
 
-from pyfli.analysis.utils import compute_detailed_results
+from pyfli.reconstruction import DetailedRecon
 from pyfli.data_vnp import ColorProcessor, DataViewer
 
 
 class BiPipeline:
-    """Encapsulates the Bi direct-inference pipeline for FLIM decay maps."""
+    """Encapsulates the Bi direct-inference pipeline for FLI decay maps."""
 
     #: keys produced per model type
     MODEL_KEYS = {
@@ -154,12 +154,20 @@ class BiPipeline:
         decay : np.ndarray, shape (H, W, N_BINS)
         irf   : np.ndarray, shape (N_BINS,) shared across every pixel, or
             (H, W, N_BINS) per-pixel -- same convention as
-            ParameterToDecayReconstruction/compute_detailed_results.
+            ParamToDecay/DetailedRecon.
         mask  : np.ndarray, shape (H, W), bool-like
 
         Returns
         -------
-        output_maps, output_uncertainties : dict[str, np.ndarray] each (H, W)
+        output_maps : dict[str, np.ndarray] each (H, W) -- per-pixel posterior
+            median for each key.
+        output_uncertainties : dict[str, np.ndarray] each (H, W) -- per-pixel
+            median absolute deviation (MAD) of the posterior samples, via
+            scipy.stats.median_abs_deviation's default scale=1.0. This is the
+            *raw* MAD, not scaled to be std-comparable: for a roughly Gaussian
+            posterior it runs ~0.6745x the equivalent standard deviation (use
+            scale='normal' at the call site below if a 1-sigma-comparable
+            value is ever needed instead).
         output_samples : dict[str, np.ndarray] each (H, W, NUM_SAMPLES) --
             the raw per-pixel posterior draws model.sample() produced, kept
             around so other statistics can be computed later directly from
@@ -293,7 +301,7 @@ class BiPipeline:
             saver.log("The Bi output_samples saved")
 
     def save_detailed(self, saver, detailed, name=None):
-        """Save the compute_detailed_results dict via the provided saver object."""
+        """Save the DetailedRecon.reconstruct dict via the provided saver object."""
         name = (
             name
             or f"Bi {'bi' if self.model_type == 'bi-exponential' else 'mono'}_Output"
@@ -302,36 +310,32 @@ class BiPipeline:
         saver.log(f"The {name} saved")
 
     # ------------------------------------------------------------------
-    # Detailed results (pyfli.compute_detailed_results)
+    # Detailed results (DetailedRecon.reconstruct)
     # ------------------------------------------------------------------
     def compute_detailed(self, output_maps, freq, decay, irf):
         """
-        Run pyfli.compute_detailed_results on the output maps for the configured model_type.
+        Run DetailedRecon.reconstruct on the output maps for
+        the configured model_type.
 
         Returns the raw results dict (bi_bi or bi_mono equivalent).
         """
         if self.model_type == "bi-exponential":
-            detailed = compute_detailed_results(
-                tau1=output_maps["tau1"],
-                tau2=output_maps["tau2"],
-                alpha1=output_maps["alpha1"],
-                freq_acq=freq,
-                binned_irf=irf,
-                binned_decay=decay,
-                data_name="Bi_bi",
-                model_type="bi-exponential",
-            )
+            cdr_params = {
+                "tau1_map": output_maps["tau1"],
+                "tau2_map": output_maps["tau2"],
+                "alpha1_map": output_maps["alpha1"],
+            }
+            data_name = "Bi_bi"
         elif self.model_type == "mono-exponential":
-            detailed = compute_detailed_results(
-                tau=output_maps["tau"],
-                freq_acq=freq,
-                binned_irf=irf,
-                binned_decay=decay,
-                data_name="Bi_mono",
-                model_type="mono-exponential",
-            )
+            cdr_params = {"tau_map": output_maps["tau"]}
+            data_name = "Bi_mono"
         else:
             raise ValueError(f"Unknown MODEL_TYPE: {self.model_type!r}")
+
+        reconstructor = DetailedRecon(freq, irf, binned_decay=decay)
+        detailed = reconstructor.reconstruct(
+            cdr_params, self.model_type, data_name=data_name
+        )
 
         print(detailed["results"]["maps"].keys())
         print(detailed["results"]["TR_maps"].keys())
@@ -345,11 +349,17 @@ class BiPipeline:
         """Lazily build the default colormap (jet with lowest value pinned to zero)."""
         return ColorProcessor().lowest_zero("jet")
 
-    def visualize(self, saver, output_maps, output_uncertainties, cmap=None, px=None):
+    def visualize(self, saver, output_maps, output_uncertainties, cmap=None):
         """
         Display parameter maps and their uncertainties using DataViewer.
         Only applicable when model_type == "bi-exponential" (alpha1/tau1/tau2).
         `cmap` defaults to `default_cmap()` (jet_m) when not provided.
+
+        No pixel-coordinate/decay-curve argument here: every array plotted
+        (output_maps/output_uncertainties) is a (H, W) 2-D map, and
+        DataViewer.display_data only adds its extra decay-curve panel when a
+        3-D (H, W, T) array is present in data_list -- so a `coord` would
+        never draw anything, just reserve a blank column.
         """
         if self.model_type != "bi-exponential":
             raise ValueError(
@@ -372,12 +382,11 @@ class BiPipeline:
         v_ranges = [(0, 1), (0, 1), (0, 1)]
 
         cmaps = [cmap, cmap, cmap]
-        cols = len(data_list) if px is None else len(data_list) + 1
+        cols = len(data_list)
 
         DataViewer(save_path=saver.save_dir, fig_name="Bi_parameters").display_data(
             data_list1,
             structure=(1, cols),
-            coord=px,
             data_names=data_names1,
             cmaps=cmaps,
             v_ranges=v_ranges1,
@@ -388,7 +397,6 @@ class BiPipeline:
         DataViewer(save_path=saver.save_dir, fig_name="Bi_parameters_UN").display_data(
             data_list,
             structure=(1, cols),
-            coord=px,
             data_names=data_names,
             cmaps=cmaps,
             v_ranges=v_ranges,
@@ -411,7 +419,6 @@ class BiPipeline:
         compute_detailed=True,
         visualize=False,
         cmap=None,
-        px=None,
     ):
         """
         Run the full pipeline: load model -> inference -> (save) -> (detailed) -> (visualize).
@@ -449,7 +456,7 @@ class BiPipeline:
                 raise ValueError("visualize=True requires a `saver` object")
             if cmap is None:
                 cmap = self.default_cmap()
-            self.visualize(saver, output_maps, output_uncertainties, cmap, px=px)
+            self.visualize(saver, output_maps, output_uncertainties, cmap)
 
         return {
             "output_maps": output_maps,

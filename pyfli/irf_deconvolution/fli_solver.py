@@ -1,8 +1,8 @@
 """
-Solve FLIM lifetimes and instrument response functions with detector-aware weighting.
+Solve FLI lifetimes and instrument response functions with detector-aware weighting.
 
 This module belongs to :mod:`pyfli.irf_deconvolution` and is part of PyFLI detector-
-aware IRF deconvolution and joint FLIM fitting utilities. Public API includes classes
+aware IRF deconvolution and joint FLI fitting utilities. Public API includes classes
 :class:`SolverConfig`; functions :func:`cyclic_conv`, :func:`cyclic_corr`,
 :func:`decay_basis`, :func:`build_gate_matrix`, :func:`project_simplex`,
 :func:`huber_tv_grad`, :func:`spatial_laplacian`, :func:`fourier_shift`,
@@ -523,7 +523,7 @@ def solve_flim(
     h_init: np.ndarray | None = None,
 ) -> Any:
     """
-    Run the solve FLIM routine.
+    Run the solve FLI routine.
 
     Parameters
     ----------
@@ -547,7 +547,7 @@ def solve_flim(
     Returns
     -------
     Any
-        Object produced by solve FLIM.
+        Object produced by solve FLI.
     """
     P = y.shape[0]
     N = gate_spec.get("N", 256)

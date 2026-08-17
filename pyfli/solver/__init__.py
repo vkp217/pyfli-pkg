@@ -3,10 +3,10 @@
 
 """
 Provide solver tools for PyFLI least-squares, maximum-likelihood, CPU, GPU, binned, and
-global FLIM fitting routines.
+global FLI fitting routines.
 
 This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
-likelihood, CPU, GPU, binned, and global FLIM fitting routines. The module primarily re-
+likelihood, CPU, GPU, binned, and global FLI fitting routines. The module primarily re-
 exports package symbols or constants for downstream imports.
 """
 

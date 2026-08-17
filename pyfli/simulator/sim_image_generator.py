@@ -1,8 +1,8 @@
 """
-Generate FLIM image cubes from intensity images, ROI masks, and simulator settings.
+Generate FLI/FLIM image cubes from intensity images, ROI masks, and simulator settings.
 
-This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
-generation, hardware noise modeling, calibration, and validation tools. Public API
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLI/FLIM
+data generation, hardware noise modeling, calibration, and validation tools. Public API
 includes classes :class:`FLIImageGenerator`.
 """
 

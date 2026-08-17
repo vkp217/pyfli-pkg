@@ -51,6 +51,11 @@ def test_default_factors_registered(fa_inputs):
     fa = FactorAnalysis(decay, None, mask, all_datasets, all_fitset, method_names)
     assert "total_photons" in fa.list_factors()
     assert "peak_counts" in fa.list_factors()
+    assert "peak_to_mean_ratio" in fa.list_factors()
+    np.testing.assert_allclose(
+        fa.factor_values("peak_to_mean_ratio"),
+        decay.max(axis=-1) / (decay.mean(axis=-1) + 1e-8),
+    )
 
 
 def test_mismatched_lengths_raise(fa_inputs):
@@ -128,6 +133,52 @@ def test_plot_without_saver_does_not_save(fa_inputs):
         factor_key="total_photons", target_keys=["tau1_map"], n_bins=3
     )
     fig, axes = fa.plot(df)  # no saver passed -- must not raise
+    plt.close(fig)
+
+
+def test_recon_edge_nogap_emptybin(fa_inputs):
+    decay, mask, all_datasets, all_fitset, method_names = fa_inputs
+    H, W = mask.shape
+    custom_factor = np.arange(H * W, dtype=float).reshape(H, W)
+    n_bins = 4
+
+    fa = FactorAnalysis(decay, None, mask, all_datasets, all_fitset, method_names)
+    fa.add_factor("custom_linear", custom_factor)
+    df, edges = fa.analyze(
+        factor_key="custom_linear",
+        target_keys=["tau1_map"],
+        n_bins=n_bins,
+        bin_mode="linear",
+    )
+    assert len(edges) == n_bins + 1
+
+    target_bin = n_bins // 2
+    lo, hi = edges[target_bin], edges[target_bin + 1]
+    knockout = (custom_factor >= lo) & (custom_factor <= hi)
+    all_datasets[0]["tau1_map"] = np.where(
+        knockout, np.nan, all_datasets[0]["tau1_map"]
+    )
+
+    fa2 = FactorAnalysis(decay, None, mask, all_datasets, all_fitset, method_names)
+    fa2.add_factor("custom_linear", custom_factor)
+    df2, edges2 = fa2.analyze(
+        factor_key="custom_linear",
+        target_keys=["tau1_map"],
+        n_bins=n_bins,
+        bin_mode="linear",
+    )
+
+    method = method_names[0]
+    present_bins = set(
+        df2[(df2["method"] == method) & (df2["parameter"] == "tau1_map")]["bin_rank"]
+    )
+    assert target_bin not in present_bins
+
+    reconstructed = fa2._reconstruct_edges(df2, method)
+    assert len(reconstructed) == n_bins + 1
+    np.testing.assert_allclose(reconstructed, edges2)
+
+    fig, axes = fa2.plot(df2, target_keys=["tau1_map"], kind="box")
     plt.close(fig)
 
 

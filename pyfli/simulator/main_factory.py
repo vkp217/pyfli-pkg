@@ -1,8 +1,8 @@
 """
 Build macro and TCSPC simulation workflows from IRF data and hardware configuration.
 
-This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLIM data
-generation, hardware noise modeling, calibration, and validation tools. Public API
+This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLI/FLIM
+data generation, hardware noise modeling, calibration, and validation tools. Public API
 includes classes :class:`MacroSimulator` and :class:`TCSPCSimulator`.
 """
 
@@ -18,7 +18,7 @@ from .distributions import ParameterSampler
 
 class MacroSimulator:
     """
-    Generate macro-time style synthetic FLIM decays from IRF data and sensor
+    Generate macro-time style synthetic FLI/FLIM decays from IRF data and sensor
     configuration. The callable factory samples lifetimes, amplitudes, noise, and
     detector response for ICCD-like workflows.
 

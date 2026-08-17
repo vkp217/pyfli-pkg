@@ -1,9 +1,9 @@
 # solver/global_fitter.py
 """
-Fit cluster-level super-pixels and stitch global FLIM fit results back into image maps.
+Fit cluster-level super-pixels and stitch global FLI fit results back into image maps.
 
 This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
-likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includes
 classes :class:`GlobalFLIFitter`.
 """
 

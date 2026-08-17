@@ -1,8 +1,8 @@
 """
-Bin image cubes spatially and fit the binned FLIM data.
+Bin image cubes spatially and fit the binned FLI data.
 
 This module belongs to :mod:`pyfli.solver` and is part of PyFLI least-squares, maximum-
-likelihood, CPU, GPU, binned, and global FLIM fitting routines. Public API includes
+likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includes
 classes :class:`FLIBinner` and :class:`BinnedFLIFitter`.
 """
 
@@ -16,7 +16,7 @@ import numpy as np
 
 class FLIBinner:
     """
-    Apply spatial binning to FLIM image and IRF cubes. It reduces noise by aggregating
+    Apply spatial binning to FLI image and IRF cubes. It reduces noise by aggregating
     neighboring pixels before fitting.
 
     Parameters
@@ -70,7 +70,7 @@ class FLIBinner:
 
 class BinnedFLIFitter:
     """
-    Fit spatially binned FLIM data with an existing processor. It wraps binning, mask
+    Fit spatially binned FLI data with an existing processor. It wraps binning, mask
     propagation, processor dispatch, and result saving for binned datasets.
 
     Parameters
