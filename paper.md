@@ -9,7 +9,9 @@ tags:
   - SPAD
   - ICCD
   - phasor analysis
-  - Laguerre deconvolution
+  - Non-linear least square
+  - Maximum likelihood estimation
+  - Laguerre method
   - GPU computing
   - biomedical optics
 authors:
@@ -38,8 +40,8 @@ bibliography: paper.bib
 
 # Summary
 
-Fluorescence Lifetime Imaging (FLI) is a powerful, concentration-independent quantitative imaging modality used across chemistry, biophysics, biomedical optics, and microscopy. Because the fluorescence lifetime is set by the photophysics of a fluorophore and its local environment rather than by how many molecules are present, FLI separates genuine environmental contrast, such as pH, ion concentration, viscosity, oxygenation, and Förster resonance energy transfer (FRET), from intensity artifacts like photobleaching and uneven illumination, from intracellular metabolic state to *in vivo* tumor characterisation. Despite its widespread use, the data acquisition and analysis ecosystem remains fragmented: each detector family, Intensified Charge-Coupled Devices (ICCD), Single-Photon Avalanche Diode (SPAD) arrays, and Time-Correlated Single Photon Counting (TCSPC) microscopes, typically ships with its own proprietary file formats, vendor-specific software, and incompatible analytical conventions. This forces practitioners to maintain bespoke pipelines and limits reproducibility across hardware. We present **PyFli**, an open-source Python library that unifies FLI data ingestion, simulation, and lifetime estimation across detectors and all methods in one place. In this version, the package implements five established analytical estimators, Non-linear Least Squares Fitting (NLSF), phasor analysis, Maximum Likelihood Estimation (MLE), Rapid Lifetime Determination (RLD), and Laguerre Expansion Technique (LET) for model-free Instrument Response Function (IRF) deconvolution, behind consistent APIs, alongside matched CPU and GPU solvers, a detector-physics-aware deconvolution engine, and a configurable hardware-aware noise simulator with Cramér–Rao-bound analysis which will expand in future as per further development. 
-Additionally, this package extends to a single-pixel compressed-sensing reconstruction module for hyperspectral FLI as well. The library is distributed on PyPI as `pyfli-lib`, follows a modular registry-based architecture, and is intended to lower the activation energy for both routine FLI analysis and the development of new estimators.
+Fluorescence Lifetime Imaging (FLI) is a powerful, fluorophore concentration-independent quantitative imaging modality used across chemistry, biophysics, biomedical optics, and microscopy. Because the fluorescence lifetime is set by the photophysics of a fluorophore and its local environment rather than by how many molecules are present, FLI separates genuine environmental contrast, such as pH, ion concentration, viscosity, oxygenation, and Förster resonance energy transfer (FRET), from intensity artifacts like photobleaching and uneven illumination, from intracellular metabolic state to *in vivo* tumor characterisation. Despite its widespread use, the data acquisition and analysis ecosystem remains fragmented: each detector family, Intensified Charge-Coupled Devices (ICCD), Single-Photon Avalanche Diode (SPAD) arrays, and Time-Correlated Single Photon Counting (TCSPC), typically ships with its own proprietary file formats, vendor-specific software, and incompatible analytical conventions. This forces users to maintain bespoke pipelines that limits reproducibility across hardware. We present **PyFli**, an open-source Python library that unifies FLI data ingestion, simulation, and lifetime estimation across detectors and all methods in one place. In this version, the package implements six established analytical estimators, Phasor Analysis, Non-linear Least Squares Fitting (NLSF), Maximum Likelihood Estimation (MLE), Bayesian Inference, Rapid Lifetime Determination (RLD), and Laguerre Expansion methods for decay parameter estimation. The package contains consistent APIs, alongside matched CPU and GPU solvers, a detector-physics-aware deconvolution approach, and a configurable hardware-aware noise simulator with Cramér–Rao-bound analysis which will expand in future as per further development. 
+Additionally, this package extends to a single-pixel compressed-sensing reconstruction module for hyperspectral FLI as well. The library is distributed on PyPI as `pyfli-lib`, follows a modular registry-based architecture, and is intended to lower the complexity for both routine FLI analysis and the development of new estimators.
 
 # Statement of need
 
@@ -67,22 +69,23 @@ interface with GPU support, a detector-physics-aware deconvolution engine, and a
 
 # Software design
 
-`PyFli` is implemented in pure Python (≥3.11) and, following a major refactor after the 0.1.18 PyPI release, comprises 94 modules and approximately 32,000 lines of code, organised into more than a dozen thematic sub-packages exposed under a single top-level `pyfli` namespace (the package root re-exports the most commonly used entry points directly, while more specialized classes are imported from their owning sub-package):
+`PyFli` is implemented in pure Python (≥3.11) and, following a major refactor after the 0.1.18 PyPI release, comprises 100 modules and approximately 32,500 lines of code, organised into 18 thematic sub-packages exposed under a single top-level `pyfli` namespace (the package root re-exports the most commonly used entry points directly, while more specialized classes are imported from their owning sub-package):
 
-- **`io`** — universal data and IRF loaders (`DataOperations`, `Detector`, `DataSaver`) for `.sdt`, `.mat`, `.tif`, `.npy`, `.txt`, `.asc`, and compressed `.lif`, with a detector-abstracted import path for ICCD, SwissSPAD2/3, and TCSPC outputs.
-- **`data_cc`** — IRF alignment (`IRFAligner`), normalisation (`Normalization`), preprocessing, and region-of-interest operations (`ROIOperations`).
-- **`analytical_methods`** — the class-based `PhasorAnalyzer`, the `LaguerreFLI` Laguerre Expansion Technique (LET) fitter for model-free IRF deconvolution, and shared analytical helpers.
-- **`phasor`** — a newer, acquisition-mode-aware phasor-geometry toolkit (functional API) built on the universal-circle formalism.
+- **`io`** — universal data and IRF loaders (`DataOperations`, `Detector`, `DataSaver`) for `.sdt`, `.mat`, `.tif`, `.npy`, `.txt`, `.asc`, and compressed `.lif`, with a detector-abstracted import path for ICCD, SwissSPAD2/3, and TCSPC outputs, plus loaders for already-processed results (`AlliGprocessedImport`, `BHprocessedImport`, `PyFliprocessedImport`) used for cross-software comparison.
+- **`data_cc`** — IRF alignment (`IRFAligner`), normalisation (`Normalization`), preprocessing (`DataPreprocessing`), and region-of-interest operations (`ROIOperations`).
+- **`phasor`** — two complementary phasor implementations: `phasorS`, the class-based `PhasorAnalyzer` for CPU/GPU phasor computation, and `phasorSEPL`, a newer, acquisition-mode-aware functional API built on the universal-circle formalism.
+- **`laguerre`** — the `LaguerreFLI` Laguerre Expansion Technique (LET) fitter for model-free IRF deconvolution.
+- **`analyticalWorkflow`** — shared analytical helpers (`AnalyticalHelpers`) and a backward-compatible re-export of `PhasorAnalyzer`.
 - **`irf_deconvolution`** — detector-specific (TCSPC/SPAD/ICCD) observation models and a joint IRF-deconvolution solver.
 - **`solver`** — CPU (`FLICPUProcessor`) and GPU (`FLIGPUProcessor`, PyTorch-based) lifetime processors, the shared `BaseFLIFitter` (NLSF) and `MLEFLIFitter` (Poisson MLE) fitters, plus `GlobalFLIFitter`, `BinnedFLIFitter`/`FLIBinner`, and a `FittingComparator`.
 - **`simulator`** — a photon-level forward-model engine, parameter distribution samplers, modular noise models (Poisson shot noise, dark count rate, Gaussian read noise, gain, quantisation, TCSPC pile-up), batch simulators, and `FLICalibrator`/`FLIValidator` calibration and validation engines.
 - **`sp_analysis`** — single-pixel compressed-sensing reconstruction for hyperspectral time-resolved imaging, with Hadamard and DCT bases and linear, total-variation, and Poisson-likelihood reconstructors [@Pian2017].
-- **`reconstruction`** — rebuilds modeled decay cubes and fit-quality maps from any fitted parameter map, downstream of `solver`.
+- **`reconstruction`** — rebuilds modeled decay cubes and fit-quality maps from any fitted parameter map (`ParamToDecay`), plus mono/bi-exponential splitting and dominant-lifetime classification for detailed diagnostics (`DetailedRecon`), downstream of `solver`.
 - **`bayes_utils`** — a Bayesian/deep-learning direct-inference pathway that runs a trained posterior-sampling model over a decay image and reconciles per-pixel posterior samples against the measured decay.
 - **`data_vnp`** — comparative visualisation, a deep-learning-vs-analytical comparator (`DLModelComparator`), and a mono/bi-exponential classifier (`MonoBiClassifier`).
 - **`analysis`** — session-level post-processing: result loading, fit/phasor diagnostics plotting, hypothesis testing (`TestStat`), and factor analysis.
 - **`roi_maker`** — an interactive, PySide6-based ROI editor (`ROIMaker`).
-- **`data_text`, `logging`, `img`** — message display, structured logging, and package assets.
+- **`data_text`, `log_save`, `img`** — message display, structured logging, and package assets.
 
 At the workflow level, this functionality is organised into three
 interconnected modules (Figure 1): a physics-guided **simulator** that
@@ -142,47 +145,25 @@ Table 1.
 | `generic` | TIFF / NPY / MAT / TXT / HDF5 | Format-only import for arbitrary pipelines |
 | `LIF` | Compressed FLIM (`.lif`) | Decodes reduced time-tagged photon streams to a decay cube |
 
-<!-- A distinctive capability is native decoding of a compressed, proprietary FLIM format: `PyFli` decompresses the "reduced Time Tagged" record stream
-described in the format's own patent filings (US20230344447A1 / US12278654B2) and
-reconstructs a four-dimensional decay cube indexed by mosaic/frame, image
-height, image width, and TCSPC histogram bin, while also exposing the
-vendor-computed parameter maps for reference, with helper routines to
-collapse the frame axis and inspect the result interactively. `.sdt` files -->
-are read through an integrated, established parsing engine, whereas `.lif`
-decoding uses a custom internal layer written for this package. ICCD and SPAD acquisitions are assembled from their gate or
-frame stacks, and the generic reader covers TIFF, NumPy, MATLAB, text, and
-HDF5 containers for pipelines that have already exported to a neutral
-format. Background subtraction supports either a single file or the mean of
-a folder of background acquisitions, and IRF and mask handling are
-integrated so that downstream estimators receive a fully specified problem
-context.
+`.sdt` files are read through an integrated, established parsing engine (`sdtfile` [@Gohlke2025]), whereas `.lif` decoding uses a custom internal layer written for this package. ICCD and SPAD acquisitions are assembled from their gate or frame stacks, and the generic reader covers TIFF, NumPy, MATLAB, text, and HDF5 containers for pipelines that have already exported to a neutral
+format. Background subtraction supports either a single file or the mean of a folder of background acquisitions, and IRF and mask handling are integrated so that downstream estimators receive a fully specified problem context.
 
-IRF preparation is handled by a dedicated alignment utility (`IRFAligner`)
-that estimates the temporal offset between IRF and decay by
-rising-edge detection and applies the shift either by sub-bin Fourier phase
-shifting or by integer circular shifting, on a global (`align`) or per-pixel
-(`align_pixel`) basis. Accurate IRF alignment is a precondition for unbiased
-reconvolution and phasor calibration, and centralizing it ensures every
-estimator starts from a consistently registered IRF.
+IRF preparation is handled by a dedicated alignment utility (`IRFAligner`) that estimates the temporal offset between IRF and decay by rising-edge detection and applies the shift either by sub-bin Fourier phase shifting or by integer circular shifting, on a global (`align`) or per-pixel (`align_pixel`) basis. Accurate IRF alignment is a precondition for unbiased
+reconvolution and phasor calibration, and centralizing it ensures every estimator starts from a consistently registered IRF.
 
 ## Analytical lifetime estimation
 
-FLI decays are modeled as a sum of exponential components convolved with the
-IRF. For a decay sampled at times $t_k$ with $m$ components, the noise-free
-model is
+FLI decays are modeled as a sum of exponential components convolved with the IRF. For a decay sampled at times $t_k$ with $m$ components, the noise-free model is
 
 $$\hat{y}(t) = b + \mathrm{IRF}_s(t) * \sum_{i=1}^{m} A_i \exp\left(-\frac{t}{\tau_i}\right),$$
 
 where $A_i$ and $\tau_i$ are the amplitude and lifetime of component $i$,
 $\mathrm{IRF}_s$ is the shifted instrument response, $*$ denotes
-convolution, and $b$ is a constant background offset. The amplitude
-fractions and the amplitude-weighted mean lifetime, the quantities most
-often reported, follow as
+convolution, and $b$ is a constant background offset. The amplitude fractions and the amplitude-weighted mean lifetime, the quantities most often reported, follow as
 
 $$\alpha_i = \frac{A_i}{\sum_j A_j}, \qquad \tau_m = \sum_i \alpha_i \tau_i.$$
 
-`PyFli` exposes five complementary estimators for these quantities,
-summarized in Table 2.
+`PyFli` exposes five complementary estimators for these quantities, summarized in Table 2.
 
 **Table 2.** Complementary lifetime estimators in `PyFli`.
 
@@ -196,209 +177,88 @@ summarized in Table 2.
 
 ### Non-linear least-squares fitting (NLSF)
 
-`BaseFLIFitter` (`pyfli.solver`) and the broader solver framework recover
-parameters by minimizing the weighted sum of squared residuals between the
-reconvolved model and the measured decay, optionally restricted to a
-user-defined time gate:
+`BaseFLIFitter` (`pyfli.solver`) and the broader solver framework recover parameters by minimizing the weighted sum of squared residuals between the reconvolved model and the measured decay, optionally restricted to a user-defined time gate:
 
 $$\chi^2(\theta) = \sum_k w_k \left(y_k - \hat{y}_k(\theta)\right)^2.$$
 
-Minimization uses `scipy.optimize`'s bounded and unconstrained least-squares
-backends, with analytic parameter uncertainties derived from the covariance
-of the converged fit and a moment-based (or user-supplied) initial-guess
-plugin. The fitter operates per pixel and across whole images, with both CPU
-(`FLICPUProcessor`) and GPU (`FLIGPUProcessor`) execution paths. Model-selection
-helpers compare mono- versus bi-exponential hypotheses, and convenience
-functions in `shared_metrics` return amplitude-weighted mean lifetimes and
+Minimization uses `scipy.optimize`'s bounded and unconstrained least-squares backends, with analytic parameter uncertainties derived from the covariance of the converged fit and a moment-based (or user-supplied) initial-guess plugin. The fitter operates per pixel and across whole images, with both CPU
+(`FLICPUProcessor`) and GPU (`FLIGPUProcessor`) execution paths. Model-selection helpers compare mono- versus bi-exponential hypotheses, and convenience functions in `shared_metrics` return amplitude-weighted mean lifetimes and
 FRET efficiencies directly.
 
 ### Maximum-likelihood (Poisson) estimation
 
-Photon-counting noise is Poisson, not Gaussian, and least squares becomes
-biased in the low-photon regime typical of fast or photon-starved
-acquisitions. `MLEFLIFitter` (`pyfli.solver`), a subclass of `BaseFLIFitter`,
-minimizes the negative Poisson log-likelihood, the statistically efficient
+Photon-counting noise is Poisson, not Gaussian, and least squares becomes biased in the low-photon regime typical of fast or photon-starved acquisitions. `MLEFLIFitter` (`pyfli.solver`), a subclass of `BaseFLIFitter`, minimizes the negative Poisson log-likelihood, the statistically efficient
 choice for shot-noise-limited data:
 
 $$-\ln L(\theta) = \sum_k \left[\hat{y}_k(\theta) - y_k \ln \hat{y}_k(\theta)\right].$$
 
-Both single-pixel and whole-image fitting are supported on CPU and GPU (the
-`FLIGPUProcessor.fit_image` entry point selects NLSF or MLE via a `mode`
-argument, and can report per-pixel Cramér–Rao uncertainty when `CRLB=True`),
-and the MLE estimator shares the same model-comparison machinery as NLSF
-(`FittingComparator`) so the two can be applied to identical data and
-reconciled.
+Both single-pixel and whole-image fitting are supported on CPU and GPU (the `FLIGPUProcessor.fit_image` entry point selects NLSF or MLE via a `mode` argument, and can report per-pixel Cramér–Rao uncertainty when `CRLB=True`), and the MLE estimator shares the same model-comparison machinery as NLSF (`FittingComparator`) so the two can be applied to identical data and reconciled.
 
 ### Phasor analysis
 
-The phasor transform provides a fit-free view of lifetimes by mapping each
-decay to a point $(g, s)$ via the cosine and sine Fourier components at
-harmonic $n$ of the laser angular frequency $\omega$:
+The phasor transform provides a fit-free view of lifetimes by mapping each decay to a point $(g, s)$ via the cosine and sine Fourier components at harmonic $n$ of the laser angular frequency $\omega$:
 
 $$g(n) = \frac{\sum_k y_k \cos(n\omega t_k)}{\sum_k y_k}, \qquad s(n) = \frac{\sum_k y_k \sin(n\omega t_k)}{\sum_k y_k}.$$
 
-`PyFli` provides two complementary phasor implementations. The class-based
-`PhasorAnalyzer` (`pyfli.analytical_methods`) computes phasors on CPU or GPU
-(`create_phasor_cpu`/`create_phasor_gpu`), calibrates them against an
+`PyFli` provides two complementary phasor implementations. The class-based `PhasorAnalyzer` (`pyfli.phasor.phasorS`) computes phasors on CPU or GPU (`create_phasor_cpu`/`create_phasor_gpu`), calibrates them against an
 aligned IRF (`calibrate`), and derives phase and modulation lifetimes:
 
 $$\tau_\phi = \frac{1}{n\omega}\left(\frac{s}{g}\right), \qquad \tau_M = \frac{1}{n\omega}\sqrt{\frac{1}{g^2+s^2}-1}.$$
 
-A companion plotting mixin renders phasor diagrams, lifetime-colored phasor
-maps, harmonic comparisons, and per-pixel fit overlays, and results are
-serializable to HDF5 for archival.
+A companion plotting mixin renders phasor diagrams, lifetime-colored phasor maps, harmonic comparisons, and per-pixel fit overlays, and results are serializable to HDF5 for archival.
 
-Standard phasor formulas assume an ideal continuous decay sampled over a
-full period, but real acquisitions are binned, gated, truncated, or offset,
-each of which alters the phasor geometry. A second, newer top-level `phasor`
-sub-package (re-exported directly from `pyfli`) implements the
-acquisition-mode-aware universal-circle formalism of Michalet (2021), with
-closed-form single-exponential-phasor-locus (SEPL) expressions for
-continuous decays, decays sampled into discrete bins, single and multiple
-square gates of finite width, decays recorded over only part of the period,
-and decays offset by an IRF or pulse delay. An `AcquisitionConfig` object
-captures frequency, gate width, recording window, and offset, and
-`phasor_from_config` dispatches to the appropriate formula, letting users
-place gated or truncated phasor data on a geometrically correct backbone —
-important for ICCD and SPAD systems, whose gating departs significantly from
-the ideal continuous case.
+Standard phasor formulas assume an ideal continuous decay sampled over a full period, but real acquisitions are binned, gated, truncated, or offset, each of which alters the phasor geometry. A second, newer top-level `phasor` sub-package (re-exported directly from `pyfli`) implements the acquisition-mode-aware universal-circle formalism of Michalet [@Michalet2021], with closed-form single-exponential-phasor-locus (SEPL) expressions for continuous decays, decays sampled into discrete bins, single and multiple square gates of finite width, decays recorded over only part of the period, and decays offset by an IRF or pulse delay. An `AcquisitionConfig` object captures frequency, gate width, recording window, and offset, and
+`phasor_from_config` dispatches to the appropriate formula, letting users place gated or truncated phasor data on a geometrically correct backbone — important for ICCD and SPAD systems, whose gating departs significantly from the ideal continuous case.
 
 ### Laguerre expansion technique (LET)
 
-LET deconvolves the IRF without assuming a fixed number of exponentials by
-expanding the impulse response on a discrete orthonormal Laguerre basis.
-The `LaguerreFLI` class (`pyfli.analytical_methods`, also re-exported at the
-package root) constructs the basis from the recurrence
+LET deconvolves the IRF without assuming a fixed number of exponentials by expanding the impulse response on a discrete orthonormal Laguerre basis. The `LaguerreFLI` class (`pyfli.laguerre`, also re-exported at the package root) constructs the basis from the recurrence
 
 $$b_j(n) = \sqrt{\alpha}\, b_j(n-1) + \sqrt{\alpha}\, b_{j-1}(n) - b_{j-1}(n-1),$$
 
-where $\alpha \in (0,1)$ is the scale parameter controlling how quickly the
-basis functions decay and $b_j(n)$ is the $j$-th basis function at sample
-$n$. Each measured decay is modeled as a non-negative combination of
-IRF-convolved basis functions, and the expansion coefficients are recovered
-per pixel by non-negative or ordinary least squares, with an optional safe
-fallback for ill-conditioned pixels. The scale parameter can be fixed or
-optimized automatically, and optional smoothness regularization is
-supported. Because the basis spans a continuum of decay shapes rather than
-a discrete component count, LET is robust for complex or unknown decay
-forms; lifetimes and fractions are then extracted from the reconstructed
-impulse response, and correctness of the closed-form recurrence is enforced
-by a dedicated regression test suite.
+where $\alpha \in (0,1)$ is the scale parameter controlling how quickly the basis functions decay and $b_j(n)$ is the $j$-th basis function at sample $n$. Each measured decay is modeled as a non-negative combination of IRF-convolved basis functions, and the expansion coefficients are recovered per pixel by non-negative or ordinary least squares, with an optional safe
+fallback for ill-conditioned pixels. The scale parameter can be fixed or optimized automatically, and optional smoothness regularization is supported. Because the basis spans a continuum of decay shapes rather than a discrete component count, LET is robust for complex or unknown decay forms; lifetimes and fractions are then extracted from the reconstructed impulse response, and correctness of the closed-form recurrence is enforced by a dedicated regression test suite.
 
 ### Rapid lifetime determination (RLD)
 
-For real-time and high-throughput settings, `PyFli`'s solver framework
-includes an `rld_based_guess` estimator (`pyfli.solver.base_static`) that
-derives an effective lifetime in closed form from ratios of integrated
-signal over a small number of time windows. RLD sacrifices the resolution of
-multi-component fitting for a per-pixel cost low enough to keep pace with
-high-frame-rate acquisition, and is used as a fast initial-guess plugin that
-seeds `BaseFLIFitter`/`MLEFLIFitter`, or can be called directly for a
-first-pass lifetime map ahead of full fitting.
+For real-time and high-throughput settings, `PyFli`'s solver framework includes an `rld_based_guess` estimator (`pyfli.solver.base_static`) that derives an effective lifetime in closed form from ratios of integrated signal over a small number of time windows [@Pandey2025]. RLD sacrifices the resolution of
+multi-component fitting for a per-pixel cost low enough to keep pace with high-frame-rate acquisition, and is used as a fast initial-guess plugin that seeds `BaseFLIFitter`/`MLEFLIFitter`, or can be called directly for a first-pass lifetime map ahead of full fitting.
 
 ## Detector-specific deconvolution engine
 
-A dedicated sub-package, `irf_deconvolution`, makes the detector's noise
-physics explicit rather than treating every measurement as Gaussian. Its
-`detector_weights` module maps observed counts to an underlying intensity
-through a detector-specific observation model (`TCSPCParams`, `SPADParams`,
-`ICCDParams`, `make_observation`) and assigns each time bin a statistically
-motivated weight. For **TCSPC**, it applies a Coates-type correction that
-recovers the true intensity $\Lambda$ from the recorded counts $N$ and
+A dedicated sub-package, `irf_deconvolution`, makes the detector's noise physics explicit rather than treating every measurement as Gaussian. Its `detector_weights` module maps observed counts to an underlying intensity through a detector-specific observation model (`TCSPCParams`, `SPADParams`, `ICCDParams`, `make_observation`) and assigns each time bin a statistically motivated weight. For **TCSPC**, it applies a Coates-type correction that recovers the true intensity $\Lambda$ from the recorded counts $N$ and
 excitation rate $n_{ex}$,
 
 $$\Lambda = -n_{ex} \ln\left(1 - \frac{N}{n_{ex}}\right),$$
 
 with weight $w = \left[\Lambda \cdot n_{ex} / (n_{ex} - N)\right]^{-1}$
-inflated to reflect the reduced information of piled-up bins. For **SPAD**
-detection, which is binomial per gate, it inverts the analogous binomial
-relation to recover intensity and weights bins by the corresponding binomial
-variance, the correct treatment for SwissSPAD-class arrays. For **ICCD**,
-the intensifier introduces multiplicative gain noise on top of photon
-statistics, so it uses a compound Poisson–Gaussian model with a
-multichannel-plate excess-noise factor ($F^2 \approx 2$) and a
-`generalized_anscombe` variance-stabilizing transform so the stabilized data
-can be treated with the same least-squares core.
-
-On top of the observation model, the `fli_solver` module (`solve_flim`,
-`SolverConfig`) solves for decay parameters under shared regularization:
-Tikhonov damping for stability and a total-variation penalty that suppresses
-noise while preserving edges between regions of differing lifetime, built on
-a gate matrix and cyclic-convolution decay basis (`build_gate_matrix`,
-`decay_basis`, `cyclic_conv`) so the IRF and decay model can be solved
-jointly. The result is an estimator matched to the instrument rather than
-forced into a one-size-fits-all Gaussian assumption.
+inflated to reflect the reduced information of piled-up bins. For **SPAD** detection, which is binomial per gate, it inverts the analogous binomial relation to recover intensity and weights bins by the corresponding binomial variance, the correct treatment for SwissSPAD-class arrays. For **ICCD**,
+the intensifier introduces multiplicative gain noise on top of photon statistics, so it uses a compound Poisson–Gaussian model with a multichannel-plate excess-noise factor ($F^2 \approx 2$) and a `generalized_anscombe` variance-stabilizing transform so the stabilized data can be treated with the same least-squares core.
 
 ## Advanced solver framework
 
-Beyond the per-pixel estimators, `PyFli`'s `solver` sub-package provides a
-structured framework for whole-image and spatially aware fitting.
-`BaseFLIFitter` abstracts the choice of estimator, fit range, uncertainty
-calculation, and model comparison; specialized subclasses add capabilities
-that matter at scale. `GlobalFLIFitter` clusters spatially similar pixels
-into super-pixels, fits representative cluster decays, and stitches the
-results back to full resolution, sharing statistical strength across pixels
-in photon-starved regions. `FLIBinner`/`BinnedFLIFitter` apply configurable
-spatial binning before fitting to trade resolution for signal. Derived
-quantities such as amplitude-weighted mean lifetime and FRET efficiency are
-computed directly (`shared_metrics`), and `FLICPUProcessor.process_image`
-and `FLIGPUProcessor.fit_image` apply any configured fitter class across an
-entire image — the latter optionally returning per-pixel Cramér–Rao
-uncertainty alongside the fit — letting users move from a quick per-pixel
+Beyond the per-pixel estimators, `PyFli`'s `solver` sub-package provides a structured framework for whole-image and spatially aware fitting. `BaseFLIFitter` abstracts the choice of  estimator, fit range, uncertainty calculation, and model comparison; specialized subclasses add capabilities that matter at scale. `GlobalFLIFitter` clusters spatially similar pixels into super-pixels, fits representative cluster decays, and stitches the results back to full resolution, sharing statistical strength across pixels in photon-starved regions. `FLIBinner`/`BinnedFLIFitter` apply configurable spatial binning before fitting to trade resolution for signal. Derived quantities such as amplitude-weighted mean lifetime and FRET efficiency are computed directly (`shared_metrics`), and `FLICPUProcessor.process_image` and `FLIGPUProcessor.fit_image` apply any configured fitter class across an entire image, the latter optionally returning per-pixel Cramér–Rao uncertainty alongside the fit, letting users move from a quick per-pixel
 map to a carefully regularized analysis without changing tools.
 
 ## Compressive single-pixel SPAD imaging
 
-The `sp_analysis` sub-package supports single-pixel and compressive FLI, in
-which a scene is sampled through a sequence of spatial patterns (for
-example, on a digital micromirror device) and reconstructed computationally,
-with time-resolved single-photon detection. It supplies orthogonal sensing
-bases, `HadamardBasis` and `DCTBasis`, and a `MeasurementSimulator`, and
-reconstructs a four-dimensional cube indexed by the two spatial coordinates,
-the temporal decay axis, and an optional spectral axis [@Pian2017]. Three
-reconstructors are provided: `LinearReconstructor`, a back-projection
-(ghost-imaging) solver; `TVReconstructor`, an isotropic total-variation
-solver for Gaussian-noise regimes; and `SPADPoissonReconstructor`, a
-Poisson-likelihood total-variation solver matched to photon-counting SPAD
-statistics.
+The `sp_analysis` sub-package supports single-pixel and compressive FLI, in which an image is sampled through a sequence of spatial patterns (for example, on a digital micromirror device) and reconstructed computationally, with time-resolved single-photon detection. It supplies orthogonal sensing bases, `HadamardBasis` and `DCTBasis`, and a `MeasurementSimulator`, and reconstructs a four-dimensional cube indexed by the two spatial coordinates,
+the temporal decay axis, and an optional spectral axis [@Pian2017]. Three reconstructors are provided: `LinearReconstructor`, a back-projection solver; `TVReconstructor`, an isotropic total-variation solver for Gaussian-noise regimes; and `SPADPoissonReconstructor`, a Poisson-likelihood total-variation solver matched to photon-counting SPAD statistics.
 
 ## Decay reconstruction and fit diagnostics
 
-A separate `reconstruction` sub-package closes the loop between a fit and
-the data it was fit to. `ParameterToDecayReconstruction` rebuilds a modeled
-decay cube directly from any fitted parameter map, independent of which
-estimator produced it, so the reconvolved model can be compared pixel-by-
-pixel against the original measurement as an external goodness-of-fit check
-downstream of the solver.
+A separate `reconstruction` sub-package closes the loop between a fit and the data it was fit to. `ParamToDecay` rebuilds a modeled decay cube directly from any fitted parameter map, independent of which
+estimator produced it, so the reconvolved model can be compared pixel-by-pixel against the original measurement as an external goodness-of-fit check downstream of the solver. A companion class, `DetailedRecon`, adds mono/bi-exponential splitting and dominant-lifetime classification on top of the reconstructed cube for more detailed per-pixel diagnostics.
 
-## Physics-based simulation and Cramér–Rao analysis
+## Simulation and analysis
 
-Validation of any lifetime estimator requires data whose true parameters are
-known, which only simulation can guarantee. At the most detailed level, a
-photon-by-photon Monte-Carlo TCSPC simulator (`TCSPCSimulator`) draws
-individual photon arrival times from the convolved decay, reproducing
-genuine counting statistics rather than adding Gaussian noise to an analytic
-curve; a matched `MacroSimulator` targets wide-field ICCD-style acquisition,
-and `ContinuousSimulator`/`PhotonCountSimulator` cover additional sampling
-regimes. A `NoiseEngine` applies Poisson photon noise, dark-count rate, read
-noise, timing jitter, and TCSPC pile-up so synthetic data can be made to
-resemble a specific instrument. Higher-level generators (`FLIImageGenerator`,
-`FLIModelImageGenerator`) produce spatially heterogeneous lifetime fields —
-one simulator configuration per labeled ROI region — with intensity masking
-and ROI structure, and `BatchSimulator` builds batches across parameter
-sweeps for training-data generation.
+Validation of any lifetime estimator (analytical methods and deep-learning models) requires data whose true parameters are known, which only simulation can guarantee. At the most detailed level, a photon-by-photon simulator (`TCSPCSimulator`) draws individual photon arrival times from the convolved decay, reproducing genuine counting statistics rather than adding Gaussian noise to an analytic curve, while a matched `MacroSimulator` targets wide-field ICCD-style acquisition; both share a common sampling engine and are paired with generalized, geometry-independent counterparts, `PhotonCountSimulator` and `ContinuousSimulator`, for controlled model-generation experiments. A `NoiseEngine` applies Poisson photon noise, dark-count rate, read noise, timing jitter, and TCSPC pile-up so synthetic data can be made to
+resemble a specific instrument. Higher-level generators (`FLIImageGenerator`, `FLIModelImageGenerator`) produce spatially heterogeneous lifetime fields, one simulator configuration per labeled ROI region, with intensity masking
+and ROI structure, and `BatchSimulator` builds batches across parameter sweeps for training-data generation.
 
-Precision is characterized two ways. The simulation engine computes the
-Fisher information and associated Cramér–Rao lower bound (CRLB) for the
-lifetime parameters, the theoretical best achievable precision given the
-photon budget and acquisition settings,
-$\mathrm{CRLB}(\theta_i) \ge [I(\theta)]^{-1}_{ii}$; and `FLIGPUProcessor.fit_image`
-can report the same per-pixel CRLB directly during a real fit
-(`CRLB=True`), not only in simulation. This lets users ask not only whether
-an estimator recovers the truth on average but whether it approaches the
-information-theoretic limit, and to determine in advance how many photons an
-experiment requires. `FLICalibrator` and `FLIValidator` close the loop
-between simulation and the analytical methods by fitting simulator
+Precision is characterized two ways. The simulation engine computes the Fisher information and associated Cramér–Rao lower bound (CRLB) for the lifetime parameters, the theoretical best achievable precision given the photon budget and acquisition settings,
+$\mathrm{CRLB}(\theta_i) \ge [I(\theta)]^{-1}_{ii}$; and `FLIGPUProcessor.fit_image` can report the same per-pixel CRLB directly during a real fit
+(`CRLB=True`), not only in simulation. This lets users ask not only whether an estimator recovers the truth on average but whether it approaches the information-theoretic limit, and to determine in advance how many photons an experiment requires. `FLICalibrator` and `FLIValidator` close the loop between simulation and the analytical methods by fitting simulator
 hyperparameters to, and validating simulator output against, an
 experimentally acquired calibration sample.
 
@@ -408,7 +268,7 @@ The `bayes_utils` sub-package provides a direct-inference pathway that
 complements the analytical estimators. `BiPipeline` runs a trained
 posterior-sampling model (built on BayesFlow/Keras, installed via the
 optional `pyfli-lib[tf]` extra) over a decay image to produce per-pixel
-posterior samples of the lifetime parameters; `BestParamFitSelector` then
+posterior samples of the lifetime parameters; `ParamSelector` then
 selects and aggregates the posterior-sample combination that best matches
 the measured decay for each pixel, and `plot_pixel_posterior_fit`
 visualizes a single pixel's posterior-predictive fit against the
@@ -425,7 +285,10 @@ multi-source plotting framework (`Plotter`, `PlotKit`, `SubplotVisualizer`,
 `plot_2d_subplots`) loads results from several methods or datasets through a
 unified ingestion layer and renders them side by side as spatial parameter
 maps, histograms, and other comparative views through a single declarative
-interface. `DLModelComparator` adds distribution-distance metrics, originally
+interface. This ingestion layer includes dedicated importers in `io.processed_data`
+(`AlliGprocessedImport`, `BHprocessedImport`, `PyFliprocessedImport`) that load
+results already processed by other FLI software directly into the same
+comparison framework. `DLModelComparator` adds distribution-distance metrics, originally
 built to compare deep-learning inference (including output from `bayes_utils`)
 against analytical references, so an inferred lifetime map can be
 quantitatively scored against a fitted one.
@@ -445,7 +308,7 @@ calls, on data processed both internally and by external software.
 
 Single-cell and region-level analyses depend on accurate masks. The
 `roi_maker` sub-package ships an interactive ROI editor built on PySide6
-(`ROIMaker(intensity_2d, save_path=...)`) that lets users draw ROIs over an
+(`ROIMaker(image_2d, save_path=...)`) that lets users draw ROIs over an
 intensity image via `.draw()`, then export them with `.save_masks()`,
 `.get_multi_cluster_mask()`, or `.get_binary_mask()`; it also creates masks
 automatically by intensity thresholding or clustering. These masks integrate
@@ -516,7 +379,7 @@ result = processor.fit_image(
 A complementary workflow uses phasor analysis for model-free quality control:
 
 ```python
-from pyfli.analytical_methods import PhasorAnalyzer
+from pyfli.phasor.phasorS import PhasorAnalyzer
 
 phasor = PhasorAnalyzer(frequency_hz=80e6, time_axis_ns=time_axis, n_harmonics=1)
 g, s = phasor.create_phasor_cpu(decay)
@@ -536,7 +399,7 @@ A model-free cross-check pairs Laguerre deconvolution with the phasor transform 
 
 ```python
 from pyfli import LaguerreFLI
-from pyfli.analytical_methods import PhasorAnalyzer
+from pyfli.phasor.phasorS import PhasorAnalyzer
 
 lag = LaguerreFLI(n_components=2, dt=0.048, auto_alpha=True)
 lag.fit(decay, irf)
@@ -548,7 +411,7 @@ g, s = ph.create_phasor_cpu(decay)
 
 # Quality Control
 
-The package includes a pytest test suite, spanning 19 test modules, covering parameter validation, distribution sampling, noise model statistics, the CPU and GPU solvers, the binned fitter and fitting comparator, phasor coordinate computation (both the class-based and top-level phasor APIs), the Laguerre fitter, decay reconstruction, factor analysis, and the Bayesian inference pathway (posterior-pixel plotting and parameter-combination selection). Tests are executed with `pytest -v --tb=short` and run on synthetic arrays so they are self-contained. Continuous integration runs the suite on Ubuntu, Windows, and macOS for Python 3.11 on every push and pull request against `main`/`dev`; Python 3.12 is declared as a supported interpreter and is planned for addition to the CI matrix. A separate CI job enforces `ruff` linting and formatting via `pre-commit`. Additional validation is performed empirically by comparing simulator outputs against experimentally calibrated noise statistics through the `FLIValidator` class, and by cross-checking lifetime estimates between analytical methods on the same dataset.
+The package includes a pytest test suite, spanning 18 test modules, covering parameter validation, distribution sampling, noise model statistics, the CPU and GPU solvers, the binned fitter and fitting comparator, phasor coordinate computation (both the class-based and top-level phasor APIs), the Laguerre fitter, decay reconstruction, factor analysis, data saving and visualization utilities, and the Bayesian inference pathway (posterior-pixel plotting and parameter-combination selection). Tests are executed with `pytest -v --tb=short` and run on synthetic arrays so they are self-contained. Continuous integration runs the suite on Ubuntu, Windows, and macOS for Python 3.11 on every push and pull request against `main`/`dev`; Python 3.12 is declared as a supported interpreter and is planned for addition to the CI matrix. A separate CI job enforces `ruff` linting and formatting via `pre-commit`. Additional validation is performed empirically by comparing simulator outputs against experimentally calibrated noise statistics through the `FLIValidator` class, and by cross-checking lifetime estimates between analytical methods on the same dataset.
 
 # Discussion and Future Work
 
