@@ -5,9 +5,7 @@ from pyfli.io.data_ops_static import StaticDataOps as ds
 from pyfli.io.spad_io import load_spad
 
 
-def test_load_spad_applies_pileup_before_circular_folding(
-    tmp_path,
-):
+def test_pileup_before_fold(tmp_path):
     period_bins = 70
     phase_offset = 9
 
@@ -83,7 +81,6 @@ def test_load_spad_applies_pileup_before_circular_folding(
     )
 
     assert result.fold_layout is not None
-
     assert result.fold_layout.phase_shift == -phase_offset
 
     np.testing.assert_allclose(
@@ -94,9 +91,7 @@ def test_load_spad_applies_pileup_before_circular_folding(
     )
 
 
-def test_load_spad_does_not_apply_pileup_when_disabled(
-    tmp_path,
-):
+def test_pileup_disabled(tmp_path):
     path = tmp_path / "counts.h5"
 
     source = np.arange(
@@ -133,13 +128,10 @@ def test_load_spad_does_not_apply_pileup_when_disabled(
     )
 
     assert result.metadata["pile_up_applied"] is False
-
     assert result.metadata["fold_applied"] is False
 
 
-def test_hdf5_folder_applies_pileup_before_file_sum(
-    tmp_path,
-):
+def test_folder_pileup_order(tmp_path):
     first = np.full(
         (
             2,

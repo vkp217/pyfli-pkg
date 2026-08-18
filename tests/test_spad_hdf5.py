@@ -5,9 +5,7 @@ import pytest
 from pyfli.io.spad_hdf5 import read_spad_hdf5
 
 
-def test_reads_existing_ss2_gate_structure_in_numeric_order(
-    tmp_path,
-):
+def test_ss2_gate_order(tmp_path):
     path = tmp_path / "ss2.hdf5"
 
     with h5py.File(
@@ -59,9 +57,7 @@ def test_reads_existing_ss2_gate_structure_in_numeric_order(
     )
 
 
-def test_reads_existing_ss3_gate_structure_in_numeric_order(
-    tmp_path,
-):
+def test_ss3_gate_order(tmp_path):
     path = tmp_path / "ss3.hdf5"
 
     with h5py.File(
@@ -113,9 +109,7 @@ def test_reads_existing_ss3_gate_structure_in_numeric_order(
     )
 
 
-def test_reads_arbitrary_nested_gate_names_from_attributes(
-    tmp_path,
-):
+def test_gate_order_from_attrs(tmp_path):
     path = tmp_path / "custom.h5"
 
     with h5py.File(
@@ -168,9 +162,7 @@ def test_reads_arbitrary_nested_gate_names_from_attributes(
     assert result.candidate.ordering_source == "attribute:delay_ps"
 
 
-def test_reads_stacked_cube_using_axes_metadata(
-    tmp_path,
-):
+def test_stacked_cube_axes(tmp_path):
     path = tmp_path / "stacked.h5"
 
     source = np.arange(
@@ -211,9 +203,7 @@ def test_reads_stacked_cube_using_axes_metadata(
     )
 
 
-def test_rejects_ambiguous_multiple_gate_groups(
-    tmp_path,
-):
+def test_ambiguous_gate_groups(tmp_path):
     path = tmp_path / "ambiguous.h5"
 
     with h5py.File(
@@ -246,9 +236,7 @@ def test_rejects_ambiguous_multiple_gate_groups(
         read_spad_hdf5(str(path))
 
 
-def test_rejects_stacked_cube_when_time_axis_is_ambiguous(
-    tmp_path,
-):
+def test_ambiguous_time_axis(tmp_path):
     path = tmp_path / "ambiguous_axes.h5"
 
     with h5py.File(

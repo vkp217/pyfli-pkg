@@ -370,18 +370,26 @@ def circular_align(
     data : np.ndarray
         Three-dimensional SPAD data cube with shape (H, W, T).
     phase_shift : int
-        Integer shift compatible with numpy.roll. A negative value moves later gates
-        toward the beginning, matching MATLAB circshift(..., negative_shift).
+        Integer shift applied along the temporal axis. A negative value moves
+        later gates toward the beginning of the temporal sequence.
 
     Returns
     -------
     np.ndarray
-        Circularly aligned data cube with the same shape and dtype as the input.
+        Shifted data cube with the same shape and dtype as the input.
     """
     array = np.asarray(data)
+
     if array.ndim != 3:
         raise ValueError(f"Expected a 3D (H, W, T) cube, got shape {array.shape}.")
-    if not isinstance(phase_shift, (int, np.integer)):
+
+    if not isinstance(
+        phase_shift,
+        (
+            int,
+            np.integer,
+        ),
+    ):
         raise TypeError(
             f"phase_shift must be an integer, got {type(phase_shift).__name__}."
         )

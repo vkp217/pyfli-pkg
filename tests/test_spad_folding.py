@@ -20,7 +20,10 @@ def _periodic_decay(
     period = 3.0 + 180.0 * np.exp(-time / 9.0)
 
     acquisition = np.roll(
-        np.tile(period, 4),
+        np.tile(
+            period,
+            4,
+        ),
         phase_offset,
     )
 
@@ -43,7 +46,7 @@ def _periodic_decay(
     )
 
 
-def test_circular_align_matches_matlab_negative_circshift():
+def test_circular_align():
     data = np.arange(6).reshape(
         1,
         1,
@@ -70,7 +73,7 @@ def test_circular_align_matches_matlab_negative_circshift():
     )
 
 
-def test_auto_fold_detects_nonzero_phase_and_recovers_cut_signal():
+def test_auto_fold_phase():
     period, cube = _periodic_decay(
         period_bins=70,
         phase_offset=17,
@@ -90,6 +93,7 @@ def test_auto_fold_detects_nonzero_phase_and_recovers_cut_signal():
     assert layout.repeat_count == 4
     assert layout.phase_origin == 17
     assert layout.phase_shift == -17
+
     assert folded.shape == (
         2,
         3,
@@ -104,7 +108,7 @@ def test_auto_fold_detects_nonzero_phase_and_recovers_cut_signal():
     )
 
 
-def test_manual_phase_shift_is_applied_exactly():
+def test_manual_phase_shift():
     period, cube = _periodic_decay(
         period_bins=70,
         phase_offset=2,
@@ -135,7 +139,7 @@ def test_manual_phase_shift_is_applied_exactly():
     )
 
 
-def test_fold_rejects_incompatible_manual_period():
+def test_invalid_manual_period():
     _, cube = _periodic_decay(
         period_bins=70,
         phase_offset=5,
@@ -151,7 +155,7 @@ def test_fold_rejects_incompatible_manual_period():
         )
 
 
-def test_fold_rejects_low_confidence_nonperiodic_signal():
+def test_low_fold_confidence():
     rng = np.random.default_rng(42)
 
     cube = rng.poisson(

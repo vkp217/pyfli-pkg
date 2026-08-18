@@ -14,7 +14,7 @@ from pyfli.io.ss2_bin import (
 )
 
 
-def test_deinterleave_ss2_columns_matches_matlab_mapping():
+def test_column_deinterleave():
     raw = np.zeros(
         (
             1,
@@ -48,7 +48,7 @@ def test_deinterleave_ss2_columns_matches_matlab_mapping():
     )
 
 
-def test_combine_ss2_10bit_subframes_sums_each_group_of_four():
+def test_10bit_subframes():
     frames = np.empty(
         (
             4,
@@ -76,9 +76,7 @@ def test_combine_ss2_10bit_subframes_sums_each_group_of_four():
     assert np.all(decoded == 15)
 
 
-def test_read_ss2_bin_file_10bit_decodes_four_raw_frames(
-    tmp_path,
-):
+def test_bin_10bit_decode(tmp_path):
     frames = np.empty(
         (
             4,
@@ -113,9 +111,7 @@ def test_read_ss2_bin_file_10bit_decodes_four_raw_frames(
     assert np.all(decoded == 10)
 
 
-def test_read_ss2_bin_acquisition_stitches_top_and_bottom(
-    tmp_path,
-):
+def test_bin_stitch(tmp_path):
     top = np.full(
         (
             1,
@@ -171,9 +167,7 @@ def test_read_ss2_bin_acquisition_stitches_top_and_bottom(
     )
 
 
-def test_discover_ss2_bin_files_sorts_chunk_indices_numerically(
-    tmp_path,
-):
+def test_bin_chunk_order(tmp_path):
     frame = np.zeros(
         (
             1,
@@ -205,9 +199,7 @@ def test_discover_ss2_bin_files_sorts_chunk_indices_numerically(
     assert os.path.basename(bottom_files[10]) == "btm10.bin"
 
 
-def test_read_ss2_bin_acquisition_rejects_top_bottom_mismatch(
-    tmp_path,
-):
+def test_bin_pair_mismatch(tmp_path):
     frame = np.zeros(
         (
             1,
@@ -233,9 +225,7 @@ def test_read_ss2_bin_acquisition_rejects_top_bottom_mismatch(
         )
 
 
-def test_read_ss2_bin_acquisition_rejects_missing_chunk_index(
-    tmp_path,
-):
+def test_bin_missing_chunk(tmp_path):
     frame = np.zeros(
         (
             1,

@@ -288,21 +288,37 @@ class StaticDataOps:
         hot_pixels: bool = True,
         hp_path: str | None = None,
     ) -> Any:
-        """
-        Reads SS3 gated HDF5 data, optionally applying pile-up and hot-pixel corrections.
-        Signature unchanged — safe to call from data_operations.py.
-        """
+        """Read SwissSPAD3 HDF5 data through the shared SPAD loader."""
         if hot_pixels and hp_path is None:
             raise ValueError("hp_path must be provided when hot_pixels=True.")
+
         try:
-            tpsfs = StaticDataOps.spad_hdf5_read(
-                fname, "Bottom G2 Gate", pile_up=pileCorr
+            from .spad_io import SpadIO
+
+            result = SpadIO.load_ss3(
+                fname,
+                config={
+                    "input_format": "hdf5",
+                    "bit_depth": 10,
+                    "pile_up": pileCorr,
+                    "fold": False,
+                },
+                default_bit_depth=10,
             )
+
+            tpsfs = result.data
+
             if hot_pixels:
-                tpsfs = StaticDataOps.apply_interpolation_mask(tpsfs, hp_path=hp_path)
+                tpsfs = StaticDataOps.apply_interpolation_mask(
+                    tpsfs,
+                    hp_path=hp_path,
+                )
+
             return tpsfs
-        except Exception as e:
-            if isinstance(e, ValueError):
-                raise e
-            logging.error(f"HDF5 Load Error: {e}")
+
+        except Exception as exc:
+            if isinstance(exc, ValueError):
+                raise
+
+            logging.error(f"HDF5 Load Error: {exc}")
             return None
