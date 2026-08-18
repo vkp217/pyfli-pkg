@@ -2,7 +2,7 @@
 title: 'PyFLI: A Unified, Detector-Agnostic, and Open-Source Python Package for End-to-End Fluorescence Lifetime Imaging'
 tags:
   - Python
-  - fluorescence lifetime imaging
+  - Fluorescence Lifetime Imaging
   - FLIM
   - FLI
   - TCSPC
@@ -13,7 +13,7 @@ tags:
   - Maximum likelihood estimation
   - Laguerre method
   - GPU computing
-  - biomedical optics
+  - Biomedical Optics
 authors:
   - name: Vikas Pandey
     orcid: 0000-0001-5477-1095
@@ -89,10 +89,7 @@ interface with GPU support, a detector-physics-aware deconvolution engine, and a
 
 At the workflow level, this functionality is organised into three
 interconnected modules (Figure 1): a physics-guided **simulator** that
-couples parameter priors with an instrument response function under
-detector-specific noise statistics to generate labelled synthetic data; a
-**parameter-estimation** module that ingests experimental decays across
-supported instrument formats and feeds them to the analytical estimators
+couples parameter priors with an IRF under detector-specific noise statistics to generate labelled synthetic data; a **parameter-estimation** module that ingests experimental decays across supported instrument formats and feeds them to the analytical estimators
 described below; and a **data-visualization** suite for comparative
 plotting, fitting diagnostics, and cross-method statistics on data processed
 either internally or by external software.
@@ -511,8 +508,8 @@ by the author.
 
 # Acknowledgements
 
-I acknowledge Dr. Xavier Michalet for his extensive mathematical implementation of phasor, it was very helpful in drafting the extensive functionality 
+I acknowledge Dr. Xavier Michalet for his detailed phasor method publication, which was very helpful in drafting the extensive functionality 
 of phasor.
-I thank Sherry Catherine, Naxue Yuan, Luis Chavez for providing the biological samples and FLI data from different imaging set up.
+I thank Nanxue Yuan, Saif Ragab, Catherine Sherry, Isaiah Crosbourne, Luis Chavez for providing the experimental data from different imaging set up and using the package for their data analysis.
 
 # References
