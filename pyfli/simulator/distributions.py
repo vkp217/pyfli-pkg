@@ -22,26 +22,26 @@ class ParameterSampler:
     """
 
     @staticmethod
-    def sample_qe(sensor_type: str = "ICCD", rng: Any | None = None) -> Any:
+    def sample_qe(sensor_type: str = "continuous", rng: Any | None = None) -> Any:
         """Samples QE based on sensor type."""
         _r = rng or np.random
-        if sensor_type.upper() == "ICCD":
-            return _r.uniform(0.15, 0.35)  # Typical ICCD QE
-        return _r.uniform(0.70, 0.90)  # Typical PHOTON_COUNTER QE
+        if sensor_type.upper() == "CONTINUOUS":
+            return _r.uniform(0.15, 0.35)  # Typical continuous (ICCD) QE
+        return _r.uniform(0.70, 0.90)  # Typical discrete (photon-counter) QE
 
     @staticmethod
     def sample_noise_params(
-        bit_depth: int, sensor_type: str = "ICCD", rng: Any | None = None
+        bit_depth: int, sensor_type: str = "continuous", rng: Any | None = None
     ) -> dict[Any, Any]:
         """Centralized control for hardware noise levels."""
         _r = rng or np.random
-        if sensor_type.upper() == "ICCD":
+        if sensor_type.upper() == "CONTINUOUS":
             # Read noise is a fixed electronic property (electrons RMS), independent of bit depth
             read_sigma = _r.uniform(1.0, 3.0)
             return {"read_sigma": read_sigma}
         return {
             "read_sigma": 0.0
-        }  # PHOTON_COUNTER sensors effectively have zero read noise
+        }  # discrete (photon-counter) sensors effectively have zero read noise
 
     @staticmethod
     def sample_beta(

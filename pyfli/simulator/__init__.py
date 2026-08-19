@@ -11,17 +11,17 @@ primarily re-exports package symbols or constants for downstream imports.
 """
 
 from .distributions import ParameterSampler
-from .main_factory import MacroSimulator, TCSPCSimulator
-from .main_factory_gen import ContinuousSimulator, PhotonCountSimulator
-from .physics import HardSimulator, HardestSimulator
+from .irf_sim.irf_generator import IRFGenerator
+from .combined.main_factory import MacroSimulator, TCSPCSimulator
+from .separate.main_factory_gen import ContinuousSimulator, PhotonCountSimulator
 from .noise_models import NoiseEngine
 from .simulator_engine import FLIEngine
-from .sim_image_generator import FLIImageGenerator
-from .sim_model_image_generator import FLIModelImageGenerator
-from .sim_stat_test import FLIValidator
+from .combined.sim_image_generator import FLIImageGenerator
+from .separate.sim_model_image_generator import FLIModelImageGenerator
+from .sim_calibrator import FLIValidator
 from .calibration_engine import FLICalibrator
-from .batch_sim import BatchSimulator
 from .sim_workflow import (
+    BatchSimulator,
     SimGenerator,
     SimOutput,
     SimOutputWithIRFOffset,
