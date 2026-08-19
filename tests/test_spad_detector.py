@@ -216,25 +216,32 @@ def test_ss3_hdf5(tmp_path):
 
 
 def test_ss2_bin(tmp_path):
-    top = np.full(
-        (
-            1,
-            SS2_HALF_HEIGHT,
-            SS2_WIDTH,
-        ),
-        7,
+    row_values = np.arange(
+        SS2_HALF_HEIGHT,
         dtype=np.uint8,
+    ).reshape(
+        1,
+        SS2_HALF_HEIGHT,
+        1,
     )
 
-    bottom = np.full(
+    top = np.broadcast_to(
+        row_values,
         (
             1,
             SS2_HALF_HEIGHT,
             SS2_WIDTH,
         ),
-        13,
-        dtype=np.uint8,
-    )
+    ).copy()
+
+    bottom = np.broadcast_to(
+        row_values,
+        (
+            1,
+            SS2_HALF_HEIGHT,
+            SS2_WIDTH,
+        ),
+    ).copy()
 
     top.tofile(tmp_path / "top0.bin")
 
@@ -265,22 +272,56 @@ def test_ss2_bin(tmp_path):
         1,
     )
 
-    assert np.all(
-        decay[
-            :256,
-            :,
-            0,
-        ]
-        == 7
+    assert decay.dtype == np.uint16
+
+    expected_top = np.broadcast_to(
+        np.arange(
+            SS2_HALF_HEIGHT,
+            dtype=np.uint16,
+        ).reshape(
+            SS2_HALF_HEIGHT,
+            1,
+        ),
+        (
+            SS2_HALF_HEIGHT,
+            SS2_WIDTH,
+        ),
     )
 
-    assert np.all(
+    expected_bottom = np.flip(
+        expected_top,
+        axis=0,
+    )
+
+    np.testing.assert_array_equal(
         decay[
-            256:,
+            :SS2_HALF_HEIGHT,
             :,
             0,
-        ]
-        == 13
+        ],
+        expected_top,
+    )
+
+    np.testing.assert_array_equal(
+        decay[
+            SS2_HALF_HEIGHT:,
+            :,
+            0,
+        ],
+        expected_bottom,
+    )
+
+    np.testing.assert_array_equal(
+        decay[
+            SS2_HALF_HEIGHT - 1,
+            :,
+            0,
+        ],
+        decay[
+            SS2_HALF_HEIGHT,
+            :,
+            0,
+        ],
     )
 
 

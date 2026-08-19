@@ -523,7 +523,12 @@ def read_ss2_bin_acquisition(
     bottom_prefix: str = "btm",
 ) -> SS2BinReadResult:
     """
-    Decode, concatenate, and stitch a complete SwissSPAD2 binary acquisition.
+    Decode, orient, concatenate, and stitch a complete SwissSPAD2 binary acquisition.
+
+    The native SwissSPAD2 top and bottom detector halves use opposite row
+    orientations. The top half is retained in decoded row order, while the bottom
+    half is vertically flipped before it is placed below the top half. The resulting
+    cube is returned in physical detector orientation with shape (512, 512, T).
 
     Parameters
     ----------
@@ -640,23 +645,30 @@ def read_ss2_bin_acquisition(
             gate_offset + chunk_gate_count,
         )
 
+        top_target = stitched[
+            :SS2_HALF_HEIGHT,
+            :,
+            gate_slice,
+        ]
+
         _decode_ss2_bin_into(
             top_file,
-            stitched[
-                :SS2_HALF_HEIGHT,
-                :,
-                gate_slice,
-            ],
+            top_target,
             bit_depth,
         )
 
+        bottom_target = stitched[
+            SS2_HALF_HEIGHT:,
+            :,
+            gate_slice,
+        ]
+
         _decode_ss2_bin_into(
             bottom_file,
-            stitched[
-                SS2_HALF_HEIGHT:,
-                :,
-                gate_slice,
-            ],
+            np.flip(
+                bottom_target,
+                axis=0,
+            ),
             bit_depth,
         )
 
