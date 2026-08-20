@@ -15,7 +15,7 @@ from .irf_sim.irf_generator import IRFGenerator
 from .combined.main_factory import MacroSimulator, TCSPCSimulator
 from .separate.main_factory_gen import ContinuousSimulator, PhotonCountSimulator
 from .noise_models import NoiseEngine
-from .simulator_engine import FLIEngine
+from .combined.simulator_engine import FLIEngine
 from .combined.sim_image_generator import FLIImageGenerator
 from .separate.sim_model_image_generator import FLIModelImageGenerator
 from .sim_calibrator import FLIValidator

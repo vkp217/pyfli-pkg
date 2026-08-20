@@ -5,12 +5,12 @@ This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLI
 data generation, hardware noise modeling, calibration, and validation tools. Public API
 includes classes :class:`MacroSimulator` and :class:`TCSPCSimulator`.
 
-Both classes wrap :class:`~pyfli.simulator.simulator_engine.FLIEngine`; their shared
-noise/scaling pipeline lives in :mod:`pyfli.simulator.main_common`.
+Both classes wrap :class:`~pyfli.simulator.combined.simulator_engine.FLIEngine`; their
+shared noise/scaling pipeline lives in :mod:`pyfli.simulator.main_common`.
 """
 
 from ..main_common import BaseContinuousSimulator, BaseDiscreteSimulator
-from ..simulator_engine import FLIEngine
+from .simulator_engine import FLIEngine
 
 
 class MacroSimulator(BaseContinuousSimulator):

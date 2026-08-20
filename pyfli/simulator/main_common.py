@@ -6,10 +6,10 @@ Shared engine-wrapping pipelines for the continuous (ICCD-style) and discrete
 
 ``combined/main_factory.py`` (:class:`~pyfli.simulator.combined.main_factory.MacroSimulator`,
 :class:`~pyfli.simulator.combined.main_factory.TCSPCSimulator`, wrapping
-:class:`~pyfli.simulator.simulator_engine.FLIEngine`) and
+:class:`~pyfli.simulator.combined.simulator_engine.FLIEngine`) and
 ``separate/main_factory_gen.py`` (:class:`~pyfli.simulator.separate.main_factory_gen.ContinuousSimulator`,
 :class:`~pyfli.simulator.separate.main_factory_gen.PhotonCountSimulator`, wrapping
-:class:`~pyfli.simulator.model_simulator.FLIModelSimulator`) implement the identical
+:class:`~pyfli.simulator.separate.model_simulator.FLIModelSimulator`) implement the identical
 noise/scaling pipeline; they differ only in which engine class they wrap, the names of
 a few methods on that engine, and whether the "mono" branch trims the returned maps
 dict. Subclasses declare those differences as class attributes; this module owns the
@@ -232,7 +232,18 @@ class BaseDiscreteSimulator:
             Dictionary containing the data produced by call.
         """
         p = getattr(self.engine, self.sample_params_name)()
-        n_cycles = np.random.randint(1, self.engine.params_cfg["cycles"] + 1)
+        low_cycles, high_cycles = self.engine.params_cfg["cycles"]
+        alpha_cyc, beta_cyc = self.engine.params_cfg["pc"]
+        n_cycles = int(
+            round(
+                ParameterSampler.sample_beta(
+                    alpha_cyc,
+                    beta_cyc,
+                    scale=high_cycles - low_cycles,
+                    offset=low_cycles,
+                )
+            )
+        )
         mu_per_cycle = 0.01
         bit_depth = self.engine.params_cfg["bit"]
         max_bin_count = (2**bit_depth) - 1

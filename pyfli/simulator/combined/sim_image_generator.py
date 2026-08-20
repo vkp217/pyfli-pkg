@@ -23,15 +23,20 @@ class FLIImageGenerator(BaseFLIImageGenerator):
     ----------
     irf_data : np.ndarray
         Instrument response data used to convolve or simulate decays.
-    intensity_image_path : str | None
-        Optional path to a color or grayscale image (any bit depth) used to
-        derive a per-pixel binary mask: any pixel with a nonzero value (any
-        nonzero color channel, or a nonzero grayscale value) is foreground
-        (1.0); pure zero/black is background (0.0). An already-binary
-        source image passes through unchanged. If omitted, a mask of ones
-        with shape ``image_shape`` is used (no masking).
-    roi_mask_path : str | None
-        Filesystem path used by this workflow.
+    intensity_image : str | np.ndarray | None
+        Optional color or grayscale image (any bit depth) — a path to a PNG/
+        TIFF/etc. file, or an already-loaded array — used to derive a
+        per-pixel binary mask: any pixel with a nonzero value (any nonzero
+        color channel, or a nonzero grayscale value) is foreground (1.0);
+        pure zero/black is background (0.0). An already-binary source
+        passes through unchanged. If omitted, a mask of ones with shape
+        ``image_shape`` is used (no masking).
+    roi_mask : str | np.ndarray | None
+        Optional ROI label mask — a path to a grayscale/label image file, or
+        an already-loaded integer-labeled array — where values 0, 1, 2, ...
+        identify different ROIs. Resized (nearest-neighbor) to match the
+        intensity mask shape if needed. If omitted, all pixels belong to
+        ROI 0.
     roi_params : Any | None
         Parameters defining ROI shape, position, and intensity properties.
     image_shape : tuple[int, ...]
@@ -40,8 +45,10 @@ class FLIImageGenerator(BaseFLIImageGenerator):
         Algorithm or model-selection method to use.
     verbose : bool
         If ``True``, report progress and diagnostic messages during processing.
-    bool_mask : np.ndarray | None
-        Boolean mask selecting pixels included in the analysis.
+    bool_mask : str | np.ndarray | None
+        Boolean mask selecting pixels included in the analysis — a path to
+        an image file (binarized the same way as ``intensity_image``), or
+        an already-loaded boolean/numeric array.
     """
 
     continuous_cls = MacroSimulator

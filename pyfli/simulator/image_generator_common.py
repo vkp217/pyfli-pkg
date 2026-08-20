@@ -45,7 +45,7 @@ class BaseFLIImageGenerator:
     include_background_roi_in_maps : bool
         Whether parameter maps are recorded for pixels in the background ROI
         (ROI value 0), in addition to any labeled ROI. Ignored (treated as
-        ``True``) whenever no ``roi_mask_path`` was supplied, since in that
+        ``True``) whenever no ``roi_mask`` was supplied, since in that
         case ROI 0 is not "background" — it's the only region there is.
     """
 
@@ -53,55 +53,87 @@ class BaseFLIImageGenerator:
     discrete_cls: type
     include_background_roi_in_maps: bool = True
 
+    @staticmethod
+    def _load_array(source: str) -> np.ndarray:
+        """Loads an image file (PNG, TIFF, or anything Pillow can open) as an array."""
+        img = Image.open(source)
+        if img.mode in ("P", "PA"):
+            img = img.convert("RGBA")
+        return np.array(img)
+
+    @staticmethod
+    def _binarize(arr: np.ndarray) -> np.ndarray:
+        """
+        Binary foreground/background mask: any pixel with a nonzero value (any
+        nonzero channel for color input, any nonzero value for grayscale input
+        at any bit depth) is foreground; pure zero/black is background. An
+        already-binary source passes through unchanged, since re-binarizing it
+        is a no-op.
+        """
+        return arr.any(axis=-1) if arr.ndim == 3 else (arr != 0)
+
+    @staticmethod
+    def _resize_labels_nearest(arr: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
+        """Nearest-neighbor resizes an integer-valued label array to ``shape``."""
+        label_img = Image.fromarray(arr.astype(np.int32), mode="I")
+        resized = label_img.resize((shape[1], shape[0]), Image.NEAREST)
+        return np.array(resized)
+
     def __init__(
         self,
         irf_data: np.ndarray,
-        intensity_image_path: str | None = None,
-        roi_mask_path: str | None = None,
+        intensity_image: str | np.ndarray | None = None,
+        roi_mask: str | np.ndarray | None = None,
         roi_params: Any | None = None,
         image_shape: tuple[int, ...] = (32, 32),
         method: str = "continuous",
         verbose: bool = True,
-        bool_mask: np.ndarray | None = None,
+        bool_mask: str | np.ndarray | None = None,
     ) -> None:
         self.method = method.lower()
         self.irf_data = irf_data
         self.verbose = verbose
-        self.bool_mask = (
-            np.asarray(bool_mask, dtype=bool) if bool_mask is not None else None
-        )
-        # Without an explicit roi_mask_path every pixel is ROI 0 by
+
+        if bool_mask is None:
+            self.bool_mask = None
+        elif isinstance(bool_mask, str):
+            self.bool_mask = self._binarize(self._load_array(bool_mask))
+        else:
+            self.bool_mask = np.asarray(bool_mask, dtype=bool)
+
+        # Without an explicit roi_mask every pixel is ROI 0 by
         # construction (see below) — that's "the only region", not
         # "background to exclude", so the exclusion policy only applies
         # when the caller actually supplied a multi-region ROI mask.
         self._record_background_roi = (
-            self.include_background_roi_in_maps or roi_mask_path is None
+            self.include_background_roi_in_maps or roi_mask is None
         )
 
         # Loading the intensity Mask
-        if intensity_image_path:
-            img = Image.open(intensity_image_path)
-            if img.mode in ("P", "PA"):
-                img = img.convert("RGBA")
-            arr = np.array(img)
-            # Binary foreground/background mask: any pixel with a nonzero
-            # value (any nonzero channel for color input, any nonzero value
-            # for grayscale input at any bit depth) is foreground; pure
-            # zero/black is background. An already-binary source image
-            # passes through unchanged, since re-binarizing it is a no-op.
-            nonzero = arr.any(axis=-1) if arr.ndim == 3 else (arr != 0)
-            self.intensity_mask = nonzero.astype(float)
+        if intensity_image is not None:
+            arr = (
+                self._load_array(intensity_image)
+                if isinstance(intensity_image, str)
+                else np.asarray(intensity_image)
+            )
+            self.intensity_mask = self._binarize(arr).astype(float)
             self.shape = self.intensity_mask.shape
         else:
             self.intensity_mask = np.ones(image_shape)
             self.shape = image_shape
 
         # loading the ROI Mask (multi-cluster mask)
-        if roi_mask_path:
-            mask_img = Image.open(roi_mask_path).convert("L")
-            self.roi_mask = np.array(
-                mask_img.resize((self.shape[1], self.shape[0]), Image.NEAREST)
-            ).astype(int)
+        if roi_mask is not None:
+            if isinstance(roi_mask, str):
+                mask_img = Image.open(roi_mask).convert("L")
+                self.roi_mask = np.array(
+                    mask_img.resize((self.shape[1], self.shape[0]), Image.NEAREST)
+                ).astype(int)
+            else:
+                arr = np.asarray(roi_mask).astype(int)
+                if arr.shape != tuple(self.shape):
+                    arr = self._resize_labels_nearest(arr, self.shape)
+                self.roi_mask = arr
         else:
             self.roi_mask = np.zeros(self.shape, dtype=int)
 

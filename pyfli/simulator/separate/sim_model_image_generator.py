@@ -12,6 +12,8 @@ Shared mask loading, simulator selection, and pixel-loop logic live in
 :mod:`pyfli.simulator.image_generator_common`.
 """
 
+import numpy as np
+
 from ..image_generator_common import BaseFLIImageGenerator
 from .main_factory_gen import ContinuousSimulator, PhotonCountSimulator
 
@@ -33,13 +35,13 @@ class FLIModelImageGenerator(BaseFLIImageGenerator):
     def __init__(
         self,
         irf_data,
-        intensity_image_path=None,
-        roi_mask_path=None,
+        intensity_image: str | np.ndarray | None = None,
+        roi_mask: str | np.ndarray | None = None,
         roi_params=None,
         image_shape=(32, 32),
         method="continuous",
         verbose=True,
-        bool_mask=None,
+        bool_mask: str | np.ndarray | None = None,
     ):
         """Loads masks and instantiates one simulator per ROI.
 
@@ -48,17 +50,19 @@ class FLIModelImageGenerator(BaseFLIImageGenerator):
                 per-pixel IRF slice is used during simulation; otherwise a
                 single IRF (picked via ``irf_picker``) is shared across
                 pixels.
-            intensity_image_path: Optional path to a color or grayscale
-                image (any bit depth) used to derive a per-pixel binary
+            intensity_image: Optional color or grayscale image (any bit
+                depth) — a path to a PNG/TIFF/etc. file, or an
+                already-loaded array — used to derive a per-pixel binary
                 mask: any pixel with a nonzero value (any nonzero color
                 channel, or a nonzero grayscale value) is foreground (1.0);
                 pure zero/black is background (0.0). An already-binary
-                source image passes through unchanged. If omitted, a mask
-                of ones with shape ``image_shape`` is used (no masking).
-            roi_mask_path: Optional path to a grayscale/label image where
-                pixel values 0, 1, 2, ... identify different ROIs; resized
-                (nearest-neighbor) to match the intensity mask shape. If
-                omitted, all pixels belong to ROI 0.
+                source passes through unchanged. If omitted, a mask of
+                ones with shape ``image_shape`` is used (no masking).
+            roi_mask: Optional ROI label mask — a path to a grayscale/label
+                image file, or an already-loaded integer-labeled array —
+                where values 0, 1, 2, ... identify different ROIs; resized
+                (nearest-neighbor) to match the intensity mask shape if
+                needed. If omitted, all pixels belong to ROI 0.
             roi_params: Optional list of per-ROI config dicts (indexed by
                 ROI value) forwarded as ``**cfg`` to the simulator
                 constructor for that ROI; may include a ``sensor_type``
@@ -77,14 +81,16 @@ class FLIModelImageGenerator(BaseFLIImageGenerator):
                 that ROI.
             verbose: If True, prints progress info and shows the tqdm
                 progress bar during ``generate_image``.
-            bool_mask: Optional boolean array of shape ``image_shape``
-                used to zero out pixels outside the mask in the final
-                output cubes/maps.
+            bool_mask: Optional boolean mask of shape ``image_shape`` used
+                to zero out pixels outside the mask in the final output
+                cubes/maps — a path to an image file (binarized the same
+                way as ``intensity_image``), or an already-loaded
+                boolean/numeric array.
         """
         super().__init__(
             irf_data=irf_data,
-            intensity_image_path=intensity_image_path,
-            roi_mask_path=roi_mask_path,
+            intensity_image=intensity_image,
+            roi_mask=roi_mask,
             roi_params=roi_params,
             image_shape=image_shape,
             method=method,

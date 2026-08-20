@@ -5,12 +5,12 @@ This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLI
 data generation, hardware noise modeling, calibration, and validation tools. Public API
 includes classes :class:`ContinuousSimulator` and :class:`PhotonCountSimulator`.
 
-Both classes wrap :class:`~pyfli.simulator.model_simulator.FLIModelSimulator`; their
-shared noise/scaling pipeline lives in :mod:`pyfli.simulator.main_common`.
+Both classes wrap :class:`~pyfli.simulator.separate.model_simulator.FLIModelSimulator`;
+their shared noise/scaling pipeline lives in :mod:`pyfli.simulator.main_common`.
 """
 
 from ..main_common import BaseContinuousSimulator, BaseDiscreteSimulator
-from ..model_simulator import FLIModelSimulator
+from .model_simulator import FLIModelSimulator
 
 
 class ContinuousSimulator(BaseContinuousSimulator):

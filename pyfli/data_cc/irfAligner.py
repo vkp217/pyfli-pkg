@@ -127,13 +127,17 @@ class IRFAligner:
 
         return rising_indices
 
-    def estimate_shift(self, fraction: float = 0.1) -> Any:
+    def estimate_shift(
+        self, fraction: float = 0.1, manual_correction: float = 0.0
+    ) -> Any:
         """
         Calculates how much the IRF must move to match the decay's start.
 
         Pixels where either trace has no detectable rise (see
         :meth:`_find_rising_point`) get a shift of 0 rather than a spurious
         value, since there is no meaningful feature to align.
+        ``manual_correction`` is subtracted from every pixel's shift,
+        including those fallback pixels.
         """
         t_decay = self._find_rising_point(self.decay, fraction=fraction)
         t_irf = self._find_rising_point(self.irf, fraction=fraction)
@@ -148,12 +152,13 @@ class IRFAligner:
                 UserWarning,
                 stacklevel=2,
             )
-        return np.nan_to_num(shifts, nan=0.0)
+        return np.nan_to_num(shifts, nan=0.0) - manual_correction
 
     def estimate_shift_debiased(
         self,
         low_fraction: float = 0.02,
         smooth_window: int = 3,
+        manual_correction: float = 0.0,
     ) -> Any:
         """
         Estimates the per-pixel IRF shift from where each trace departs
@@ -174,6 +179,9 @@ class IRFAligner:
         shot noise rather than the real pulse, so each trace is smoothed
         first with a ``smooth_window``-bin moving average to suppress
         that before the threshold is applied.
+
+        ``manual_correction`` is subtracted from every pixel's shift,
+        including fallback pixels with no detectable rise.
         """
         smooth_decay = uniform_filter1d(
             self.decay, size=smooth_window, axis=2, mode="nearest"
@@ -194,7 +202,7 @@ class IRFAligner:
                 UserWarning,
                 stacklevel=2,
             )
-        return np.nan_to_num(shifts, nan=0.0)
+        return np.nan_to_num(shifts, nan=0.0) - manual_correction
 
     def estimate_shift_rmse(
         self,
@@ -203,6 +211,7 @@ class IRFAligner:
         right: int = 7,
         max_shift: int = 20,
         fraction: float = 0.1,
+        manual_correction: float = 0.0,
     ) -> Any:
         """
         Refines the per-pixel IRF shift by minimizing RMSE between the decay
@@ -217,6 +226,8 @@ class IRFAligner:
         ``[-max_shift, max_shift]`` are searched and refined to sub-bin
         precision via a parabolic fit around the best candidate. Pixels
         with no detectable decay rise fall back to a shift of 0.
+        ``manual_correction`` is subtracted from every pixel's shift,
+        including those fallback pixels.
         """
         scaled_irf = Normalization(self.irf).norm_scale(self.decay)
 
@@ -270,7 +281,7 @@ class IRFAligner:
             interior, best_shift + np.clip(delta, -1.0, 1.0), best_shift
         )
 
-        return np.where(valid, best_shift, 0.0)
+        return np.where(valid, best_shift, 0.0) - manual_correction
 
     def estimate_shift_rmse_pixel(
         self,
@@ -281,6 +292,7 @@ class IRFAligner:
         right: int = 7,
         max_shift: int = 20,
         fraction: float = 0.1,
+        manual_correction: float = 0.0,
     ) -> dict[str, Any]:
         """
         Runs the :meth:`estimate_shift_rmse` search for a single pixel
@@ -289,13 +301,18 @@ class IRFAligner:
         selected, and how well it lines up with decay, without processing
         the full cube.
 
+        ``manual_correction`` is subtracted from the RMSE-refined shift
+        before it is used to build "shifted_irf", matching
+        :meth:`estimate_shift_rmse`.
+
         Returns
         -------
         dict
             "shift_candidates" : integer shifts that were tested.
             "rmse" : RMSE at each candidate shift, same order.
-            "best_shift" : final shift for this pixel (sub-bin refined),
-                matching what :meth:`estimate_shift_rmse` returns for it.
+            "best_shift" : final shift for this pixel (sub-bin refined,
+                minus ``manual_correction``), matching what
+                :meth:`estimate_shift_rmse` returns for it.
             "window" : (start, end) bin range used for the comparison.
             "decay_trace" : the pixel's full decay trace, unmodified.
             "scaled_irf_trace" : the pixel's IRF trace, amplitude-matched
@@ -342,6 +359,7 @@ class IRFAligner:
             denom = y0 - 2 * y1_ + y2_
             if denom != 0:
                 best_shift += float(np.clip(0.5 * (y0 - y2_) / denom, -1.0, 1.0))
+        best_shift -= manual_correction
 
         freqs = fftfreq(self.T)
         phase = np.exp(-2j * np.pi * freqs * best_shift)
@@ -405,8 +423,9 @@ class IRFAligner:
         """
         Aligns the IRF using the specified method.
         """
-        shifts = self.estimate_shift(fraction=fraction)
-        shifts = shifts - manual_correction
+        shifts = self.estimate_shift(
+            fraction=fraction, manual_correction=manual_correction
+        )
         if method == "circular":
             return self.apply_circular_shift(shifts), shifts
         else:
@@ -455,9 +474,7 @@ class IRFAligner:
                 return (first_idx - 1) + (threshold - v1) / (v2 - v1 + 1e-12)
             return float(first_idx)
 
-        raw_shift = (
-            _rising_point(decay_trace) - _rising_point(irf_trace) - manual_correction
-        )
+        raw_shift = _rising_point(decay_trace) - _rising_point(irf_trace)
         if np.isnan(raw_shift):
             warnings.warn(
                 f"No detectable rise in the decay or IRF trace at pixel ({x}, {y}); "
@@ -465,7 +482,8 @@ class IRFAligner:
                 UserWarning,
                 stacklevel=2,
             )
-        shift = 0.0 if np.isnan(raw_shift) else raw_shift
+            raw_shift = 0.0
+        shift = raw_shift - manual_correction
 
         if method == "circular":
             aligned_irf = np.roll(irf_trace, int(round(shift)))
