@@ -19,8 +19,8 @@ from scipy import stats
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 
-from .sim_image_generator import FLIImageGenerator
-from .sim_stat_test import FLIValidator
+from .combined.sim_image_generator import FLIImageGenerator
+from .sim_calibrator import FLIValidator
 
 
 class FLICalibrator:

@@ -51,6 +51,6 @@ from .phasor import (
     tau_grid,
     universal_semicircle,
 )
-from .simulator.main_factory import MacroSimulator, TCSPCSimulator
-from .simulator.sim_model_image_generator import FLIModelImageGenerator
+from .simulator.combined.main_factory import MacroSimulator, TCSPCSimulator
+from .simulator.separate.sim_model_image_generator import FLIModelImageGenerator
 from .sp_analysis import BasisPatterns, MeasurementSimulator, Reconstructor

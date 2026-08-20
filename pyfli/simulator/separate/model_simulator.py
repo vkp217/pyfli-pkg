@@ -1,22 +1,24 @@
-# simulator/simulator_engine
+# simulator/separate/model_simulator
 """
 Generate mono- and bi-exponential model parameters and simulated TCSPC observations.
 
-This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLI/FLIM
-data generation, hardware noise modeling, calibration, and validation tools. Public API
-includes classes :class:`FLIModelSimulator`.
+This module belongs to :mod:`pyfli.simulator.separate` and is part of PyFLI synthetic
+FLI/FLIM data generation, hardware noise modeling, calibration, and validation tools.
+Public API includes classes :class:`FLIModelSimulator`.
+
+Shared IRF/timing setup, ``n_cycles`` range validation, and TCSPC photon-binning logic
+live in :mod:`pyfli.simulator.sim_engine_common`.
 """
 
 from typing import Any
 
 import numpy as np
 
-from .distributions import ParameterSampler
-from .noise_models import NoiseEngine
-from .sim_helper import irf_picker
+from ..distributions import ParameterSampler
+from ..sim_engine_common import BaseFLIEngine
 
 
-class FLIModelSimulator:
+class FLIModelSimulator(BaseFLIEngine):
     """
     Run the flimodel simulator routine.
     observations. The class is useful for controlled model-generation experiments
@@ -42,8 +44,12 @@ class FLIModelSimulator:
         Fraction of pixels or events assigned to the mono-exponential component.
     bit : int
         Bit depth or quantization setting for simulated detector output.
-    n_cycles : int
+    n_cycles : int | tuple[int, int]
         Number of excitation cycles used when constructing the simulated decay.
+        A bare int is the upper bound (lower bound fixed at 1000); a
+        ``(low, high)`` tuple sets both bounds, and both must be >= 1000.
+        The per-call cycle count is drawn from a Beta distribution (shaped
+        by ``photo_count``) over that range.
     dcr : float
         Detector dark-count rate used by the noise model.
     laser_feq : int
@@ -65,29 +71,18 @@ class FLIModelSimulator:
         ),  # (scale, offset), only used when tau2_dist='beta'
         efficiency: tuple[int, ...] = (5, 5),
         A1_fraction: tuple[int, ...] = (5, 5),
-        photo_count: tuple[float, int] = (1.2, 5),
+        photo_count: tuple[float, int] = (1.0, 1.0),
         mono_fraction: float = 0.2,
         bit: int = 8,
-        n_cycles: int = 800_000,
+        n_cycles: int | tuple[int, int] = 800_000,
         dcr: float = 0.05,
         laser_feq: int = 80,
         seed: int | None = None,
         **kwargs: Any,
     ) -> None:
+        super().__init__(irf_full, laser_feq=laser_feq, seed=seed)
 
-        irf = irf_picker(irf_full)
-        # Timing and Normalization
-        irf_sum = irf.sum()
-        if not np.isfinite(irf_sum) or irf_sum <= 0:
-            raise ValueError(
-                f"Invalid IRF: sum={irf_sum}. IRF must be non-negative and non-zero."
-            )
-        self.irf = irf / irf_sum
-        self.rng = np.random.default_rng(seed)
-        self.laser_period = 1000 / laser_feq
-        # N bins each of width dt covering [0, laser_period); endpoint-exclusive
-        self.dt = self.laser_period / len(self.irf)
-        self.t = np.arange(len(self.irf)) * self.dt
+        cycles_range = self._normalize_cycles_range(n_cycles)
 
         #  Parameters Storage
         self.params_cfg = {
@@ -99,7 +94,7 @@ class FLIModelSimulator:
             "pc": photo_count,
             "mono": mono_fraction,
             "bit": bit,
-            "cycles": n_cycles,
+            "cycles": cycles_range,
             "dcr": dcr,
             **kwargs,
         }
@@ -133,11 +128,7 @@ class FLIModelSimulator:
         )
         A2 = 1.0 - A1
         t1 = t2 * (1 - E)
-        # Pulsed-repetition correction (same formula as mono mode)
-        w1 = A1 * (1 - np.exp(-self.laser_period / t1))
-        w2 = A2 * (1 - np.exp(-self.laser_period / t2))
-        denom = w1 + w2
-        f = w1 / denom if denom > 0 else A1
+        f = self._steady_state_mix(A1, A2, t1, t2, self.laser_period)
         return {
             "mono": False,
             "E": E,
@@ -224,18 +215,4 @@ class FLIModelSimulator:
             times[comp1] = self.rng.exponential(p["tau1"], size=comp1.sum())
             times[~comp1] = self.rng.exponential(p["tau2"], size=(~comp1).sum())
 
-        # IRF Convolution (Sampling from the IRF distribution)
-        irf_cdf = np.cumsum(self.irf)
-        irf_cdf[-1] = 1.0  # pin to exactly 1.0 so searchsorted never returns len(irf)
-        irf_shifts = np.searchsorted(irf_cdf, self.rng.random(total_photons)) * self.dt
-
-        # Filter for pile-up and repetitive excitation window
-        arrival_times = NoiseEngine.tcspc_pileup_filter(
-            times + irf_shifts, self.laser_period
-        )
-
-        # Binning
-        bins = (arrival_times / self.dt).astype(np.int32)
-        hist = np.bincount(bins[bins < len(self.t)], minlength=len(self.t))
-
-        return hist.astype(np.float64)
+        return self._bin_tcspc_photons(times)
