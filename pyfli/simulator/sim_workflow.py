@@ -1,10 +1,19 @@
+from typing import Any
+
 import numpy as np
 
-from .main_factory_gen import ContinuousSimulator, PhotonCountSimulator
+from .combined.main_factory import MacroSimulator, TCSPCSimulator
+from .separate.main_factory_gen import ContinuousSimulator, PhotonCountSimulator
 
 SIMULATOR_TYPES = {
-    "photon_counter": PhotonCountSimulator,
-    "continuous": ContinuousSimulator,
+    "combined": {
+        "continuous": MacroSimulator,
+        "discrete": TCSPCSimulator,
+    },
+    "separate": {
+        "continuous": ContinuousSimulator,
+        "discrete": PhotonCountSimulator,
+    },
 }
 
 
@@ -38,7 +47,7 @@ class SimOutput:
         val = self.simulator()
         maps = val["results"]["maps"]
         if maps["mono_map"]:
-            tau1 = tau2 = tau = maps["tau_map"]
+            tau1 = tau2 = tau = maps.get("tau_map", maps.get("tau1_map"))
             alpha1 = 1.0
             efficiency = 1.0
         else:
@@ -81,16 +90,29 @@ class SimOutputWithIRFOffset(SimOutput):
 
 class SimGenerator:
     """
-    Wraps IRF shifting + PhotonCountSim/ContinuousSim + SimOutputWithIRFOffset
-    for a single config. Only accepts one config dict — raises if given a
-    list/tuple of configs.
+    Wraps IRF shifting + a MacroSimulator/ContinuousSimulator/TCSPCSimulator/
+    PhotonCountSimulator engine + SimOutputWithIRFOffset for a single config.
+    Only accepts one config dict — raises if given a list/tuple of configs.
+
+    Engine selection has two independent axes:
+
+    - ``sensor_type`` (physics): ``config["sensor_type"]`` if present,
+      otherwise the ``sensor_type`` constructor argument. ``"continuous"``
+      samples from an intensity/ADC-scaled engine; ``"discrete"`` samples
+      from a photon-by-photon TCSPC engine.
+    - ``family`` (implementation): ``"separate"`` (default) uses
+      :class:`ContinuousSimulator`/:class:`PhotonCountSimulator`;
+      ``"combined"`` uses :class:`MacroSimulator`/:class:`TCSPCSimulator`.
 
     Parameters
     ----------
-    simulator_type : str
-        Which simulator engine to sample from — "photon_counter" (default,
-        :class:`PhotonCountSimulator`) or "continuous"
-        (:class:`ContinuousSimulator`).
+    family : str
+        Which implementation family to sample from — "separate" (default)
+        or "combined". See :data:`SIMULATOR_TYPES`.
+    sensor_type : str
+        Fallback "continuous"/"discrete" engine choice used only when
+        ``config`` doesn't already set ``sensor_type``. Defaults to
+        "discrete".
     """
 
     def __init__(
@@ -100,7 +122,8 @@ class SimGenerator:
         a_range=(-20, 100),
         b_range=(0, 10),
         pixel=(0, 0),
-        simulator_type="photon_counter",
+        family="separate",
+        sensor_type="discrete",
     ):
         if isinstance(config, (list, tuple)):
             raise TypeError(
@@ -111,16 +134,21 @@ class SimGenerator:
             )
         if not isinstance(config, dict):
             raise TypeError(f"config must be a dict, got {type(config)}")
-        if simulator_type not in SIMULATOR_TYPES:
+        if family not in SIMULATOR_TYPES:
             raise ValueError(
-                f"simulator_type must be one of {list(SIMULATOR_TYPES)}, "
-                f"got {simulator_type!r}"
+                f"family must be one of {list(SIMULATOR_TYPES)}, got {family!r}"
+            )
+        effective_sensor_type = str(config.get("sensor_type", sensor_type)).lower()
+        if effective_sensor_type not in SIMULATOR_TYPES[family]:
+            raise ValueError(
+                f"sensor_type must be one of {list(SIMULATOR_TYPES[family])}, "
+                f"got {effective_sensor_type!r}"
             )
 
         self.config = config
         self.a_range = a_range
         self.b_range = b_range
-        self.simulator_cls = SIMULATOR_TYPES[simulator_type]
+        self.simulator_cls = SIMULATOR_TYPES[family][effective_sensor_type]
         self.I_base = irf_data[pixel[0], pixel[1], :].astype(float)  # shape (n_bins,)
         self.n_bins = self.I_base.shape[0]
 
@@ -152,3 +180,164 @@ def make_simulator(simulate_fn, num_samples):
     return {
         key: np.stack([np.asarray(s[key]) for s in samples], axis=0) for key in keys
     }
+
+
+class BatchSimulator:
+    """
+    Run repeated FLI/FLIM simulations across parameter sets. The class is a convenience
+    layer for generating batches of synthetic datasets for validation or model training.
+
+    Unlike :func:`make_simulator`/:func:`concat_sim_data` (which batch the flattened
+    per-sample dict produced by :class:`SimOutput`), these methods batch the raw nested
+    ``{"raw_data": {...}, "results": {"maps": {...}, "TR_maps": {...}}}`` dict returned
+    directly by a simulator's ``__call__`` (e.g. :class:`MacroSimulator`,
+    :class:`~pyfli.simulator.separate.main_factory_gen.ContinuousSimulator`).
+    """
+
+    @staticmethod
+    def _map_value_columns(samples: list, keys: Any) -> dict[Any, np.ndarray]:
+        """
+        Build one ``-1, 1``-shaped column per map key, filling ``np.nan`` for any
+        sample that doesn't have that key. Samples aren't guaranteed to share the
+        same map keys — e.g. a "mono" pixel from a ``mono_only_maps=True`` engine
+        only has ``{tau_map, photon_count_map, mono_map}``, not ``tau1_map``/etc.
+        """
+        return {
+            key: np.array(
+                [s["results"]["maps"].get(key, np.nan) for s in samples]
+            ).reshape(-1, 1)
+            for key in keys
+        }
+
+    def sim_BI(self, sim_funcs: np.ndarray, num_list: int) -> Any:
+        """
+        Generates a simplified batch dictionary with specific parameters.
+        Returns data as a dictionary of NumPy arrays.
+        """
+        samples = []
+        for sim_func, n in zip(sim_funcs, num_list):
+            samples.extend([sim_func() for _ in range(n)])
+
+        if not samples:
+            return {}
+
+        # Wrapping each list in np.array for better performance and ML compatibility
+        batch_data = {
+            "decay": np.array([s["raw_data"]["decay"] for s in samples]),
+            "irf": np.array([s["raw_data"]["irf"] for s in samples]),
+            **self._map_value_columns(
+                samples, ("tau1_map", "tau2_map", "alpha1_map", "photon_count_map")
+            ),
+        }
+        return batch_data
+
+    def generate_batch(self, sim_func_list: np.ndarray, num_list: int) -> Any:
+        """
+        Generate batch.
+
+        Parameters
+        ----------
+        sim_func_list : np.ndarray
+            Simulator functions used to generate a batch.
+        num_list : int
+            Number of samples generated for each simulator function.
+
+        Returns
+        -------
+        Any
+            Object produced by generate batch.
+        """
+        samples = []
+        for sim_func, n in zip(sim_func_list, num_list):
+            samples.extend([sim_func() for _ in range(n)])
+
+        if not samples:
+            return {}
+
+        # Union of every sample's map keys, not just samples[0]'s — samples can
+        # legitimately have different key sets (see _map_value_columns).
+        map_keys = set()
+        for s in samples:
+            map_keys.update(s["results"]["maps"].keys())
+
+        batch_data = {
+            "raw_data": {
+                "decay": np.stack([s["raw_data"]["decay"] for s in samples]),
+                "irf": np.stack([s["raw_data"]["irf"] for s in samples]),
+            },
+            "results": {
+                "maps": self._map_value_columns(samples, map_keys),
+                "TR_maps": {
+                    "fit_map": np.stack(
+                        [s["results"]["TR_maps"]["fit_map"] for s in samples]
+                    ),
+                    "residual_map": np.stack(
+                        [s["results"]["TR_maps"]["residual_map"] for s in samples]
+                    ),
+                },
+            },
+        }
+        return batch_data
+
+    def generate_batch2D(
+        self, sim_funcs: np.ndarray, num_list: int, shape: tuple[int, ...] = (10, 10)
+    ) -> Any:
+        """
+        Generate batch2 d.
+
+        Parameters
+        ----------
+        sim_funcs : np.ndarray
+            Simulator functions used to generate a two-dimensional batch.
+        num_list : int
+            Number of samples generated for each simulator function.
+        shape : tuple[int, ...]
+            Output shape requested for generated simulation batches.
+
+        Returns
+        -------
+        Any
+            Object produced by generate batch2d.
+        """
+        rows, cols = shape
+        if sum(num_list) != rows * cols:
+            raise ValueError(f"Sum of num_list must match shape product {rows * cols}")
+
+        samples = []
+        for sim_func, n in zip(sim_funcs, num_list):
+            samples.extend([sim_func() for _ in range(n)])
+
+        if not samples:
+            return {}
+
+        # Union of every sample's map keys, not just samples[0]'s — samples can
+        # legitimately have different key sets (see _map_value_columns).
+        map_keys = set()
+        for s in samples:
+            map_keys.update(s["results"]["maps"].keys())
+
+        batch_data = {
+            "raw_data": {
+                "decay": np.stack([s["raw_data"]["decay"] for s in samples]).reshape(
+                    rows, cols, -1
+                ),
+                "irf": np.stack([s["raw_data"]["irf"] for s in samples]).reshape(
+                    rows, cols, -1
+                ),
+            },
+            "results": {
+                "maps": {
+                    key: col.reshape(rows, cols)
+                    for key, col in self._map_value_columns(samples, map_keys).items()
+                },
+                "TR_maps": {
+                    "fit_map": np.stack(
+                        [s["results"]["TR_maps"]["fit_map"] for s in samples]
+                    ).reshape(rows, cols, -1),
+                    "residual_map": np.stack(
+                        [s["results"]["TR_maps"]["residual_map"] for s in samples]
+                    ).reshape(rows, cols, -1),
+                },
+            },
+        }
+        return batch_data
