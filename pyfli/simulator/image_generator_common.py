@@ -138,7 +138,7 @@ class BaseFLIImageGenerator:
             self.roi_mask = np.zeros(self.shape, dtype=int)
 
         # Initialize ROI Simulators
-        dummy_irf = irf_picker(irf_data)
+        dummy_irf, _ = irf_picker(irf_data)
         # dummy_irf = irf_data[0, 0, :] if irf_data.ndim == 3 else irf_data
         self.roi_sims = {}
         unique_rois = np.unique(self.roi_mask)

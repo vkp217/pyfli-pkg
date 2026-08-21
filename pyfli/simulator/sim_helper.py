@@ -10,7 +10,9 @@ includes functions :func:`irf_picker`.
 import numpy as np
 
 
-def irf_picker(irf_full: np.ndarray) -> np.ndarray:
+def irf_picker(
+    irf_full: np.ndarray, px: tuple[int, int] | None = None
+) -> tuple[np.ndarray, tuple[int, int] | None]:
     # IRF Selection Logic
     """
     Run the IRF picker routine.
@@ -19,19 +21,27 @@ def irf_picker(irf_full: np.ndarray) -> np.ndarray:
     ----------
     irf_full : np.ndarray
         Full instrument response function sampled over the decay window.
+    px : tuple[int, int] | None
+        Explicit ``(x, y)`` pixel to use when ``irf_full`` is 3-D, instead of
+        picking one at random. Ignored when ``irf_full`` is 1-D.
 
     Returns
     -------
-    np.ndarray
-        Selected IRF array matching the requested simulation settings.
+    tuple[np.ndarray, tuple[int, int] | None]
+        The selected IRF array, and the ``(x, y)`` pixel it came from — the
+        given ``px`` if one was passed, the randomly chosen pixel otherwise,
+        or ``None`` when ``irf_full`` is 1-D (there's no pixel to report).
     """
     if irf_full.ndim == 3:
         H, W, T = irf_full.shape
-        max_attempts = 1000
+        max_attempts = 1 if px is not None else 1000
 
         for _ in range(max_attempts):
-            x = np.random.randint(H)
-            y = np.random.randint(W)
+            if px is not None:
+                x, y = px
+            else:
+                x = np.random.randint(H)
+                y = np.random.randint(W)
             pixel_data = irf_full[x, y, :]
 
             peak = np.max(pixel_data)
@@ -55,9 +65,8 @@ def irf_picker(irf_full: np.ndarray) -> np.ndarray:
             raise RuntimeError(
                 f"Could not find a valid IRF pixel after {max_attempts} attempts."
             )
+        return irf, (x, y)
     elif irf_full.ndim == 1:
-        irf = irf_full
+        return irf_full, None
     else:
         raise ValueError(f"IRF must be 1-D or 3-D, got shape {irf_full.shape}")
-
-    return irf

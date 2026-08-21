@@ -452,6 +452,8 @@ class PhasorPlotsMixin:
         ylim: tuple[float, ...] = (0.0, 0.6),
         bg_color: str = "black",
         transpose: bool = False,
+        kdeplot: bool = True,
+        kde_levels: int = 3,
     ) -> np.ndarray:
         """
         Plot overlay subplots.
@@ -482,6 +484,10 @@ class PhasorPlotsMixin:
             Background color used behind the phasor overlay.
         transpose : bool
             Whether image-like arrays are transposed before display.
+        kdeplot : bool
+            Whether to overlay a KDE density contour on the color-scatter phasor panel.
+        kde_levels : int
+            Number of contour levels drawn for the KDE overlay.
 
         Returns
         -------
@@ -592,9 +598,16 @@ class PhasorPlotsMixin:
         ax5.plot(ug, us, "k--", alpha=0.8, zorder=1)
         if len(g_v):
             ax5.scatter(g_v, s_v, c=c_v, s=2, alpha=0.6, edgecolors="none", zorder=2)
-            sns.kdeplot(
-                x=g_v, y=s_v, ax=ax5, levels=5, color="w", linewidths=1, zorder=3
-            )
+            if kdeplot:
+                sns.kdeplot(
+                    x=g_v,
+                    y=s_v,
+                    ax=ax5,
+                    levels=kde_levels,
+                    color="w",
+                    linewidths=1,
+                    zorder=3,
+                )
         if G_mark is not None:
             _draw_lifetime_ticks(ax5, G_mark, S_mark, color="black", lw=2, fontsize=9)
         _style_phasor_ax(
