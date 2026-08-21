@@ -60,7 +60,7 @@ GitHub. Version numbers and dates below follow the releases published on
 
 ## Release history
 
-### 0.1.19 — unreleased
+### 0.1.19 — 2026-08-31
 
 *(not yet published to PyPI)*
 
@@ -72,30 +72,39 @@ GitHub. Version numbers and dates below follow the releases published on
 ```
 
 ```{card}
-:class-card: sd-bg-success sd-text-white
+:class-card: sd-bg-success sd-text-black
 
 **Features added:**
-- *(add notes for this release)*
+- Expanded simulator functionality
+- Additional image generation features
+- Detailed Phasor example
+- Synthetic IRF simulator
+- Time-of-flight offset
+- Updated IRF aligner
+- KDE support in Phasor analysis
+- Gate signal and truncated signal Phasor
+- Elaborated plotting and processed-data comparison against underlying properties
+- Elaborated examples of Simulator and Phasor analysis
 ```
 
 ```{card}
-:class-card: sd-bg-warning sd-text-dark
+:class-card: sd-bg-warning sd-text-black
 
 **Bugs Fixed:**
-- *(add notes for this release)*
+- Continuous and discrete simulators being dropped
 ```
 
 ### [0.1.18](https://pypi.org/project/pyfli-lib/0.1.18/) — 2026-06-25
 
 ```{card}
-:class-card: sd-bg-success sd-text-white
+:class-card: sd-bg-success sd-text-black
 
 **Features added:**
 - *(add notes for this release)*
 ```
 
 ```{card}
-:class-card: sd-bg-warning sd-text-dark
+:class-card: sd-bg-warning sd-text-black
 
 **Bugs Fixed:**
 - *(add notes for this release)*
@@ -104,7 +113,7 @@ GitHub. Version numbers and dates below follow the releases published on
 ### [0.1.17](https://pypi.org/project/pyfli-lib/0.1.17/) — 2026-06-03
 
 ```{card}
-:class-card: sd-bg-success sd-text-white
+:class-card: sd-bg-success sd-text-black
 
 **Features added:**
 - Simulator
@@ -113,7 +122,7 @@ GitHub. Version numbers and dates below follow the releases published on
 ```
 
 ```{card}
-:class-card: sd-bg-warning sd-text-dark
+:class-card: sd-bg-warning sd-text-black
 
 **Bugs Fixed:**
 - Subplotting placement error
