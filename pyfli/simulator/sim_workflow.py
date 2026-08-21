@@ -57,13 +57,14 @@ class SimOutput:
             efficiency = maps["fret_efficiency_map"]
         return {
             "decay": val["raw_data"]["decay"],
-            "irf_": val["raw_data"]["irf"],
+            "irf_original": val["raw_data"]["irf"],
             "tau1": tau1,
             "tau2": tau2,
             "tau": tau,
             "alpha1": alpha1,
             "photon_count": maps["photon_count_map"],
             "Efficiency": efficiency,
+            "h_shift_jit_map": maps["h_shift_jit_map"],
         }
 
 
@@ -168,8 +169,9 @@ class SimGenerator:
 
         fli_simulator = self.simulator_cls(irf_data=irf_1d, **self.config)
         out = SimOutputWithIRFOffset(fli_simulator, irf_1d).run()
-        out["h_shift"] = a
-        out["v_shift"] = b
+        out["h_shift_tof"] = a
+        out["v_shift_bgp"] = b
+        out["h_shift"] = a + out["h_shift_jit_map"]
         return out
 
 

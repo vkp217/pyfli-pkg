@@ -25,13 +25,17 @@ from .distributions import ParameterSampler
 from .noise_models import NoiseEngine
 
 
-def _build_maps(p: Any, photon_count: Any, mono_only_maps: bool) -> dict[Any, Any]:
+def _build_maps(
+    p: Any, photon_count: Any, mono_only_maps: bool, h_shift: Any
+) -> dict[Any, Any]:
     """Build the parameter-maps dict, optionally trimmed for mono pixels."""
     if mono_only_maps and p["mono"]:
         return {
             "tau_map": p["tau"],
             "photon_count_map": photon_count,
             "mono_map": p["mono"],
+            "h_shift_jit_map": h_shift,
+            "v_shift_map": 0,
         }
     return {
         "tau1_map": p["tau1"],
@@ -43,6 +47,8 @@ def _build_maps(p: Any, photon_count: Any, mono_only_maps: bool) -> dict[Any, An
         "tau_mean_map": p["tau1"] * p["f"] + p["tau2"] * (1 - p["f"]),
         "photon_count_map": photon_count,
         "mono_map": p["mono"],
+        "h_shift_jit_map": h_shift,
+        "v_shift_map": 0,
     }
 
 
@@ -170,7 +176,7 @@ class BaseContinuousSimulator:
         else:
             fit_map = np.zeros_like(obs)
 
-        maps = _build_maps(p, A, self.mono_only_maps)
+        maps = _build_maps(p, A, self.mono_only_maps, shift)
 
         return {
             "raw_data": {"decay": obs, "irf": self.engine.irf},
@@ -265,6 +271,7 @@ class BaseDiscreteSimulator:
             else fit_norm
         )
 
+        shift = 0
         if self.use_jitter:
             shift = np.random.randint(-2, 3)
             n = len(obs)
@@ -282,7 +289,7 @@ class BaseDiscreteSimulator:
         if self.use_clipping:
             obs = np.clip(obs, 0, max_bin_count)
 
-        maps = _build_maps(p, total_photons_expected, self.mono_only_maps)
+        maps = _build_maps(p, total_photons_expected, self.mono_only_maps, shift)
 
         return {
             "raw_data": {"decay": obs, "irf": self.engine.irf},
