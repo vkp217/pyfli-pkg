@@ -3,6 +3,7 @@ from typing import Any
 import numpy as np
 
 from .combined.main_factory import MacroSimulator, TCSPCSimulator
+from .irf_sim.irf_offset_gen import OffsetGen
 from .separate.main_factory_gen import ContinuousSimulator, PhotonCountSimulator
 
 SIMULATOR_TYPES = {
@@ -147,25 +148,13 @@ class SimGenerator:
             )
 
         self.config = config
-        self.a_range = a_range
-        self.b_range = b_range
         self.simulator_cls = SIMULATOR_TYPES[family][effective_sensor_type]
-        self.I_base = irf_data[pixel[0], pixel[1], :].astype(float)  # shape (n_bins,)
-        self.n_bins = self.I_base.shape[0]
-
-    def _make_shifted_irf_1d(self, a, b):
-        """
-        Circular shift I(t) -> I(t-a), add offset b. Returns 1D (n_bins,).
-        NOTE: np.roll requires an integer shift; `a` is rounded to the
-        nearest int here since it's sampled from a continuous uniform range.
-        """
-        a_int = int(round(a))
-        return np.roll(self.I_base, a_int) + b
+        self.offset_gen = OffsetGen(
+            irf_data, a_range=a_range, b_range=b_range, pixel=pixel
+        )
 
     def simulate_once(self):
-        a = np.random.uniform(*self.a_range)
-        b = np.random.uniform(*self.b_range)
-        irf_1d = self._make_shifted_irf_1d(a, b)
+        irf_1d, a, b = self.offset_gen.sample()
 
         fli_simulator = self.simulator_cls(irf_data=irf_1d, **self.config)
         out = SimOutputWithIRFOffset(fli_simulator, irf_1d).run()

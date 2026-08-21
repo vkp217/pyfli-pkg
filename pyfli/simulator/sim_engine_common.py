@@ -46,7 +46,7 @@ class BaseFLIEngine:
         laser_feq: int = 80,
         seed: int | None = None,
     ) -> None:
-        irf = irf_picker(irf_full)
+        irf, _ = irf_picker(irf_full)
         # Timing and Normalization
         irf_sum = irf.sum()
         if not np.isfinite(irf_sum) or irf_sum <= 0:
