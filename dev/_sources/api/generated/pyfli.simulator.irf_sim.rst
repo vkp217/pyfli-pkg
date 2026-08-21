@@ -11,3 +11,5 @@ pyfli.simulator.irf\_sim
    :recursive:
 
    irf_generator
+   irf_offset_gen
+   tof_sim

@@ -523,6 +523,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.combined.main_factory</span><span class="w"> </span><span class="kn">import</span> <span class="n">MacroSimulator</span><span class="p">,</span> <span class="n">TCSPCSimulator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.irf_sim.irf_offset_gen</span><span class="w"> </span><span class="kn">import</span> <span class="n">OffsetGen</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.separate.main_factory_gen</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContinuousSimulator</span><span class="p">,</span> <span class="n">PhotonCountSimulator</span>
 
 <span class="n">SIMULATOR_TYPES</span> <span class="o">=</span> <span class="p">{</span>
@@ -684,27 +685,15 @@
             <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">a_range</span> <span class="o">=</span> <span class="n">a_range</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">b_range</span> <span class="o">=</span> <span class="n">b_range</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">simulator_cls</span> <span class="o">=</span> <span class="n">SIMULATOR_TYPES</span><span class="p">[</span><span class="n">family</span><span class="p">][</span><span class="n">effective_sensor_type</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">I_base</span> <span class="o">=</span> <span class="n">irf_data</span><span class="p">[</span><span class="n">pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">:]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>  <span class="c1"># shape (n_bins,)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_bins</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">I_base</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_make_shifted_irf_1d</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">"""</span>
-<span class="sd">        Circular shift I(t) -&gt; I(t-a), add offset b. Returns 1D (n_bins,).</span>
-<span class="sd">        NOTE: np.roll requires an integer shift; `a` is rounded to the</span>
-<span class="sd">        nearest int here since it's sampled from a continuous uniform range.</span>
-<span class="sd">        """</span>
-        <span class="n">a_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">I_base</span><span class="p">,</span> <span class="n">a_int</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">offset_gen</span> <span class="o">=</span> <span class="n">OffsetGen</span><span class="p">(</span>
+            <span class="n">irf_data</span><span class="p">,</span> <span class="n">a_range</span><span class="o">=</span><span class="n">a_range</span><span class="p">,</span> <span class="n">b_range</span><span class="o">=</span><span class="n">b_range</span><span class="p">,</span> <span class="n">pixel</span><span class="o">=</span><span class="n">pixel</span>
+        <span class="p">)</span>
 
 <div class="viewcode-block" id="SimGenerator.simulate_once">
 <a class="viewcode-back" href="../../../api/generated/pyfli.simulator.sim_workflow.html#pyfli.simulator.sim_workflow.SimGenerator.simulate_once">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">simulate_once</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">a_range</span><span class="p">)</span>
-        <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">b_range</span><span class="p">)</span>
-        <span class="n">irf_1d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_shifted_irf_1d</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+        <span class="n">irf_1d</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset_gen</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
 
         <span class="n">fli_simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator_cls</span><span class="p">(</span><span class="n">irf_data</span><span class="o">=</span><span class="n">irf_1d</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
         <span class="n">out</span> <span class="o">=</span> <span class="n">SimOutputWithIRFOffset</span><span class="p">(</span><span class="n">fli_simulator</span><span class="p">,</span> <span class="n">irf_1d</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>

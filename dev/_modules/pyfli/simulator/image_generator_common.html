@@ -660,7 +660,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">roi_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
 
         <span class="c1"># Initialize ROI Simulators</span>
-        <span class="n">dummy_irf</span> <span class="o">=</span> <span class="n">irf_picker</span><span class="p">(</span><span class="n">irf_data</span><span class="p">)</span>
+        <span class="n">dummy_irf</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">irf_picker</span><span class="p">(</span><span class="n">irf_data</span><span class="p">)</span>
         <span class="c1"># dummy_irf = irf_data[0, 0, :] if irf_data.ndim == 3 else irf_data</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">roi_sims</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">unique_rois</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">roi_mask</span><span class="p">)</span>

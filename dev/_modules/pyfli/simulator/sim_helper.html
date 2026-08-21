@@ -532,7 +532,9 @@
 
 <div class="viewcode-block" id="irf_picker">
 <a class="viewcode-back" href="../../../api/generated/pyfli.simulator.sim_helper.html#pyfli.simulator.sim_helper.irf_picker">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">irf_picker</span><span class="p">(</span><span class="n">irf_full</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">irf_picker</span><span class="p">(</span>
+    <span class="n">irf_full</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">px</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
     <span class="c1"># IRF Selection Logic</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Run the IRF picker routine.</span>
@@ -541,19 +543,27 @@
 <span class="sd">    ----------</span>
 <span class="sd">    irf_full : np.ndarray</span>
 <span class="sd">        Full instrument response function sampled over the decay window.</span>
+<span class="sd">    px : tuple[int, int] | None</span>
+<span class="sd">        Explicit ``(x, y)`` pixel to use when ``irf_full`` is 3-D, instead of</span>
+<span class="sd">        picking one at random. Ignored when ``irf_full`` is 1-D.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    np.ndarray</span>
-<span class="sd">        Selected IRF array matching the requested simulation settings.</span>
+<span class="sd">    tuple[np.ndarray, tuple[int, int] | None]</span>
+<span class="sd">        The selected IRF array, and the ``(x, y)`` pixel it came from — the</span>
+<span class="sd">        given ``px`` if one was passed, the randomly chosen pixel otherwise,</span>
+<span class="sd">        or ``None`` when ``irf_full`` is 1-D (there's no pixel to report).</span>
 <span class="sd">    """</span>
     <span class="k">if</span> <span class="n">irf_full</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
         <span class="n">H</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span> <span class="o">=</span> <span class="n">irf_full</span><span class="o">.</span><span class="n">shape</span>
-        <span class="n">max_attempts</span> <span class="o">=</span> <span class="mi">1000</span>
+        <span class="n">max_attempts</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">px</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">1000</span>
 
         <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_attempts</span><span class="p">):</span>
-            <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
-            <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">px</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">px</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
             <span class="n">pixel_data</span> <span class="o">=</span> <span class="n">irf_full</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="p">:]</span>
 
             <span class="n">peak</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">pixel_data</span><span class="p">)</span>
@@ -577,12 +587,11 @@
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">"Could not find a valid IRF pixel after </span><span class="si">{</span><span class="n">max_attempts</span><span class="si">}</span><span class="s2"> attempts."</span>
             <span class="p">)</span>
+        <span class="k">return</span> <span class="n">irf</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">irf_full</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">irf</span> <span class="o">=</span> <span class="n">irf_full</span>
+        <span class="k">return</span> <span class="n">irf_full</span><span class="p">,</span> <span class="kc">None</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"IRF must be 1-D or 3-D, got shape </span><span class="si">{</span><span class="n">irf_full</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">irf</span></div>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"IRF must be 1-D or 3-D, got shape </span><span class="si">{</span><span class="n">irf_full</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span></div>
 
 </pre></div>
 

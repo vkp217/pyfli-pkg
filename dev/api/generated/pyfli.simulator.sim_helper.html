@@ -592,7 +592,7 @@ includes functions <a class="reference internal" href="#pyfli.simulator.sim_help
 <p class="rubric">Functions</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pyfli.simulator.sim_helper.irf_picker" title="pyfli.simulator.sim_helper.irf_picker"><code class="xref py py-obj docutils literal notranslate"><span class="pre">irf_picker</span></code></a>(irf_full)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pyfli.simulator.sim_helper.irf_picker" title="pyfli.simulator.sim_helper.irf_picker"><code class="xref py py-obj docutils literal notranslate"><span class="pre">irf_picker</span></code></a>(irf_full[, px])</p></td>
 <td><p>Run the IRF picker routine.</p></td>
 </tr>
 </tbody>
@@ -600,17 +600,23 @@ includes functions <a class="reference internal" href="#pyfli.simulator.sim_help
 </div>
 <dl class="py function">
 <dt class="sig sig-object py" id="pyfli.simulator.sim_helper.irf_picker">
-<span class="sig-name descname"><span class="pre">irf_picker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">irf_full</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/simulator/sim_helper.html#irf_picker"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.simulator.sim_helper.irf_picker" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">irf_picker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">irf_full</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">px</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/simulator/sim_helper.html#irf_picker"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.simulator.sim_helper.irf_picker" title="Link to this definition">#</a></dt>
 <dd><p>Run the IRF picker routine.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>irf_full</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code>) – Full instrument response function sampled over the decay window.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>irf_full</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code>) – Full instrument response function sampled over the decay window.</p></li>
+<li><p><strong>px</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">tuple[int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">int]</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Explicit <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y)</span></code> pixel to use when <code class="docutils literal notranslate"><span class="pre">irf_full</span></code> is 3-D, instead of
+picking one at random. Ignored when <code class="docutils literal notranslate"><span class="pre">irf_full</span></code> is 1-D.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Selected IRF array matching the requested simulation settings.</p>
+<dd class="field-even"><p>The selected IRF array, and the <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y)</span></code> pixel it came from — the
+given <code class="docutils literal notranslate"><span class="pre">px</span></code> if one was passed, the randomly chosen pixel otherwise,
+or <code class="docutils literal notranslate"><span class="pre">None</span></code> when <code class="docutils literal notranslate"><span class="pre">irf_full</span></code> is 1-D (there’s no pixel to report).</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code></p>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple[np.ndarray</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">tuple[int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">int]</span> <span class="pre">|</span> <span class="pre">None]</span></code></p>
 </dd>
 </dl>
 </dd></dl>
