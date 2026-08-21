@@ -12,6 +12,7 @@ primarily re-exports package symbols or constants for downstream imports.
 
 from .distributions import ParameterSampler
 from .irf_sim.irf_generator import IRFGenerator
+from .irf_sim.irf_offset_gen import OffsetGen
 from .combined.main_factory import MacroSimulator, TCSPCSimulator
 from .separate.main_factory_gen import ContinuousSimulator, PhotonCountSimulator
 from .noise_models import NoiseEngine
