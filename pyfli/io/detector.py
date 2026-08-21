@@ -7,6 +7,7 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`Detector`.
 """
 
+from dataclasses import replace
 from typing import Any
 
 import os
@@ -15,7 +16,8 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 
 from tqdm import tqdm
-
+from .spad_folding import apply_fold_layout
+from .spad_io import SpadConfig, SpadIO
 from pyfli import logging
 from .data_ops_static import StaticDataOps as ds
 
@@ -61,7 +63,6 @@ class Detector:
     # ================================================================= #
     #  DETECTOR METHODS
     # ================================================================= #
-
     def SS3(
         self,
         name: str = "Experiment_1",
@@ -70,131 +71,45 @@ class Detector:
         hot_pixel: bool = True,
         make_hp_map: bool = True,
         threshold_sigma: float = 5.0,
+        config: SpadConfig | dict[str, Any] | None = None,
     ) -> Any:
         """
-        SwissSPAD3 SPAD array detector.
+        Load SwissSPAD3 HDF5 data.
 
-        Mode 1 — Already-processed data (single HDF5 file per stream):
-            Reads decay and IRF from individual HDF5 files.
-            Applies pile-up correction only.
-            Raises if decay.shape != irf.shape when both are provided.
-
-        Mode 2 — SSLive acquisition (folder of HDF5 files per stream):
-            sub_bg=True  : bg_path (folder of HDF5) required.
-                           Background cube = mean of all bg files → (H, W, T).
-            make_hp_map  : derive hot pixel map from background cube (MAD threshold).
-            hp_path      : alternatively load mask from PNG / JPEG / TIFF; auto-rotated
-                           if shape is (W, H) instead of (H, W).
-            Per-file processing order: hot_pixel → pile_up → sub_bg.
-            Accumulated frames are summed → (H, W, T).
-            Same corrections applied to IRF folder if provided.
+        Single-file input applies optional pile-up and folding. Folder input can also
+        apply hot-pixel correction and background subtraction before file combination.
 
         Parameters
         ----------
-        sub_bg          : subtract mean background cube from each frame.
-        pile_up         : apply photon-counter pile-up correction per frame.
-        hot_pixel       : replace flagged pixels with 3×3 nanmedian neighbourhood.
-        make_hp_map     : build hot pixel map from bg_path (folder mode only).
-        threshold_sigma : MAD rejection threshold for hot pixel detection (default 5).
+        name : str
+            Dataset or experiment name.
+        sub_bg : bool
+            Whether to subtract background in folder mode.
+        pile_up : bool
+            Whether to apply pile-up correction.
+        hot_pixel : bool
+            Whether to apply hot-pixel correction in folder mode.
+        make_hp_map : bool
+            Whether to derive the hot-pixel map from background data.
+        threshold_sigma : float
+            MAD threshold used for automatic hot-pixel detection.
+        config : SpadConfig | dict[str, Any] | None
+            SPAD loading and folding options.
+
+        Returns
+        -------
+        Any
+            Standard PyFLI dataset package.
         """
-        if not self.data_path or not os.path.exists(self.data_path):
-            raise ValueError("SS3: data_path must be provided and must exist.")
-
-        data_is_folder = os.path.isdir(self.data_path)
-
-        # ---- Mode 1: Already-processed single HDF5 file(s) ------------------
-        if not data_is_folder:
-            if not self.data_path.lower().endswith((".h5", ".hdf5")):
-                raise ValueError(
-                    f"SS3: data_path must be an HDF5 file or folder, got: {self.data_path}"
-                )
-            decay = self._read_ss3_hdf5(self.data_path, pile_up=pile_up)
-            irf = None
-            if self.irf_path:
-                if not os.path.isfile(
-                    self.irf_path
-                ) or not self.irf_path.lower().endswith((".h5", ".hdf5")):
-                    raise ValueError(
-                        f"SS3: irf_path must be an HDF5 file, got: {self.irf_path}"
-                    )
-                irf = self._read_ss3_hdf5(self.irf_path, pile_up=pile_up)
-            if decay is not None and irf is not None and decay.shape != irf.shape:
-                raise ValueError(
-                    f"SS3: Decay shape {decay.shape} does not match IRF shape {irf.shape}."
-                )
-            mask = self._load_mask()
-            return self._package(
-                decay,
-                irf,
-                None,
-                mask,
-                name,
-                source="SwissSPAD3",
-                sub_bg=False,
-                pile_up=pile_up,
-                hot_pixel=False,
-                bit_size=self.bit_size,
-            )
-
-        # ---- Mode 2: SSLive folder of HDF5 files ----------------------------
-        # Background cube: mean over all bg files → (H, W, T)
-        bg_cube = None
-        if sub_bg:
-            if not self.bg_path:
-                raise ValueError(
-                    "SS3: bg_path (folder of HDF5 files) is required when sub_bg=True."
-                )
-            bg_cube = self._load_ss_folder(
-                self.bg_path, self._read_ss3_hdf5, mode="mean"
-            )
-
-        # Hot pixel map
-        hp_map = None
-        if hot_pixel:
-            if make_hp_map:
-                if not self.bg_path:
-                    raise ValueError("SS3: bg_path is required when make_hp_map=True.")
-                from .utils import DataIOUtils
-
-                hp_map, _, _, _ = DataIOUtils().detect_hot_pixels(
-                    self.bg_path, threshold_sigma=threshold_sigma
-                )
-            elif self.hp_path:
-                ref_shape = self._ss_first_frame_shape(
-                    self.data_path, self._read_ss3_hdf5
-                )
-                hp_map = ds.load_hp_image(self.hp_path, ref_shape)
-
-        # Process decay folder: hot_pixel → pile_up → sub_bg → sum → (H, W, T)
-        decay = self._process_ss_folder(
-            self.data_path, self._read_ss3_hdf5, hp_map, pile_up, sub_bg, bg_cube
-        )
-
-        # Process IRF folder with the same corrections
-        irf = None
-        if self.irf_path:
-            if not os.path.isdir(self.irf_path):
-                raise ValueError(
-                    "SS3: irf_path must be a folder when data_path is a folder."
-                )
-            irf = self._process_ss_folder(
-                self.irf_path, self._read_ss3_hdf5, hp_map, pile_up, sub_bg, bg_cube
-            )
-
-        mask = self._load_mask()
-        return self._package(
-            decay,
-            irf,
-            bg_cube,
-            mask,
+        return self._load_ss(
+            "ss3",
             name,
-            source="SwissSPAD3",
-            sub_bg=sub_bg,
-            pile_up=pile_up,
-            hot_pixel=hot_pixel,
-            make_hp_map=make_hp_map,
-            bit_size=self.bit_size,
-            threshold_sigma=threshold_sigma,
+            sub_bg,
+            pile_up,
+            hot_pixel,
+            make_hp_map,
+            threshold_sigma,
+            config,
         )
 
     def SS2(
@@ -205,109 +120,158 @@ class Detector:
         hot_pixel: bool = True,
         make_hp_map: bool = True,
         threshold_sigma: float = 5.0,
+        config: SpadConfig | dict[str, Any] | None = None,
     ) -> Any:
         """
-        SwissSPAD2 SPAD array detector.
+        Load SwissSPAD2 HDF5 or native BIN data.
 
-        Identical pipeline to SS3() — see SS3 docstring for full details.
-        The only difference is the HDF5 gate key structure:
-            SS2: 'Gate Images' → 'Gate N'  (N = 1, 2, …)
-            SS3: 'Gate Images' → 'Bottom G2 Gate N'  (N = 0, 1, …)
+        HDF5 input uses ``Gate Images/Gate N``. Native BIN input uses matched
+        ``topN.bin`` and ``btmN.bin`` files. Single-acquisition input applies optional
+        pile-up and folding. HDF5 folder input can also apply hot-pixel correction and
+        background subtraction before file combination.
+
+        Parameters
+        ----------
+        name : str
+            Dataset or experiment name.
+        sub_bg : bool
+            Whether to subtract background in HDF5 folder mode.
+        pile_up : bool
+            Whether to apply pile-up correction.
+        hot_pixel : bool
+            Whether to apply hot-pixel correction in HDF5 folder mode.
+        make_hp_map : bool
+            Whether to derive the hot-pixel map from background data.
+        threshold_sigma : float
+            MAD threshold used for automatic hot-pixel detection.
+        config : SpadConfig | dict[str, Any] | None
+            SPAD loading, BIN, and folding options.
+
+        Returns
+        -------
+        Any
+            Standard PyFLI dataset package.
         """
-        if not self.data_path or not os.path.exists(self.data_path):
-            raise ValueError("SS2: data_path must be provided and must exist.")
-
-        data_is_folder = os.path.isdir(self.data_path)
-
-        # ---- Mode 1: Already-processed single HDF5 file(s) ------------------
-        if not data_is_folder:
-            if not self.data_path.lower().endswith((".h5", ".hdf5")):
-                raise ValueError(
-                    f"SS2: data_path must be an HDF5 file or folder, got: {self.data_path}"
-                )
-            decay = self._read_ss2_hdf5(self.data_path, pile_up=pile_up)
-            irf = None
-            if self.irf_path:
-                if not os.path.isfile(
-                    self.irf_path
-                ) or not self.irf_path.lower().endswith((".h5", ".hdf5")):
-                    raise ValueError(
-                        f"SS2: irf_path must be an HDF5 file, got: {self.irf_path}"
-                    )
-                irf = self._read_ss2_hdf5(self.irf_path, pile_up=pile_up)
-            if decay is not None and irf is not None and decay.shape != irf.shape:
-                raise ValueError(
-                    f"SS2: Decay shape {decay.shape} does not match IRF shape {irf.shape}."
-                )
-            mask = self._load_mask()
-            return self._package(
-                decay,
-                irf,
-                None,
-                mask,
-                name,
-                source="SwissSPAD2",
-                sub_bg=False,
-                pile_up=pile_up,
-                hot_pixel=False,
-                bit_size=self.bit_size,
-            )
-
-        # ---- Mode 2: SSLive folder of HDF5 files ----------------------------
-        bg_cube = None
-        if sub_bg:
-            if not self.bg_path:
-                raise ValueError(
-                    "SS2: bg_path (folder of HDF5 files) is required when sub_bg=True."
-                )
-            bg_cube = self._load_ss_folder(
-                self.bg_path, self._read_ss2_hdf5, mode="mean"
-            )
-
-        hp_map = None
-        if hot_pixel:
-            if make_hp_map:
-                if not self.bg_path:
-                    raise ValueError("SS2: bg_path is required when make_hp_map=True.")
-                from .utils import DataIOUtils
-
-                hp_map, _, _, _ = DataIOUtils().detect_hot_pixels(
-                    self.bg_path, threshold_sigma=threshold_sigma
-                )
-            elif self.hp_path:
-                ref_shape = self._ss_first_frame_shape(
-                    self.data_path, self._read_ss2_hdf5
-                )
-                hp_map = ds.load_hp_image(self.hp_path, ref_shape)
-
-        decay = self._process_ss_folder(
-            self.data_path, self._read_ss2_hdf5, hp_map, pile_up, sub_bg, bg_cube
+        return self._load_ss(
+            "ss2",
+            name,
+            sub_bg,
+            pile_up,
+            hot_pixel,
+            make_hp_map,
+            threshold_sigma,
+            config,
         )
 
-        irf = None
+    def SPAD(
+        self,
+        name: str = "Experiment_1",
+        config: SpadConfig | dict[str, Any] | None = None,
+    ) -> Any:
+        """
+        Generic SPAD detector loader for HDF5 and native SwissSPAD2 binary data.
+
+        HDF5 files are discovered from their structure, dimensions, attributes, and
+        numeric ordering rather than fixed detector-specific group names. SwissSPAD2
+        binary acquisitions are decoded from matched topN.bin / btmN.bin chunks and
+        stitched into a 512 x 512 detector cube.
+
+        Optional pile-up correction is applied before optional periodic temporal
+        folding. Folding detects or uses an explicit circular phase shift, aligns the
+        complete acquisition on the time axis, and sums repeated excitation periods.
+        Background subtraction is not performed by this loader.
+
+        Parameters
+        ----------
+        name : str
+            Dataset or experiment name stored in the returned PyFLI package.
+        config : SpadConfig | dict[str, Any] | None
+            SPAD input, pile-up, HDF5 discovery, SwissSPAD2 binary, and folding options.
+
+        Returns
+        -------
+        Any
+            Standard PyFLI dataset package containing SPAD decay, optional
+            IRF/background, mask, and complete import metadata.
+        """
+        if not self.data_path or not os.path.exists(self.data_path):
+            raise ValueError("SPAD: data_path must be provided and must exist.")
+
+        resolved_config = SpadConfig.from_value(
+            config,
+            default_bit_depth=self.bit_size,
+        )
+
+        decay_result = SpadIO.load(
+            self.data_path,
+            config=resolved_config,
+            default_bit_depth=self.bit_size,
+        )
+
+        shared_fold_layout = decay_result.fold_layout if resolved_config.fold else None
+
+        irf_result = None
+
         if self.irf_path:
-            if not os.path.isdir(self.irf_path):
-                raise ValueError(
-                    "SS2: irf_path must be a folder when data_path is a folder."
-                )
-            irf = self._process_ss_folder(
-                self.irf_path, self._read_ss2_hdf5, hp_map, pile_up, sub_bg, bg_cube
+            if not os.path.exists(self.irf_path):
+                raise ValueError(f"SPAD: irf_path does not exist: {self.irf_path}")
+
+            irf_result = SpadIO.load(
+                self.irf_path,
+                config=resolved_config,
+                default_bit_depth=self.bit_size,
+                fold_layout=shared_fold_layout,
             )
 
+            if irf_result.data.shape != decay_result.data.shape:
+                raise ValueError(
+                    f"SPAD: IRF shape {irf_result.data.shape} "
+                    f"does not match data shape "
+                    f"{decay_result.data.shape}."
+                )
+
+        background_result = None
+
+        if self.bg_path:
+            if not os.path.exists(self.bg_path):
+                raise ValueError(f"SPAD: bg_path does not exist: {self.bg_path}")
+
+            background_result = SpadIO.load(
+                self.bg_path,
+                config=resolved_config,
+                default_bit_depth=self.bit_size,
+                fold_layout=shared_fold_layout,
+            )
+
+            if background_result.data.shape != decay_result.data.shape:
+                raise ValueError(
+                    f"SPAD: background shape "
+                    f"{background_result.data.shape} does not "
+                    f"match data shape {decay_result.data.shape}."
+                )
+
         mask = self._load_mask()
+
+        spad_metadata = {
+            "decay": decay_result.metadata,
+            "irf": (irf_result.metadata if irf_result is not None else None),
+            "background": (
+                background_result.metadata if background_result is not None else None
+            ),
+        }
+
         return self._package(
-            decay,
-            irf,
-            bg_cube,
+            decay_result.data,
+            (irf_result.data if irf_result is not None else None),
+            (background_result.data if background_result is not None else None),
             mask,
             name,
-            source="SwissSPAD2",
-            sub_bg=sub_bg,
-            pile_up=pile_up,
-            hot_pixel=hot_pixel,
-            make_hp_map=make_hp_map,
-            bit_size=self.bit_size,
-            threshold_sigma=threshold_sigma,
+            source="SPAD",
+            sub_bg=False,
+            pile_up=resolved_config.pile_up,
+            fold=resolved_config.fold,
+            bit_size=resolved_config.bit_depth,
+            spad_metadata=spad_metadata,
         )
 
     def ICCD(self, name: str = "Experiment_1") -> Any:
@@ -472,76 +436,329 @@ class Detector:
         return stack
 
     # ================================================================= #
-    #  SPAD PIPELINE HELPERS  (shared by SS2 and SS3)
+    #  SPAD PIPELINE HELPERS
     # ================================================================= #
 
-    def _load_ss_folder(
-        self, folder_path: str, reader_fn: np.ndarray, mode: str = "mean"
-    ) -> Any:
-        """Load all HDF5 files via reader_fn, stack (n,H,W,T), return mean or sum."""
-        files = sorted(
-            f for f in os.listdir(folder_path) if f.lower().endswith((".h5", ".hdf5"))
-        )
-        if not files:
-            raise FileNotFoundError(f"No HDF5 files in: {folder_path}")
-        accumulated = np.stack(
-            [
-                reader_fn(os.path.join(folder_path, f), pile_up=False)
-                for f in tqdm(
-                    files, desc=f"Loading {os.path.basename(folder_path)}", leave=False
-                )
-            ],
-            axis=0,
-        )  # (n, H, W, T)
-        return (
-            np.mean(accumulated, axis=0)
-            if mode == "mean"
-            else np.sum(accumulated, axis=0)
+    def _ss_loader(self, detector: str) -> Any:
+        """Return the shared loader for a SwissSPAD detector."""
+        if detector == "ss2":
+            return SpadIO.load_ss2
+
+        if detector == "ss3":
+            return SpadIO.load_ss3
+
+        raise ValueError(f"Unsupported SwissSPAD detector: '{detector}'.")
+
+    def _first_hdf5(self, folder_path: str) -> str:
+        """Return the first sorted HDF5 file in a directory."""
+        if not os.path.isdir(folder_path):
+            raise ValueError(f"Expected an HDF5 directory, got: {folder_path}")
+
+        filenames = sorted(
+            filename
+            for filename in os.listdir(folder_path)
+            if filename.lower().endswith((".h5", ".hdf5"))
         )
 
-    def _process_ss_folder(
+        if not filenames:
+            raise FileNotFoundError(f"No HDF5 files found in: {folder_path}")
+
+        return os.path.join(
+            folder_path,
+            filenames[0],
+        )
+
+    def _load_ss(
         self,
-        folder_path: str,
-        reader_fn: np.ndarray,
-        hp_map: np.ndarray,
-        pile_up: bool,
+        detector: str,
+        name: str,
         sub_bg: bool,
-        bg_cube: np.ndarray,
-    ) -> np.ndarray:
-        """
-        Sequential per-file SPAD processing: hot_pixel → pile_up → sub_bg.
-        Accumulates processed frames and returns their sum → (H, W, T).
-        """
-        files = sorted(
-            f for f in os.listdir(folder_path) if f.lower().endswith((".h5", ".hdf5"))
-        )
-        if not files:
-            raise FileNotFoundError(f"No HDF5 files in: {folder_path}")
+        pile_up: bool,
+        hot_pixel: bool,
+        make_hp_map: bool,
+        threshold_sigma: float,
+        config: SpadConfig | dict[str, Any] | None,
+    ) -> Any:
+        """Load SwissSPAD2 or SwissSPAD3 through the shared SPAD pipeline."""
+        if detector not in ("ss2", "ss3"):
+            raise ValueError(f"Unsupported SwissSPAD detector: '{detector}'.")
 
-        accumulated = []
-        for fname in tqdm(
-            files, desc=f"Processing {os.path.basename(folder_path)}", leave=False
+        label = detector.upper()
+        source = "SwissSPAD2" if detector == "ss2" else "SwissSPAD3"
+
+        if not self.data_path or not os.path.exists(self.data_path):
+            raise ValueError(f"{label}: data_path must be provided and must exist.")
+
+        if (
+            hot_pixel
+            and make_hp_map
+            and (not np.isfinite(threshold_sigma) or threshold_sigma <= 0)
         ):
-            frame = reader_fn(os.path.join(folder_path, fname), pile_up=False)
-            if hp_map is not None:
-                frame = self._correct_hotpixels(frame, hp_map)
-            if pile_up:
-                frame = ds.pileup_correction(frame, bit_size=self.bit_size)
-            if sub_bg and bg_cube is not None:
-                frame = np.maximum(frame - bg_cube, 0.0)
-            accumulated.append(frame)
+            raise ValueError(
+                f"{label}: threshold_sigma must be positive, got {threshold_sigma}."
+            )
 
-        return np.sum(np.stack(accumulated, axis=0), axis=0)  # (H, W, T)
-
-    def _ss_first_frame_shape(self, folder_path: str, reader_fn: np.ndarray) -> Any:
-        """Return (H, W) spatial shape from the first HDF5 file using reader_fn."""
-        files = sorted(
-            f for f in os.listdir(folder_path) if f.lower().endswith((".h5", ".hdf5"))
+        resolved_config = SpadConfig.from_value(
+            config,
+            default_bit_depth=self.bit_size,
         )
-        if not files:
-            raise FileNotFoundError(f"No HDF5 files in: {folder_path}")
-        frame = reader_fn(os.path.join(folder_path, files[0]), pile_up=False)
-        return frame.shape[:2]
+
+        resolved_config = replace(
+            resolved_config,
+            pile_up=bool(pile_up),
+        )
+
+        loader = self._ss_loader(detector)
+
+        input_format = SpadIO.get_format(
+            self.data_path,
+            config=resolved_config,
+            default_bit_depth=self.bit_size,
+            detector=detector,
+        )
+
+        folder_mode = input_format == "hdf5" and os.path.isdir(self.data_path)
+
+        if not folder_mode:
+            decay_result = loader(
+                self.data_path,
+                config=resolved_config,
+                default_bit_depth=self.bit_size,
+            )
+
+            irf_result = None
+
+            if self.irf_path:
+                if not os.path.exists(self.irf_path):
+                    raise ValueError(
+                        f"{label}: irf_path does not exist: {self.irf_path}"
+                    )
+
+                irf_result = loader(
+                    self.irf_path,
+                    config=resolved_config,
+                    default_bit_depth=self.bit_size,
+                    fold_layout=(
+                        decay_result.fold_layout if resolved_config.fold else None
+                    ),
+                )
+
+                if irf_result.data.shape != decay_result.data.shape:
+                    raise ValueError(
+                        f"{label}: IRF shape {irf_result.data.shape} "
+                        f"does not match decay shape "
+                        f"{decay_result.data.shape}."
+                    )
+
+            mask = self._load_mask()
+
+            spad_metadata = {
+                "decay": decay_result.metadata,
+                "irf": (irf_result.metadata if irf_result is not None else None),
+                "background": None,
+            }
+
+            return self._package(
+                decay_result.data,
+                (irf_result.data if irf_result is not None else None),
+                None,
+                mask,
+                name,
+                source=source,
+                sub_bg=False,
+                pile_up=resolved_config.pile_up,
+                hot_pixel=False,
+                make_hp_map=False,
+                fold=resolved_config.fold,
+                bit_size=resolved_config.bit_depth,
+                input_format=input_format,
+                spad_metadata=spad_metadata,
+            )
+
+        background_result = None
+        bg_cube = None
+
+        needs_background = sub_bg or (hot_pixel and make_hp_map)
+
+        if needs_background:
+            if not self.bg_path:
+                raise ValueError(
+                    f"{label}: bg_path is required when sub_bg=True "
+                    "or automatic hot-pixel mapping is enabled."
+                )
+
+            if not os.path.isdir(self.bg_path):
+                raise ValueError(
+                    f"{label}: bg_path must be an HDF5 directory in folder mode."
+                )
+
+            bg_config = replace(
+                resolved_config,
+                input_format="hdf5",
+                pile_up=False,
+                fold=False,
+                hdf5_folder_mode="mean",
+            )
+
+            background_result = loader(
+                self.bg_path,
+                config=bg_config,
+                default_bit_depth=self.bit_size,
+            )
+
+            bg_cube = background_result.data.astype(
+                np.float32,
+                copy=False,
+            )
+
+        hp_map = None
+
+        if hot_pixel:
+            if make_hp_map:
+                if bg_cube is None:
+                    raise RuntimeError(
+                        f"{label}: background data was not loaded "
+                        "for hot-pixel detection."
+                    )
+
+                from .utils import DataIOUtils
+
+                (
+                    hp_map,
+                    _,
+                    _,
+                    _,
+                ) = DataIOUtils.hot_pixels(
+                    bg_cube,
+                    threshold_sigma=threshold_sigma,
+                )
+
+            else:
+                if not self.hp_path:
+                    raise ValueError(
+                        f"{label}: hp_path is required when "
+                        "hot_pixel=True and make_hp_map=False."
+                    )
+
+                if not os.path.isfile(self.hp_path):
+                    raise ValueError(
+                        f"{label}: hp_path must be an existing image file, "
+                        f"got: {self.hp_path}"
+                    )
+
+                if bg_cube is not None:
+                    reference_shape = bg_cube.shape[:2]
+
+                else:
+                    ref_config = replace(
+                        resolved_config,
+                        input_format="hdf5",
+                        pile_up=False,
+                        fold=False,
+                    )
+
+                    ref_result = loader(
+                        self._first_hdf5(self.data_path),
+                        config=ref_config,
+                        default_bit_depth=self.bit_size,
+                    )
+
+                    reference_shape = ref_result.data.shape[:2]
+
+                hp_map = ds.load_hp_image(
+                    self.hp_path,
+                    reference_shape,
+                )
+
+        decay_result = loader(
+            self.data_path,
+            config=resolved_config,
+            default_bit_depth=self.bit_size,
+            hot_pixel_map=hp_map,
+            background=bg_cube,
+            sub_bg=sub_bg,
+        )
+
+        irf_result = None
+
+        if self.irf_path:
+            if not os.path.isdir(self.irf_path):
+                raise ValueError(
+                    f"{label}: irf_path must be an HDF5 directory "
+                    "when data_path is an HDF5 directory."
+                )
+
+            irf_format = SpadIO.get_format(
+                self.irf_path,
+                config=resolved_config,
+                default_bit_depth=self.bit_size,
+                detector=detector,
+            )
+
+            if irf_format != "hdf5":
+                raise ValueError(
+                    f"{label}: irf_path must resolve to HDF5 "
+                    f"in folder mode, got '{irf_format}'."
+                )
+
+            irf_result = loader(
+                self.irf_path,
+                config=resolved_config,
+                default_bit_depth=self.bit_size,
+                fold_layout=(
+                    decay_result.fold_layout if resolved_config.fold else None
+                ),
+                hot_pixel_map=hp_map,
+                background=bg_cube,
+                sub_bg=sub_bg,
+            )
+
+            if irf_result.data.shape != decay_result.data.shape:
+                raise ValueError(
+                    f"{label}: IRF shape {irf_result.data.shape} "
+                    f"does not match decay shape "
+                    f"{decay_result.data.shape}."
+                )
+
+        packaged_background = bg_cube if sub_bg else None
+
+        if (
+            packaged_background is not None
+            and resolved_config.fold
+            and decay_result.fold_layout is not None
+        ):
+            packaged_background = apply_fold_layout(
+                packaged_background,
+                decay_result.fold_layout,
+            )
+
+        mask = self._load_mask()
+
+        spad_metadata = {
+            "decay": decay_result.metadata,
+            "irf": (irf_result.metadata if irf_result is not None else None),
+            "background": (
+                background_result.metadata if background_result is not None else None
+            ),
+        }
+
+        return self._package(
+            decay_result.data,
+            (irf_result.data if irf_result is not None else None),
+            packaged_background,
+            mask,
+            name,
+            source=source,
+            sub_bg=sub_bg,
+            pile_up=resolved_config.pile_up,
+            hot_pixel=hp_map is not None,
+            make_hp_map=(make_hp_map if hot_pixel else False),
+            fold=resolved_config.fold,
+            bit_size=resolved_config.bit_depth,
+            threshold_sigma=threshold_sigma,
+            input_format=input_format,
+            spad_metadata=spad_metadata,
+        )
 
     # ================================================================= #
     #  GENERIC ROUTING  (SS3, TCSPC, generic)
@@ -762,21 +979,26 @@ class Detector:
         """
         if not file_path or not os.path.exists(file_path):
             return None
+
         ext = os.path.splitext(file_path)[-1].lower()
+
         try:
-            # SwissSPAD3 — dedicated HDF5 reader, corrections applied inside
             if ext in (".hdf5", ".h5"):
-                return self._read_ss3_hdf5(
-                    file_path, pile_up=pile_up, hot_pixel=hot_pixel
+                return ds.spad_hdf5_read(
+                    file_path,
+                    gate_prefix=None,
+                    pile_up=pile_up,
+                    bit_size=self.bit_size,
                 )
 
-            # TCSPC SDT: channel selects measurement block
             if ext == ".sdt":
                 from sdtfile import SdtFile
 
-                return np.asarray(SdtFile(file_path).data[channel], dtype=np.float32)
+                return np.asarray(
+                    SdtFile(file_path).data[channel],
+                    dtype=np.float32,
+                )
 
-            # PicoQuant ASCII (time col 0, counts col 1), tiled to spatial dims
             if ext == ".asc":
                 return ds.load_asc_file(file_path).astype(np.float32)
 
@@ -786,9 +1008,10 @@ class Detector:
                 ".tif": ds.load_tiff_file,
                 ".tiff": ds.load_tiff_file,
                 ".txt": ds.load_txt_file,
-                # '.roiN': ds.load_roiN_file,  # TODO: register once loader is implemented
             }
+
             loader = loaders.get(ext)
+
             if loader is None:
                 logging.warning(
                     f"[WARN] Unsupported format '{ext}': {os.path.basename(file_path)}"
@@ -796,10 +1019,19 @@ class Detector:
                 return None
 
             data = loader(file_path).astype(np.float32)
+
             if pile_up:
-                data = ds.pileup_correction(data, bit_size=self.bit_size)
+                data = ds.pileup_correction(
+                    data,
+                    bit_size=self.bit_size,
+                )
+
             if hot_pixel:
-                data = ds.apply_interpolation_mask(data, hp_path=self.hp_path)
+                data = ds.apply_interpolation_mask(
+                    data,
+                    hp_path=self.hp_path,
+                )
+
             return data
 
         except Exception as e:
@@ -811,49 +1043,45 @@ class Detector:
     # ================================================================= #
 
     def _read_ss3_hdf5(
-        self, fname: str, pile_up: bool = True, hot_pixel: bool = False
+        self,
+        fname: str,
+        pile_up: bool = True,
+        hot_pixel: bool = False,
     ) -> Any:
-        # hot_pixel ignored — applied externally via ds.hotpixel_correct
-        """
-        Read ss3 hdf5.
+        """Read one SwissSPAD3 HDF5 cube through the shared SPAD loader."""
+        _ = hot_pixel
 
-        Parameters
-        ----------
-        fname : str
-            File name read by the detector-specific loader.
-        pile_up : bool
-            Whether pile-up correction should be applied.
-        hot_pixel : bool
-            Whether hot-pixel correction should be applied.
-
-        Returns
-        -------
-        Any
-            Object produced by read ss3 HDF5.
-        """
-        return ds.spad_hdf5_read(
-            fname, "Bottom G2 Gate", pile_up=pile_up, bit_size=self.bit_size
+        result = SpadIO.load_ss3(
+            fname,
+            config={
+                "input_format": "hdf5",
+                "bit_depth": self.bit_size,
+                "pile_up": pile_up,
+                "fold": False,
+            },
+            default_bit_depth=self.bit_size,
         )
 
-    def _read_ss2_hdf5(self, fname: str, pile_up: bool = True) -> Any:
-        """
-        Read ss2 hdf5.
+        return result.data
 
-        Parameters
-        ----------
-        fname : str
-            File name read by the detector-specific loader.
-        pile_up : bool
-            Whether pile-up correction should be applied.
-
-        Returns
-        -------
-        Any
-            Object produced by read ss2 HDF5.
-        """
-        return ds.spad_hdf5_read(
-            fname, "Gate ", pile_up=pile_up, bit_size=self.bit_size
+    def _read_ss2_hdf5(
+        self,
+        fname: str,
+        pile_up: bool = True,
+    ) -> Any:
+        """Read one SwissSPAD2 HDF5 cube through the shared SPAD loader."""
+        result = SpadIO.load_ss2(
+            fname,
+            config={
+                "input_format": "hdf5",
+                "bit_depth": self.bit_size,
+                "pile_up": pile_up,
+                "fold": False,
+            },
+            default_bit_depth=self.bit_size,
         )
+
+        return result.data
 
     def _correct_hotpixels(self, data_3d: np.ndarray, hot_pixel_map: np.ndarray) -> Any:
         """
