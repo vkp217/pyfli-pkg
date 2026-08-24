@@ -496,6 +496,10 @@
 <li class="toctree-l3 current active"><a class="current reference internal" href="#">pyfli.io.detector</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.flim_decay_cube.html">pyfli.io.flim_decay_cube</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.processed_data.html">pyfli.io.processed_data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_folding.html">pyfli.io.spad_folding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_hdf5.html">pyfli.io.spad_hdf5</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_io.html">pyfli.io.spad_io</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.ss2_bin.html">pyfli.io.ss2_bin</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.utils.html">pyfli.io.utils</a></li>
 </ul>
 </details></li>
@@ -613,67 +617,85 @@ background subtraction, pile-up correction, masks, and hot-pixel handling.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="pyfli.io.detector.Detector.SS3">
-<span class="sig-name descname"><span class="pre">SS3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Experiment_1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_bg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pile_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">make_hp_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/detector.html#Detector.SS3"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.detector.Detector.SS3" title="Link to this definition">#</a></dt>
-<dd><p>SwissSPAD3 SPAD array detector.</p>
-<dl>
-<dt>Mode 1 — Already-processed data (single HDF5 file per stream):</dt><dd><p>Reads decay and IRF from individual HDF5 files.
-Applies pile-up correction only.
-Raises if decay.shape != irf.shape when both are provided.</p>
-</dd>
-<dt>Mode 2 — SSLive acquisition (folder of HDF5 files per stream):</dt><dd><dl class="simple">
-<dt>sub_bg=True<span class="classifier">bg_path (folder of HDF5) required.</span></dt><dd><p>Background cube = mean of all bg files → (H, W, T).</p>
-</dd>
-</dl>
-<p>make_hp_map  : derive hot pixel map from background cube (MAD threshold).
-hp_path      : alternatively load mask from PNG / JPEG / TIFF; auto-rotated</p>
-<blockquote>
-<div><p>if shape is (W, H) instead of (H, W).</p>
-</div></blockquote>
-<p>Per-file processing order: hot_pixel → pile_up → sub_bg.
-Accumulated frames are summed → (H, W, T).
-Same corrections applied to IRF folder if provided.</p>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">SS3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Experiment_1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_bg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pile_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">make_hp_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/detector.html#Detector.SS3"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.detector.Detector.SS3" title="Link to this definition">#</a></dt>
+<dd><p>Load SwissSPAD3 HDF5 data.</p>
+<p>Single-file input applies optional pile-up and folding. Folder input can also
+apply hot-pixel correction and background subtraction before file combination.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>sub_bg</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">subtract</span> <span class="pre">mean</span> <span class="pre">background</span> <span class="pre">cube</span> <span class="pre">from</span> <span class="pre">each</span> <span class="pre">frame.</span></code>)</p></li>
-<li><p><strong>pile_up</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">apply</span> <span class="pre">photon-counter</span> <span class="pre">pile-up</span> <span class="pre">correction</span> <span class="pre">per</span> <span class="pre">frame.</span></code>)</p></li>
-<li><p><strong>hot_pixel</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">replace</span> <span class="pre">flagged</span> <span class="pre">pixels</span> <span class="pre">with</span> <span class="pre">3×3</span> <span class="pre">nanmedian</span> <span class="pre">neighbourhood.</span></code>)</p></li>
-<li><p><strong>make_hp_map</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">build</span> <span class="pre">hot</span> <span class="pre">pixel</span> <span class="pre">map</span> <span class="pre">from</span> <span class="pre">bg_path</span> <span class="pre">(folder</span> <span class="pre">mode</span> <span class="pre">only).</span></code>)</p></li>
-<li><p><strong>threshold_sigma</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">MAD</span> <span class="pre">rejection</span> <span class="pre">threshold</span> <span class="pre">for</span> <span class="pre">hot</span> <span class="pre">pixel</span> <span class="pre">detection</span> <span class="pre">(default</span> <span class="pre">5).</span></code>)</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Dataset or experiment name.</p></li>
+<li><p><strong>sub_bg</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether to subtract background in folder mode.</p></li>
+<li><p><strong>pile_up</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether to apply pile-up correction.</p></li>
+<li><p><strong>hot_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether to apply hot-pixel correction in folder mode.</p></li>
+<li><p><strong>make_hp_map</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether to derive the hot-pixel map from background data.</p></li>
+<li><p><strong>threshold_sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – MAD threshold used for automatic hot-pixel detection.</p></li>
+<li><p><strong>config</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">SpadConfig</span> <span class="pre">|</span> <span class="pre">dict[str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Any]</span> <span class="pre">|</span> <span class="pre">None</span></code>) – SPAD loading and folding options.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a></p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Standard PyFLI dataset package.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code></p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pyfli.io.detector.Detector.SS2">
-<span class="sig-name descname"><span class="pre">SS2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Experiment_1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_bg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pile_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">make_hp_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/detector.html#Detector.SS2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.detector.Detector.SS2" title="Link to this definition">#</a></dt>
-<dd><p>SwissSPAD2 SPAD array detector.</p>
-<p>Identical pipeline to SS3() — see SS3 docstring for full details.
-The only difference is the HDF5 gate key structure:</p>
-<blockquote>
-<div><p>SS2: ‘Gate Images’ → ‘Gate N’  (N = 1, 2, …)
-SS3: ‘Gate Images’ → ‘Bottom G2 Gate N’  (N = 0, 1, …)</p>
-</div></blockquote>
+<span class="sig-name descname"><span class="pre">SS2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Experiment_1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_bg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pile_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">make_hp_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/detector.html#Detector.SS2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.detector.Detector.SS2" title="Link to this definition">#</a></dt>
+<dd><p>Load SwissSPAD2 HDF5 or native BIN data.</p>
+<p>HDF5 input uses <code class="docutils literal notranslate"><span class="pre">Gate</span> <span class="pre">Images/Gate</span> <span class="pre">N</span></code>. Native BIN input uses matched
+<code class="docutils literal notranslate"><span class="pre">topN.bin</span></code> and <code class="docutils literal notranslate"><span class="pre">btmN.bin</span></code> files. Single-acquisition input applies optional
+pile-up and folding. HDF5 folder input can also apply hot-pixel correction and
+background subtraction before file combination.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
-<li><p><strong>sub_bg</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
-<li><p><strong>pile_up</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
-<li><p><strong>hot_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
-<li><p><strong>make_hp_map</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
-<li><p><strong>threshold_sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Dataset or experiment name.</p></li>
+<li><p><strong>sub_bg</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether to subtract background in HDF5 folder mode.</p></li>
+<li><p><strong>pile_up</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether to apply pile-up correction.</p></li>
+<li><p><strong>hot_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether to apply hot-pixel correction in HDF5 folder mode.</p></li>
+<li><p><strong>make_hp_map</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether to derive the hot-pixel map from background data.</p></li>
+<li><p><strong>threshold_sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – MAD threshold used for automatic hot-pixel detection.</p></li>
+<li><p><strong>config</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">SpadConfig</span> <span class="pre">|</span> <span class="pre">dict[str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Any]</span> <span class="pre">|</span> <span class="pre">None</span></code>) – SPAD loading, BIN, and folding options.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a></p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Standard PyFLI dataset package.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.io.detector.Detector.SPAD">
+<span class="sig-name descname"><span class="pre">SPAD</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Experiment_1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/detector.html#Detector.SPAD"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.detector.Detector.SPAD" title="Link to this definition">#</a></dt>
+<dd><p>Generic SPAD detector loader for HDF5 and native SwissSPAD2 binary data.</p>
+<p>HDF5 files are discovered from their structure, dimensions, attributes, and
+numeric ordering rather than fixed detector-specific group names. SwissSPAD2
+binary acquisitions are decoded from matched topN.bin / btmN.bin chunks and
+stitched into a 512 x 512 detector cube.</p>
+<p>Optional pile-up correction is applied before optional periodic temporal
+folding. Folding detects or uses an explicit circular phase shift, aligns the
+complete acquisition on the time axis, and sums repeated excitation periods.
+Background subtraction is not performed by this loader.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Dataset or experiment name stored in the returned PyFLI package.</p></li>
+<li><p><strong>config</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">SpadConfig</span> <span class="pre">|</span> <span class="pre">dict[str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Any]</span> <span class="pre">|</span> <span class="pre">None</span></code>) – SPAD input, pile-up, HDF5 discovery, SwissSPAD2 binary, and folding options.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Standard PyFLI dataset package containing SPAD decay, optional
+IRF/background, mask, and complete import metadata.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -770,6 +792,7 @@ All corrections opt-in.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.detector.Detector"><code class="docutils literal notranslate"><span class="pre">Detector</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.detector.Detector.SS3"><code class="docutils literal notranslate"><span class="pre">Detector.SS3()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.detector.Detector.SS2"><code class="docutils literal notranslate"><span class="pre">Detector.SS2()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.detector.Detector.SPAD"><code class="docutils literal notranslate"><span class="pre">Detector.SPAD()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.detector.Detector.ICCD"><code class="docutils literal notranslate"><span class="pre">Detector.ICCD()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.detector.Detector.BH_TCSPC"><code class="docutils literal notranslate"><span class="pre">Detector.BH_TCSPC()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.detector.Detector.generic"><code class="docutils literal notranslate"><span class="pre">Detector.generic()</span></code></a></li>

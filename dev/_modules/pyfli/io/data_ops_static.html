@@ -565,34 +565,53 @@
 <a class="viewcode-back" href="../../../api/generated/pyfli.io.data_ops_static.html#pyfli.io.data_ops_static.StaticDataOps.spad_hdf5_read">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">spad_hdf5_read</span><span class="p">(</span>
-        <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">gate_prefix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pile_up</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">bit_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">gate_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pile_up</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">bit_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""</span>
-<span class="sd">        Generic SPAD HDF5 reader shared by SS2 and SS3.</span>
-<span class="sd">        gate_prefix : key prefix used to identify gate datasets inside 'Gate Images'</span>
-<span class="sd">            SS3 → 'Bottom G2 Gate'</span>
-<span class="sd">            SS2 → 'Gate '</span>
-<span class="sd">        Reads datasets matching gate_prefix, sorts numerically, stacks → (H, W, T) float32.</span>
+<span class="sd">        Read SPAD HDF5 data and normalize it to (H, W, T).</span>
+
+<span class="sd">        The reader discovers split gate datasets or stacked 3D cubes from HDF5</span>
+<span class="sd">        structure and metadata instead of requiring a fixed "Gate Images" group.</span>
+<span class="sd">        gate_prefix remains available as a backwards-compatible discovery hint for</span>
+<span class="sd">        existing SwissSPAD2 and SwissSPAD3 callers.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fname : str</span>
+<span class="sd">            HDF5 file containing SPAD image data.</span>
+<span class="sd">        gate_prefix : str | None</span>
+<span class="sd">            Optional split-gate dataset prefix used as a discovery hint.</span>
+<span class="sd">        pile_up : bool</span>
+<span class="sd">            Whether pile-up correction should be applied after loading.</span>
+<span class="sd">        bit_size : int</span>
+<span class="sd">            Detector digitization bit depth used for pile-up correction.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            SPAD image cube with shape (H, W, T) and float32 dtype.</span>
 <span class="sd">        """</span>
-        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s2">"r"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">gate_grp</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Gate Images"</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">gate_grp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"'Gate Images' group not found in </span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-            <span class="n">gate_keys</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
-                <span class="p">(</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">gate_grp</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">gate_prefix</span><span class="p">)),</span>
-                <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">k</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"Gate "</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span>
-            <span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">gate_keys</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">"No '</span><span class="si">{</span><span class="n">gate_prefix</span><span class="si">}</span><span class="s2">N' datasets found in 'Gate Images' in </span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">"</span>
-                <span class="p">)</span>
-            <span class="n">tpsfs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
-                <span class="p">(</span><span class="o">*</span><span class="n">gate_grp</span><span class="p">[</span><span class="n">gate_keys</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">gate_keys</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span>
-            <span class="p">)</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">gate_keys</span><span class="p">):</span>
-                <span class="n">tpsfs</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">gate_grp</span><span class="p">[</span><span class="n">key</span><span class="p">][:]</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.spad_hdf5</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_spad_hdf5</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">read_spad_hdf5</span><span class="p">(</span>
+            <span class="n">fname</span><span class="p">,</span>
+            <span class="n">gate_prefix</span><span class="o">=</span><span class="n">gate_prefix</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">tpsfs</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+            <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+
         <span class="k">if</span> <span class="n">pile_up</span><span class="p">:</span>
-            <span class="n">tpsfs</span> <span class="o">=</span> <span class="n">StaticDataOps</span><span class="o">.</span><span class="n">pileup_correction</span><span class="p">(</span><span class="n">tpsfs</span><span class="p">,</span> <span class="n">bit_size</span><span class="o">=</span><span class="n">bit_size</span><span class="p">)</span>
+            <span class="n">tpsfs</span> <span class="o">=</span> <span class="n">StaticDataOps</span><span class="o">.</span><span class="n">pileup_correction</span><span class="p">(</span>
+                <span class="n">tpsfs</span><span class="p">,</span>
+                <span class="n">bit_size</span><span class="o">=</span><span class="n">bit_size</span><span class="p">,</span>
+            <span class="p">)</span>
+
         <span class="k">return</span> <span class="n">tpsfs</span></div>
 
 
@@ -826,23 +845,39 @@
         <span class="n">hot_pixels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">hp_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">"""</span>
-<span class="sd">        Reads SS3 gated HDF5 data, optionally applying pile-up and hot-pixel corrections.</span>
-<span class="sd">        Signature unchanged — safe to call from data_operations.py.</span>
-<span class="sd">        """</span>
+<span class="w">        </span><span class="sd">"""Read SwissSPAD3 HDF5 data through the shared SPAD loader."""</span>
         <span class="k">if</span> <span class="n">hot_pixels</span> <span class="ow">and</span> <span class="n">hp_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"hp_path must be provided when hot_pixels=True."</span><span class="p">)</span>
+
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">tpsfs</span> <span class="o">=</span> <span class="n">StaticDataOps</span><span class="o">.</span><span class="n">spad_hdf5_read</span><span class="p">(</span>
-                <span class="n">fname</span><span class="p">,</span> <span class="s2">"Bottom G2 Gate"</span><span class="p">,</span> <span class="n">pile_up</span><span class="o">=</span><span class="n">pileCorr</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">.spad_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">SpadIO</span>
+
+            <span class="n">result</span> <span class="o">=</span> <span class="n">SpadIO</span><span class="o">.</span><span class="n">load_ss3</span><span class="p">(</span>
+                <span class="n">fname</span><span class="p">,</span>
+                <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">"input_format"</span><span class="p">:</span> <span class="s2">"hdf5"</span><span class="p">,</span>
+                    <span class="s2">"bit_depth"</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+                    <span class="s2">"pile_up"</span><span class="p">:</span> <span class="n">pileCorr</span><span class="p">,</span>
+                    <span class="s2">"fold"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="n">default_bit_depth</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
             <span class="p">)</span>
+
+            <span class="n">tpsfs</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">data</span>
+
             <span class="k">if</span> <span class="n">hot_pixels</span><span class="p">:</span>
-                <span class="n">tpsfs</span> <span class="o">=</span> <span class="n">StaticDataOps</span><span class="o">.</span><span class="n">apply_interpolation_mask</span><span class="p">(</span><span class="n">tpsfs</span><span class="p">,</span> <span class="n">hp_path</span><span class="o">=</span><span class="n">hp_path</span><span class="p">)</span>
+                <span class="n">tpsfs</span> <span class="o">=</span> <span class="n">StaticDataOps</span><span class="o">.</span><span class="n">apply_interpolation_mask</span><span class="p">(</span>
+                    <span class="n">tpsfs</span><span class="p">,</span>
+                    <span class="n">hp_path</span><span class="o">=</span><span class="n">hp_path</span><span class="p">,</span>
+                <span class="p">)</span>
+
             <span class="k">return</span> <span class="n">tpsfs</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="n">e</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"HDF5 Load Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                <span class="k">raise</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"HDF5 Load Error: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span></div>
 </div>
 

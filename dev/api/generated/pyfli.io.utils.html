@@ -61,7 +61,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="pyfli.irf_deconvolution" href="pyfli.irf_deconvolution.html" />
-    <link rel="prev" title="pyfli.io.processed_data" href="pyfli.io.processed_data.html" />
+    <link rel="prev" title="pyfli.io.ss2_bin" href="pyfli.io.ss2_bin.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="dev" />
@@ -496,6 +496,10 @@
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.detector.html">pyfli.io.detector</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.flim_decay_cube.html">pyfli.io.flim_decay_cube</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.processed_data.html">pyfli.io.processed_data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_folding.html">pyfli.io.spad_folding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_hdf5.html">pyfli.io.spad_hdf5</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_io.html">pyfli.io.spad_io</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.ss2_bin.html">pyfli.io.ss2_bin</a></li>
 <li class="toctree-l3 current active"><a class="current reference internal" href="#">pyfli.io.utils</a></li>
 </ul>
 </details></li>
@@ -638,23 +642,45 @@ These helpers support detector import and preprocessing workflows.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="pyfli.io.utils.DataIOUtils.detect_hot_pixels">
-<span class="sig-name descname"><span class="pre">detect_hot_pixels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bg_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/utils.html#DataIOUtils.detect_hot_pixels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.utils.DataIOUtils.detect_hot_pixels" title="Link to this definition">#</a></dt>
-<dd><dl class="simple">
-<dt>Finding hot pixels from an SS3 background HDF5 file or folder</dt><dd><p>total_counts &gt; median + threshold_sigma × 1.4826 × MAD</p>
-</dd>
-</dl>
-<p>equivalent threshold_sigma=5 ≈ 5σ rejection for Gaussian data.</p>
+<dt class="sig sig-object py" id="pyfli.io.utils.DataIOUtils.hot_pixels">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">hot_pixels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">background</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/utils.html#DataIOUtils.hot_pixels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.utils.DataIOUtils.hot_pixels" title="Link to this definition">#</a></dt>
+<dd><p>Detect hot pixels from loaded SPAD background data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>bg_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
-<li><p><strong>threshold_sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
-<li><p><strong>save_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>background</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code>) – Background cube (H, W, T) or stack (N, H, W, T).</p></li>
+<li><p><strong>threshold_sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – MAD threshold used for hot-pixel detection.</p></li>
+<li><p><strong>save_path</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Optional path used to save the resulting mask.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a></p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Hot-pixel map, sum, mean, and median background cubes.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple[np.ndarray</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray]</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.io.utils.DataIOUtils.detect_hot_pixels">
+<span class="sig-name descname"><span class="pre">detect_hot_pixels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bg_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_group_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/utils.html#DataIOUtils.detect_hot_pixels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.utils.DataIOUtils.detect_hot_pixels" title="Link to this definition">#</a></dt>
+<dd><p>Detect hot pixels from a SPAD HDF5 file or directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bg_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Background HDF5 file or directory.</p></li>
+<li><p><strong>threshold_sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – MAD threshold used for hot-pixel detection.</p></li>
+<li><p><strong>save_path</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Optional path used to save the resulting mask.</p></li>
+<li><p><strong>gate_group_path</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Optional HDF5 gate group.</p></li>
+<li><p><strong>gate_prefix</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Optional split-gate dataset prefix.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Hot-pixel map and background statistics.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -689,6 +715,7 @@ These helpers support detector import and preprocessing workflows.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.utils.DataIOUtils"><code class="docutils literal notranslate"><span class="pre">DataIOUtils</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.utils.DataIOUtils.load_phasors_hdf5"><code class="docutils literal notranslate"><span class="pre">DataIOUtils.load_phasors_hdf5()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.utils.DataIOUtils.roiNloader"><code class="docutils literal notranslate"><span class="pre">DataIOUtils.roiNloader()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.utils.DataIOUtils.hot_pixels"><code class="docutils literal notranslate"><span class="pre">DataIOUtils.hot_pixels()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.utils.DataIOUtils.detect_hot_pixels"><code class="docutils literal notranslate"><span class="pre">DataIOUtils.detect_hot_pixels()</span></code></a></li>
 </ul>
 </li>

@@ -496,6 +496,10 @@
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.detector.html">pyfli.io.detector</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.flim_decay_cube.html">pyfli.io.flim_decay_cube</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.processed_data.html">pyfli.io.processed_data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_folding.html">pyfli.io.spad_folding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_hdf5.html">pyfli.io.spad_hdf5</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_io.html">pyfli.io.spad_io</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.ss2_bin.html">pyfli.io.ss2_bin</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.utils.html">pyfli.io.utils</a></li>
 </ul>
 </details></li>
@@ -618,25 +622,26 @@ Formula: corrected = -ln(1 - (measured / max_counts)) * max_counts</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pyfli.io.data_ops_static.StaticDataOps.spad_hdf5_read">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">spad_hdf5_read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_prefix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pile_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bit_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/data_ops_static.html#StaticDataOps.spad_hdf5_read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.data_ops_static.StaticDataOps.spad_hdf5_read" title="Link to this definition">#</a></dt>
-<dd><p>Generic SPAD HDF5 reader shared by SS2 and SS3.
-gate_prefix : key prefix used to identify gate datasets inside ‘Gate Images’</p>
-<blockquote>
-<div><p>SS3 → ‘Bottom G2 Gate’
-SS2 → ‘Gate ‘</p>
-</div></blockquote>
-<p>Reads datasets matching gate_prefix, sorts numerically, stacks → (H, W, T) float32.</p>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">spad_hdf5_read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pile_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bit_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/data_ops_static.html#StaticDataOps.spad_hdf5_read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.data_ops_static.StaticDataOps.spad_hdf5_read" title="Link to this definition">#</a></dt>
+<dd><p>Read SPAD HDF5 data and normalize it to (H, W, T).</p>
+<p>The reader discovers split gate datasets or stacked 3D cubes from HDF5
+structure and metadata instead of requiring a fixed “Gate Images” group.
+gate_prefix remains available as a backwards-compatible discovery hint for
+existing SwissSPAD2 and SwissSPAD3 callers.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>fname</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
-<li><p><strong>gate_prefix</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a>)</p></li>
-<li><p><strong>pile_up</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
-<li><p><strong>bit_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>fname</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – HDF5 file containing SPAD image data.</p></li>
+<li><p><strong>gate_prefix</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Optional split-gate dataset prefix used as a discovery hint.</p></li>
+<li><p><strong>pile_up</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether pile-up correction should be applied after loading.</p></li>
+<li><p><strong>bit_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Detector digitization bit depth used for pile-up correction.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a></p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>SPAD image cube with shape (H, W, T) and float32 dtype.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -810,8 +815,7 @@ Signature unchanged — safe to call from data_operations.py.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="pyfli.io.data_ops_static.StaticDataOps.SS3HDF5read">
 <span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">SS3HDF5read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pileCorr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_pixels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hp_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/data_ops_static.html#StaticDataOps.SS3HDF5read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.data_ops_static.StaticDataOps.SS3HDF5read" title="Link to this definition">#</a></dt>
-<dd><p>Reads SS3 gated HDF5 data, optionally applying pile-up and hot-pixel corrections.
-Signature unchanged — safe to call from data_operations.py.</p>
+<dd><p>Read SwissSPAD3 HDF5 data through the shared SPAD loader.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

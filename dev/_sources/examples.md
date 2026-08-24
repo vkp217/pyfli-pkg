@@ -16,6 +16,17 @@ examples/single_decay_sim
 examples/whole_image_sim
 ```
 
+## SwissSPAD Detector I/O
+
+```{toctree}
+:maxdepth: 1
+:titlesonly:
+:numbered:
+
+examples/ss2_io
+examples/ss2_processing
+```
+
 ## Phasor Plotting
 
 ```{toctree}
