@@ -14,6 +14,8 @@ The notebooks are listed explicitly below, grouped by category.
 
 examples/single_decay_sim
 examples/whole_image_sim
+examples/ss2_io
+examples/ss2_processing
 ```
 
 ## Phasor Plotting
