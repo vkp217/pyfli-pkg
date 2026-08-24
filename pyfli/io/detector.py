@@ -7,19 +7,19 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`Detector`.
 """
 
+import os
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from typing import Any
 
-import os
-
 import numpy as np
-from concurrent.futures import ThreadPoolExecutor
-
 from tqdm import tqdm
+
+from pyfli import logging
+
+from .data_ops_static import StaticDataOps as ds
 from .spad_folding import apply_fold_layout
 from .spad_io import SpadConfig, SpadIO
-from pyfli import logging
-from .data_ops_static import StaticDataOps as ds
 
 
 class Detector:

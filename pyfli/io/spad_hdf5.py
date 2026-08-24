@@ -7,14 +7,13 @@ user hints take priority over structural inference, while ambiguous layouts are
 reported instead of selected silently.
 """
 
-from dataclasses import asdict, dataclass
 import os
 import re
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import h5py
 import numpy as np
-
 
 _NUMERIC_PATTERN = re.compile(r"[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?")
 

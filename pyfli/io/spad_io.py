@@ -8,9 +8,9 @@ HDF5 acquisitions.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, replace
 import os
 import re
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 import numpy as np
@@ -23,7 +23,6 @@ from .spad_folding import (
 )
 from .spad_hdf5 import SpadHDF5ReadResult, read_spad_hdf5
 from .ss2_bin import read_ss2_bin_acquisition
-
 
 _HDF5_PRESETS = {
     "ss2": ("Gate Images", "Gate "),
@@ -248,7 +247,7 @@ def _expected_repeats(config: SpadConfig) -> int | None:
         )
 
     ratio = config.laser_frequency_mhz / config.detector_frequency_mhz
-    repetitions = int(round(ratio))
+    repetitions = round(ratio)
 
     if repetitions < 2 or not np.isclose(
         ratio,

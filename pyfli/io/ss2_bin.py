@@ -7,12 +7,11 @@ column banks are deinterleaved, 10-bit subframes are accumulated, and top/bottom
 halves are stitched into a 512 x 512 x T data cube.
 """
 
-from dataclasses import dataclass
 import os
 import re
+from dataclasses import dataclass
 
 import numpy as np
-
 
 SS2_HALF_HEIGHT = 256
 SS2_WIDTH = 512
