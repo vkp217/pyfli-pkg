@@ -29,6 +29,10 @@ class SpadFoldLayout:
         Gate index inside one period that is treated as the start of the decay.
     phase_shift : int
         Circular shift applied on the time axis before folding.
+    onset_index : int
+        Detected or implied gate index of the signal onset inside one period.
+    onset_lead_bins : int
+        Number of gates the folded period starts before the signal onset.
     pulse_positions : tuple[int, ...]
         Expected pulse-onset positions in the original acquisition.
     period_score : float
@@ -50,6 +54,8 @@ class SpadFoldLayout:
     repeat_count: int
     phase_origin: int
     phase_shift: int
+    onset_index: int
+    onset_lead_bins: int
     pulse_positions: tuple[int, ...]
     period_score: float
     cycle_similarity: float
@@ -470,6 +476,7 @@ def analyze_fold_layout(
     search_radius: float = 0.15,
     smoothing_sigma: float = 1.0,
     threshold_fraction: float = 0.10,
+    onset_lead_bins: int | None = None,
 ) -> SpadFoldLayout:
     """
     Detect the periodic layout and circular phase required to fold SPAD data.
@@ -494,6 +501,11 @@ def analyze_fold_layout(
         Circular Gaussian smoothing sigma used only on the detection trace.
     threshold_fraction : float
         Peak-to-baseline fraction used to locate the fluorescence onset.
+    onset_lead_bins : int | None
+        Number of gates the folded period starts before the detected onset so the
+        complete rising edge and pre-pulse baseline are kept at the start of the
+        period. None selects 5 % of the period, with a minimum of two gates.
+        Ignored when phase_shift is supplied explicitly.
 
     Returns
     -------
@@ -502,6 +514,9 @@ def analyze_fold_layout(
     """
     if not (0 <= min_confidence <= 1):
         raise ValueError(f"min_confidence must be in [0, 1], got {min_confidence}.")
+
+    if onset_lead_bins is not None and int(onset_lead_bins) < 0:
+        raise ValueError(f"onset_lead_bins must be >= 0, got {onset_lead_bins}.")
 
     trace = build_temporal_trace(data)
     smoothed_trace = _smooth_circular_trace(
@@ -555,12 +570,24 @@ def analyze_fold_layout(
 
     manual_phase = phase_shift is not None
 
+    if onset_lead_bins is None:
+        lead_bins = max(2, round(0.05 * detected_period))
+    else:
+        lead_bins = int(onset_lead_bins)
+
+    if lead_bins >= detected_period:
+        raise ValueError(
+            f"onset_lead_bins={lead_bins} must be smaller than the period "
+            f"of {detected_period} gates."
+        )
+
     if phase_shift is None:
-        selected_shift = -detected_origin
-        phase_origin = detected_origin
+        phase_origin = (detected_origin - lead_bins) % detected_period
+        selected_shift = -phase_origin
     else:
         selected_shift = int(phase_shift)
         phase_origin = (-selected_shift) % detected_period
+        lead_bins = (detected_origin - phase_origin) % detected_period
 
     cycle_similarity = _cycle_similarity(
         smoothed_trace,
@@ -582,7 +609,7 @@ def analyze_fold_layout(
     )
 
     pulse_positions = tuple(
-        (phase_origin + detected_period * repeat) % original_bins
+        (detected_origin + detected_period * repeat) % original_bins
         for repeat in range(repeat_count)
     )
 
@@ -592,6 +619,8 @@ def analyze_fold_layout(
         repeat_count=repeat_count,
         phase_origin=int(phase_origin),
         phase_shift=int(selected_shift),
+        onset_index=int(detected_origin),
+        onset_lead_bins=int(lead_bins),
         pulse_positions=pulse_positions,
         period_score=float(period_score),
         cycle_similarity=float(cycle_similarity),

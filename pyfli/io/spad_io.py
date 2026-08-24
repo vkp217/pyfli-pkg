@@ -65,6 +65,9 @@ class SpadConfig:
         Circular Gaussian smoothing sigma used only for timing detection.
     onset_threshold_fraction : float
         Peak-to-baseline fraction used by the onset detector.
+    onset_lead_bins : int | None
+        Gates the folded period starts before the detected onset. None selects
+        5 % of the period with a minimum of two gates.
     hdf5_dataset_path : str | None
         Explicit stacked HDF5 dataset path for generic loading.
     hdf5_time_axis : int | None
@@ -102,6 +105,7 @@ class SpadConfig:
     period_search_radius: float = 0.15
     fold_smoothing_sigma: float = 1.0
     onset_threshold_fraction: float = 0.10
+    onset_lead_bins: int | None = None
 
     hdf5_dataset_path: str | None = None
     hdf5_time_axis: int | None = None
@@ -164,6 +168,9 @@ class SpadConfig:
 
         if not (0 < self.onset_threshold_fraction < 1):
             raise ValueError("onset_threshold_fraction must be in (0, 1).")
+
+        if self.onset_lead_bins is not None and self.onset_lead_bins < 0:
+            raise ValueError("onset_lead_bins must be >= 0 when provided.")
 
         if not isinstance(self.hdf5_folder_mode, str):
             raise ValueError("hdf5_folder_mode must be 'sum' or 'mean'.")
@@ -891,6 +898,7 @@ def load_spad(
                 search_radius=resolved_config.period_search_radius,
                 smoothing_sigma=resolved_config.fold_smoothing_sigma,
                 threshold_fraction=resolved_config.onset_threshold_fraction,
+                onset_lead_bins=resolved_config.onset_lead_bins,
             )
 
         elif raw_data.shape[-1] != detected_layout.original_bins:

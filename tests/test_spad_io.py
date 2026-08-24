@@ -63,7 +63,7 @@ def test_pileup_before_fold(tmp_path):
 
     aligned = np.roll(
         corrected,
-        shift=-phase_offset,
+        shift=-(phase_offset - 4),
         axis=-1,
     )
 
@@ -81,7 +81,9 @@ def test_pileup_before_fold(tmp_path):
     )
 
     assert result.fold_layout is not None
-    assert result.fold_layout.phase_shift == -phase_offset
+    assert result.fold_layout.onset_index == phase_offset
+    assert result.fold_layout.onset_lead_bins == 4
+    assert result.fold_layout.phase_shift == -(phase_offset - 4)
 
     np.testing.assert_allclose(
         result.data,

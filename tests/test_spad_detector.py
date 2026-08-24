@@ -106,7 +106,11 @@ def test_spad_detector(tmp_path):
     assert processing["pile_up"] is False
     assert processing["fold"] is True
 
-    assert processing["spad_metadata"]["decay"]["fold"]["phase_shift"] == -11
+    fold_metadata = processing["spad_metadata"]["decay"]["fold"]
+
+    assert fold_metadata["onset_index"] == 11
+    assert fold_metadata["onset_lead_bins"] == 4
+    assert fold_metadata["phase_shift"] == -7
 
 
 def test_ss2_hdf5(tmp_path):

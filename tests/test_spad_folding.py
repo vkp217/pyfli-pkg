@@ -91,8 +91,11 @@ def test_auto_fold_phase():
 
     assert layout.period_bins == 70
     assert layout.repeat_count == 4
-    assert layout.phase_origin == 17
-    assert layout.phase_shift == -17
+    assert layout.onset_index == 17
+    assert layout.onset_lead_bins == 4
+    assert layout.phase_origin == 13
+    assert layout.phase_shift == -13
+    assert layout.pulse_positions == (17, 87, 157, 227)
 
     assert folded.shape == (
         2,
@@ -102,10 +105,62 @@ def test_auto_fold_phase():
 
     np.testing.assert_allclose(
         folded[0, 0],
+        np.roll(4.0 * period, 4),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+
+def test_auto_fold_phase_without_lead():
+    period, cube = _periodic_decay(
+        period_bins=70,
+        phase_offset=17,
+    )
+
+    layout = analyze_fold_layout(
+        cube,
+        expected_repeats=4,
+        onset_lead_bins=0,
+    )
+
+    folded = apply_fold_layout(
+        cube,
+        layout,
+    )
+
+    assert layout.onset_index == 17
+    assert layout.onset_lead_bins == 0
+    assert layout.phase_origin == 17
+    assert layout.phase_shift == -17
+
+    np.testing.assert_allclose(
+        folded[0, 0],
         4.0 * period,
         rtol=1e-12,
         atol=1e-12,
     )
+
+
+def test_invalid_onset_lead_bins():
+    _, cube = _periodic_decay(
+        period_bins=70,
+        phase_offset=17,
+    )
+
+    with pytest.raises(ValueError, match="onset_lead_bins"):
+        analyze_fold_layout(
+            cube,
+            expected_repeats=4,
+            onset_lead_bins=-1,
+        )
+
+    with pytest.raises(ValueError, match="onset_lead_bins"):
+        analyze_fold_layout(
+            cube,
+            expected_repeats=4,
+            period_bins=70,
+            onset_lead_bins=70,
+        )
 
 
 def test_manual_phase_shift():
@@ -128,6 +183,8 @@ def test_manual_phase_shift():
 
     assert layout.manual_period is True
     assert layout.manual_phase is True
+    assert layout.onset_index == 2
+    assert layout.onset_lead_bins == 0
     assert layout.phase_origin == 2
     assert layout.phase_shift == -2
 
