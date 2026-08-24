@@ -23,7 +23,7 @@ except ImportError:
     USE_POLYVERSION = False
     current = "local"
 
-import pyfli  # noqa: E402
+import pyfli
 
 # -- Project information ------------------------------------------------------
 project = "PyFli"
@@ -51,7 +51,14 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    # examples/ex_helper/ holds plain .py helper scripts the example notebooks
+    # import at runtime (for local reproduction) — not build-time doc sources.
+    "examples/ex_helper",
+]
 
 source_suffix = {
     ".rst": "restructuredtext",

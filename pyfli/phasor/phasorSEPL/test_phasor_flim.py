@@ -10,29 +10,27 @@ or:
 """
 
 import math
+from dataclasses import replace
 
 import numpy as np
 import pytest
-from dataclasses import replace
-
 from config import AcquisitionConfig, AcquisitionMode
+from lifetimes import lifetime_from_phasor, modulus_lifetime, phase_lifetime
+from locus import (
+    build_locus,
+    sepl_center_radius_discrete,
+    tau_grid,
+    universal_semicircle,
+)
 from phasors import (
     phasor_continuous,
     phasor_discrete,
-    phasor_gated_single,
-    phasor_gated_N,
-    phasor_truncated,
-    phasor_offset,
     phasor_from_config,
+    phasor_gated_N,
+    phasor_gated_single,
+    phasor_offset,
+    phasor_truncated,
 )
-from locus import (
-    build_locus,
-    tau_grid,
-    universal_semicircle,
-    sepl_center_radius_discrete,
-)
-from lifetimes import phase_lifetime, modulus_lifetime, lifetime_from_phasor
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixtures

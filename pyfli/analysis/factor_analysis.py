@@ -39,9 +39,9 @@ Typical usage
     fig2, axes2 = fa.plot(df2)
 """
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import seaborn as sns
 
 
@@ -141,7 +141,7 @@ class FactorAnalysis:
                         f"all_fitset[{i}]['{key}'] ({method_names[i]}) is 0-dimensional "
                         f"(dtype={arr.dtype}, value={arr!r}); expected an ndarray shaped "
                         f"like decay's pixel grid + time axis, e.g. "
-                        f"{self.pixel_shape + (self.decay.shape[self.time_axis],)}."
+                        f"{(*self.pixel_shape, self.decay.shape[self.time_axis])}."
                     )
                 arr_time_axis = self.time_axis % arr.ndim
                 arr_pixel_shape = tuple(
@@ -534,7 +534,7 @@ class FactorAnalysis:
         lo, hi = value_range
         n_methods = len(self.method_names)
 
-        row_labels = [factor_key] + list(target_keys)
+        row_labels = [factor_key, *list(target_keys)]
         if isinstance(cmap, str):
             cmaps = [cmap] * len(row_labels)
         else:

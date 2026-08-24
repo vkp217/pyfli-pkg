@@ -9,17 +9,16 @@ Color palette mirrors the widget colour scheme; each acquisition mode has
 a distinct colour defined in PALETTE.
 """
 
+from collections.abc import Sequence
 from dataclasses import replace
-from typing import Sequence
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from .config import AcquisitionConfig, AcquisitionMode
 from .locus import build_locus, universal_semicircle
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Colour palette (mode → hex)
@@ -309,7 +308,7 @@ def plot_discrete_N_sweep(
     colors = [cmap(i / (len(N_values) - 1)) for i in range(len(N_values))]
 
     for N, c in zip(N_values, colors):
-        cfg_n = replace(base_cfg, mode=AcquisitionMode.DISCRETE, N_bins=N)  # noqa: F811
+        cfg_n = replace(base_cfg, mode=AcquisitionMode.DISCRETE, N_bins=N)
         g, s, _ = build_locus(cfg_n)
         ax.plot(g, s, color=c, linewidth=1.6, label=f"N = {N}")
 

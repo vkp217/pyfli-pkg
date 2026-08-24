@@ -9,20 +9,20 @@ phasor analyzer for CPU and optional GPU FLI workflows. Public API includes clas
 
 from typing import Any
 
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import torch
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
 from .phasor_simple_utils import (
     _TAU_MARKS_NS,
-    _universal_circle_xy,
+    _add_frequency_label,
     _draw_lifetime_ticks,
     _style_phasor_ax,
-    _add_frequency_label,
+    _universal_circle_xy,
 )
 
 
@@ -962,7 +962,7 @@ class PhasorPlotsMixin:
             )
             _style_phasor_ax(
                 ax,
-                title=f"Harmonic {k} ($\omega_{{{k}}}$)",
+                title=rf"Harmonic {k} ($\omega_{{{k}}}$)",
                 xlim=xlim,
                 ylim=ylim,
                 half_circle=half_circle,

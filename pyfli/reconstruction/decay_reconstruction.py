@@ -9,7 +9,7 @@ cubes. Public API includes class :class:`ParamToDecay`.
 """
 
 import itertools
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 from scipy.signal import fftconvolve
@@ -85,7 +85,7 @@ class ParamToDecay:
     #: is always the temporal shift consumed as ``h_shift``. Extend this (plus a
     #: matching kernel branch in ``forward_model.decay_kernel``) to support new
     #: model families.
-    PARAM_MAP_KEYS: dict[str, tuple[str, ...]] = {
+    PARAM_MAP_KEYS: ClassVar[dict[str, tuple[str, ...]]] = {
         "mono-exponential": (
             "photon_count_map",
             "tau_map",
@@ -104,7 +104,7 @@ class ParamToDecay:
 
     #: Default value used for a parameter map when it's omitted from ``params``.
     #: Keys absent from this dict are required (no sensible physical default).
-    PARAM_MAP_DEFAULTS: dict[str, float] = {
+    PARAM_MAP_DEFAULTS: ClassVar[dict[str, float]] = {
         "photon_count_map": 1.0,
         "v_shift_map": 0.0,
         "h_shift_map": 0.0,

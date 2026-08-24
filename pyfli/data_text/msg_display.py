@@ -6,11 +6,11 @@ used by interactive fitting workflows. Public API includes classes
 :class:`MessageDisplay`.
 """
 
-from typing import Any
-
-from pyfli import logging
+from typing import Any, ClassVar
 
 import numpy as np
+
+from pyfli import logging
 
 
 class MessageDisplay:
@@ -139,7 +139,7 @@ class MessageDisplay:
         self._internal_log(footer)
 
     # Fixed display order: label → candidate map keys (first match wins)
-    _PIXEL_FIELDS = [
+    _PIXEL_FIELDS: ClassVar[list[tuple[str, list[str]]]] = [
         ("A", ["photon_count_map"]),
         ("α", ["alpha1_map", "alpha_map"]),
         ("τ₁", ["tau1_map", "tau_map"]),

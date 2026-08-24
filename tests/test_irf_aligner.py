@@ -9,7 +9,6 @@ import pytest
 from pyfli.data_cc.irfAligner import IRFAligner
 from pyfli.simulator.irf_sim.irf_generator import IRFGenerator
 
-
 T_LASER = 12.5
 NUM_BINS = 256
 MU_IRF = 60

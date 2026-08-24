@@ -10,51 +10,50 @@ Public API (unchanged):
     maker.get_binary_mask()
 """
 
-from typing import Any
-
-import numpy as np
-import cv2  # importing cv2 overwrites QT_QPA_PLATFORM_PLUGIN_PATH
 import os
 import sys
+from typing import Any
 
-from pyfli import logging
-
+import cv2  # importing cv2 overwrites QT_QPA_PLATFORM_PLUGIN_PATH
+import numpy as np
+from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QCursor,
+    QFont,
+    QImage,
+    QPainter,
+    QPen,
+    QPixmap,
+    QPolygonF,
+)
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QLabel,
-    QFrame,
-    QSizePolicy,
-    QStatusBar,
-    QSpacerItem,
-    QDialog,
-    QDialogButtonBox,
-    QSlider,
     QButtonGroup,
     QColorDialog,
+    QDialog,
+    QDialogButtonBox,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMainWindow,
+    QPushButton,
     QScrollArea,
+    QSizePolicy,
+    QSlider,
+    QSpacerItem,
     QSpinBox,
+    QStatusBar,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QAbstractItemView,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt, QPointF, QRectF, Signal
-from PySide6.QtGui import (
-    QPainter,
-    QColor,
-    QPen,
-    QBrush,
-    QPolygonF,
-    QPixmap,
-    QImage,
-    QFont,
-    QCursor,
-)
+
+from pyfli import logging
 
 try:
     from .roi_style import STYLE as _STYLE  # imported as package
@@ -181,7 +180,7 @@ def _roi_color(roi_id: int) -> QColor:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-class IDAssignDialog(QDialog):  # noqa: F811
+class IDAssignDialog(QDialog):
     """
     Let users rename and reorder ROI IDs before masks are saved. The dialog keeps
     interactive ROI editing separate from final label assignment.
@@ -284,7 +283,7 @@ _HANDLE_R = 6
 _MIN_BOX = 6
 
 
-class ImageCanvas(QWidget):  # noqa: F811
+class ImageCanvas(QWidget):
     """
     Display images and handle interactive ROI drawing, editing, thresholding, and mask
     previews. It is the central canvas widget used by the ROI application.
@@ -999,7 +998,7 @@ class ImageCanvas(QWidget):  # noqa: F811
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-class ROIApp(QMainWindow):  # noqa: F811
+class ROIApp(QMainWindow):
     """
     Host the full interactive ROI maker interface. The widget wires image display,
     threshold controls, ROI editing actions, ID assignment, and mask saving into one

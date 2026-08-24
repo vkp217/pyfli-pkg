@@ -6,18 +6,16 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`DataSaver`; functions :func:`filter_vars`.
 """
 
-from typing import Any
-
-from pyfli import logging
-
 # pyfli/io/data_saving.py
 import json
 import os
-
-import numpy as np
 from datetime import datetime
+from typing import Any
 
 import matplotlib.pyplot as plt
+import numpy as np
+
+from pyfli import logging
 
 
 def filter_vars(local_vars: np.ndarray, keys: np.ndarray) -> Any:
@@ -217,7 +215,7 @@ class DataSaver:
             target.savefig(path, bbox_inches="tight", dpi=dpi)
             self.log(f"IMAGE SAVED >> {name}.png")
         except Exception as e:
-            self.log(f"ERROR saving {name}: {str(e)}")
+            self.log(f"ERROR saving {name}: {e!s}")
 
         if close:
             plt.close(fig) if fig else plt.close()
@@ -232,7 +230,7 @@ class DataSaver:
     def load_json(self, name: str) -> Any:
         """Loads a dictionary previously saved with save_json."""
         path = os.path.join(self.save_dir, f"{name}.json")
-        with open(path, "r") as f:
+        with open(path) as f:
             data = json.load(f)
         self.log(f"JSON loaded: << {name}.json")
         return data

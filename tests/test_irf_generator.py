@@ -8,7 +8,6 @@ import pytest
 
 from pyfli.simulator.irf_sim.irf_generator import IRFGenerator
 
-
 T_LASER = 12.5
 NUM_BINS = 256
 GATE_DELAY = T_LASER / NUM_BINS

@@ -6,16 +6,15 @@ likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includ
 classes :class:`FLICPUProcessor`.
 """
 
+import os
 from typing import Any
 
-from pyfli import logging
-
-import numpy as np
 import h5py
-import os
-
+import numpy as np
 from joblib import Parallel, delayed
 from tqdm import tqdm
+
+from pyfli import logging
 
 try:
     from .global_fitter import GlobalFLIFitter as _GlobalFLIFitter

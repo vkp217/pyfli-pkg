@@ -31,7 +31,6 @@ from numpy.typing import ArrayLike
 
 from .config import AcquisitionConfig, AcquisitionMode
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # 1.  CONTINUOUS  (canonical universal semicircle)
 # ══════════════════════════════════════════════════════════════════════════════

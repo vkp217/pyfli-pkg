@@ -9,14 +9,12 @@ datasets. Public API includes functions :func:`load_session_arrays`,
 :func:`add_mean_lifetime`.
 """
 
-from typing import Any
-
-from pyfli import logging
-
 import os
+from typing import Any
 
 import numpy as np
 
+from pyfli import logging
 
 # Files that are NOT fitting results and should be excluded from scan output
 _NON_RESULT_FILES = {

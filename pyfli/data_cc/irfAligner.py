@@ -7,11 +7,11 @@ helpers for normalization, masking, ROI extraction, and IRF alignment. Public AP
 includes classes :class:`IRFAligner`.
 """
 
-from typing import Any
 import warnings
+from typing import Any
 
 import numpy as np
-from scipy.fft import fft, ifft, fftfreq
+from scipy.fft import fft, fftfreq, ifft
 from scipy.ndimage import uniform_filter1d
 
 from ..analyticalWorkflow.am_utils import AnalyticalHelpers
@@ -339,7 +339,7 @@ class IRFAligner:
                     "pass an explicit bin_window instead."
                 )
             width = left + right + 1
-            start = int(round(t_decay)) - left
+            start = round(t_decay) - left
             start = start + max(0, -start)
             start = start - max(0, (start + width - 1) - (self.T - 1))
 
@@ -486,7 +486,7 @@ class IRFAligner:
         shift = raw_shift - manual_correction
 
         if method == "circular":
-            aligned_irf = np.roll(irf_trace, int(round(shift)))
+            aligned_irf = np.roll(irf_trace, round(shift))
         else:
             freqs = fftfreq(self.T)
             phase = np.exp(-2j * np.pi * freqs * shift)

@@ -8,5 +8,5 @@ creation and threshold-mask tooling. The module primarily re-exports package sym
 constants for downstream imports.
 """
 
-from .roi_maker import ROIMaker
 from . import roi_style
+from .roi_maker import ROIMaker

@@ -7,13 +7,12 @@ likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includ
 classes :class:`GlobalFLIFitter`.
 """
 
+import time
 from typing import Any
 
 import numpy as np
-import time
-
-from tqdm import tqdm
 from tabulate import tabulate
+from tqdm import tqdm
 
 from pyfli import logging
 

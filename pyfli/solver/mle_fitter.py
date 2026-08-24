@@ -11,11 +11,11 @@ from typing import Any
 
 import numpy as np
 from scipy.optimize import minimize
-from scipy.stats import f, chi2
+from scipy.stats import chi2, f
 
 from .base_fitter import BaseFLIFitter
 from .base_static import resolve_params_and_bounds
-from .shared_metrics import enforce_tau_ordering, compute_fli_stats
+from .shared_metrics import compute_fli_stats, enforce_tau_ordering
 
 
 class MLEFLIFitter(BaseFLIFitter):

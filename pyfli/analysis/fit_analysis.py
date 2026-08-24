@@ -12,17 +12,16 @@ datasets. Public API includes functions :func:`plot_fitting_maps`,
 
 from typing import Any
 
-from ..data_vnp import (
-    DataViewer,
-    Plotter,
-    ColorProcessor,
-    MonoBiClassifier,
-    plot_2d_subplots,
-)
 from ..data_cc import Normalization
 from ..data_text import MessageDisplay
+from ..data_vnp import (
+    ColorProcessor,
+    DataViewer,
+    MonoBiClassifier,
+    Plotter,
+    plot_2d_subplots,
+)
 from .utils import plot_pixel_diagnostic, random_true_pixel
-
 
 # Per-key default thresholds reflecting the physical valid range of each parameter.
 # alpha maps are fractions [0, 1]; lifetime maps use a generous 5 ns upper bound.

@@ -11,18 +11,17 @@ datasets. Public API includes functions :func:`circular_convolution_fft`,
 :func:`save_3d_array_as_tiff_sequence`.
 """
 
-from typing import Any
-
-from pyfli import logging
-
-import numpy as np
-from scipy.integrate import quad
-import matplotlib.pyplot as plt
-from scipy.stats import pearsonr
 import math
 import os
+from typing import Any
 
+import matplotlib.pyplot as plt
+import numpy as np
 import tifffile
+from scipy.integrate import quad
+from scipy.stats import pearsonr
+
+from pyfli import logging
 
 from ..data_vnp.color_processor import ColorProcessor
 
@@ -707,7 +706,7 @@ def save_plot(
     try:
         target.savefig(path, bbox_inches="tight", dpi=dpi)
     except Exception as e:
-        logging.error(f"ERROR saving {name}: {str(e)}")
+        logging.error(f"ERROR saving {name}: {e!s}")
     if close:
         plt.close(fig) if fig else plt.close()
 

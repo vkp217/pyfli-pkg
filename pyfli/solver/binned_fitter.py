@@ -8,10 +8,10 @@ classes :class:`FLIBinner` and :class:`BinnedFLIFitter`.
 
 from typing import Any
 
-from pyfli import logging
-
 # solver/binned_fitter.py
 import numpy as np
+
+from pyfli import logging
 
 
 class FLIBinner:
