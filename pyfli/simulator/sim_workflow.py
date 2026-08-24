@@ -164,6 +164,75 @@ class SimGenerator:
         return out
 
 
+class WeightedConfigSimGenerator:
+    """
+    Wraps one :class:`SimGenerator` per config combination and, on every
+    ``simulate_once()`` call, draws a fresh combination according to
+    ``probs`` before delegating to it.
+
+    This lets a single simulator built from this class (e.g. via
+    ``bayesflow.make_simulator([lambda: gen.simulate_once()])``) produce
+    draws sampled from a mixture of configs — such as the
+    ``(configs, probs)`` pair returned by
+    :meth:`~pyfli.data_cc.config_combinations.ConfigCombinationGenerator.combination_table` —
+    with no change needed to code downstream that only ever calls
+    ``simulate_once()``.
+
+    Parameters
+    ----------
+    irf_data : np.ndarray
+        Full IRF cube, forwarded to each per-combination :class:`SimGenerator`.
+    configs : Sequence[dict]
+        One config dict per combination.
+    probs : Sequence[float]
+        Sampling probability for each entry in ``configs`` (same order,
+        same length). Renormalized if it doesn't already sum to 1.
+    a_range, b_range, pixel, family, sensor_type
+        Forwarded to every per-combination :class:`SimGenerator`.
+    seed : int | None
+        Seed for the combination-selection RNG (independent of each
+        :class:`SimGenerator`'s own internal randomness).
+    """
+
+    def __init__(
+        self,
+        irf_data,
+        configs,
+        probs,
+        a_range=(-20, 100),
+        b_range=(0, 10),
+        pixel=(0, 0),
+        family="separate",
+        sensor_type="discrete",
+        seed=None,
+    ):
+        if len(configs) != len(probs):
+            raise ValueError(
+                f"configs and probs must be the same length, got "
+                f"{len(configs)} and {len(probs)}"
+            )
+        self._generators = [
+            SimGenerator(
+                irf_data,
+                cfg,
+                a_range=a_range,
+                b_range=b_range,
+                pixel=pixel,
+                family=family,
+                sensor_type=sensor_type,
+            )
+            for cfg in configs
+        ]
+        probs = np.asarray(probs, dtype=float)
+        self.probs = probs / probs.sum()
+        self.rng = np.random.default_rng(seed)
+
+    def simulate_once(self):
+        """Picks one config combination per the weighted probabilities, then delegates to it."""
+        idx = self.rng.choice(len(self._generators), p=self.probs)
+        return self._generators[idx].simulate_once()
+
+
 def make_simulator(simulate_fn, num_samples):
     """Run simulate_fn num_samples times and stack each output key along a new leading axis."""
     samples = [simulate_fn() for _ in range(num_samples)]

@@ -9,8 +9,8 @@ Belongs to :mod:`pyfli.bayes_utils`, downstream of
 :class:`pyfli.reconstruction.ParamToDecay`.
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 from pyfli.bayes_utils.param_combinations import ParamSelector
 from pyfli.reconstruction import ParamToDecay

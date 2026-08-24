@@ -45,7 +45,7 @@ class OffsetGen:
         NOTE: np.roll requires an integer shift; `a` is rounded to the
         nearest int here since it's sampled from a continuous uniform range.
         """
-        a_int = int(round(a))
+        a_int = round(a)
         return np.roll(irf_1d_base, a_int) + b
 
     def sample(self):

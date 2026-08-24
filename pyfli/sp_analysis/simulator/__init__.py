@@ -9,6 +9,6 @@ pixel camera basis generation, acquisition simulation, and reconstruction solver
 module primarily re-exports package symbols or constants for downstream imports.
 """
 
-from .pattern_gen import BasisPatterns
 from .measurement_sim import MeasurementSimulator
+from .pattern_gen import BasisPatterns
 from .reconstructor import Reconstructor

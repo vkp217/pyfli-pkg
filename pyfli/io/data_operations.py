@@ -6,16 +6,14 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`DataOperations`.
 """
 
+import os
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
-from pyfli import logging
-
-import os
-
 import numpy as np
-from concurrent.futures import ThreadPoolExecutor
-
 from tqdm import tqdm
+
+from pyfli import logging
 
 # Import the static logic from your utility file
 from .data_ops_static import StaticDataOps as ds

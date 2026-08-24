@@ -9,9 +9,10 @@ readers, saving helpers, and processed-data loaders. The module primarily re-exp
 package symbols or constants for downstream imports.
 """
 
-from .detector import Detector
 from .data_operations import DataOperations
 from .data_saving import DataSaver
+from .detector import Detector
+from .flim_decay_cube import collapse_to_xyt, load_flim_data, plot_xyt
 from .processed_data import (
     AlliGprocessedImport,
     BHprocessedImport,
@@ -19,4 +20,3 @@ from .processed_data import (
     PyFliprocessedImport,
 )
 from .utils import DataIOUtils
-from .flim_decay_cube import load_flim_data, collapse_to_xyt, plot_xyt

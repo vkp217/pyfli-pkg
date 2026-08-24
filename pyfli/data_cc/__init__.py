@@ -10,6 +10,6 @@ primarily re-exports package symbols or constants for downstream imports.
 """
 
 from .irfAligner import IRFAligner
-from .preprocessing import DataPreprocessing
 from .norm import Normalization
+from .preprocessing import DataPreprocessing
 from .roi import ROIOperations

@@ -78,10 +78,10 @@ must be used with care (it can destabilize a two-component fit if mis-targeted).
 from detector_weights import ICCDParams
 from fli_solver import SolverConfig, solve_flim
 
-cfg = SolverConfig(T=12.5, n_models=2, rho1=0.02, rho2=0.10,
-                   estimate_irf=True)            # or False for reference mode
-res = solve_flim(y, "iccd", ICCDParams(G0=12, F2=2, sigma_r=8),
-                 ny, nx, gate_spec, cfg)
+cfg = SolverConfig(
+    T=12.5, n_models=2, rho1=0.02, rho2=0.10, estimate_irf=True
+)  # or False for reference mode
+res = solve_flim(y, "iccd", ICCDParams(G0=12, F2=2, sigma_r=8), ny, nx, gate_spec, cfg)
 res["taus"], res["amps"], res["irf"]
 ```
 

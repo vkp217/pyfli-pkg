@@ -13,9 +13,9 @@ Units
     Angles    : radians (computed internally)
 """
 
+import math
 from dataclasses import dataclass
 from enum import Enum, auto
-import math
 
 
 class AcquisitionMode(Enum):

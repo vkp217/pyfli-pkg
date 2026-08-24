@@ -11,27 +11,28 @@ Plotter             Multi-source comparison orchestrator
 plot_2d_subplots()  Backward-compatible module function
 """
 
-from pyfli import logging
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
+from dataclasses import replace as dc_replace
+from typing import Any, ClassVar
 
-from dataclasses import dataclass, field, replace as dc_replace
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
-
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
-import pandas as pd
-import seaborn as sns
 from scipy import stats
 from scipy.stats import (
+    energy_distance,
+    entropy,
     gaussian_kde,
     probplot,
     wasserstein_distance,
-    energy_distance,
-    entropy,
 )
 
+from pyfli import logging
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PlotConfig  –  single source of truth for every default
@@ -78,10 +79,10 @@ class PlotConfig:
     """
 
     # ── visual ────────────────────────────────────────────────────────────────
-    figsize: Tuple[int, int] = (14, 8)
+    figsize: tuple[int, int] = (14, 8)
     cmap: str = "viridis"
     bins: int = 100
-    colors: List[str] = field(
+    colors: list[str] = field(
         default_factory=lambda: [
             "#3498db",
             "#e74c3c",
@@ -94,7 +95,7 @@ class PlotConfig:
     imshow_source: str = "processed"  # "raw" | "processed"
     shared_colorbar: bool = False
     annotate_stats: bool = True
-    scatter_pair: Optional[Tuple[int, int]] = None
+    scatter_pair: tuple[int, int] | None = None
     qq_reference: str = "norm"
     # ── comparison ────────────────────────────────────────────────────────────
     point_type: str = "strip"  # "strip" | "swarm"
@@ -126,8 +127,8 @@ class DataProcessor:
     @staticmethod
     def process(
         data: np.ndarray,
-        operations: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+        operations: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Return (processed_map, valid_1d)."""
         data = np.array(data, dtype=float)
         ops = operations or {}
@@ -166,7 +167,7 @@ class DataProcessor:
         return dm, valid[np.isfinite(valid)]
 
     @classmethod
-    def is_valid(cls, valid: np.ndarray, min_samples: Optional[int] = None) -> bool:
+    def is_valid(cls, valid: np.ndarray, min_samples: int | None = None) -> bool:
         """
         Return whether valid.
 
@@ -188,7 +189,7 @@ class DataProcessor:
         return len(v) >= n and np.nanstd(v) != 0
 
     @staticmethod
-    def stats(valid: np.ndarray) -> Dict[str, float]:
+    def stats(valid: np.ndarray) -> dict[str, float]:
         """
         Compute summary statistics for valid sample values.
 
@@ -210,7 +211,7 @@ class DataProcessor:
             median=float(np.median(valid)),
             min=float(np.min(valid)),
             max=float(np.max(valid)),
-            n=int(len(valid)),
+            n=len(valid),
         )
 
 
@@ -248,7 +249,7 @@ class SourceLoader:
         ]
         self.labels = self._infer_labels()
 
-    def _infer_labels(self) -> List[str]:
+    def _infer_labels(self) -> list[str]:
         """
         Run the infer labels routine.
 
@@ -259,7 +260,7 @@ class SourceLoader:
         """
         if self.values:
             return list(self.values)
-        seen: Dict[str, None] = {}
+        seen: dict[str, None] = {}
         for src in self.raw_sources:
             if hasattr(src, "files"):  # npz
                 for k in src.files:
@@ -291,9 +292,9 @@ class SourceLoader:
         except (KeyError, ValueError, TypeError):
             return np.array([])
 
-    def load(self) -> Dict[str, List[np.ndarray]]:
+    def load(self) -> dict[str, list[np.ndarray]]:
         """Return {label: [arr_per_source]}."""
-        groups: Dict[str, List[np.ndarray]] = {k: [] for k in self.labels}
+        groups: dict[str, list[np.ndarray]] = {k: [] for k in self.labels}
         for src in self.raw_sources:
             if isinstance(src, np.ndarray):
                 for i, key in enumerate(self.labels):
@@ -755,7 +756,7 @@ class PlotKit:
     @staticmethod
     def metrics_bar(
         ax: Axes,
-        metrics: List[Dict],
+        metrics: list[dict],
         *,
         config: Any | None = None,
         title: str = "Distribution Metrics",
@@ -789,7 +790,7 @@ class PlotKit:
         ax.set_title(title)
 
     # ── name → method dispatcher ──────────────────────────────────────────────
-    _NAME_MAP: Dict[str, str] = {
+    _NAME_MAP: ClassVar[dict[str, str]] = {
         "map": "map",
         "imshow": "map",
         "hist": "histogram",
@@ -853,7 +854,7 @@ class SubplotVisualizer:
         Additional keyword arguments forwarded to the underlying implementation.
     """
 
-    def __init__(self, config: Optional[PlotConfig] = None, **kw: Any) -> None:
+    def __init__(self, config: PlotConfig | None = None, **kw: Any) -> None:
         if config is not None:
             self.config = config
         else:
@@ -1120,8 +1121,8 @@ class Plotter:
         self.source_names = source_names or [
             f"Source {i + 1}" for i in range(len(args))
         ]
-        self.stats_results: List[Dict] = []
-        self.current_fig: Optional[Figure] = None
+        self.stats_results: list[dict] = []
+        self.current_fig: Figure | None = None
 
         # operations: None | dict | list[dict] (one per source)
         self._operations = operations
@@ -1172,8 +1173,8 @@ class Plotter:
 
     def _apply_processing(
         self,
-        groups: Dict[str, List[np.ndarray]],
-    ) -> Dict[str, List[np.ndarray]]:
+        groups: dict[str, list[np.ndarray]],
+    ) -> dict[str, list[np.ndarray]]:
         """Run DataProcessor on every array in *groups*.
 
         self._operations may be:
@@ -1183,7 +1184,7 @@ class Plotter:
         """
         if not self._operations:
             return groups
-        processed: Dict[str, List[np.ndarray]] = {k: [] for k in groups}
+        processed: dict[str, list[np.ndarray]] = {k: [] for k in groups}
         for key, arrs in groups.items():
             for i, arr in enumerate(arrs):
                 ops = (
@@ -1718,7 +1719,7 @@ class Plotter:
     def make_cluster_plot(
         self,
         multi_cluster_mask: np.ndarray,
-        cluster_names: Optional[List[str]] = None,
+        cluster_names: list[str] | None = None,
         title: str = "Cluster Analysis",
         graph_type: str = "box",
         show_significance: bool = True,
@@ -1796,7 +1797,7 @@ class Plotter:
 
         # ── extract per-cluster pixel arrays ─────────────────────────────────
         # groups[key][cluster_idx] = [arr_src0, arr_src1, ...]
-        groups: Dict[str, List[List[np.ndarray]]] = {}
+        groups: dict[str, list[list[np.ndarray]]] = {}
         for key in self.labels:
             groups[key] = [[] for _ in unique_ids]
             for src_idx, src in enumerate(self.raw_data):
@@ -2066,7 +2067,7 @@ class DLModelComparator(Plotter):
     metrics on comparison figures.
     """
 
-    def compute_distribution_metrics(self) -> List[Dict]:
+    def compute_distribution_metrics(self) -> list[dict]:
         """
         Compute distribution metrics.
 
@@ -2137,7 +2138,7 @@ class DLModelComparator(Plotter):
             bbox=dict(boxstyle="round", facecolor="none", edgecolor="gray", alpha=0.4),
         )
 
-    def plot_metrics(self, title: str = "Distribution Metrics") -> Optional[Figure]:
+    def plot_metrics(self, title: str = "Distribution Metrics") -> Figure | None:
         """Standalone bar chart of W / Energy / KL for all key × model pairs."""
         metrics = self.compute_distribution_metrics()
         if not metrics:

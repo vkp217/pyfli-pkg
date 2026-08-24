@@ -9,15 +9,14 @@ aware IRF deconvolution and joint FLI fitting utilities. Public API includes cla
 :func:`pin_barycenter`, and :func:`fit_decay_pixel`.
 """
 
-from typing import Any
-
-from pyfli import logging
-
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from scipy.optimize import least_squares
 from scipy.special import erf
+
+from pyfli import logging
 
 try:
     from .detector_weights import make_observation

@@ -6,9 +6,9 @@ display helpers bundled with PyFLI. The module primarily re-exports package symb
 constants for downstream imports.
 """
 
-from typing import Any
-import os
 import base64
+import os
+from typing import Any
 
 _LOGO_PATH = os.path.join(os.path.dirname(__file__), "PyFLI_logo.png")
 

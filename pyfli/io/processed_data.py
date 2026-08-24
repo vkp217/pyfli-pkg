@@ -7,16 +7,15 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`PyFliprocessedImport`.
 """
 
+import glob
+import json
+import os
 from typing import Any
 
-from pyfli import logging
-
-import numpy as np
-import os
-import glob
-
 import matplotlib.pyplot as plt
-import json
+import numpy as np
+
+from pyfli import logging
 
 
 class DatasetPlotter:
@@ -118,13 +117,13 @@ class AlliGprocessedImport(DatasetPlotter):
             return
 
         # Get shape from the first available map
-        first_map = list(self.dataset["results"]["maps"].values())[0]
+        first_map = next(iter(self.dataset["results"]["maps"].values()))
         a1, a2 = first_map.shape
         mask = np.zeros((a1, a2))
 
         for f_n in files:
             # --- YOUR WORKING CODE ---
-            with open(f_n, "r") as fid:
+            with open(f_n) as fid:
                 j_data = json.load(fid)
             n = len(j_data["Named ROI Descriptions"])
             for i in range(n):
@@ -396,5 +395,3 @@ class PyFliprocessedImport(DatasetPlotter):
     Reload processed PyFLI outputs from disk. The importer supports downstream plotting
     and comparison without rerunning the original fitting workflow.
     """
-
-    pass

@@ -10,6 +10,6 @@ from .decay_reconstruction import ParamToDecay
 from .detailed_results import DetailedRecon
 
 __all__ = [
-    "ParamToDecay",
     "DetailedRecon",
+    "ParamToDecay",
 ]

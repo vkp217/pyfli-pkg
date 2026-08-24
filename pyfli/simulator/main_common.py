@@ -240,14 +240,12 @@ class BaseDiscreteSimulator:
         p = getattr(self.engine, self.sample_params_name)()
         low_cycles, high_cycles = self.engine.params_cfg["cycles"]
         alpha_cyc, beta_cyc = self.engine.params_cfg["pc"]
-        n_cycles = int(
-            round(
-                ParameterSampler.sample_beta(
-                    alpha_cyc,
-                    beta_cyc,
-                    scale=high_cycles - low_cycles,
-                    offset=low_cycles,
-                )
+        n_cycles = round(
+            ParameterSampler.sample_beta(
+                alpha_cyc,
+                beta_cyc,
+                scale=high_cycles - low_cycles,
+                offset=low_cycles,
             )
         )
         mu_per_cycle = 0.01

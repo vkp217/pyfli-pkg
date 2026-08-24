@@ -10,16 +10,16 @@ exports package symbols or constants for downstream imports.
 """
 
 from .detector_weights import (
-    TCSPCParams,
-    SPADParams,
     ICCDParams,
-    make_observation,
+    SPADParams,
+    TCSPCParams,
     generalized_anscombe,
+    make_observation,
 )
 from .fli_solver import (
     SolverConfig,
-    solve_flim,
     build_gate_matrix,
-    decay_basis,
     cyclic_conv,
+    decay_basis,
+    solve_flim,
 )

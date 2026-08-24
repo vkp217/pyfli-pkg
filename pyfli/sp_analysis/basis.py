@@ -10,8 +10,8 @@ includes classes :class:`OrthogonalBasis`, :class:`HadamardBasis`, and
 from typing import Any
 
 import numpy as np
-from scipy.linalg import hadamard as _hadamard
 from scipy.fftpack import dct, idct
+from scipy.linalg import hadamard as _hadamard
 
 
 class OrthogonalBasis:

@@ -11,10 +11,10 @@ datasets. Public API includes classes :class:`TestStat` and
 from typing import Any
 
 import numpy as np
-from sklearn.metrics.pairwise import rbf_kernel
-from sklearn.decomposition import PCA
-from scipy.stats import wasserstein_distance
 from scipy.linalg import sqrtm
+from scipy.stats import wasserstein_distance
+from sklearn.decomposition import PCA
+from sklearn.metrics.pairwise import rbf_kernel
 
 
 class TestStat:

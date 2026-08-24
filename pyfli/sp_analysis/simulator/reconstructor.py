@@ -9,12 +9,12 @@ Public API includes classes :class:`Reconstructor`.
 
 from typing import Any
 
-from pyfli import logging
 # sp_analysis/simulator/reconstructor.py
-
 import numpy as np
-from scipy.optimize import minimize
 from scipy.fftpack import idct
+from scipy.optimize import minimize
+
+from pyfli import logging
 
 
 class Reconstructor:
