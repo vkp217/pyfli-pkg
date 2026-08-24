@@ -9,7 +9,7 @@ helpers for normalization, masking, ROI extraction, and IRF alignment. The modul
 primarily re-exports package symbols or constants for downstream imports.
 """
 
-from .irf import IRFAligner
-from .preprocessing import DataPreprocessing
+from .irfAligner import IRFAligner
 from .norm import Normalization
+from .preprocessing import DataPreprocessing
 from .roi import ROIOperations

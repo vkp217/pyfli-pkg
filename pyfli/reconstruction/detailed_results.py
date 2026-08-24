@@ -14,9 +14,9 @@ straight into Plotter / DataViewer. Public API includes class
 
 from typing import Any
 
-from pyfli import logging
-
 import numpy as np
+
+from pyfli import logging
 
 from ..data_vnp.mono_bi_classifier import MonoBiClassifier
 from .decay_reconstruction import ParamToDecay

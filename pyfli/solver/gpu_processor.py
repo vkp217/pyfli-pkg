@@ -6,17 +6,16 @@ likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includ
 classes :class:`FLIGPUProcessor`.
 """
 
-from typing import Any
-
-from pyfli import logging
-
-import torch
-import numpy as np
-import h5py
 import os
 import time
+from typing import Any
 
+import h5py
+import numpy as np
+import torch
 from tqdm import tqdm
+
+from pyfli import logging
 
 
 class FLIGPUProcessor:

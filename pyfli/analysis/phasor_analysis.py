@@ -7,14 +7,14 @@ datasets. Public API includes functions :func:`compute_freq_axis`,
 :func:`compute_phasor`, :func:`plot_phasor_figures`, and :func:`save_phasor_result`.
 """
 
-from typing import Any
 import os
+from typing import Any
 
 import numpy as np
 
 from pyfli import logging
 
-from ..analyticalWorkflow import PhasorAnalyzer, AnalyticalHelpers
+from ..analyticalWorkflow import AnalyticalHelpers, PhasorAnalyzer
 from ..data_vnp import ColorProcessor
 
 

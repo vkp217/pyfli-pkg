@@ -8,20 +8,20 @@ likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includ
 classes :class:`BaseFLIFitter`.
 """
 
-from typing import Any
 import warnings
+from typing import Any
 
 import numpy as np
-from scipy.optimize import curve_fit, least_squares, OptimizeWarning
+from scipy.optimize import OptimizeWarning, curve_fit, least_squares
 from scipy.stats import f
 
 from .base_static import moment_based_guess, resolve_params_and_bounds
 from .forward_model import model_numpy
 from .shared_metrics import (
-    enforce_tau_ordering,
-    compute_fli_stats,
     compute_average_lifetime,
+    compute_fli_stats,
     compute_fret_efficiency,
+    enforce_tau_ordering,
 )
 
 

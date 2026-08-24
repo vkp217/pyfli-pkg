@@ -15,8 +15,8 @@ import numpy as np
 import pytest
 
 from pyfli.solver.base_fitter import BaseFLIFitter
-from pyfli.solver.mle_fitter import MLEFLIFitter
 from pyfli.solver.gpu_processor import FLIGPUProcessor
+from pyfli.solver.mle_fitter import MLEFLIFitter
 
 # ---------------------------------------------------------------------------
 # Shared constants

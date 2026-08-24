@@ -6,15 +6,16 @@ deconvolution and fitting method. Public API includes classes :class:`LaguerreFL
 """
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 import h5py
 import numpy as np
 from scipy.optimize import least_squares, minimize_scalar, nnls
-from scipy.signal import lfilter, fftconvolve
+from scipy.signal import fftconvolve, lfilter
 from tqdm.auto import tqdm
 
 from pyfli import logging
+
 from ..solver.base_static import moment_based_guess
 
 
@@ -53,12 +54,12 @@ class LaguerreFLI:
     def __init__(
         self,
         n_components: int = 2,
-        n_laguerre: Optional[int] = None,
+        n_laguerre: int | None = None,
         alpha: float = 0.85,
         dt: float = 1.0,
         auto_alpha: bool = False,
-        taus_init: Optional[np.ndarray] = None,
-        laser_period_ns: Optional[float] = None,
+        taus_init: np.ndarray | None = None,
+        laser_period_ns: float | None = None,
         reg_strength: float = 0.0,
         reg_power: float = 2.0,
         nonneg: bool = True,
@@ -92,20 +93,20 @@ class LaguerreFLI:
         self.nonneg = bool(nonneg)
         self.verbose = bool(verbose)
 
-        self.basis_: Optional[np.ndarray] = None
-        self.V_: Optional[np.ndarray] = None
-        self.coeffs_: Optional[np.ndarray] = None
-        self.taus_: Optional[np.ndarray] = None
-        self.n_unique_irf_: Optional[int] = None
-        self.amplitudes_: Optional[np.ndarray] = None
-        self.fractions_: Optional[np.ndarray] = None
-        self.tau_mean_: Optional[np.ndarray] = None
-        self.converged_: Optional[np.ndarray] = None
-        self.reconstructed_: Optional[np.ndarray] = None
-        self.residuals_: Optional[np.ndarray] = None
-        self.fit_curve_: Optional[np.ndarray] = None
-        self.residual_curve_: Optional[np.ndarray] = None
-        self.decay_: Optional[np.ndarray] = None
+        self.basis_: np.ndarray | None = None
+        self.V_: np.ndarray | None = None
+        self.coeffs_: np.ndarray | None = None
+        self.taus_: np.ndarray | None = None
+        self.n_unique_irf_: int | None = None
+        self.amplitudes_: np.ndarray | None = None
+        self.fractions_: np.ndarray | None = None
+        self.tau_mean_: np.ndarray | None = None
+        self.converged_: np.ndarray | None = None
+        self.reconstructed_: np.ndarray | None = None
+        self.residuals_: np.ndarray | None = None
+        self.fit_curve_: np.ndarray | None = None
+        self.residual_curve_: np.ndarray | None = None
+        self.decay_: np.ndarray | None = None
 
     @staticmethod
     def _discrete_laguerre_basis(T: int, alpha: float, L: int) -> np.ndarray:
@@ -445,7 +446,7 @@ class LaguerreFLI:
         self,
         h_stack: np.ndarray,
         tau_init: np.ndarray,
-        mask: Optional[np.ndarray] = None,
+        mask: np.ndarray | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Fit pixel exponentials.
@@ -521,7 +522,7 @@ class LaguerreFLI:
         self,
         decay: np.ndarray,
         irf: np.ndarray,
-        mask: Optional[np.ndarray] = None,
+        mask: np.ndarray | None = None,
     ) -> "LaguerreFLI":
         """
         Fit the model to decay and IRF data.
@@ -811,9 +812,7 @@ class LaguerreFLI:
                 tr_grp.create_dataset(k, data=v, compression="gzip", compression_opts=4)
         logging.info(f"Analysis complete. Results saved to: {h5_path}")
 
-    def load_map(
-        self, h5_path: str, map_name: str = "tau1_map"
-    ) -> Optional[np.ndarray]:
+    def load_map(self, h5_path: str, map_name: str = "tau1_map") -> np.ndarray | None:
         """
         Load a map from a .h5 file.
 

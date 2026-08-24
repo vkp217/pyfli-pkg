@@ -1,9 +1,19 @@
-"""
-Build macro and TCSPC simulation workflows from IRF data and hardware configuration.
+# pyfli/simulator/main_common.py
 
-This module belongs to :mod:`pyfli.simulator` and is part of PyFLI synthetic FLI/FLIM
-data generation, hardware noise modeling, calibration, and validation tools. Public API
-includes classes :class:`MacroSimulator` and :class:`TCSPCSimulator`.
+"""
+Shared engine-wrapping pipelines for the continuous (ICCD-style) and discrete
+(TCSPC-style) simulator pairs.
+
+``combined/main_factory.py`` (:class:`~pyfli.simulator.combined.main_factory.MacroSimulator`,
+:class:`~pyfli.simulator.combined.main_factory.TCSPCSimulator`, wrapping
+:class:`~pyfli.simulator.combined.simulator_engine.FLIEngine`) and
+``separate/main_factory_gen.py`` (:class:`~pyfli.simulator.separate.main_factory_gen.ContinuousSimulator`,
+:class:`~pyfli.simulator.separate.main_factory_gen.PhotonCountSimulator`, wrapping
+:class:`~pyfli.simulator.separate.model_simulator.FLIModelSimulator`) implement the identical
+noise/scaling pipeline; they differ only in which engine class they wrap, the names of
+a few methods on that engine, and whether the "mono" branch trims the returned maps
+dict. Subclasses declare those differences as class attributes; this module owns the
+actual pipeline math so it is defined exactly once.
 """
 
 from typing import Any
@@ -11,29 +21,66 @@ from typing import Any
 import numpy as np
 from scipy.signal import fftconvolve
 
-from .simulator_engine import FLIEngine
-from .noise_models import NoiseEngine
 from .distributions import ParameterSampler
+from .noise_models import NoiseEngine
 
 
-class MacroSimulator:
+def _build_maps(
+    p: Any, photon_count: Any, mono_only_maps: bool, h_shift: Any
+) -> dict[Any, Any]:
+    """Build the parameter-maps dict, optionally trimmed for mono pixels."""
+    if mono_only_maps and p["mono"]:
+        return {
+            "tau_map": p["tau"],
+            "photon_count_map": photon_count,
+            "mono_map": p["mono"],
+            "h_shift_jit_map": h_shift,
+            "v_shift_map": 0,
+        }
+    return {
+        "tau1_map": p["tau1"],
+        "tau2_map": p["tau2"],
+        "alpha1_map": p["f"],
+        "A1_map": p["A1"],
+        "A2_map": p["A2"],
+        "fret_efficiency_map": p["E"],
+        "tau_mean_map": p["tau1"] * p["f"] + p["tau2"] * (1 - p["f"]),
+        "photon_count_map": photon_count,
+        "mono_map": p["mono"],
+        "h_shift_jit_map": h_shift,
+        "v_shift_map": 0,
+    }
+
+
+class BaseContinuousSimulator:
     """
-    Generate macro-time style synthetic FLI/FLIM decays from IRF data and sensor
-    configuration. The callable factory samples lifetimes, amplitudes, noise, and
-    detector response for ICCD-like workflows.
+    Shared ``__call__`` pipeline for MacroSimulator/ContinuousSimulator: samples
+    lifetime parameters, scales an IRF-convolved analytical decay to a Beta-sampled
+    peak intensity, and applies the jitter/QE/DCR/read-noise/Poisson/quantization
+    pipeline.
 
-    Parameters
-    ----------
-    irf_data : np.ndarray
-        Instrument response data used to convolve or simulate decays.
-    sensor_type : str
-        Detector family or hardware profile name.
-    **cfg : Any
-        Additional configuration values forwarded to the simulator or solver.
+    Subclasses set the following class attributes:
+
+    engine_cls : type
+        The engine class to wrap (``FLIEngine`` / ``FLIModelSimulator``).
+    sample_params_name : str
+        Name of the engine method that samples lifetime parameters.
+    analytical_decay_name : str
+        Name of the engine method that returns the clean analytical decay.
+    mono_only_maps : bool
+        Whether ``p["mono"]`` trims the returned maps dict down to
+        ``{tau_map, photon_count_map, mono_map}`` (``True``, as in
+        ``ContinuousSimulator``) or the full map set is always returned
+        regardless of mono status (``False``, as in ``MacroSimulator``).
     """
+
+    engine_cls: type
+    sample_params_name: str
+    analytical_decay_name: str
+    mono_only_maps: bool = False
 
     def __init__(
-        self, irf_data: np.ndarray, sensor_type: str = "ICCD", **cfg: Any
+        self, irf_data: np.ndarray, sensor_type: str = "continuous", **cfg: Any
     ) -> None:
         # Toggles
         self.use_jitter = cfg.get("jitter", True)
@@ -45,7 +92,7 @@ class MacroSimulator:
         self.use_clipping = cfg.get("clip_on", True)
 
         self.sensor_type = sensor_type.upper()
-        self.engine = FLIEngine(irf_data, **cfg)
+        self.engine = self.engine_cls(irf_data, **cfg)
 
     def __call__(self) -> dict[Any, Any]:
         """
@@ -56,7 +103,7 @@ class MacroSimulator:
         dict[Any, Any]
             Dictionary containing the data produced by call.
         """
-        p = self.engine.sample_all_params()
+        p = getattr(self.engine, self.sample_params_name)()
 
         # 1. Determine target intensity (A) based on bit-depth
         alpha_pc, beta_pc = self.engine.params_cfg["pc"]
@@ -67,7 +114,7 @@ class MacroSimulator:
         A = ParameterSampler.beta_sample(alpha_pc, beta_pc, scale=max_adc_val)
 
         # Generating Clean Analytical Convolution
-        clean_decay = self.engine.get_analytical_decay(p)
+        clean_decay = getattr(self.engine, self.analytical_decay_name)(p)
         full_conv = fftconvolve(clean_decay, self.engine.irf, mode="full")[
             : len(clean_decay)
         ]
@@ -80,6 +127,7 @@ class MacroSimulator:
             obs = full_conv.copy()
 
         # Applying Modular Noise Pipeline
+        shift = 0
         if self.use_jitter:
             shift = np.random.randint(-2, 3)
             n = len(obs)
@@ -97,7 +145,7 @@ class MacroSimulator:
                 obs, self.engine.params_cfg["dcr"] * bit_scaling
             )
 
-        if self.use_read_noise and self.sensor_type == "ICCD":
+        if self.use_read_noise and self.sensor_type == "CONTINUOUS":
             hw = ParameterSampler.sample_noise_params(bit_depth, self.sensor_type)
             obs = NoiseEngine.apply_read_noise(obs, hw["read_sigma"])
 
@@ -128,42 +176,45 @@ class MacroSimulator:
         else:
             fit_map = np.zeros_like(obs)
 
+        maps = _build_maps(p, A, self.mono_only_maps, shift)
+
         return {
             "raw_data": {"decay": obs, "irf": self.engine.irf},
             "results": {
-                "maps": {
-                    "tau1_map": p["tau1"],
-                    "tau2_map": p["tau2"],
-                    "alpha1_map": p["f"],
-                    "A1_map": p["A1"],
-                    "A2_map": p["A2"],
-                    "fret_efficiency_map": p["E"],
-                    "tau_mean_map": p["tau1"] * p["f"] + p["tau2"] * (1 - p["f"]),
-                    "photon_count_map": A,
-                    "mono_map": p["mono"],
-                },
+                "maps": maps,
                 "TR_maps": {"fit_map": fit_map, "residual_map": obs - fit_map},
             },
         }
 
 
-class TCSPCSimulator:
+class BaseDiscreteSimulator:
     """
-    Generate photon-counting TCSPC simulations from IRF data and sensor configuration.
-    The callable factory emphasizes photon-counter behavior and count statistics.
+    Shared ``__call__`` pipeline for TCSPCSimulator/PhotonCountSimulator: samples
+    lifetime parameters, runs a TCSPC photon-by-photon histogram, and applies the
+    jitter/DCR/quantization pipeline.
 
-    Parameters
-    ----------
-    irf_data : np.ndarray
-        Instrument response data used to convolve or simulate decays.
-    sensor_type : str
-        Detector family or hardware profile name.
-    **cfg : Any
-        Additional configuration values forwarded to the simulator or solver.
+    Subclasses set the following class attributes:
+
+    engine_cls : type
+        The engine class to wrap (``FLIEngine`` / ``FLIModelSimulator``).
+    sample_params_name : str
+        Name of the engine method that samples lifetime parameters.
+    analytical_decay_name : str
+        Name of the engine method that returns the clean analytical decay.
+    simulate_tcspc_name : str
+        Name of the engine method that runs the TCSPC photon histogram.
+    mono_only_maps : bool
+        As in :class:`BaseContinuousSimulator`.
     """
+
+    engine_cls: type
+    sample_params_name: str
+    analytical_decay_name: str
+    simulate_tcspc_name: str
+    mono_only_maps: bool = False
 
     def __init__(
-        self, irf_data: np.ndarray, sensor_type: str = "PHOTON_COUNTER", **cfg: Any
+        self, irf_data: np.ndarray, sensor_type: str = "discrete", **cfg: Any
     ) -> None:
         self.use_jitter = cfg.get("jitter", True)
         self.use_dcr = cfg.get("dcr_on", True)
@@ -175,7 +226,7 @@ class TCSPCSimulator:
         self.sensor_type = sensor_type.upper()
         # TCSPC counters are 16-bit by default
         cfg.setdefault("bit", 16)
-        self.engine = FLIEngine(irf_data, **cfg)
+        self.engine = self.engine_cls(irf_data, **cfg)
 
     def __call__(self) -> dict[Any, Any]:
         """
@@ -186,8 +237,17 @@ class TCSPCSimulator:
         dict[Any, Any]
             Dictionary containing the data produced by call.
         """
-        p = self.engine.sample_all_params()
-        n_cycles = np.random.randint(1, self.engine.params_cfg["cycles"] + 1)
+        p = getattr(self.engine, self.sample_params_name)()
+        low_cycles, high_cycles = self.engine.params_cfg["cycles"]
+        alpha_cyc, beta_cyc = self.engine.params_cfg["pc"]
+        n_cycles = round(
+            ParameterSampler.sample_beta(
+                alpha_cyc,
+                beta_cyc,
+                scale=high_cycles - low_cycles,
+                offset=low_cycles,
+            )
+        )
         mu_per_cycle = 0.01
         bit_depth = self.engine.params_cfg["bit"]
         max_bin_count = (2**bit_depth) - 1
@@ -197,11 +257,11 @@ class TCSPCSimulator:
             if self.use_qe
             else mu_per_cycle
         )
-        obs = self.engine.simulate_tcspc(p, n_cycles, effective_mu)
+        obs = getattr(self.engine, self.simulate_tcspc_name)(p, n_cycles, effective_mu)
 
         # Fit Scaling
         total_photons_expected = effective_mu * n_cycles
-        clean = self.engine.get_analytical_decay(p)
+        clean = getattr(self.engine, self.analytical_decay_name)(p)
         fit_norm = fftconvolve(clean, self.engine.irf, mode="full")[: len(clean)]
         fit = (
             fit_norm * (total_photons_expected / np.sum(fit_norm))
@@ -209,6 +269,7 @@ class TCSPCSimulator:
             else fit_norm
         )
 
+        shift = 0
         if self.use_jitter:
             shift = np.random.randint(-2, 3)
             n = len(obs)
@@ -226,24 +287,12 @@ class TCSPCSimulator:
         if self.use_clipping:
             obs = np.clip(obs, 0, max_bin_count)
 
-        # total_photons_captured = np.sum(obs)
-        # if np.sum(fit) > 0:
-        #     fit = fit * (total_photons_captured / np.sum(fit))
+        maps = _build_maps(p, total_photons_expected, self.mono_only_maps, shift)
 
         return {
             "raw_data": {"decay": obs, "irf": self.engine.irf},
             "results": {
-                "maps": {
-                    "tau1_map": p["tau1"],
-                    "tau2_map": p["tau2"],
-                    "alpha1_map": p["f"],
-                    "A1_map": p["A1"],
-                    "A2_map": p["A2"],
-                    "fret_efficiency_map": p["E"],
-                    "tau_mean_map": p["tau1"] * p["f"] + p["tau2"] * (1 - p["f"]),
-                    "photon_count_map": total_photons_expected,
-                    "mono_map": p["mono"],
-                },
+                "maps": maps,
                 "TR_maps": {"fit_map": fit, "residual_map": obs - fit},
             },
         }

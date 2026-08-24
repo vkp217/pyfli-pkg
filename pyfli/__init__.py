@@ -1,5 +1,9 @@
 """Top-level public API for PyFLI."""
-# ruff: noqa: E402, F401
+# ruff: noqa: E402, F401, I001
+# NOTE: import order below is load-bearing, not arbitrary — `from .log_save import
+# logging` must run first so `pyfli.logging` exists before any submodule imported
+# afterward (e.g. sp_analysis.simulator.reconstructor) can do `from pyfli import
+# logging`. Do not let an isort/ruff auto-fix alphabetize this block.
 
 
 def setup() -> None:
@@ -51,6 +55,6 @@ from .phasor import (
     tau_grid,
     universal_semicircle,
 )
-from .simulator.main_factory import MacroSimulator, TCSPCSimulator
-from .simulator.sim_model_image_generator import FLIModelImageGenerator
+from .simulator.combined.main_factory import MacroSimulator, TCSPCSimulator
+from .simulator.separate.sim_model_image_generator import FLIModelImageGenerator
 from .sp_analysis import BasisPatterns, MeasurementSimulator, Reconstructor

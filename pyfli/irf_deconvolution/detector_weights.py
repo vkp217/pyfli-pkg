@@ -9,8 +9,8 @@ aware IRF deconvolution and joint FLI fitting utilities. Public API includes cla
 :func:`generalized_anscombe`, and :func:`make_observation`.
 """
 
-from typing import Any
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 

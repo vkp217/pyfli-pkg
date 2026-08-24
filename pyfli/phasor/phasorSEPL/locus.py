@@ -17,7 +17,6 @@ from numpy.typing import NDArray
 from .config import AcquisitionConfig
 from .phasors import phasor_from_config
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # tau grid
 # ──────────────────────────────────────────────────────────────────────────────

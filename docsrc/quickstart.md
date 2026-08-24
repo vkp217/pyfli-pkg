@@ -8,10 +8,10 @@ Even though the package is installed as `pyfli-lib`, you import it as `pyfli` in
 from pyfli import DataOperations
 
 loader = DataOperations(
-    data_path = "experimental_data.sdt",
-    irf_path = "instrument_data.txt",
-    bg_path = "background_data.tif",
-    mask_path = "background_data.png",
+    data_path="experimental_data.sdt",
+    irf_path="instrument_data.txt",
+    bg_path="background_data.tif",
+    mask_path="background_data.png",
 )
 decay_data = loader.load_data()
 irf_data = loader.load_irf()

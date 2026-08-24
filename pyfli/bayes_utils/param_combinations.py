@@ -1,5 +1,9 @@
+from collections.abc import Callable
+from typing import ClassVar
+
 import numpy as np
-from pyfli.reconstruction import ParamToDecay, DetailedRecon
+
+from pyfli.reconstruction import DetailedRecon, ParamToDecay
 
 
 class ParamSelector:
@@ -41,7 +45,7 @@ class ParamSelector:
     #: Registry of {metric: (stack_key, "min" | "max")} -- whether the metric
     #: should be minimized (chi2/reduced_chi2/RMSE) or maximized (R2) to find
     #: the best-fitting sample per pixel.
-    METRICS: dict[str, tuple[str, str]] = {
+    METRICS: ClassVar[dict[str, tuple[str, str]]] = {
         "chi2": ("chi2_stack", "min"),
         "reduced_chi2": ("reduced_chi2_stack", "min"),
         "RMSE": ("rmse_stack", "min"),
@@ -56,7 +60,7 @@ class ParamSelector:
     #: the NUM_SAMPLES axis of each output_combination array to a single
     #: per-pixel value. Add an entry here to support another reduction
     #: (e.g. "mode") without touching the method itself.
-    REDUCERS = {
+    REDUCERS: ClassVar[dict[str, Callable]] = {
         "mean": np.mean,
         "median": np.median,
     }

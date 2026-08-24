@@ -8,10 +8,10 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 
 from typing import Any
 
-import numpy as np
 import h5py
-import tifffile
 import matplotlib.pyplot as plt
+import numpy as np
+import tifffile
 from scipy.io import loadmat
 from sdtfile import SdtFile
 

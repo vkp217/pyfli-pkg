@@ -6,17 +6,16 @@ import numpy as np
 
 from pyfli.simulator.distributions import ParameterSampler
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Quantum efficiency sampling
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class TestSampleQE:
-    def test_iccd_range(self):
+    def test_continuous_range(self):
         for _ in range(200):
-            qe = ParameterSampler.sample_qe("ICCD")
-            assert 0.15 <= qe <= 0.35, f"ICCD QE out of range: {qe}"
+            qe = ParameterSampler.sample_qe("continuous")
+            assert 0.15 <= qe <= 0.35, f"continuous QE out of range: {qe}"
 
     def test_spad_range(self):
         for _ in range(200):
@@ -26,7 +25,7 @@ class TestSampleQE:
     def test_case_insensitive(self):
         # Lower-case input should still work
         for _ in range(50):
-            qe = ParameterSampler.sample_qe("iccd")
+            qe = ParameterSampler.sample_qe("CONTINUOUS")
             assert 0.15 <= qe <= 0.35
 
 
@@ -36,8 +35,10 @@ class TestSampleQE:
 
 
 class TestSampleNoiseParams:
-    def test_iccd_returns_dict_with_read_sigma(self):
-        params = ParameterSampler.sample_noise_params(bit_depth=8, sensor_type="ICCD")
+    def test_continuous_returns_dict_with_read_sigma(self):
+        params = ParameterSampler.sample_noise_params(
+            bit_depth=8, sensor_type="continuous"
+        )
         assert "read_sigma" in params
         assert params["read_sigma"] > 0
 
@@ -45,15 +46,19 @@ class TestSampleNoiseParams:
         params = ParameterSampler.sample_noise_params(bit_depth=12, sensor_type="SPAD")
         assert params["read_sigma"] == 0.0
 
-    def test_iccd_read_sigma_independent_of_bit_depth(self):
+    def test_continuous_read_sigma_independent_of_bit_depth(self):
         rng_low = np.random.default_rng(123)
         rng_high = np.random.default_rng(123)
         low_vals = [
-            ParameterSampler.sample_noise_params(8, "ICCD", rng=rng_low)["read_sigma"]
+            ParameterSampler.sample_noise_params(8, "continuous", rng=rng_low)[
+                "read_sigma"
+            ]
             for _ in range(200)
         ]
         high_vals = [
-            ParameterSampler.sample_noise_params(16, "ICCD", rng=rng_high)["read_sigma"]
+            ParameterSampler.sample_noise_params(16, "continuous", rng=rng_high)[
+                "read_sigma"
+            ]
             for _ in range(200)
         ]
         np.testing.assert_allclose(high_vals, low_vals)

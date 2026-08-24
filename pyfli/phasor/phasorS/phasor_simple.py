@@ -8,12 +8,12 @@ phasor analyzer for CPU and optional GPU FLI workflows. Public API includes clas
 
 from typing import Any
 
-from pyfli import logging
-
+import h5py
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
-import h5py
+
+from pyfli import logging
 
 from .phasor_simple_plots import PhasorPlotsMixin
 

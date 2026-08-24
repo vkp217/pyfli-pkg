@@ -17,21 +17,19 @@ import argparse
 import pathlib
 from dataclasses import replace
 
-from pyfli import logging
-
-import numpy as np
 import matplotlib
+import numpy as np
+
+from pyfli import logging
 
 matplotlib.use("Agg")  # headless rendering; remove for interactive use
 import matplotlib.pyplot as plt
-
 from config import AcquisitionConfig, AcquisitionMode
+from lifetimes import modulus_lifetime, phase_lifetime
 from phasors import (
     phasor_from_config,
 )
-from lifetimes import phase_lifetime, modulus_lifetime
-from plot import plot_discrete_N_sweep, plot_phasor, plot_locus_comparison
-
+from plot import plot_discrete_N_sweep, plot_locus_comparison, plot_phasor
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Default experiment configuration (80 MHz Ti:Sa laser, 1st harmonic)

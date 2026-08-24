@@ -8,14 +8,13 @@ likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includ
 classes :class:`FittingComparator`.
 """
 
+import contextlib
+import io
+import time
 from typing import Any
 
-import numpy as np
-import time
-import io
-import contextlib
-
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class FittingComparator:
@@ -158,7 +157,7 @@ class FittingComparator:
         for method, category, success, elapsed, r2, stat, red_stat, popt in rows:
             if popt is None:
                 filler = ["—"] * (len(cols) - 2)
-                cells = [method, category] + filler
+                cells = [method, category, *filler]
             elif is_bi and len(popt) >= 6:
                 cells = [
                     method,

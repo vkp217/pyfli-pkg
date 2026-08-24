@@ -6,16 +6,16 @@ readers, saving helpers, and processed-data loaders. Public API includes classes
 :class:`DataIOUtils`.
 """
 
-from typing import Any
-
-from pyfli import logging
+import json
 
 # dataIO_utils.py
 import os
+from typing import Any
 
 import h5py
 import numpy as np
-import json
+
+from pyfli import logging
 
 
 class DataIOUtils:
@@ -82,7 +82,7 @@ class DataIOUtils:
         else:
             raise ValueError("Correct data map is not provided")
         mask = np.zeros((H, W), dtype=bool)
-        with open(file_path, "r") as fid:
+        with open(file_path) as fid:
             J = json.load(fid)
         p = J.get("Named ROI Descriptions", [])
         for roi in p:
