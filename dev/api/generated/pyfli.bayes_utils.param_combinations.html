@@ -612,7 +612,7 @@ to NaN-out excluded pixels in the final result’s output maps.</p></li>
 goodness-of-fit maps: <code class="docutils literal notranslate"><span class="pre">&quot;compute_detailed_results&quot;</span></code> (default, the
 rescale-to-measured-totals implementation in
 <a class="reference internal" href="pyfli.reconstruction.detailed_results.html#module-pyfli.reconstruction.detailed_results" title="pyfli.reconstruction.detailed_results"><code class="xref py py-mod docutils literal notranslate"><span class="pre">pyfli.reconstruction.detailed_results</span></code></a>)
-or <code class="docutils literal notranslate"><span class="pre">&quot;reconstructor&quot;</span></code> (<a class="reference internal" href="pyfli.reconstruction.html#pyfli.reconstruction.ParamToDecay" title="pyfli.reconstruction.ParamToDecay"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyfli.reconstruction.ParamToDecay</span></code></a>’s
+or <code class="docutils literal notranslate"><span class="pre">&quot;reconstructor&quot;</span></code> (<code class="xref py py-class docutils literal notranslate"><span class="pre">pyfli.reconstruction.ParamToDecay</span></code>’s
 vectorized path). Both return the same
 <code class="docutils literal notranslate"><span class="pre">{&quot;name&quot;,</span> <span class="pre">&quot;method&quot;,</span> <span class="pre">&quot;results&quot;:</span> <span class="pre">{&quot;maps&quot;,</span> <span class="pre">&quot;error_maps&quot;,</span> <span class="pre">&quot;TR_maps&quot;}}</span></code>
 shape, so switching backends doesn’t change any downstream code.</p></li>

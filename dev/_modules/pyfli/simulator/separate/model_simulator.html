@@ -534,6 +534,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">...reconstruction.common_reconstruct</span><span class="w"> </span><span class="kn">import</span> <span class="n">bi_reconstruction</span><span class="p">,</span> <span class="n">mono_reconstruction</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParameterSampler</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sim_engine_common</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseFLIEngine</span>
 
@@ -576,6 +577,8 @@
 <span class="sd">        Detector dark-count rate used by the noise model.</span>
 <span class="sd">    laser_feq : int</span>
 <span class="sd">        Laser repetition frequency used by the simulation.</span>
+<span class="sd">    pileup_mode : str</span>
+<span class="sd">        'wrap' (default) folds photons back via modulo; 'truncate' drops them.</span>
 <span class="sd">    seed : int | None</span>
 <span class="sd">        Seed for reproducible random sampling.</span>
 <span class="sd">    **kwargs : Any</span>
@@ -599,6 +602,7 @@
         <span class="n">n_cycles</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">800_000</span><span class="p">,</span>
         <span class="n">dcr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
         <span class="n">laser_feq</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">80</span><span class="p">,</span>
+        <span class="n">pileup_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"wrap"</span><span class="p">,</span>
         <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -618,6 +622,7 @@
             <span class="s2">"bit"</span><span class="p">:</span> <span class="n">bit</span><span class="p">,</span>
             <span class="s2">"cycles"</span><span class="p">:</span> <span class="n">cycles_range</span><span class="p">,</span>
             <span class="s2">"dcr"</span><span class="p">:</span> <span class="n">dcr</span><span class="p">,</span>
+            <span class="s2">"pileup_mode"</span><span class="p">:</span> <span class="n">pileup_mode</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
         <span class="p">}</span>
 
@@ -703,17 +708,14 @@
         <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"mono"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
             <span class="n">tau</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="s2">"tau"</span><span class="p">]</span>
             <span class="n">scaling_factor</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">T</span> <span class="o">/</span> <span class="n">tau</span><span class="p">))</span>
-            <span class="k">return</span> <span class="n">scaling_factor</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">/</span> <span class="n">tau</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">mono_reconstruction</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">scaling_factor</span><span class="p">)</span>
 
-        <span class="n">decay</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">)</span>
-        <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span>
-        <span class="k">while</span> <span class="sa">f</span><span class="s2">"tau</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
-            <span class="n">tau_i</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="sa">f</span><span class="s2">"tau</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span>
-            <span class="n">A_i</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="sa">f</span><span class="s2">"A</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span>
-            <span class="n">scaling_factor_i</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">T</span> <span class="o">/</span> <span class="n">tau_i</span><span class="p">))</span>
-            <span class="n">decay</span> <span class="o">=</span> <span class="n">decay</span> <span class="o">+</span> <span class="n">A_i</span> <span class="o">*</span> <span class="n">scaling_factor_i</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">/</span> <span class="n">tau_i</span><span class="p">)</span>
-            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="k">return</span> <span class="n">decay</span></div>
+        <span class="n">tau1</span><span class="p">,</span> <span class="n">tau2</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="s2">"tau1"</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="s2">"tau2"</span><span class="p">]</span>
+        <span class="n">scaling_factor1</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">T</span> <span class="o">/</span> <span class="n">tau1</span><span class="p">))</span>
+        <span class="n">scaling_factor2</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">T</span> <span class="o">/</span> <span class="n">tau2</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">bi_reconstruction</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">,</span> <span class="n">tau1</span><span class="p">,</span> <span class="n">tau2</span><span class="p">,</span> <span class="n">p</span><span class="p">[</span><span class="s2">"A1"</span><span class="p">]</span> <span class="o">*</span> <span class="n">scaling_factor1</span><span class="p">,</span> <span class="n">p</span><span class="p">[</span><span class="s2">"A2"</span><span class="p">]</span> <span class="o">*</span> <span class="n">scaling_factor2</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="FLIModelSimulator.simulate_model_tcspc">

@@ -531,11 +531,16 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
+<span class="n">_FIXED_BOUND_TOL</span> <span class="o">=</span> <span class="mf">1e-5</span>
+
 
 <div class="viewcode-block" id="enforce_tau_ordering">
 <a class="viewcode-back" href="../../../api/generated/pyfli.solver.shared_metrics.html#pyfli.solver.shared_metrics.enforce_tau_ordering">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">enforce_tau_ordering</span><span class="p">(</span>
-    <span class="n">popt</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">perr</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">pcov</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">popt</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">perr</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">pcov</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">bounds</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Enforce tau ordering.</span>
@@ -548,6 +553,9 @@
 <span class="sd">        One-standard-deviation parameter uncertainty estimates.</span>
 <span class="sd">    pcov : np.ndarray | None</span>
 <span class="sd">        Parameter covariance matrix.</span>
+<span class="sd">    bounds : tuple[np.ndarray, np.ndarray] | None</span>
+<span class="sd">        Optional (low, high) bound vectors used for the fit. When either tau1 or tau2</span>
+<span class="sd">        was pinned by the caller (low == high), that parameter's slot is left alone.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -555,6 +563,13 @@
 <span class="sd">        Tuple containing the reordered parameter vector and any reordered uncertainty or covariance data.</span>
 <span class="sd">    """</span>
     <span class="n">popt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">popt</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">bounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">low</span><span class="p">,</span> <span class="n">high</span> <span class="o">=</span> <span class="n">bounds</span>
+        <span class="n">tau1_fixed</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">high</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="o">-</span> <span class="nb">float</span><span class="p">(</span><span class="n">low</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span> <span class="o">&lt;</span> <span class="n">_FIXED_BOUND_TOL</span>
+        <span class="n">tau2_fixed</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">high</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span> <span class="o">-</span> <span class="nb">float</span><span class="p">(</span><span class="n">low</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span> <span class="o">&lt;</span> <span class="n">_FIXED_BOUND_TOL</span>
+        <span class="k">if</span> <span class="n">tau1_fixed</span> <span class="ow">or</span> <span class="n">tau2_fixed</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">popt</span><span class="p">,</span> <span class="n">perr</span><span class="p">,</span> <span class="n">pcov</span>
 
     <span class="k">if</span> <span class="n">popt</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.999</span><span class="p">:</span>
         <span class="n">popt</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">popt</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">popt</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>

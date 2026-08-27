@@ -61,7 +61,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="pyfli.reconstruction.detailed_results" href="pyfli.reconstruction.detailed_results.html" />
-    <link rel="prev" title="pyfli.reconstruction" href="pyfli.reconstruction.html" />
+    <link rel="prev" title="pyfli.reconstruction.common_reconstruct" href="pyfli.reconstruction.common_reconstruct.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="dev" />
@@ -495,6 +495,7 @@
 <li class="toctree-l2"><a class="reference internal" href="pyfli.log_save.html">pyfli.log_save</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pyfli.phasor.html">pyfli.phasor</a></li>
 <li class="toctree-l2 current active has-children"><a class="reference internal" href="pyfli.reconstruction.html">pyfli.reconstruction</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="pyfli.reconstruction.common_reconstruct.html">pyfli.reconstruction.common_reconstruct</a></li>
 <li class="toctree-l3 current active"><a class="current reference internal" href="#">pyfli.reconstruction.decay_reconstruction</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.reconstruction.detailed_results.html">pyfli.reconstruction.detailed_results</a></li>
 </ul>
@@ -685,7 +686,7 @@ adding <code class="docutils literal notranslate"><span class="pre">v_shift</spa
 parameter maps don’t carry a meaningful literal amplitude (e.g.
 lifetime-only estimator output) and need the final scale pinned to a
 measured photon count instead — see
-<a class="reference internal" href="pyfli.reconstruction.html#pyfli.reconstruction.DetailedRecon.reconstruct" title="pyfli.reconstruction.DetailedRecon.reconstruct"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pyfli.reconstruction.DetailedRecon.reconstruct()</span></code></a>.</p>
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">pyfli.reconstruction.DetailedRecon.reconstruct()</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">{&quot;kernel_map&quot;:</span> <span class="pre">&lt;H,</span> <span class="pre">W,</span> <span class="pre">T&gt;,</span> <span class="pre">&quot;convolved_map&quot;:</span> <span class="pre">&lt;H,</span> <span class="pre">W,</span> <span class="pre">T&gt;}</span></code> (or
@@ -714,7 +715,7 @@ measured photon count instead — see
 amplitude (e.g. lifetime-only estimator output) and the fit’s total
 should instead be pinned to the measured photon count — this also
 compensates for any convolution-truncation loss the way
-<a class="reference internal" href="pyfli.reconstruction.html#pyfli.reconstruction.DetailedRecon.reconstruct" title="pyfli.reconstruction.DetailedRecon.reconstruct"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pyfli.reconstruction.DetailedRecon.reconstruct()</span></code></a> requires.</p>
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">pyfli.reconstruction.DetailedRecon.reconstruct()</span></code> requires.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

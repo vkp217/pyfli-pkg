@@ -617,7 +617,9 @@
 <div class="viewcode-block" id="NoiseEngine.tcspc_pileup_filter">
 <a class="viewcode-back" href="../../../api/generated/pyfli.simulator.noise_models.html#pyfli.simulator.noise_models.NoiseEngine.tcspc_pileup_filter">[docs]</a>
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">tcspc_pileup_filter</span><span class="p">(</span><span class="n">arrival_times</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">t_rep</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tcspc_pileup_filter</span><span class="p">(</span>
+        <span class="n">arrival_times</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">t_rep</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"wrap"</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
         <span class="c1"># Simplistic pile-up: real systems might only take the first photon per cycle</span>
 <span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Run the TCSPC pileup filter routine.</span>
@@ -628,13 +630,19 @@
 <span class="sd">            Photon arrival times passed to the TCSPC pile-up filter.</span>
 <span class="sd">        t_rep : float</span>
 <span class="sd">            Laser repetition period used for TCSPC pile-up filtering.</span>
+<span class="sd">        mode : str</span>
+<span class="sd">            'wrap' (default) folds photons back via modulo; 'truncate' drops them.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        Any</span>
 <span class="sd">            Object produced by TCSPC pileup filter.</span>
 <span class="sd">        """</span>
-        <span class="k">return</span> <span class="n">arrival_times</span><span class="p">[</span><span class="n">arrival_times</span> <span class="o">&lt;</span> <span class="n">t_rep</span><span class="p">]</span></div>
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"truncate"</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">arrival_times</span><span class="p">[</span><span class="n">arrival_times</span> <span class="o">&lt;</span> <span class="n">t_rep</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"wrap"</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">arrival_times</span> <span class="o">%</span> <span class="n">t_rep</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"mode must be 'truncate' or 'wrap', got </span><span class="si">{</span><span class="n">mode</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

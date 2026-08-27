@@ -640,7 +640,9 @@
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="n">perr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">popt</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_process</span><span class="p">(</span><span class="n">popt</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">converged</span><span class="p">,</span> <span class="n">model_type</span><span class="p">,</span> <span class="n">manual_perr</span><span class="o">=</span><span class="n">perr</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_process</span><span class="p">(</span>
+            <span class="n">popt</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">converged</span><span class="p">,</span> <span class="n">model_type</span><span class="p">,</span> <span class="n">manual_perr</span><span class="o">=</span><span class="n">perr</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="n">l_vec</span><span class="p">,</span> <span class="n">h_vec</span><span class="p">)</span>
+        <span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_post_process</span><span class="p">(</span>
@@ -652,12 +654,15 @@
         <span class="n">pcov</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">manual_stat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">manual_perr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">bounds</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Compatible post-processor that enforces tau1 &lt;= tau2 and handles MLE-specific statistics.</span>
 <span class="sd">        """</span>
         <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s2">"bi-exponential"</span><span class="p">:</span>
-            <span class="n">popt</span><span class="p">,</span> <span class="n">manual_perr</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">enforce_tau_ordering</span><span class="p">(</span><span class="n">popt</span><span class="p">,</span> <span class="n">perr</span><span class="o">=</span><span class="n">manual_perr</span><span class="p">)</span>
+            <span class="n">popt</span><span class="p">,</span> <span class="n">manual_perr</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">enforce_tau_ordering</span><span class="p">(</span>
+                <span class="n">popt</span><span class="p">,</span> <span class="n">perr</span><span class="o">=</span><span class="n">manual_perr</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span>
+            <span class="p">)</span>
 
         <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decay</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">fit_indices</span><span class="p">]</span>
         <span class="n">final_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">,</span> <span class="n">popt</span><span class="p">,</span> <span class="n">model_type</span><span class="o">=</span><span class="n">model_type</span><span class="p">)[</span>

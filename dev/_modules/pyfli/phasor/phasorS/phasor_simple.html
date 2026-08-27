@@ -534,6 +534,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyfli</span><span class="w"> </span><span class="kn">import</span> <span class="n">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pyfli.reconstruction.common_reconstruct</span><span class="w"> </span><span class="kn">import</span> <span class="n">bi_reconstruction_torch</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.phasor_simple_plots</span><span class="w"> </span><span class="kn">import</span> <span class="n">PhasorPlotsMixin</span>
 
@@ -1163,7 +1164,7 @@
         <span class="n">a2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span>
             <span class="n">A2</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
         <span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">a1</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">t_ns</span> <span class="o">/</span> <span class="n">tau1_ns</span><span class="p">)</span> <span class="o">+</span> <span class="n">a2</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">t_ns</span> <span class="o">/</span> <span class="n">tau2_ns</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">bi_reconstruction_torch</span><span class="p">(</span><span class="n">t_ns</span><span class="p">,</span> <span class="n">tau1_ns</span><span class="p">,</span> <span class="n">tau2_ns</span><span class="p">,</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_irf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">irf</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""</span>

@@ -11,6 +11,7 @@ pyfli.data\_vnp
    :recursive:
 
    color_processor
+   cv_plot
    data_viewer
    mono_bi_classifier
    multi_plotter

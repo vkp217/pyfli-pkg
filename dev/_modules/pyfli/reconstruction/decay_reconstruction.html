@@ -538,13 +538,15 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyfli.solver.forward_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">decay_kernel</span><span class="p">,</span> <span class="n">model_numpy</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyfli.solver.shared_metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_fli_stats</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">.common_reconstruct</span><span class="w"> </span><span class="kn">import</span> <span class="n">bi_reconstruction</span><span class="p">,</span> <span class="n">mono_reconstruction</span>
+
 <span class="c1"># Matches forward_model._EPS — kept as a local literal since that name is</span>
 <span class="c1"># module-private in forward_model.</span>
 <span class="n">_EPS</span> <span class="o">=</span> <span class="mf">1e-8</span>
 
 
 <div class="viewcode-block" id="ParamToDecay">
-<a class="viewcode-back" href="../../../api/generated/pyfli.reconstruction.decay_reconstruction.html#pyfli.reconstruction.ParamToDecay">[docs]</a>
+<a class="viewcode-back" href="../../../api/generated/pyfli.reconstruction.decay_reconstruction.html#pyfli.reconstruction.decay_reconstruction.ParamToDecay">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ParamToDecay</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Reconstruct per-pixel modeled decay curves from fitted parameter maps.</span>
@@ -885,7 +887,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_type</span> <span class="o">==</span> <span class="s2">"mono-exponential"</span><span class="p">:</span>
             <span class="n">tau</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_map</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s2">"tau_map"</span><span class="p">)</span>
             <span class="n">tau_safe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">_EPS</span><span class="p">,</span> <span class="kc">None</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
-            <span class="k">return</span> <span class="p">(</span><span class="n">S</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">/</span> <span class="n">tau_safe</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">t_eff</span> <span class="o">/</span> <span class="n">tau_safe</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">mono_reconstruction</span><span class="p">(</span><span class="n">t_eff</span><span class="p">,</span> <span class="n">tau_safe</span><span class="p">,</span> <span class="n">S</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
 
         <span class="n">alpha1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_map</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s2">"alpha1_map"</span><span class="p">)</span>
         <span class="n">tau1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_map</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s2">"tau1_map"</span><span class="p">)</span>
@@ -893,10 +895,8 @@
         <span class="n">t1_safe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">tau1</span><span class="p">,</span> <span class="n">_EPS</span><span class="p">,</span> <span class="kc">None</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
         <span class="n">t2_safe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">tau2</span><span class="p">,</span> <span class="n">_EPS</span><span class="p">,</span> <span class="kc">None</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
         <span class="n">a1</span> <span class="o">=</span> <span class="n">alpha1</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">S</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span>
-            <span class="p">(</span><span class="n">a1</span> <span class="o">/</span> <span class="n">t1_safe</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">t_eff</span> <span class="o">/</span> <span class="n">t1_safe</span><span class="p">)</span>
-            <span class="o">+</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">a1</span><span class="p">)</span> <span class="o">/</span> <span class="n">t2_safe</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">t_eff</span> <span class="o">/</span> <span class="n">t2_safe</span><span class="p">)</span>
-        <span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">S</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">bi_reconstruction</span><span class="p">(</span><span class="n">t_eff</span><span class="p">,</span> <span class="n">t1_safe</span><span class="p">,</span> <span class="n">t2_safe</span><span class="p">,</span> <span class="n">s</span> <span class="o">*</span> <span class="n">a1</span><span class="p">,</span> <span class="n">s</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">a1</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_convolve_with_irf_vectorized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kernel</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Batch-convolve ``kernel`` with the (per-pixel-normalized) IRF."""</span>
@@ -962,7 +962,7 @@
         <span class="p">}</span>
 
 <div class="viewcode-block" id="ParamToDecay.reconstruct_unit_amplitude">
-<a class="viewcode-back" href="../../../api/generated/pyfli.reconstruction.decay_reconstruction.html#pyfli.reconstruction.ParamToDecay.reconstruct_unit_amplitude">[docs]</a>
+<a class="viewcode-back" href="../../../api/generated/pyfli.reconstruction.decay_reconstruction.html#pyfli.reconstruction.decay_reconstruction.ParamToDecay.reconstruct_unit_amplitude">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">reconstruct_unit_amplitude</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">bool_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
@@ -1010,7 +1010,7 @@
 
 
 <div class="viewcode-block" id="ParamToDecay.rescale_fit_to_measured_totals">
-<a class="viewcode-back" href="../../../api/generated/pyfli.reconstruction.decay_reconstruction.html#pyfli.reconstruction.ParamToDecay.rescale_fit_to_measured_totals">[docs]</a>
+<a class="viewcode-back" href="../../../api/generated/pyfli.reconstruction.decay_reconstruction.html#pyfli.reconstruction.decay_reconstruction.ParamToDecay.rescale_fit_to_measured_totals">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">rescale_fit_to_measured_totals</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">fit_map</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">decay</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_EPS</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -1035,7 +1035,7 @@
 
 
 <div class="viewcode-block" id="ParamToDecay.reconstruct_vectorized">
-<a class="viewcode-back" href="../../../api/generated/pyfli.reconstruction.decay_reconstruction.html#pyfli.reconstruction.ParamToDecay.reconstruct_vectorized">[docs]</a>
+<a class="viewcode-back" href="../../../api/generated/pyfli.reconstruction.decay_reconstruction.html#pyfli.reconstruction.decay_reconstruction.ParamToDecay.reconstruct_vectorized">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">reconstruct_vectorized</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
@@ -1073,7 +1073,7 @@
 
 
 <div class="viewcode-block" id="ParamToDecay.reconstruct">
-<a class="viewcode-back" href="../../../api/generated/pyfli.reconstruction.decay_reconstruction.html#pyfli.reconstruction.ParamToDecay.reconstruct">[docs]</a>
+<a class="viewcode-back" href="../../../api/generated/pyfli.reconstruction.decay_reconstruction.html#pyfli.reconstruction.decay_reconstruction.ParamToDecay.reconstruct">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">reconstruct</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>

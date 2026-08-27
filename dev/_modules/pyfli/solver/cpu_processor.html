@@ -570,6 +570,7 @@
         <span class="n">estimator</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
         <span class="n">p0</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
         <span class="n">bounds</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">fit_indices</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">kwargs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">"""</span>
@@ -591,6 +592,8 @@
 <span class="sd">            Initial parameter vector supplied to the optimizer.</span>
 <span class="sd">        bounds : np.ndarray</span>
 <span class="sd">            Lower and upper parameter bounds supplied to the optimizer.</span>
+<span class="sd">        fit_indices : tuple[int, int] | None</span>
+<span class="sd">            Optional (gate_num_start, gate_num_end) gate range to fit over.</span>
 <span class="sd">        kwargs : np.ndarray</span>
 <span class="sd">            Additional keyword options forwarded to the underlying implementation.</span>
 
@@ -607,7 +610,11 @@
             <span class="n">fit_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">"shift_method"</span><span class="p">}</span>
 
             <span class="n">fitter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fitter_class</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">y_data</span><span class="p">,</span> <span class="n">irf_p</span><span class="p">,</span> <span class="n">shift_method</span><span class="o">=</span><span class="n">shift_method</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span>
+                <span class="n">y_data</span><span class="p">,</span>
+                <span class="n">irf_p</span><span class="p">,</span>
+                <span class="n">shift_method</span><span class="o">=</span><span class="n">shift_method</span><span class="p">,</span>
+                <span class="n">fit_indices</span><span class="o">=</span><span class="n">fit_indices</span><span class="p">,</span>
             <span class="p">)</span>
 
             <span class="n">res</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">fit_with_estimator</span><span class="p">(</span>
@@ -658,6 +665,7 @@
         <span class="n">bounds</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
         <span class="n">backend</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"loky"</span><span class="p">,</span>
+        <span class="n">fit_indices</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""</span>
@@ -685,6 +693,9 @@
 <span class="sd">            Number of parallel jobs used for CPU fitting.</span>
 <span class="sd">        backend : str</span>
 <span class="sd">            Joblib execution backend used for parallel CPU fitting.</span>
+<span class="sd">        fit_indices : tuple[int, int] | None</span>
+<span class="sd">            Optional (gate_num_start, gate_num_end) gate range to fit over, e.g. to</span>
+<span class="sd">            focus on the tail of the decay. ``None`` fits the full trace.</span>
 <span class="sd">        **kwargs : Any</span>
 <span class="sd">            Additional keyword options forwarded to the underlying implementation.</span>
 
@@ -713,6 +724,7 @@
                 <span class="n">mask</span><span class="p">,</span>
                 <span class="n">estimator</span><span class="o">=</span><span class="n">estimator</span><span class="p">,</span>
                 <span class="n">model_type</span><span class="o">=</span><span class="n">model_type</span><span class="p">,</span>
+                <span class="n">fit_indices</span><span class="o">=</span><span class="n">fit_indices</span><span class="p">,</span>
                 <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
             <span class="p">)</span>
 
@@ -736,6 +748,7 @@
                 <span class="n">estimator</span><span class="p">,</span>
                 <span class="n">p0</span><span class="p">,</span>
                 <span class="n">bounds</span><span class="p">,</span>
+                <span class="n">fit_indices</span><span class="p">,</span>
                 <span class="n">kwargs</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">r</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">final_coords</span>

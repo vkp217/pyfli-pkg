@@ -569,6 +569,9 @@
 <span class="sd">        Optional custom model functions used by the fitter.</span>
 <span class="sd">    shift_method : str</span>
 <span class="sd">        Method used to align the IRF and decay traces.</span>
+<span class="sd">    fit_indices : tuple[int, int] | None</span>
+<span class="sd">        Optional (gate_num_start, gate_num_end) gate range to fit over, e.g. to focus on</span>
+<span class="sd">        the tail of the decay. ``None`` fits the full trace.</span>
 <span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -580,6 +583,7 @@
         <span class="n">guess_plugin</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">moment_based_guess</span><span class="p">,</span>
         <span class="n">custom_funcs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">shift_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"zero_pad"</span><span class="p">,</span>
+        <span class="n">fit_indices</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">decay</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">decay_px</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">irf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">irf_px</span><span class="p">)</span>
@@ -592,7 +596,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">T_acq</span> <span class="o">=</span> <span class="mf">1000.0</span> <span class="o">/</span> <span class="n">freq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">irf</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">irf</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">irf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_acq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">fit_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fit_indices</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">gate_start</span><span class="p">,</span> <span class="n">gate_end</span> <span class="o">=</span> <span class="n">fit_indices</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fit_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">gate_start</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">gate_end</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fit_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
 
         <span class="c1"># Central Solver Registry</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">funcs</span> <span class="o">=</span> <span class="p">{</span>
@@ -698,7 +706,7 @@
             <span class="n">xtol</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"xtol"</span><span class="p">,</span> <span class="mf">1e-7</span><span class="p">),</span>
             <span class="n">max_nfev</span><span class="o">=</span><span class="n">max_nfev</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_process</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">jac</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">model_type</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_process</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">jac</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">model_type</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="BaseFLIFitter.trust_region">
@@ -758,7 +766,9 @@
             <span class="n">status</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="n">popt</span><span class="p">,</span> <span class="n">pcov</span><span class="p">,</span> <span class="n">status</span> <span class="o">=</span> <span class="n">p0</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_process</span><span class="p">(</span><span class="n">popt</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">model_type</span><span class="p">,</span> <span class="n">pcov</span><span class="o">=</span><span class="n">pcov</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_process</span><span class="p">(</span>
+            <span class="n">popt</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">model_type</span><span class="p">,</span> <span class="n">pcov</span><span class="o">=</span><span class="n">pcov</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="BaseFLIFitter.unconstrained">
@@ -819,9 +829,14 @@
             <span class="n">status</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit_with_estimator</span><span class="p">(</span>
-                <span class="n">estimator_type</span><span class="o">=</span><span class="s2">"trust_region"</span><span class="p">,</span> <span class="n">model_type</span><span class="o">=</span><span class="n">model_type</span><span class="p">,</span> <span class="n">p0</span><span class="o">=</span><span class="n">p0</span>
+                <span class="n">estimator_type</span><span class="o">=</span><span class="s2">"trust_region"</span><span class="p">,</span>
+                <span class="n">model_type</span><span class="o">=</span><span class="n">model_type</span><span class="p">,</span>
+                <span class="n">p0</span><span class="o">=</span><span class="n">p0</span><span class="p">,</span>
+                <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
             <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_process</span><span class="p">(</span><span class="n">popt</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">model_type</span><span class="p">,</span> <span class="n">pcov</span><span class="o">=</span><span class="n">pcov</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_process</span><span class="p">(</span>
+            <span class="n">popt</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">model_type</span><span class="p">,</span> <span class="n">pcov</span><span class="o">=</span><span class="n">pcov</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="BaseFLIFitter.model_fit">
@@ -856,6 +871,7 @@
         <span class="n">status</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
         <span class="n">model_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">pcov</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">bounds</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Run the post process routine.</span>
@@ -872,6 +888,8 @@
 <span class="sd">            FLI model family, such as mono- or bi-exponential.</span>
 <span class="sd">        pcov : np.ndarray | None</span>
 <span class="sd">            Parameter covariance matrix.</span>
+<span class="sd">        bounds : np.ndarray | None</span>
+<span class="sd">            Lower and upper parameter bounds supplied to the optimizer.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -879,7 +897,7 @@
 <span class="sd">            Tuple containing fitted parameters, errors, covariance, and quality metrics.</span>
 <span class="sd">        """</span>
         <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s2">"bi-exponential"</span><span class="p">:</span>
-            <span class="n">popt</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">pcov</span> <span class="o">=</span> <span class="n">enforce_tau_ordering</span><span class="p">(</span><span class="n">popt</span><span class="p">,</span> <span class="n">pcov</span><span class="o">=</span><span class="n">pcov</span><span class="p">)</span>
+            <span class="n">popt</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">pcov</span> <span class="o">=</span> <span class="n">enforce_tau_ordering</span><span class="p">(</span><span class="n">popt</span><span class="p">,</span> <span class="n">pcov</span><span class="o">=</span><span class="n">pcov</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">)</span>
 
         <span class="n">d_fit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decay</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">fit_indices</span><span class="p">]</span>
         <span class="n">final_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">,</span> <span class="n">popt</span><span class="p">,</span> <span class="n">model_type</span><span class="o">=</span><span class="n">model_type</span><span class="p">)[</span>

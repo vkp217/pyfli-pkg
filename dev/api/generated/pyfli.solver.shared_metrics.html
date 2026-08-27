@@ -598,7 +598,7 @@ functions <a class="reference internal" href="#pyfli.solver.shared_metrics.enfor
 <tr class="row-odd"><td><p><a class="reference internal" href="#pyfli.solver.shared_metrics.compute_fret_efficiency" title="pyfli.solver.shared_metrics.compute_fret_efficiency"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_fret_efficiency</span></code></a>(popt)</p></td>
 <td><p>Compute FRET efficiency.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pyfli.solver.shared_metrics.enforce_tau_ordering" title="pyfli.solver.shared_metrics.enforce_tau_ordering"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enforce_tau_ordering</span></code></a>(popt[, perr, pcov])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pyfli.solver.shared_metrics.enforce_tau_ordering" title="pyfli.solver.shared_metrics.enforce_tau_ordering"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enforce_tau_ordering</span></code></a>(popt[, perr, pcov, bounds])</p></td>
 <td><p>Enforce tau ordering.</p></td>
 </tr>
 </tbody>
@@ -606,7 +606,7 @@ functions <a class="reference internal" href="#pyfli.solver.shared_metrics.enfor
 </div>
 <dl class="py function">
 <dt class="sig sig-object py" id="pyfli.solver.shared_metrics.enforce_tau_ordering">
-<span class="sig-name descname"><span class="pre">enforce_tau_ordering</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">popt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pcov</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/solver/shared_metrics.html#enforce_tau_ordering"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.solver.shared_metrics.enforce_tau_ordering" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">enforce_tau_ordering</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">popt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pcov</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/solver/shared_metrics.html#enforce_tau_ordering"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.solver.shared_metrics.enforce_tau_ordering" title="Link to this definition">#</a></dt>
 <dd><p>Enforce tau ordering.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -614,6 +614,8 @@ functions <a class="reference internal" href="#pyfli.solver.shared_metrics.enfor
 <li><p><strong>popt</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code>) – Optimized model parameter vector.</p></li>
 <li><p><strong>perr</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span> <span class="pre">|</span> <span class="pre">None</span></code>) – One-standard-deviation parameter uncertainty estimates.</p></li>
 <li><p><strong>pcov</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Parameter covariance matrix.</p></li>
+<li><p><strong>bounds</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">tuple[np.ndarray</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray]</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Optional (low, high) bound vectors used for the fit. When either tau1 or tau2
+was pinned by the caller (low == high), that parameter’s slot is left alone.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>

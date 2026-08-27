@@ -614,10 +614,8 @@
 <span class="sd">        the amplitude-weighted, per-pulse-buildup share of component 1 among</span>
 <span class="sd">        both components' emitted photons.</span>
 <span class="sd">        """</span>
-        <span class="n">w1</span> <span class="o">=</span> <span class="n">A1</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">laser_period</span> <span class="o">/</span> <span class="n">tau1</span><span class="p">))</span>
-        <span class="n">w2</span> <span class="o">=</span> <span class="n">A2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">laser_period</span> <span class="o">/</span> <span class="n">tau2</span><span class="p">))</span>
-        <span class="n">denom</span> <span class="o">=</span> <span class="n">w1</span> <span class="o">+</span> <span class="n">w2</span>
-        <span class="k">return</span> <span class="n">w1</span> <span class="o">/</span> <span class="n">denom</span> <span class="k">if</span> <span class="n">denom</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">A1</span>
+        <span class="n">denom</span> <span class="o">=</span> <span class="n">A1</span> <span class="o">+</span> <span class="n">A2</span>
+        <span class="k">return</span> <span class="n">A1</span> <span class="o">/</span> <span class="n">denom</span> <span class="k">if</span> <span class="n">denom</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">A1</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_bin_tcspc_photons</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">times</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""</span>
@@ -630,8 +628,9 @@
         <span class="n">irf_cdf</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># pin to exactly 1.0 so searchsorted never returns len(irf)</span>
         <span class="n">irf_shifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">irf_cdf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rng</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">total_photons</span><span class="p">))</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span>
 
+        <span class="n">pileup_mode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"pileup_mode"</span><span class="p">,</span> <span class="s2">"wrap"</span><span class="p">)</span>
         <span class="n">arrival_times</span> <span class="o">=</span> <span class="n">NoiseEngine</span><span class="o">.</span><span class="n">tcspc_pileup_filter</span><span class="p">(</span>
-            <span class="n">times</span> <span class="o">+</span> <span class="n">irf_shifts</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">laser_period</span>
+            <span class="n">times</span> <span class="o">+</span> <span class="n">irf_shifts</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">laser_period</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">pileup_mode</span>
         <span class="p">)</span>
 
         <span class="n">bins</span> <span class="o">=</span> <span class="p">(</span><span class="n">arrival_times</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>

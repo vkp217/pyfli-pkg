@@ -592,35 +592,6 @@ identical across methods – giving a true, common x-axis to compare methods
 against. This is different from (and safer than) binning by a method’s own
 <em>estimated</em> <cite>photon_count_map</cite>, which can differ in scale/definition between
 methods (that was the source of the earlier one-to-one mismatch).</p>
-</section>
-<section id="typical-usage">
-<h2>Typical usage<a class="headerlink" href="#typical-usage" title="Link to this heading">#</a></h2>
-<blockquote>
-<div><dl>
-<dt>fa = FactorAnalysis(</dt><dd><p>decay=binned_decay,          # shape (H, W, T) – or wherever your time axis is
-irf=binned_irf,
-mask=b_bool_mask,            # shared 2D boolean mask
-all_datasets=all_datasets,   # list[dict] of per-method parameter maps
-all_fitset=all_fitset,       # list[dict] of per-method fit results, each with</p>
-<blockquote>
-<div><p># ‘fit_map’ (reconstructed decay) and ‘residual_map’
-# (decay - fit_map), same (H, W, T) shape as decay</p>
-</div></blockquote>
-<p>method_names=list(experiments.values()),
-time_axis=-1,</p>
-</dd>
-</dl>
-<p>)</p>
-<p># link total_photons (from the shared decay) to estimated parameter maps
-df, edges = fa.analyze(factor_key=’total_photons’, target_keys=[‘tau1_map’, ‘tau2_map’, ‘chi2_map’])
-fig, axes = fa.plot(df)</p>
-<p># link total_photons to fit-quality computed from fit_map/residual_map vs the raw decay
-df2, edges2 = fa.analyze(factor_key=’total_photons’, target_source=’fitset’,</p>
-<blockquote>
-<div><p>target_keys=[‘residual_chi2’, ‘fit_total_photons’])</p>
-</div></blockquote>
-<p>fig2, axes2 = fa.plot(df2)</p>
-</div></blockquote>
 <p class="rubric">Classes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
@@ -633,7 +604,7 @@ df2, edges2 = fa.analyze(factor_key=’total_photons’, target_source=’fitset
 </section>
 <dl class="py class">
 <dt class="sig sig-object py" id="pyfli.analysis.factor_analysis.FactorAnalysis">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">FactorAnalysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">decay</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">irf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_datasets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_fitset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sns_style</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'whitegrid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sns_palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'colorblind'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/analysis/factor_analysis.html#FactorAnalysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.analysis.factor_analysis.FactorAnalysis" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">FactorAnalysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">decay</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">irf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_datasets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_fitset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sns_style</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'whitegrid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sns_palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'colorblind'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sns_cluster_palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'husl'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/analysis/factor_analysis.html#FactorAnalysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.analysis.factor_analysis.FactorAnalysis" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -731,6 +702,19 @@ on a common scale/definition across methods, so <cite>shared=False</cite>.</p></
 <li><p>If factor_key is a per-method map (e.g. ‘fret_efficiency_map’),
 you must pass method_index to select which method’s version to use.</p></li>
 </ul>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.analysis.factor_analysis.FactorAnalysis.list_clusters">
+<span class="sig-name descname"><span class="pre">list_clusters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/analysis/factor_analysis.html#FactorAnalysis.list_clusters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.analysis.factor_analysis.FactorAnalysis.list_clusters" title="Link to this definition">#</a></dt>
+<dd><p>Cluster labels registered via cluster_mask (empty if none was given).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.analysis.factor_analysis.FactorAnalysis.cluster_selection_mask">
+<span class="sig-name descname"><span class="pre">cluster_selection_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cluster_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/analysis/factor_analysis.html#FactorAnalysis.cluster_selection_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.analysis.factor_analysis.FactorAnalysis.cluster_selection_mask" title="Link to this definition">#</a></dt>
+<dd><p>Boolean pixel-grid mask for one cluster label, intersected with the
+shared <cite>mask</cite> (if any).</p>
 </dd></dl>
 
 <dl class="py method">
@@ -900,9 +884,36 @@ not a strict rule – override explicitly if needed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p><ul class="simple">
-<li><p><strong>df</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">pandas.DataFrame</span>&#160; <span class="pre">(long-form</span></code>: <code class="xref py py-class docutils literal notranslate"><span class="pre">method</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bin_rank</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bin_center</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bin_low,</span></code>) – bin_high, parameter, mean, median, std, sem, count)</p></li>
+<li><p><strong>df</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">pandas.DataFrame</span>&#160; <span class="pre">(long-form</span></code>: <code class="xref py py-class docutils literal notranslate"><span class="pre">method</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bin_rank</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bin_center</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bin_low,</span></code>) – bin_high, parameter, mean, median, std, sem, cv, count)</p></li>
 <li><p><strong>bin_edges</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">dict[str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray]</span></code>) – A single edges array if bin_scope ended up ‘pooled’, otherwise a
 dict of {method_name: edges} for ‘per_method’.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.analysis.factor_analysis.FactorAnalysis.analyze_by_cluster">
+<span class="sig-name descname"><span class="pre">analyze_by_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">factor_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'total_photons'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_keys</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_source</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'datasets'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'quantile'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_scope</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pooled'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_ids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_keys</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('convergence_map',</span> <span class="pre">'pixel_health_map')</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/analysis/factor_analysis.html#FactorAnalysis.analyze_by_cluster"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.analysis.factor_analysis.FactorAnalysis.analyze_by_cluster" title="Link to this definition">#</a></dt>
+<dd><p>Like analyze(), but bins/aggregates separately PER CLUSTER (from
+<cite>cluster_mask</cite>, given at construction) for a single method, instead
+of per method. Use this to see whether the factor/target
+relationship differs by spatial region (e.g. by ROI/letter), rather
+than by fitting method.</p>
+<p>method_index selects which method’s datasets/fitset/per-method
+factor values to use (irrelevant when factor_key/target are shared).</p>
+<dl class="simple">
+<dt>bin_scope<span class="classifier">‘pooled’ (default) uses ONE set of edges pooled across</span></dt><dd><p>all clusters – a common x-axis so clusters are directly
+comparable. ‘per_cluster’ gives each cluster its own edges
+(clusters then only comparable by bin_rank).</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>df</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">pandas.DataFrame</span>&#160; <span class="pre">(long-form</span></code>: <code class="xref py py-class docutils literal notranslate"><span class="pre">cluster</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bin_rank</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bin_center,</span></code>) – bin_low, bin_high, parameter, mean, median, std, sem, cv, count)</p></li>
+<li><p><strong>bin_edges</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">dict[str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray]</span></code>)</p></li>
 </ul>
 </p>
 </dd>
@@ -915,8 +926,9 @@ dict of {method_name: edges} for ‘per_method’.</p></li>
 <dd><p>Grid of plots (one subplot per parameter, one series per method).</p>
 <dl class="simple">
 <dt>kind<span class="classifier">‘line’, ‘box’, or ‘scatter’</span></dt><dd><dl class="simple">
-<dt>‘line’    (default) – aggregated per-bin <cite>stat</cite> (‘mean’ or</dt><dd><p>‘median’) with a shaded <cite>error</cite> band (‘sem’, ‘std’, or
-None). Uses the pre-aggregated values already in <cite>df</cite>.</p>
+<dt>‘line’    (default) – aggregated per-bin <cite>stat</cite> (‘mean’, ‘median’,</dt><dd><p>or ‘cv’ – coefficient of variation, std/mean) with a
+shaded <cite>error</cite> band (‘sem’, ‘std’, or None). Uses the
+pre-aggregated values already in <cite>df</cite>.</p>
 </dd>
 <dt>‘box’     – boxplot of the RAW per-pixel values within each</dt><dd><p>factor bin, one box per (bin, method) – shows spread
 and outliers instead of a single summary stat.
@@ -949,13 +961,75 @@ else ‘bin_rank’.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="pyfli.analysis.factor_analysis.FactorAnalysis.plot_by_cluster">
+<span class="sig-name descname"><span class="pre">plot_by_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_keys</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sem'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">saver</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/analysis/factor_analysis.html#FactorAnalysis.plot_by_cluster"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.analysis.factor_analysis.FactorAnalysis.plot_by_cluster" title="Link to this definition">#</a></dt>
+<dd><p>Line-plot analog of plot(kind=’line’), for the output of
+analyze_by_cluster(): one subplot per parameter, one colored line
+per CLUSTER (using self.cluster_palette) instead of one per method.</p>
+<p>stat : ‘mean’, ‘median’, or ‘cv’ (coefficient of variation, std/mean)
+error : ‘sem’, ‘std’, or None – shaded band around <cite>stat</cite></p>
+<dl class="simple">
+<dt>saver<span class="classifier">DataSaver-like object or None</span></dt><dd><p>If provided, the figure is saved via
+<code class="docutils literal notranslate"><span class="pre">saver.save_plot(name</span> <span class="pre">or</span> <span class="pre">default,</span> <span class="pre">fig=fig,</span> <span class="pre">close=False)</span></code>.</p>
+</dd>
+<dt>name<span class="classifier">str or None</span></dt><dd><p>Explicit save name; defaults to
+<code class="docutils literal notranslate"><span class="pre">f&quot;factor_analysis_by_cluster_{factor_key}&quot;</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.analysis.factor_analysis.FactorAnalysis.compare">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">compare</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labeled_dfs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_keys</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sem'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">saver</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/analysis/factor_analysis.html#FactorAnalysis.compare"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.analysis.factor_analysis.FactorAnalysis.compare" title="Link to this definition">#</a></dt>
+<dd><p>Overlay analyze() results from INDEPENDENT FactorAnalysis instances
+(e.g. different simulated/acquired datasets, each with its own
+decay/irf/mask) onto shared subplots – one line per dataset, one
+subplot per parameter.</p>
+<p>This is different from plot()/plot_by_cluster(), which compare
+methods/clusters WITHIN one shared decay: those assume every series
+was computed from the same raw decay, so a common factor_key like
+‘total_photons’ is guaranteed pixel-for-pixel identical across
+series. compare() makes no such assumption – each df comes from
+its own instance’s own analyze() call, so each dataset’s line is
+drawn at its own actual bin_center x-values.</p>
+<dl class="simple">
+<dt>labeled_dfs<span class="classifier">list[(str, pandas.DataFrame)]</span></dt><dd><p>(label, df) pairs, each df as returned by analyze(). All should
+use the same factor_key (and ideally similar binning) for the
+comparison to be meaningful.</p>
+</dd>
+<dt>palette<span class="classifier">dict[str, color] or None</span></dt><dd><p>Maps each label to a color; defaults to a qualitative palette
+with one color per label.</p>
+</dd>
+<dt>saver<span class="classifier">DataSaver-like object or None</span></dt><dd><p>If provided, the figure is saved via
+<code class="docutils literal notranslate"><span class="pre">saver.save_plot(name</span> <span class="pre">or</span> <span class="pre">default,</span> <span class="pre">fig=fig,</span> <span class="pre">close=False)</span></code>.</p>
+</dd>
+<dt>name<span class="classifier">str or None</span></dt><dd><p>Explicit save name; defaults to
+<code class="docutils literal notranslate"><span class="pre">f&quot;factor_analysis_compare_{factor_key}&quot;</span></code>.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">fig</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">axes</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="pyfli.analysis.factor_analysis.FactorAnalysis.plot_bin_distribution">
-<span class="sig-name descname"><span class="pre">plot_bin_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">factor_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_source</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'datasets'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'quantile'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_scope</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'violin'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">saver</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/analysis/factor_analysis.html#FactorAnalysis.plot_bin_distribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.analysis.factor_analysis.FactorAnalysis.plot_bin_distribution" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">plot_bin_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">factor_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_source</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'datasets'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'quantile'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_scope</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'violin'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">saver</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/analysis/factor_analysis.html#FactorAnalysis.plot_bin_distribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.analysis.factor_analysis.FactorAnalysis.plot_bin_distribution" title="Link to this definition">#</a></dt>
 <dd><p>Seaborn violin/boxen plot of the RAW per-pixel distribution of
-<cite>target_key</cite>, split by factor bin (x-axis) and method (hue) –
-complements plot()’s aggregated mean/sem lines by showing the actual
-spread/shape of each bin’s pixel values, not just a summary stat.</p>
-<p>kind : ‘violin’ or ‘boxen’</p>
+<cite>target_key</cite>, split by factor bin (x-axis) – complements plot()’s
+aggregated mean/sem lines by showing the actual spread/shape of each
+bin’s pixel values, not just a summary stat.</p>
+<p>kind : ‘violin’ or ‘boxen’
+color_by : ‘auto’, ‘bin’, or ‘method’</p>
+<blockquote>
+<div><p>‘method’ colors/dodges violins by method (needs the legend to
+tell methods apart). ‘bin’ gives each bin its own color instead
+(no per-method dodge). ‘auto’ picks ‘bin’ when there’s only one
+method (the common case – method color would be redundant with
+the x-axis) and ‘method’ otherwise.</p>
+</div></blockquote>
 <dl class="simple">
 <dt>saver<span class="classifier">DataSaver-like object or None</span></dt><dd><p>If provided, the figure is saved via
 <code class="docutils literal notranslate"><span class="pre">saver.save_plot(name</span> <span class="pre">or</span> <span class="pre">default,</span> <span class="pre">fig=fig,</span> <span class="pre">close=False)</span></code>.</p>
@@ -1001,13 +1075,14 @@ spread/shape of each bin’s pixel values, not just a summary stat.</p>
     <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#factor-analysis-py">factor_analysis.py</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#key-idea">Key idea</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#typical-usage">Typical usage</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.add_factor"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.add_factor()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.add_factor_fn"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.add_factor_fn()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.list_factors"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.list_factors()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.get_factor_map"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.get_factor_map()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.factor_values"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.factor_values()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.list_clusters"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.list_clusters()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.cluster_selection_mask"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.cluster_selection_mask()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.register_fitset_target"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.register_fitset_target()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.list_fitset_targets"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.list_fitset_targets()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.list_fitset_keys"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.list_fitset_keys()</span></code></a></li>
@@ -1016,7 +1091,10 @@ spread/shape of each bin’s pixel values, not just a summary stat.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.plot_spatial_selection"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.plot_spatial_selection()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.plot_range_selection_grid"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.plot_range_selection_grid()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.analyze"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.analyze()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.analyze_by_cluster"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.analyze_by_cluster()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.plot"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.plot()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.plot_by_cluster"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.plot_by_cluster()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.compare"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.compare()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.plot_bin_distribution"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.plot_bin_distribution()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.analysis.factor_analysis.FactorAnalysis.analyze_and_plot"><code class="docutils literal notranslate"><span class="pre">FactorAnalysis.analyze_and_plot()</span></code></a></li>
 </ul>
