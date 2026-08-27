@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 
+from ...reconstruction.common_reconstruct import bi_reconstruction
 from ..distributions import ParameterSampler
 from ..sim_engine_common import BaseFLIEngine
 
@@ -49,6 +50,8 @@ class FLIEngine(BaseFLIEngine):
         Detector dark-count rate used by the noise model.
     laser_feq : int
         Laser repetition frequency used by the simulation.
+    pileup_mode : str
+        'wrap' (default) folds photons back via modulo; 'truncate' drops them.
     seed : int | None
         Seed for reproducible random sampling.
     **kwargs : Any
@@ -67,6 +70,7 @@ class FLIEngine(BaseFLIEngine):
         n_cycles: int | tuple[int, int] = 800_000,
         dcr: float = 0.05,
         laser_feq: int = 80,
+        pileup_mode: str = "wrap",
         seed: int | None = None,
         **kwargs: Any,
     ) -> None:
@@ -84,6 +88,7 @@ class FLIEngine(BaseFLIEngine):
             "bit": bit,
             "cycles": cycles_range,
             "dcr": dcr,
+            "pileup_mode": pileup_mode,
             **kwargs,
         }
 
@@ -146,9 +151,13 @@ class FLIEngine(BaseFLIEngine):
         # steady-state scaling factor per component
         scaling_factor1 = 1.0 / (1.0 - np.exp(-T / p["tau1"]))
         scaling_factor2 = 1.0 / (1.0 - np.exp(-T / p["tau2"]))
-        return p["A1"] * scaling_factor1 * np.exp(-self.t / p["tau1"]) + p[
-            "A2"
-        ] * scaling_factor2 * np.exp(-self.t / p["tau2"])
+        return bi_reconstruction(
+            self.t,
+            p["tau1"],
+            p["tau2"],
+            p["A1"] * scaling_factor1,
+            p["A2"] * scaling_factor2,
+        )
 
     def simulate_tcspc(self, p: Any, n_cycles: int, mu_per_cycle: np.ndarray) -> Any:
         """Photon-by-photon logic for TCSPC mode."""

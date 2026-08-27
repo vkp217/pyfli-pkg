@@ -11,6 +11,7 @@ primarily re-exports package symbols or constants for downstream imports.
 """
 
 from .color_processor import ColorProcessor
+from .cv_plot import CVPlot
 from .data_viewer import DataViewer
 from .mono_bi_classifier import MonoBiClassifier, ParamCorrelationMatrix
 from .multi_plotter import (

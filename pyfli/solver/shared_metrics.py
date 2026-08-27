@@ -11,9 +11,14 @@ from typing import Any
 
 import numpy as np
 
+_FIXED_BOUND_TOL = 1e-5
+
 
 def enforce_tau_ordering(
-    popt: np.ndarray, perr: Any | None = None, pcov: np.ndarray | None = None
+    popt: np.ndarray,
+    perr: Any | None = None,
+    pcov: np.ndarray | None = None,
+    bounds: tuple[np.ndarray, np.ndarray] | None = None,
 ) -> tuple[Any, ...]:
     """
     Enforce tau ordering.
@@ -26,6 +31,9 @@ def enforce_tau_ordering(
         One-standard-deviation parameter uncertainty estimates.
     pcov : np.ndarray | None
         Parameter covariance matrix.
+    bounds : tuple[np.ndarray, np.ndarray] | None
+        Optional (low, high) bound vectors used for the fit. When either tau1 or tau2
+        was pinned by the caller (low == high), that parameter's slot is left alone.
 
     Returns
     -------
@@ -33,6 +41,13 @@ def enforce_tau_ordering(
         Tuple containing the reordered parameter vector and any reordered uncertainty or covariance data.
     """
     popt = np.asarray(popt, dtype=float)
+
+    if bounds is not None:
+        low, high = bounds
+        tau1_fixed = abs(float(high[2]) - float(low[2])) < _FIXED_BOUND_TOL
+        tau2_fixed = abs(float(high[3]) - float(low[3])) < _FIXED_BOUND_TOL
+        if tau1_fixed or tau2_fixed:
+            return popt, perr, pcov
 
     if popt[1] > 0.999:
         popt[1], popt[3] = 1.0, popt[2]

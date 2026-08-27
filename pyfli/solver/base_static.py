@@ -262,15 +262,18 @@ def rld_based_guess(
         a0, a1 = np.sum(y_fit[:q]), np.sum(y_fit[q : 2 * q])
         a2, a3 = np.sum(y_fit[2 * q : 3 * q]), np.sum(y_fit[3 * q : 4 * q])
 
-        t1 = (dt * q) / np.log(a0 / a1) if (a1 > 0 and a0 > a1) else 0.5
-        t2 = (dt * q) / np.log(a2 / a3) if (a3 > 0 and a2 > a3) else 2.0
+        t1 = (dt * q) / np.log(a0 / a1) if (a1 > 0 and a0 > a1) else T_laser * 0.05
+        t2 = (dt * q) / np.log(a2 / a3) if (a3 > 0 and a2 > a3) else T_laser * 0.15
 
         tau1_g = np.clip(min(t1, t2), 0.05, T_laser * 0.4)
         tau2_g = np.clip(max(t1, t2), tau1_g * 1.1, T_laser * 0.8)
 
+        a_early, a_late = a0 + a1 + 1e-9, a2 + a3 + 1e-9
+        alpha1_guess = float(np.clip(a_early / (a_early + a_late), 0.001, 0.999))
+
         return {
             "amp": float(np.max(y_fit)),
-            "alpha1": 0.5,
+            "alpha1": alpha1_guess,
             "tau1": float(tau1_g),
             "tau2": float(tau2_g),
             "v_shift": float(offset_guess),

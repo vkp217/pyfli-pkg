@@ -92,10 +92,8 @@ class BaseFLIEngine:
         the amplitude-weighted, per-pulse-buildup share of component 1 among
         both components' emitted photons.
         """
-        w1 = A1 * (1 - np.exp(-laser_period / tau1))
-        w2 = A2 * (1 - np.exp(-laser_period / tau2))
-        denom = w1 + w2
-        return w1 / denom if denom > 0 else A1
+        denom = A1 + A2
+        return A1 / denom if denom > 0 else A1
 
     def _bin_tcspc_photons(self, times: np.ndarray) -> Any:
         """
@@ -108,8 +106,9 @@ class BaseFLIEngine:
         irf_cdf[-1] = 1.0  # pin to exactly 1.0 so searchsorted never returns len(irf)
         irf_shifts = np.searchsorted(irf_cdf, self.rng.random(total_photons)) * self.dt
 
+        pileup_mode = self.params_cfg.get("pileup_mode", "wrap")
         arrival_times = NoiseEngine.tcspc_pileup_filter(
-            times + irf_shifts, self.laser_period
+            times + irf_shifts, self.laser_period, mode=pileup_mode
         )
 
         bins = (arrival_times / self.dt).astype(np.int32)

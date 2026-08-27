@@ -714,8 +714,14 @@ class LaguerreFLI:
                 f"tau{i + 1}_map": self.taus_[..., i].astype(np.float32)
                 for i in range(N)
             }
+            photon_weight = self.fractions_ * self.taus_
+            total_photon_weight = photon_weight.sum(axis=-1, keepdims=True)
+            with np.errstate(invalid="ignore", divide="ignore"):
+                photon_fractions = np.where(
+                    total_photon_weight > 0, photon_weight / total_photon_weight, 0.0
+                )
             alpha_maps = {
-                f"alpha{i + 1}_map": self.fractions_[..., i].astype(np.float32)
+                f"alpha{i + 1}_map": photon_fractions[..., i].astype(np.float32)
                 for i in range(N)
             }
 

@@ -81,7 +81,9 @@ class NoiseEngine:
         return np.concatenate([decay[-shift:], np.zeros(-shift)])
 
     @staticmethod
-    def tcspc_pileup_filter(arrival_times: np.ndarray, t_rep: float) -> Any:
+    def tcspc_pileup_filter(
+        arrival_times: np.ndarray, t_rep: float, mode: str = "wrap"
+    ) -> Any:
         # Simplistic pile-up: real systems might only take the first photon per cycle
         """
         Run the TCSPC pileup filter routine.
@@ -92,10 +94,16 @@ class NoiseEngine:
             Photon arrival times passed to the TCSPC pile-up filter.
         t_rep : float
             Laser repetition period used for TCSPC pile-up filtering.
+        mode : str
+            'wrap' (default) folds photons back via modulo; 'truncate' drops them.
 
         Returns
         -------
         Any
             Object produced by TCSPC pileup filter.
         """
-        return arrival_times[arrival_times < t_rep]
+        if mode == "truncate":
+            return arrival_times[arrival_times < t_rep]
+        if mode == "wrap":
+            return arrival_times % t_rep
+        raise ValueError(f"mode must be 'truncate' or 'wrap', got {mode!r}")

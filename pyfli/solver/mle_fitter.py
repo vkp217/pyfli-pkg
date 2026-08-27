@@ -107,7 +107,9 @@ class MLEFLIFitter(BaseFLIFitter):
         except Exception:
             perr = np.full(len(popt), np.nan)
 
-        return self._post_process(popt, None, converged, model_type, manual_perr=perr)
+        return self._post_process(
+            popt, None, converged, model_type, manual_perr=perr, bounds=(l_vec, h_vec)
+        )
 
     def _post_process(
         self,
@@ -118,12 +120,15 @@ class MLEFLIFitter(BaseFLIFitter):
         pcov: np.ndarray | None = None,
         manual_stat: np.ndarray | None = None,
         manual_perr: np.ndarray | None = None,
+        bounds: np.ndarray | None = None,
     ) -> tuple[Any, ...]:
         """
         Compatible post-processor that enforces tau1 <= tau2 and handles MLE-specific statistics.
         """
         if model_type == "bi-exponential":
-            popt, manual_perr, _ = enforce_tau_ordering(popt, perr=manual_perr)
+            popt, manual_perr, _ = enforce_tau_ordering(
+                popt, perr=manual_perr, bounds=bounds
+            )
 
         data = self.decay[self.fit_indices]
         final_model = self.model_fit(self.t, popt, model_type=model_type)[

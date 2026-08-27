@@ -14,29 +14,6 @@ identical across methods -- giving a true, common x-axis to compare methods
 against. This is different from (and safer than) binning by a method's own
 *estimated* `photon_count_map`, which can differ in scale/definition between
 methods (that was the source of the earlier one-to-one mismatch).
-
-Typical usage
--------------
-    fa = FactorAnalysis(
-        decay=binned_decay,          # shape (H, W, T) -- or wherever your time axis is
-        irf=binned_irf,
-        mask=b_bool_mask,            # shared 2D boolean mask
-        all_datasets=all_datasets,   # list[dict] of per-method parameter maps
-        all_fitset=all_fitset,       # list[dict] of per-method fit results, each with
-                                      # 'fit_map' (reconstructed decay) and 'residual_map'
-                                      # (decay - fit_map), same (H, W, T) shape as decay
-        method_names=list(experiments.values()),
-        time_axis=-1,
-    )
-
-    # link total_photons (from the shared decay) to estimated parameter maps
-    df, edges = fa.analyze(factor_key='total_photons', target_keys=['tau1_map', 'tau2_map', 'chi2_map'])
-    fig, axes = fa.plot(df)
-
-    # link total_photons to fit-quality computed from fit_map/residual_map vs the raw decay
-    df2, edges2 = fa.analyze(factor_key='total_photons', target_source='fitset',
-                              target_keys=['residual_chi2', 'fit_total_photons'])
-    fig2, axes2 = fa.plot(df2)
 """
 
 import matplotlib.pyplot as plt
@@ -95,6 +72,9 @@ class FactorAnalysis:
         time_axis=-1,
         sns_style="whitegrid",
         sns_palette="colorblind",
+        cluster_mask=None,
+        cluster_names=None,
+        sns_cluster_palette="husl",
     ):
         self.decay = np.asarray(decay)
         self.irf = np.asarray(irf) if irf is not None else None
@@ -161,6 +141,44 @@ class FactorAnalysis:
         sns.set_theme(style=sns_style)
         colors = sns.color_palette(sns_palette, n_colors=len(self.method_names))
         self.palette = {m: c for m, c in zip(self.method_names, colors)}
+
+        self.cluster_mask = None
+        self.cluster_ids = []
+        self.cluster_names = {}
+        self.cluster_palette = {}
+        if cluster_mask is not None:
+            cm = np.asarray(cluster_mask)
+            if cm.shape != self.pixel_shape:
+                raise ValueError(
+                    f"cluster_mask shape {cm.shape} does not match decay's "
+                    f"pixel shape {self.pixel_shape}"
+                )
+            self.cluster_mask = cm
+            self.cluster_ids = sorted(int(c) for c in np.unique(cm) if c != 0)
+            if not self.cluster_ids:
+                raise ValueError(
+                    "cluster_mask contains no non-zero cluster labels "
+                    "(0 is treated as background)."
+                )
+            if cluster_names is None:
+                self.cluster_names = {cid: f"cluster_{cid}" for cid in self.cluster_ids}
+            else:
+                missing = [c for c in self.cluster_ids if c not in cluster_names]
+                if missing:
+                    raise ValueError(
+                        f"cluster_names is missing label(s) {missing} present "
+                        f"in cluster_mask"
+                    )
+                self.cluster_names = {
+                    cid: str(cluster_names[cid]) for cid in self.cluster_ids
+                }
+            cluster_colors = sns.color_palette(
+                sns_cluster_palette, n_colors=len(self.cluster_ids)
+            )
+            self.cluster_palette = {
+                self.cluster_names[cid]: c
+                for cid, c in zip(self.cluster_ids, cluster_colors)
+            }
 
     def _register_default_factors(self):
         self.add_factor("total_photons", self.decay.sum(axis=self.time_axis))
@@ -231,6 +249,28 @@ class FactorAnalysis:
                 f"(methods: {self.method_names})."
             )
         return maps[method_index]
+
+    def list_clusters(self):
+        """Cluster labels registered via cluster_mask (empty if none was given)."""
+        return list(self.cluster_ids)
+
+    def cluster_selection_mask(self, cluster_id):
+        """
+        Boolean pixel-grid mask for one cluster label, intersected with the
+        shared `mask` (if any).
+        """
+        if self.cluster_mask is None:
+            raise ValueError("No cluster_mask was provided at construction.")
+        if cluster_id not in self.cluster_ids:
+            raise KeyError(
+                f"Unknown cluster_id {cluster_id!r}; available: {self.cluster_ids}"
+            )
+        base_mask = (
+            self.mask
+            if self.mask is not None
+            else np.ones(self.pixel_shape, dtype=bool)
+        )
+        return (self.cluster_mask == cluster_id) & base_mask
 
     def _register_default_fitset_targets(self):
         self._fitset_target_fns["fit_total_photons"] = lambda decay, fs, irf: (
@@ -646,6 +686,55 @@ class FactorAnalysis:
         self._maybe_save(saver, name, f"range_selection_grid_{factor_key}", fig)
         return fig, axes
 
+    @staticmethod
+    def _bin_and_aggregate(fv_keep, edges, pv_by_key):
+        """
+        Bin fv_keep by edges, and for each key -> pv array (pre-filtered to
+        the same pixel subset as fv_keep, or None to skip), compute per-bin
+        mean/median/std/sem/cv/count. Shared by analyze() (grouping by method)
+        and analyze_by_cluster() (grouping by cluster) so both bin exactly
+        the same way. Returns row dicts (bin_rank, bin_center, bin_low,
+        bin_high, parameter, mean, median, std, sem, cv, count); the caller
+        adds whatever grouping column (e.g. 'method' or 'cluster') applies.
+
+        'cv' is the per-bin coefficient of variation (std / mean). NaN where
+        mean is 0 (avoids a spurious +/-inf).
+        """
+        n_bins_i = len(edges) - 1
+        bin_idx = pd.cut(fv_keep, bins=edges, labels=False, include_lowest=True)
+        bin_centers = pd.Series(fv_keep).groupby(bin_idx).mean()
+
+        rows = []
+        for key, pv in pv_by_key.items():
+            if pv is None:
+                continue
+            valid_p = np.isfinite(pv)
+            tmp = pd.DataFrame({"bin_rank": bin_idx[valid_p], "value": pv[valid_p]})
+            grouped = tmp.groupby("bin_rank")["value"].agg(
+                ["mean", "median", "std", "count"]
+            )
+            for b in range(n_bins_i):
+                if b in grouped.index:
+                    r = grouped.loc[b]
+                    n_ = r["count"]
+                    mean_ = r["mean"]
+                    rows.append(
+                        {
+                            "bin_rank": b,
+                            "bin_center": bin_centers.loc[b],
+                            "bin_low": edges[b],
+                            "bin_high": edges[b + 1],
+                            "parameter": key,
+                            "mean": mean_,
+                            "median": r["median"],
+                            "std": r["std"],
+                            "sem": r["std"] / np.sqrt(n_) if n_ > 0 else np.nan,
+                            "cv": r["std"] / mean_ if mean_ else np.nan,
+                            "count": int(n_),
+                        }
+                    )
+        return rows
+
     def analyze(
         self,
         factor_key="total_photons",
@@ -702,7 +791,7 @@ class FactorAnalysis:
         Returns
         -------
         df : pandas.DataFrame  (long-form: method, bin_rank, bin_center, bin_low,
-             bin_high, parameter, mean, median, std, sem, count)
+             bin_high, parameter, mean, median, std, sem, cv, count)
         bin_edges : np.ndarray or dict[str, np.ndarray]
              A single edges array if bin_scope ended up 'pooled', otherwise a
              dict of {method_name: edges} for 'per_method'.
@@ -777,40 +866,18 @@ class FactorAnalysis:
         rows = []
         for i, method in enumerate(self.method_names):
             edges = edges_per_method[i]
-            bin_centers = 0.5 * (edges[:-1] + edges[1:])
             keep = keep_list[i]
             fv_keep = fv_keep_list[i]
-            bin_idx = pd.cut(fv_keep, bins=edges, labels=False, include_lowest=True)
-
-            for key, maps_list in target_map_lookup.items():
-                mp = maps_list[i]
-                if mp is None:
-                    continue
-                pv = np.asarray(mp).ravel().astype(float)[keep]
-                valid_p = np.isfinite(pv)
-                tmp = pd.DataFrame({"bin_rank": bin_idx[valid_p], "value": pv[valid_p]})
-                grouped = tmp.groupby("bin_rank")["value"].agg(
-                    ["mean", "median", "std", "count"]
+            pv_by_key = {
+                key: (
+                    None
+                    if maps_list[i] is None
+                    else np.asarray(maps_list[i]).ravel().astype(float)[keep]
                 )
-                for b in range(len(bin_centers)):
-                    if b in grouped.index:
-                        r = grouped.loc[b]
-                        n_ = r["count"]
-                        rows.append(
-                            {
-                                "method": method,
-                                "bin_rank": b,
-                                "bin_center": bin_centers[b],
-                                "bin_low": edges[b],
-                                "bin_high": edges[b + 1],
-                                "parameter": key,
-                                "mean": r["mean"],
-                                "median": r["median"],
-                                "std": r["std"],
-                                "sem": r["std"] / np.sqrt(n_) if n_ > 0 else np.nan,
-                                "count": int(n_),
-                            }
-                        )
+                for key, maps_list in target_map_lookup.items()
+            }
+            for row in self._bin_and_aggregate(fv_keep, edges, pv_by_key):
+                rows.append({"method": method, **row})
 
         df = pd.DataFrame(rows)
         df.attrs["factor_key"] = factor_key
@@ -818,6 +885,150 @@ class FactorAnalysis:
         df.attrs["target_source"] = target_source
         df.attrs["bin_scope"] = bin_scope
         df.attrs["_edges_by_method"] = dict(zip(self.method_names, edges_per_method))
+        return df, returned_edges
+
+    def analyze_by_cluster(
+        self,
+        factor_key="total_photons",
+        target_keys=None,
+        method_index=0,
+        target_source="datasets",
+        n_bins=10,
+        bin_mode="quantile",
+        bin_scope="pooled",
+        cluster_ids=None,
+        exclude_keys=("convergence_map", "pixel_health_map"),
+    ):
+        """
+        Like analyze(), but bins/aggregates separately PER CLUSTER (from
+        `cluster_mask`, given at construction) for a single method, instead
+        of per method. Use this to see whether the factor/target
+        relationship differs by spatial region (e.g. by ROI/letter), rather
+        than by fitting method.
+
+        method_index selects which method's datasets/fitset/per-method
+        factor values to use (irrelevant when factor_key/target are shared).
+
+        bin_scope : 'pooled' (default) uses ONE set of edges pooled across
+            all clusters -- a common x-axis so clusters are directly
+            comparable. 'per_cluster' gives each cluster its own edges
+            (clusters then only comparable by bin_rank).
+
+        Returns
+        -------
+        df : pandas.DataFrame  (long-form: cluster, bin_rank, bin_center,
+             bin_low, bin_high, parameter, mean, median, std, sem, cv, count)
+        bin_edges : np.ndarray or dict[str, np.ndarray]
+        """
+        if self.cluster_mask is None:
+            raise ValueError("No cluster_mask was provided at construction.")
+        if bin_scope not in ("pooled", "per_cluster"):
+            raise ValueError("bin_scope must be 'pooled' or 'per_cluster'")
+
+        cluster_ids = list(cluster_ids) if cluster_ids is not None else self.cluster_ids
+        unknown = [c for c in cluster_ids if c not in self.cluster_ids]
+        if unknown:
+            raise KeyError(
+                f"Unknown cluster_id(s) {unknown}; available: {self.cluster_ids}"
+            )
+
+        factor_maps, factor_is_shared = self.get_factor_map(factor_key)
+        fv_full = factor_maps[0] if factor_is_shared else factor_maps[method_index]
+        fv_full = fv_full.ravel().astype(float)
+
+        base_mask = (
+            self.mask
+            if self.mask is not None
+            else np.ones(self.pixel_shape, dtype=bool)
+        )
+        base_mask_flat = base_mask.ravel()
+        cluster_mask_flat = self.cluster_mask.ravel()
+
+        if target_source == "datasets":
+            d = self.all_datasets[method_index]
+            if target_keys is None:
+                skip = {factor_key} | set(exclude_keys)
+                target_keys = sorted(k for k in d if k not in skip)
+            target_map_lookup = {
+                key: (np.asarray(d[key]).ravel().astype(float) if key in d else None)
+                for key in target_keys
+            }
+        elif target_source == "fitset":
+            if target_keys is None:
+                target_keys = self.list_fitset_targets()
+            target_map_lookup = {
+                key: self._get_fitset_target_maps(key)[method_index]
+                .ravel()
+                .astype(float)
+                for key in target_keys
+            }
+        else:
+            raise ValueError("target_source must be 'datasets' or 'fitset'")
+
+        def _compute_edges(values):
+            if bin_mode == "quantile":
+                e = np.unique(np.quantile(values, np.linspace(0, 1, n_bins + 1)))
+            elif bin_mode == "linear":
+                e = np.linspace(values.min(), values.max(), n_bins + 1)
+            else:
+                raise ValueError("bin_mode must be 'quantile' or 'linear'")
+            if len(e) < 2:
+                raise ValueError(
+                    "Not enough distinct factor values to form bins; try fewer n_bins."
+                )
+            return e
+
+        keep_by_cluster = {}
+        fv_keep_by_cluster = {}
+        for cid in cluster_ids:
+            keep = np.isfinite(fv_full) & base_mask_flat & (cluster_mask_flat == cid)
+            keep_by_cluster[cid] = keep
+            fv_keep_by_cluster[cid] = fv_full[keep]
+
+        if bin_scope == "pooled":
+            pooled = np.concatenate(list(fv_keep_by_cluster.values()))
+            if pooled.size == 0:
+                raise ValueError(
+                    f"No valid pixels found for factor_key='{factor_key}' "
+                    f"in cluster(s) {cluster_ids}."
+                )
+            pooled_edges = _compute_edges(pooled)
+            edges_by_cluster = {cid: pooled_edges for cid in cluster_ids}
+        else:  # per_cluster -- clusters with no valid pixels are silently skipped
+            edges_by_cluster = {
+                cid: _compute_edges(fv_keep_by_cluster[cid])
+                for cid in cluster_ids
+                if fv_keep_by_cluster[cid].size > 0
+            }
+            cluster_ids = [cid for cid in cluster_ids if cid in edges_by_cluster]
+
+        returned_edges = (
+            edges_by_cluster[cluster_ids[0]]
+            if bin_scope == "pooled"
+            else {self.cluster_names[cid]: edges_by_cluster[cid] for cid in cluster_ids}
+        )
+
+        rows = []
+        for cid in cluster_ids:
+            keep = keep_by_cluster[cid]
+            fv_keep = fv_keep_by_cluster[cid]
+            edges = edges_by_cluster[cid]
+            pv_by_key = {
+                key: (None if pv is None else pv[keep])
+                for key, pv in target_map_lookup.items()
+            }
+            for row in self._bin_and_aggregate(fv_keep, edges, pv_by_key):
+                rows.append({"cluster": self.cluster_names[cid], **row})
+
+        df = pd.DataFrame(rows)
+        df.attrs["factor_key"] = factor_key
+        df.attrs["factor_is_shared"] = factor_is_shared
+        df.attrs["target_source"] = target_source
+        df.attrs["bin_scope"] = bin_scope
+        df.attrs["method_index"] = method_index
+        df.attrs["_edges_by_cluster"] = {
+            self.cluster_names[cid]: edges_by_cluster[cid] for cid in cluster_ids
+        }
         return df, returned_edges
 
     # ------------------------------------------------------------------ #
@@ -954,6 +1165,37 @@ class FactorAnalysis:
             else pd.DataFrame(columns=["method", "parameter", "x", "y"])
         )
 
+    @staticmethod
+    def _draw_line_series(ax, sub, group_col, groups, palette, x_axis, stat, error):
+        """
+        Draw one line + optional error band per unique value of `group_col`
+        found in `groups`, onto `ax`. Shared by plot(kind='line') (grouping
+        by method) and plot_by_cluster() (grouping by cluster) so both draw
+        identically. Returns True if anything was plotted.
+        """
+        plotted = False
+        for group in groups:
+            m = sub[sub[group_col] == group].sort_values(x_axis)
+            if m.empty:
+                continue
+            x = m[x_axis]
+            color = palette.get(group)
+            ax.plot(
+                x,
+                m[stat],
+                marker="o",
+                linewidth=2,
+                markersize=5,
+                color=color,
+                label=str(group).lstrip("_"),
+            )
+            if error is not None and error in m.columns:
+                lo = m[stat] - m[error]
+                hi = m[stat] + m[error]
+                ax.fill_between(x, lo, hi, alpha=0.2, color=color, linewidth=0)
+            plotted = True
+        return plotted
+
     def plot(
         self,
         df,
@@ -976,9 +1218,10 @@ class FactorAnalysis:
         Grid of plots (one subplot per parameter, one series per method).
 
         kind : 'line', 'box', or 'scatter'
-            'line'    (default) -- aggregated per-bin `stat` ('mean' or
-                       'median') with a shaded `error` band ('sem', 'std', or
-                       None). Uses the pre-aggregated values already in `df`.
+            'line'    (default) -- aggregated per-bin `stat` ('mean', 'median',
+                       or 'cv' -- coefficient of variation, std/mean) with a
+                       shaded `error` band ('sem', 'std', or None). Uses the
+                       pre-aggregated values already in `df`.
             'box'     -- boxplot of the RAW per-pixel values within each
                        factor bin, one box per (bin, method) -- shows spread
                        and outliers instead of a single summary stat.
@@ -1033,27 +1276,9 @@ class FactorAnalysis:
 
             for ax, param in zip(axes_flat, target_keys):
                 sub = df[df["parameter"] == param]
-                plotted = False
-                for method in methods:
-                    m = sub[sub["method"] == method].sort_values(x_axis)
-                    if m.empty:
-                        continue
-                    x = m[x_axis]
-                    color = self.palette.get(method)
-                    ax.plot(
-                        x,
-                        m[stat],
-                        marker="o",
-                        linewidth=2,
-                        markersize=5,
-                        color=color,
-                        label=str(method).lstrip("_"),
-                    )
-                    if error is not None and error in m.columns:
-                        lo = m[stat] - m[error]
-                        hi = m[stat] + m[error]
-                        ax.fill_between(x, lo, hi, alpha=0.2, color=color, linewidth=0)
-                    plotted = True
+                plotted = self._draw_line_series(
+                    ax, sub, "method", methods, self.palette, x_axis, stat, error
+                )
                 ax.set_title(param, fontweight="bold")
                 ax.set_xlabel(
                     factor_key if x_axis == "bin_center" else f"{factor_key} (bin rank)"
@@ -1175,6 +1400,200 @@ class FactorAnalysis:
         self._maybe_save(saver, name, f"factor_analysis_{factor_key}_{kind}", fig)
         return fig, axes
 
+    def plot_by_cluster(
+        self,
+        df,
+        target_keys=None,
+        stat="mean",
+        error="sem",
+        ncols=3,
+        figsize=None,
+        logx=False,
+        x_axis="auto",
+        saver=None,
+        name=None,
+    ):
+        """
+        Line-plot analog of plot(kind='line'), for the output of
+        analyze_by_cluster(): one subplot per parameter, one colored line
+        per CLUSTER (using self.cluster_palette) instead of one per method.
+
+        stat : 'mean', 'median', or 'cv' (coefficient of variation, std/mean)
+        error : 'sem', 'std', or None -- shaded band around `stat`
+
+        saver : DataSaver-like object or None
+            If provided, the figure is saved via
+            ``saver.save_plot(name or default, fig=fig, close=False)``.
+        name : str or None
+            Explicit save name; defaults to
+            ``f"factor_analysis_by_cluster_{factor_key}"``.
+        """
+        factor_key = df.attrs.get("factor_key", "factor")
+        if target_keys is None:
+            target_keys = sorted(df["parameter"].unique())
+
+        n = len(target_keys)
+        ncols = min(ncols, n)
+        nrows = int(np.ceil(n / ncols))
+        if figsize is None:
+            figsize = (5 * ncols, 4 * nrows)
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize, squeeze=False)
+        axes_flat = axes.ravel()
+        clusters = df["cluster"].unique()
+
+        bin_scope = df.attrs.get("bin_scope", "pooled")
+        if x_axis == "auto":
+            x_axis = "bin_center" if bin_scope == "pooled" else "bin_rank"
+        if x_axis not in ("bin_center", "bin_rank"):
+            raise ValueError("x_axis must be 'auto', 'bin_center', or 'bin_rank'")
+
+        for ax, param in zip(axes_flat, target_keys):
+            sub = df[df["parameter"] == param]
+            plotted = self._draw_line_series(
+                ax, sub, "cluster", clusters, self.cluster_palette, x_axis, stat, error
+            )
+            ax.set_title(param, fontweight="bold")
+            ax.set_xlabel(
+                factor_key if x_axis == "bin_center" else f"{factor_key} (bin rank)"
+            )
+            ax.set_ylabel(stat)
+            if x_axis == "bin_center":
+                if logx:
+                    ax.set_xscale("log")
+                else:
+                    self._apply_compact_ticks(ax, axis="x")
+            self._apply_compact_ticks(ax, axis="y")
+            if plotted:
+                ax.legend(fontsize=8, frameon=False, title="cluster")
+            else:
+                ax.text(
+                    0.5,
+                    0.5,
+                    "no data",
+                    ha="center",
+                    va="center",
+                    transform=ax.transAxes,
+                    fontsize=9,
+                    color="gray",
+                )
+            sns.despine(ax=ax)
+
+        for ax in axes_flat[n:]:
+            ax.axis("off")
+
+        fig.tight_layout()
+        self._maybe_save(saver, name, f"factor_analysis_by_cluster_{factor_key}", fig)
+        return fig, axes
+
+    @staticmethod
+    def compare(
+        labeled_dfs,
+        target_keys=None,
+        stat="mean",
+        error="sem",
+        ncols=3,
+        figsize=None,
+        logx=False,
+        palette=None,
+        saver=None,
+        name=None,
+    ):
+        """
+        Overlay analyze() results from INDEPENDENT FactorAnalysis instances
+        (e.g. different simulated/acquired datasets, each with its own
+        decay/irf/mask) onto shared subplots -- one line per dataset, one
+        subplot per parameter.
+
+        This is different from plot()/plot_by_cluster(), which compare
+        methods/clusters WITHIN one shared decay: those assume every series
+        was computed from the same raw decay, so a common factor_key like
+        'total_photons' is guaranteed pixel-for-pixel identical across
+        series. compare() makes no such assumption -- each df comes from
+        its own instance's own analyze() call, so each dataset's line is
+        drawn at its own actual bin_center x-values.
+
+        labeled_dfs : list[(str, pandas.DataFrame)]
+            (label, df) pairs, each df as returned by analyze(). All should
+            use the same factor_key (and ideally similar binning) for the
+            comparison to be meaningful.
+        palette : dict[str, color] or None
+            Maps each label to a color; defaults to a qualitative palette
+            with one color per label.
+
+        saver : DataSaver-like object or None
+            If provided, the figure is saved via
+            ``saver.save_plot(name or default, fig=fig, close=False)``.
+        name : str or None
+            Explicit save name; defaults to
+            ``f"factor_analysis_compare_{factor_key}"``.
+
+        Returns
+        -------
+        fig, axes
+        """
+        if not labeled_dfs:
+            raise ValueError("labeled_dfs must contain at least one (label, df) pair")
+        labels = [label for label, _ in labeled_dfs]
+
+        pieces = []
+        for label, df in labeled_dfs:
+            piece = df.copy()
+            piece.attrs = {}  # avoid pandas comparing per-df attrs (numpy arrays) on concat
+            piece["dataset"] = label
+            pieces.append(piece)
+        combined = pd.concat(pieces, ignore_index=True)
+        factor_key = labeled_dfs[0][1].attrs.get("factor_key", "factor")
+        if target_keys is None:
+            target_keys = sorted(combined["parameter"].unique())
+        if palette is None:
+            colors = sns.color_palette("tab10", n_colors=len(labels))
+            palette = dict(zip(labels, colors))
+
+        n = len(target_keys)
+        ncols = min(ncols, n)
+        nrows = int(np.ceil(n / ncols))
+        if figsize is None:
+            figsize = (5 * ncols, 4 * nrows)
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize, squeeze=False)
+        axes_flat = axes.ravel()
+
+        for ax, param in zip(axes_flat, target_keys):
+            sub = combined[combined["parameter"] == param]
+            plotted = FactorAnalysis._draw_line_series(
+                ax, sub, "dataset", labels, palette, "bin_center", stat, error
+            )
+            ax.set_title(param, fontweight="bold")
+            ax.set_xlabel(factor_key)
+            ax.set_ylabel(stat)
+            if logx:
+                ax.set_xscale("log")
+            else:
+                FactorAnalysis._apply_compact_ticks(ax, axis="x")
+            FactorAnalysis._apply_compact_ticks(ax, axis="y")
+            if plotted:
+                ax.legend(fontsize=8, frameon=False, title="dataset")
+            else:
+                ax.text(
+                    0.5,
+                    0.5,
+                    "no data",
+                    ha="center",
+                    va="center",
+                    transform=ax.transAxes,
+                    fontsize=9,
+                    color="gray",
+                )
+            sns.despine(ax=ax)
+
+        for ax in axes_flat[n:]:
+            ax.axis("off")
+
+        fig.tight_layout()
+        FactorAnalysis._maybe_save(
+            saver, name, f"factor_analysis_compare_{factor_key}", fig
+        )
+        return fig, axes
+
     def plot_bin_distribution(
         self,
         factor_key,
@@ -1184,17 +1603,24 @@ class FactorAnalysis:
         bin_mode="quantile",
         bin_scope="auto",
         kind="violin",
+        color_by="auto",
         figsize=None,
         saver=None,
         name=None,
     ):
         """
         Seaborn violin/boxen plot of the RAW per-pixel distribution of
-        `target_key`, split by factor bin (x-axis) and method (hue) --
-        complements plot()'s aggregated mean/sem lines by showing the actual
-        spread/shape of each bin's pixel values, not just a summary stat.
+        `target_key`, split by factor bin (x-axis) -- complements plot()'s
+        aggregated mean/sem lines by showing the actual spread/shape of each
+        bin's pixel values, not just a summary stat.
 
         kind : 'violin' or 'boxen'
+        color_by : 'auto', 'bin', or 'method'
+            'method' colors/dodges violins by method (needs the legend to
+            tell methods apart). 'bin' gives each bin its own color instead
+            (no per-method dodge). 'auto' picks 'bin' when there's only one
+            method (the common case -- method color would be redundant with
+            the x-axis) and 'method' otherwise.
 
         saver : DataSaver-like object or None
             If provided, the figure is saved via
@@ -1203,6 +1629,10 @@ class FactorAnalysis:
             Explicit save name; defaults to
             ``f"bin_distribution_{factor_key}_{target_key}"``.
         """
+        if color_by == "auto":
+            color_by = "bin" if len(self.method_names) == 1 else "method"
+        if color_by not in ("bin", "method"):
+            raise ValueError("color_by must be 'auto', 'bin', or 'method'")
         factor_maps, factor_is_shared = self.get_factor_map(factor_key)
         mask = (
             self.mask
@@ -1281,14 +1711,20 @@ class FactorAnalysis:
         )
 
         fig, ax = plt.subplots(figsize=figsize or (max(8, 1.6 * n_bins), 5))
-        palette = {m.lstrip("_"): c for m, c in self.palette.items()}
         plot_fn = sns.violinplot if kind == "violin" else sns.boxenplot
         kwargs = dict(inner="quartile", cut=0) if kind == "violin" else {}
+        if color_by == "bin":
+            hue = "bin_label"
+            palette = dict(zip(order, sns.color_palette("husl", n_colors=len(order))))
+            kwargs["legend"] = False
+        else:
+            hue = "method"
+            palette = {m.lstrip("_"): c for m, c in self.palette.items()}
         plot_fn(
             data=raw_df,
             x="bin_label",
             y="value",
-            hue="method",
+            hue=hue,
             order=order,
             palette=palette,
             ax=ax,

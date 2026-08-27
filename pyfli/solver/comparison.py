@@ -234,6 +234,7 @@ class FittingComparator:
         bounds: np.ndarray | None = None,
         yscale: str = "log",
         plot: bool = True,
+        fit_indices: tuple[int, int] | None = None,
     ) -> tuple[Any, ...]:
         """
         Compare selected.
@@ -256,6 +257,8 @@ class FittingComparator:
             Scale used for the y-axis.
         plot : bool
             Whether diagnostic plots should be generated.
+        fit_indices : tuple[int, int] | None
+            Optional (gate_num_start, gate_num_end) gate range to fit over.
 
         Returns
         -------
@@ -284,7 +287,7 @@ class FittingComparator:
                 continue
             category, Fitter = self.method_mapping[method]
 
-            fitter_inst = Fitter(self.freq, y_in, irf_in)
+            fitter_inst = Fitter(self.freq, y_in, irf_in, fit_indices=fit_indices)
             if plot_data["t"] is None:
                 plot_data["t"] = fitter_inst.t  # physical time axis (ns)
             start_time = time.perf_counter()
@@ -349,6 +352,7 @@ class FittingComparator:
         bounds: np.ndarray | None = None,
         yscale: str = "log",
         plot: bool = True,
+        fit_indices: tuple[int, int] | None = None,
     ) -> Any:
         """
         Run all.
@@ -369,6 +373,8 @@ class FittingComparator:
             Scale used for the y-axis.
         plot : bool
             Whether diagnostic plots should be generated.
+        fit_indices : tuple[int, int] | None
+            Optional (gate_num_start, gate_num_end) gate range to fit over.
 
         Returns
         -------
@@ -384,6 +390,7 @@ class FittingComparator:
             bounds,
             yscale=yscale,
             plot=plot,
+            fit_indices=fit_indices,
         )
 
     def _plot_comparison(
