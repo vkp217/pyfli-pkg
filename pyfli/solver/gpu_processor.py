@@ -16,6 +16,10 @@ import torch
 from tqdm import tqdm
 
 from pyfli import logging
+from pyfli.reconstruction.common_reconstruct import (
+    bi_reconstruction_torch,
+    mono_reconstruction_torch,
+)
 
 
 class FLIGPUProcessor:
@@ -106,7 +110,7 @@ class FLIGPUProcessor:
                 params[:, 3:4],
             )
             t_eff = torch.clamp(t - h_shift, min=0.0)
-            decay = (S / tau) * torch.exp(-t_eff / tau)
+            decay = mono_reconstruction_torch(t_eff, tau, S)
         else:
             S, a1, t1, t2, b, h_shift = (
                 params[:, 0:1],
@@ -117,10 +121,7 @@ class FLIGPUProcessor:
                 params[:, 5:6],
             )
             t_eff = torch.clamp(t - h_shift, min=0.0)
-            decay = S * (
-                (a1 / t1) * torch.exp(-t_eff / t1)
-                + ((1.0 - a1) / t2) * torch.exp(-t_eff / t2)
-            )
+            decay = bi_reconstruction_torch(t_eff, t1, t2, S * a1, S * (1.0 - a1))
 
         irf_norm = irf / irf.sum(dim=1, keepdim=True).clamp(min=1e-9)
 
@@ -204,6 +205,7 @@ class FLIGPUProcessor:
         CRLB: bool = False,
         data_name: str = "Torch_Fit",
         p0: Any | None = None,
+        fit_indices: tuple[int, int] | None = None,
         **kwargs: Any,
     ) -> Any:
         # Normalise mode tag: NLSF/LSE variants → 'NLSF', everything else → 'MLE'
@@ -230,6 +232,11 @@ class FLIGPUProcessor:
             Label assigned to the fitted or processed dataset.
         p0 : Any | None
             Initial parameter vector supplied to the optimizer.
+        fit_indices : tuple[int, int] | None
+            Optional (gate_num_start, gate_num_end) gate range to fit over, e.g. to
+            focus on the tail of the decay. The forward model is still evaluated over
+            the full trace (needed for correct IRF convolution); only the loss and fit
+            statistics are restricted to this gate range. ``None`` fits the full trace.
         **kwargs : Any
             Additional keyword options forwarded to the underlying implementation.
 
@@ -244,6 +251,12 @@ class FLIGPUProcessor:
         start_time = time.time()
         H, W, T = image_cube.shape
         t_axis = torch.arange(T, device=self.device) * (self.T_acq / T)
+
+        if fit_indices is not None:
+            gate_start, gate_end = fit_indices
+            gate_start, gate_end = max(gate_start, 0), min(gate_end, T)
+        else:
+            gate_start, gate_end = 0, T
 
         irf_tensor = torch.tensor(
             irf_cube, device=self.device, dtype=torch.float32
@@ -306,8 +319,10 @@ class FLIGPUProcessor:
                 """
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
-                data_safe = torch.clamp(flat_data, min=1.0)
-                per_px = torch.sum((pred - flat_data) ** 2 / data_safe, dim=1)
+                pred_sel = pred[:, gate_start:gate_end]
+                data_sel = flat_data[:, gate_start:gate_end]
+                data_safe = torch.clamp(data_sel, min=1.0)
+                per_px = torch.sum((pred_sel - data_sel) ** 2 / data_safe, dim=1)
                 return per_px[torch.isfinite(per_px)].sum()
         else:
             # Poisson MLE (C-statistic): matches CPU MLEFLIFitter
@@ -327,11 +342,13 @@ class FLIGPUProcessor:
                 """
                 p_phys = self._transform_params(p_raw, model_type)
                 pred = self._model_kernel(p_phys, t_axis, flat_irf, model_type)
-                pred_safe = torch.clamp(pred, min=1.0)
+                pred_sel = pred[:, gate_start:gate_end]
+                data_sel = flat_data[:, gate_start:gate_end]
+                pred_safe = torch.clamp(pred_sel, min=1.0)
                 per_px = 2.0 * torch.sum(
                     pred_safe
-                    - flat_data
-                    + flat_data * torch.log(flat_data.clamp(min=1e-9) / pred_safe),
+                    - data_sel
+                    + data_sel * torch.log(data_sel.clamp(min=1e-9) / pred_safe),
                     dim=1,
                 )
                 return per_px[torch.isfinite(per_px)].sum()
@@ -374,19 +391,23 @@ class FLIGPUProcessor:
             p_final = self._transform_params(raw_p, model_type)
             fit_flat = self._model_kernel(p_final, t_axis, flat_irf, model_type)
             res_flat = flat_data - fit_flat
-            dof = max(T - p_final.shape[1], 1)
+            dof = max((gate_end - gate_start) - p_final.shape[1], 1)
 
-            chi2_raw_flat = torch.sum((res_flat**2) / torch.clamp(fit_flat, 1.0), dim=1)
+            fit_sel = fit_flat[:, gate_start:gate_end]
+            data_sel = flat_data[:, gate_start:gate_end]
+            res_sel = res_flat[:, gate_start:gate_end]
+
+            chi2_raw_flat = torch.sum((res_sel**2) / torch.clamp(fit_sel, 1.0), dim=1)
             chi2_red_flat = chi2_raw_flat / dof
 
             ss_tot = torch.sum(
-                (flat_data - flat_data.mean(dim=1, keepdim=True)) ** 2, dim=1
+                (data_sel - data_sel.mean(dim=1, keepdim=True)) ** 2, dim=1
             )
-            ss_res = torch.sum(res_flat**2, dim=1)
+            ss_res = torch.sum(res_sel**2, dim=1)
             r2_flat = torch.where(
                 ss_tot > 0, 1.0 - ss_res / ss_tot, torch.zeros_like(ss_tot)
             )
-            rmse_flat = torch.sqrt(torch.mean(res_flat**2, dim=1))
+            rmse_flat = torch.sqrt(torch.mean(res_sel**2, dim=1))
 
             perr_flat = torch.zeros_like(p_final)
             if CRLB:

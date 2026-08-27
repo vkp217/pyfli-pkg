@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 
+from ...reconstruction.common_reconstruct import bi_reconstruction, mono_reconstruction
 from ..distributions import ParameterSampler
 from ..sim_engine_common import BaseFLIEngine
 
@@ -54,6 +55,8 @@ class FLIModelSimulator(BaseFLIEngine):
         Detector dark-count rate used by the noise model.
     laser_feq : int
         Laser repetition frequency used by the simulation.
+    pileup_mode : str
+        'wrap' (default) folds photons back via modulo; 'truncate' drops them.
     seed : int | None
         Seed for reproducible random sampling.
     **kwargs : Any
@@ -77,6 +80,7 @@ class FLIModelSimulator(BaseFLIEngine):
         n_cycles: int | tuple[int, int] = 800_000,
         dcr: float = 0.05,
         laser_feq: int = 80,
+        pileup_mode: str = "wrap",
         seed: int | None = None,
         **kwargs: Any,
     ) -> None:
@@ -96,6 +100,7 @@ class FLIModelSimulator(BaseFLIEngine):
             "bit": bit,
             "cycles": cycles_range,
             "dcr": dcr,
+            "pileup_mode": pileup_mode,
             **kwargs,
         }
 
@@ -170,17 +175,14 @@ class FLIModelSimulator(BaseFLIEngine):
         if p.get("mono", False):
             tau = p["tau"]
             scaling_factor = 1.0 / (1.0 - np.exp(-T / tau))
-            return scaling_factor * np.exp(-self.t / tau)
+            return mono_reconstruction(self.t, tau, scaling_factor)
 
-        decay = np.zeros_like(self.t)
-        i = 1
-        while f"tau{i}" in p:
-            tau_i = p[f"tau{i}"]
-            A_i = p[f"A{i}"]
-            scaling_factor_i = 1.0 / (1.0 - np.exp(-T / tau_i))
-            decay = decay + A_i * scaling_factor_i * np.exp(-self.t / tau_i)
-            i += 1
-        return decay
+        tau1, tau2 = p["tau1"], p["tau2"]
+        scaling_factor1 = 1.0 / (1.0 - np.exp(-T / tau1))
+        scaling_factor2 = 1.0 / (1.0 - np.exp(-T / tau2))
+        return bi_reconstruction(
+            self.t, tau1, tau2, p["A1"] * scaling_factor1, p["A2"] * scaling_factor2
+        )
 
     def simulate_model_tcspc(
         self, p: Any, n_cycles: int, mu_per_cycle: np.ndarray

@@ -18,6 +18,8 @@ from tqdm import tqdm
 from pyfli.solver.forward_model import decay_kernel, model_numpy
 from pyfli.solver.shared_metrics import compute_fli_stats
 
+from .common_reconstruct import bi_reconstruction, mono_reconstruction
+
 # Matches forward_model._EPS — kept as a local literal since that name is
 # module-private in forward_model.
 _EPS = 1e-8
@@ -363,7 +365,7 @@ class ParamToDecay:
         if self.model_type == "mono-exponential":
             tau = self._get_map(params, "tau_map")
             tau_safe = np.clip(tau, _EPS, None)[..., None]
-            return (S[..., None] / tau_safe) * np.exp(-t_eff / tau_safe)
+            return mono_reconstruction(t_eff, tau_safe, S[..., None])
 
         alpha1 = self._get_map(params, "alpha1_map")
         tau1 = self._get_map(params, "tau1_map")
@@ -371,10 +373,8 @@ class ParamToDecay:
         t1_safe = np.clip(tau1, _EPS, None)[..., None]
         t2_safe = np.clip(tau2, _EPS, None)[..., None]
         a1 = alpha1[..., None]
-        return S[..., None] * (
-            (a1 / t1_safe) * np.exp(-t_eff / t1_safe)
-            + ((1.0 - a1) / t2_safe) * np.exp(-t_eff / t2_safe)
-        )
+        s = S[..., None]
+        return bi_reconstruction(t_eff, t1_safe, t2_safe, s * a1, s * (1.0 - a1))
 
     def _convolve_with_irf_vectorized(self, kernel: np.ndarray) -> np.ndarray:
         """Batch-convolve ``kernel`` with the (per-pixel-normalized) IRF."""
