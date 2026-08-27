@@ -34,5 +34,16 @@ examples/ss2_processing
 :titlesonly:
 :numbered:
 
-examples/Phasor_analysis
+examples/Phasor_analysis_mono
+examples/Phasor_analysis_bi
+```
+
+## Analysis and Plotting
+
+```{toctree}
+:maxdepth: 1
+:titlesonly:
+:numbered:
+
+examples/factor_analysis
 ```
