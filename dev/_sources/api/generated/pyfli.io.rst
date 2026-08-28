@@ -16,6 +16,7 @@ pyfli.io
    detector
    flim_decay_cube
    processed_data
+   save_direction
    spad_folding
    spad_hdf5
    spad_io

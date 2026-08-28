@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>pyfli.io.data_operations &#8212; PyFli</title>
+    <title>pyfli.io.save_direction &#8212; PyFli</title>
   
   
   
@@ -47,7 +47,7 @@
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api/generated/pyfli.io.data_operations';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/generated/pyfli.io.save_direction';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://pyfli.org/versions.json';
@@ -56,12 +56,12 @@
             false;
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
-    <link rel="canonical" href="https://pyfli.org/api/generated/pyfli.io.data_operations.html" />
+    <link rel="canonical" href="https://pyfli.org/api/generated/pyfli.io.save_direction.html" />
     <link rel="icon" href="../../_static/PyFLI_logo.png"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="pyfli.io.data_ops_static" href="pyfli.io.data_ops_static.html" />
-    <link rel="prev" title="pyfli.io" href="pyfli.io.html" />
+    <link rel="next" title="pyfli.io.spad_folding" href="pyfli.io.spad_folding.html" />
+    <link rel="prev" title="pyfli.io.processed_data" href="pyfli.io.processed_data.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="dev" />
@@ -490,13 +490,13 @@
 <li class="toctree-l2"><a class="reference internal" href="pyfli.data_vnp.html">pyfli.data_vnp</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pyfli.img.html">pyfli.img</a></li>
 <li class="toctree-l2 current active has-children"><a class="reference internal" href="pyfli.io.html">pyfli.io</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
-<li class="toctree-l3 current active"><a class="current reference internal" href="#">pyfli.io.data_operations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyfli.io.data_operations.html">pyfli.io.data_operations</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.data_ops_static.html">pyfli.io.data_ops_static</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.data_saving.html">pyfli.io.data_saving</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.detector.html">pyfli.io.detector</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.flim_decay_cube.html">pyfli.io.flim_decay_cube</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.processed_data.html">pyfli.io.processed_data</a></li>
-<li class="toctree-l3"><a class="reference internal" href="pyfli.io.save_direction.html">pyfli.io.save_direction</a></li>
+<li class="toctree-l3 current active"><a class="current reference internal" href="#">pyfli.io.save_direction</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_folding.html">pyfli.io.spad_folding</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_hdf5.html">pyfli.io.spad_hdf5</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyfli.io.spad_io.html">pyfli.io.spad_io</a></li>
@@ -564,7 +564,7 @@
     
     <li class="breadcrumb-item"><a href="pyfli.io.html" class="nav-link">pyfli.io</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">pyfli.io.data_operations</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">pyfli.io.save_direction</span></li>
   </ul>
 </nav>
 </div>
@@ -581,69 +581,98 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-pyfli.io.data_operations">
-<span id="pyfli-io-data-operations"></span><h1>pyfli.io.data_operations<a class="headerlink" href="#module-pyfli.io.data_operations" title="Link to this heading">#</a></h1>
-<p>Load raw decay, IRF, background, mask, and hot-pixel data from common FLI sources.</p>
+  <section id="module-pyfli.io.save_direction">
+<span id="pyfli-io-save-direction"></span><h1>pyfli.io.save_direction<a class="headerlink" href="#module-pyfli.io.save_direction" title="Link to this heading">#</a></h1>
+<p>Turn a <code class="docutils literal notranslate"><span class="pre">save_config</span></code> dictionary into a ready <code class="xref py py-class docutils literal notranslate"><span class="pre">DataSaver</span></code> session.</p>
 <p>This module belongs to <a class="reference internal" href="pyfli.io.html#module-pyfli.io" title="pyfli.io"><code class="xref py py-mod docutils literal notranslate"><span class="pre">pyfli.io</span></code></a> and is part of PyFLI detector importers, file
-readers, saving helpers, and processed-data loaders. Public API includes classes
-<a class="reference internal" href="#pyfli.io.data_operations.DataOperations" title="pyfli.io.data_operations.DataOperations"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataOperations</span></code></a>.</p>
+readers, saving helpers, and processed-data loaders. Public API includes the class
+<a class="reference internal" href="#pyfli.io.save_direction.SaveLoadDirector" title="pyfli.io.save_direction.SaveLoadDirector"><code class="xref py py-class docutils literal notranslate"><span class="pre">SaveLoadDirector</span></code></a>, which centralizes the branching that decides – from a
+single config dict – whether a session is saved, loaded, or skipped, and where its
+folder lives.</p>
 <p class="rubric">Classes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pyfli.io.data_operations.DataOperations" title="pyfli.io.data_operations.DataOperations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DataOperations</span></code></a>([data_path, irf_path, ...])</p></td>
-<td><p>Load primary data, IRF, background, masks, and hot-pixel maps from common FLI file formats.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pyfli.io.save_direction.SaveLoadDirector" title="pyfli.io.save_direction.SaveLoadDirector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SaveLoadDirector</span></code></a>([config])</p></td>
+<td><p>Resolve a <code class="docutils literal notranslate"><span class="pre">save_config</span></code> dictionary into a <code class="xref py py-class docutils literal notranslate"><span class="pre">DataSaver</span></code> session.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <dl class="py class">
-<dt class="sig sig-object py" id="pyfli.io.data_operations.DataOperations">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DataOperations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">irf_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hp_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/data_operations.html#DataOperations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.data_operations.DataOperations" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="pyfli.io.save_direction.SaveLoadDirector">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">SaveLoadDirector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">overrides</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/save_direction.html#SaveLoadDirector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.save_direction.SaveLoadDirector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>Load primary data, IRF, background, masks, and hot-pixel maps from common FLI file
-formats. It provides a path-centric interface for raw loading, correction, and
-packaging into PyFLI-ready structures.</p>
+<p>Resolve a <code class="docutils literal notranslate"><span class="pre">save_config</span></code> dictionary into a <code class="xref py py-class docutils literal notranslate"><span class="pre">DataSaver</span></code> session.</p>
+<p>Instead of scattering <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">mode</span> <span class="pre">==</span> <span class="pre">...</span></code> / <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">auto_path</span> <span class="pre">...</span></code> checks through
+a script, collect every save/load decision in one dict and hand it to this
+class. <a class="reference internal" href="#pyfli.io.save_direction.SaveLoadDirector.build" title="pyfli.io.save_direction.SaveLoadDirector.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build()</span></code></a> returns a writable session (<code class="docutils literal notranslate"><span class="pre">mode='save'</span></code>), reconnects
+to an existing one (<code class="docutils literal notranslate"><span class="pre">mode='load'</span></code>), or returns <code class="docutils literal notranslate"><span class="pre">None</span></code> (<code class="docutils literal notranslate"><span class="pre">mode=None</span></code>).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data_path</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Path to the primary decay data source.</p></li>
-<li><p><strong>irf_path</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Path to the instrument response data source.</p></li>
-<li><p><strong>bg_path</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Path to the background measurement used for subtraction or correction.</p></li>
-<li><p><strong>mask_path</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Path to a binary or labeled mask used to select valid pixels.</p></li>
-<li><p><strong>hp_path</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Path to a hot-pixel mask or image used for interpolation.</p></li>
+<li><p><strong>config</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span> <span class="pre">|</span> <span class="pre">None</span></code>) – <p>User-supplied settings. Any key that is omitted falls back to
+<a class="reference internal" href="#pyfli.io.save_direction.SaveLoadDirector.DEFAULTS" title="pyfli.io.save_direction.SaveLoadDirector.DEFAULTS"><code class="xref py py-attr docutils literal notranslate"><span class="pre">DEFAULTS</span></code></a>. Recognized keys:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">mode</span></code><span class="classifier">{‘save’, ‘load’, None}</span></dt><dd><p><code class="docutils literal notranslate"><span class="pre">'save'</span></code> builds a writable session, <code class="docutils literal notranslate"><span class="pre">'load'</span></code> reconnects to an
+existing one, <code class="docutils literal notranslate"><span class="pre">None</span></code> disables saving.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">auto_path</span></code><span class="classifier">bool</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, the session folder is derived from <code class="docutils literal notranslate"><span class="pre">DATA_PATH</span></code>. If
+<code class="docutils literal notranslate"><span class="pre">False</span></code>, a manual path is required (see below).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">DATA_PATH</span></code><span class="classifier">str | None</span></dt><dd><p>Source data path; required when <code class="docutils literal notranslate"><span class="pre">auto_path=True</span></code> (for both save
+and load).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">manual_load_path</span></code><span class="classifier">str | None</span></dt><dd><p>Exact existing session folder to load; used when <code class="docutils literal notranslate"><span class="pre">mode='load'</span></code>
+and <code class="docutils literal notranslate"><span class="pre">auto_path=False</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">manual_save_root_path</span></code><span class="classifier">str | None</span></dt><dd><p>Root under which the session folder is created; required when
+<code class="docutils literal notranslate"><span class="pre">mode='save'</span></code> and <code class="docutils literal notranslate"><span class="pre">auto_path=False</span></code> (also accepted as a load
+root).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">bin_r</span></code><span class="classifier">int</span></dt><dd><p>Spatial binning radius; part of the derived <code class="docutils literal notranslate"><span class="pre">save_suffix</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">version</span></code><span class="classifier">int</span></dt><dd><p>Analysis version; part of the derived <code class="docutils literal notranslate"><span class="pre">save_suffix</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">new_session</span></code><span class="classifier">bool</span></dt><dd><p>Forwarded to <code class="xref py py-class docutils literal notranslate"><span class="pre">DataSaver</span></code> when <code class="docutils literal notranslate"><span class="pre">mode='save'</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">MODEL_TYPE</span></code>, <code class="docutils literal notranslate"><span class="pre">free_memory</span></code><span class="classifier">carried through untouched for</span></dt><dd><p>downstream consumers.</p>
+</dd>
+</dl>
+</p></li>
+<li><p><strong>**overrides</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code>) – Convenience keyword overrides merged on top of <code class="docutils literal notranslate"><span class="pre">config</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="pyfli.io.data_operations.DataOperations.load_data">
-<span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub_bg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pile_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/data_operations.html#DataOperations.load_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.data_operations.DataOperations.load_data" title="Link to this definition">#</a></dt>
-<dd><p>Load data.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyfli.io.save_direction.SaveLoadDirector.config">
+<span class="sig-name descname"><span class="pre">config</span></span><a class="headerlink" href="#pyfli.io.save_direction.SaveLoadDirector.config" title="Link to this definition">#</a></dt>
+<dd><p>The fully merged configuration, including the derived <code class="docutils literal notranslate"><span class="pre">save_suffix</span></code>.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>sub_bg</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether background subtraction is applied.</p></li>
-<li><p><strong>pile_up</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether pile-up correction should be applied.</p></li>
-<li><p><strong>hot_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether hot-pixel correction should be applied.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Object produced by load data.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code></p>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a></p>
 </dd>
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyfli.io.save_direction.SaveLoadDirector.DEFAULTS">
+<span class="sig-name descname"><span class="pre">DEFAULTS</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'DATA_PATH':</span> <span class="pre">None,</span> <span class="pre">'MODEL_TYPE':</span> <span class="pre">'bi-exponential',</span> <span class="pre">'auto_path':</span> <span class="pre">True,</span> <span class="pre">'bin_r':</span> <span class="pre">0,</span> <span class="pre">'free_memory':</span> <span class="pre">True,</span> <span class="pre">'manual_load_path':</span> <span class="pre">None,</span> <span class="pre">'manual_save_root_path':</span> <span class="pre">None,</span> <span class="pre">'mode':</span> <span class="pre">'save',</span> <span class="pre">'new_session':</span> <span class="pre">True,</span> <span class="pre">'version':</span> <span class="pre">1}</span></span><a class="headerlink" href="#pyfli.io.save_direction.SaveLoadDirector.DEFAULTS" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyfli.io.save_direction.SaveLoadDirector.VALID_MODES">
+<span class="sig-name descname"><span class="pre">VALID_MODES</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('save',</span> <span class="pre">'load',</span> <span class="pre">None)</span></span><a class="headerlink" href="#pyfli.io.save_direction.SaveLoadDirector.VALID_MODES" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
-<dt class="sig sig-object py" id="pyfli.io.data_operations.DataOperations.load_background">
-<span class="sig-name descname"><span class="pre">load_background</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pile_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/data_operations.html#DataOperations.load_background"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.data_operations.DataOperations.load_background" title="Link to this definition">#</a></dt>
-<dd><p>Loads background. If folder, returns the mean average of all files.</p>
+<dt class="sig sig-object py" id="pyfli.io.save_direction.SaveLoadDirector.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/save_direction.html#SaveLoadDirector.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.save_direction.SaveLoadDirector.get" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">self.config[key]</span></code> if present, else <code class="docutils literal notranslate"><span class="pre">default</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>pile_up</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
-<li><p><strong>hot_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>default</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -653,80 +682,64 @@ packaging into PyFLI-ready structures.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="pyfli.io.data_operations.DataOperations.load_irf">
-<span class="sig-name descname"><span class="pre">load_irf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub_bg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pile_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/data_operations.html#DataOperations.load_irf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.data_operations.DataOperations.load_irf" title="Link to this definition">#</a></dt>
-<dd><p>Load irf.</p>
+<dt class="sig sig-object py" id="pyfli.io.save_direction.SaveLoadDirector.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/save_direction.html#SaveLoadDirector.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.save_direction.SaveLoadDirector.to_dict" title="Link to this definition">#</a></dt>
+<dd><p>Return a shallow copy of the merged configuration.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>sub_bg</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether background subtraction is applied.</p></li>
-<li><p><strong>pile_up</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether pile-up correction should be applied.</p></li>
-<li><p><strong>hot_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether hot-pixel correction should be applied.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Object produced by load IRF.</p>
-</dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pyfli.io.save_direction.SaveLoadDirector.save_suffix">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">save_suffix</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="headerlink" href="#pyfli.io.save_direction.SaveLoadDirector.save_suffix" title="Link to this definition">#</a></dt>
+<dd><p>Folder-name suffix derived from <code class="docutils literal notranslate"><span class="pre">bin_r</span></code> and <code class="docutils literal notranslate"><span class="pre">version</span></code>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pyfli.io.save_direction.SaveLoadDirector.mode">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">mode</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#pyfli.io.save_direction.SaveLoadDirector.mode" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">'save'</span></code>, <code class="docutils literal notranslate"><span class="pre">'load'</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Configured session mode</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="pyfli.io.data_operations.DataOperations.load_all_parallel">
-<span class="sig-name descname"><span class="pre">load_all_parallel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub_bg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pile_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/data_operations.html#DataOperations.load_all_parallel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.data_operations.DataOperations.load_all_parallel" title="Link to this definition">#</a></dt>
-<dd><p>Load all parallel.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>sub_bg</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether background subtraction is applied.</p></li>
-<li><p><strong>pile_up</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether pile-up correction should be applied.</p></li>
-<li><p><strong>hot_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether hot-pixel correction should be applied.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Tuple containing loaded data arrays, labels, and file metadata.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple[Any</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">]</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="pyfli.io.data_operations.DataOperations.make_dataset">
-<span class="sig-name descname"><span class="pre">make_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Experiment_1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ICCD'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_bg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pile_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/data_operations.html#DataOperations.make_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.data_operations.DataOperations.make_dataset" title="Link to this definition">#</a></dt>
-<dd><p>Create dataset.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Dataset, experiment, figure, or output name.</p></li>
-<li><p><strong>source</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Source label recorded with the loaded dataset.</p></li>
-<li><p><strong>sub_bg</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether background subtraction is applied.</p></li>
-<li><p><strong>pile_up</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether pile-up correction should be applied.</p></li>
-<li><p><strong>hot_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether hot-pixel correction should be applied.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Dictionary containing the data produced by make dataset.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">dict[Any</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Any]</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="pyfli.io.data_operations.DataOperations.load_mask">
-<span class="sig-name descname"><span class="pre">load_mask</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/data_operations.html#DataOperations.load_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.data_operations.DataOperations.load_mask" title="Link to this definition">#</a></dt>
-<dd><p>Load mask.</p>
+<dt class="sig sig-object py" id="pyfli.io.save_direction.SaveLoadDirector.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/save_direction.html#SaveLoadDirector.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.save_direction.SaveLoadDirector.build" title="Link to this definition">#</a></dt>
+<dd><p>Construct the <code class="xref py py-class docutils literal notranslate"><span class="pre">DataSaver</span></code> described by the configuration.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Object produced by load mask.</p>
+<dd class="field-odd"><p>A writable session (<code class="docutils literal notranslate"><span class="pre">mode='save'</span></code>), a reconnected session
+(<code class="docutils literal notranslate"><span class="pre">mode='load'</span></code>), or <code class="docutils literal notranslate"><span class="pre">None</span></code> (<code class="docutils literal notranslate"><span class="pre">mode=None</span></code>).</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code></p>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">DataSaver</span> <span class="pre">|</span> <span class="pre">None</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.io.save_direction.SaveLoadDirector.from_config">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">overrides</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/io/save_direction.html#SaveLoadDirector.from_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.io.save_direction.SaveLoadDirector.from_config" title="Link to this definition">#</a></dt>
+<dd><p>One-shot helper: <code class="docutils literal notranslate"><span class="pre">SaveLoadDirector(config,</span> <span class="pre">**overrides).build()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Same as <a class="reference internal" href="#pyfli.io.save_direction.SaveLoadDirector.build" title="pyfli.io.save_direction.SaveLoadDirector.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build()</span></code></a>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">DataSaver</span> <span class="pre">|</span> <span class="pre">None</span></code></p>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>overrides</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -758,13 +771,16 @@ packaging into PyFLI-ready structures.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.data_operations.DataOperations"><code class="docutils literal notranslate"><span class="pre">DataOperations</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.data_operations.DataOperations.load_data"><code class="docutils literal notranslate"><span class="pre">DataOperations.load_data()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.data_operations.DataOperations.load_background"><code class="docutils literal notranslate"><span class="pre">DataOperations.load_background()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.data_operations.DataOperations.load_irf"><code class="docutils literal notranslate"><span class="pre">DataOperations.load_irf()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.data_operations.DataOperations.load_all_parallel"><code class="docutils literal notranslate"><span class="pre">DataOperations.load_all_parallel()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.data_operations.DataOperations.make_dataset"><code class="docutils literal notranslate"><span class="pre">DataOperations.make_dataset()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.data_operations.DataOperations.load_mask"><code class="docutils literal notranslate"><span class="pre">DataOperations.load_mask()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.save_direction.SaveLoadDirector"><code class="docutils literal notranslate"><span class="pre">SaveLoadDirector</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.save_direction.SaveLoadDirector.config"><code class="docutils literal notranslate"><span class="pre">SaveLoadDirector.config</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.save_direction.SaveLoadDirector.DEFAULTS"><code class="docutils literal notranslate"><span class="pre">SaveLoadDirector.DEFAULTS</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.save_direction.SaveLoadDirector.VALID_MODES"><code class="docutils literal notranslate"><span class="pre">SaveLoadDirector.VALID_MODES</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.save_direction.SaveLoadDirector.get"><code class="docutils literal notranslate"><span class="pre">SaveLoadDirector.get()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.save_direction.SaveLoadDirector.to_dict"><code class="docutils literal notranslate"><span class="pre">SaveLoadDirector.to_dict()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.save_direction.SaveLoadDirector.save_suffix"><code class="docutils literal notranslate"><span class="pre">SaveLoadDirector.save_suffix</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.save_direction.SaveLoadDirector.mode"><code class="docutils literal notranslate"><span class="pre">SaveLoadDirector.mode</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.save_direction.SaveLoadDirector.build"><code class="docutils literal notranslate"><span class="pre">SaveLoadDirector.build()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.io.save_direction.SaveLoadDirector.from_config"><code class="docutils literal notranslate"><span class="pre">SaveLoadDirector.from_config()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -773,7 +789,7 @@ packaging into PyFLI-ready structures.</p>
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../../_sources/api/generated/pyfli.io.data_operations.rst">
+    <a href="../../_sources/api/generated/pyfli.io.save_direction.rst">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>
