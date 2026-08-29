@@ -65,14 +65,14 @@ GitHub. Version numbers and dates below follow the releases published on
 *(not yet published to PyPI)*
 
 ```{card}
-:class-card: sd-bg-info sd-font-weight-bold
+:class-card: sd-bg-info sd-text-white sd-font-weight-bold
 :text-align: center
 
 ⚡ A major refactor in the library
 ```
 
 ```{card}
-:class-card: sd-bg-success
+:class-card: sd-bg-success sd-text-black
 
 **Features added:**
 - Expanded simulator functionality
@@ -88,7 +88,7 @@ GitHub. Version numbers and dates below follow the releases published on
 ```
 
 ```{card}
-:class-card: sd-bg-warning
+:class-card: sd-bg-warning sd-text-black
 
 **Bugs Fixed:**
 - Continuous and discrete simulators being dropped
@@ -97,14 +97,14 @@ GitHub. Version numbers and dates below follow the releases published on
 ### [0.1.18](https://pypi.org/project/pyfli-lib/0.1.18/) — 2026-06-25
 
 ```{card}
-:class-card: sd-bg-success
+:class-card: sd-bg-success sd-text-black
 
 **Features added:**
 - *(add notes for this release)*
 ```
 
 ```{card}
-:class-card: sd-bg-warning
+:class-card: sd-bg-warning sd-text-black
 
 **Bugs Fixed:**
 - *(add notes for this release)*
@@ -113,7 +113,7 @@ GitHub. Version numbers and dates below follow the releases published on
 ### [0.1.17](https://pypi.org/project/pyfli-lib/0.1.17/) — 2026-06-03
 
 ```{card}
-:class-card: sd-bg-success
+:class-card: sd-bg-success sd-text-black
 
 **Features added:**
 - Simulator
@@ -122,7 +122,7 @@ GitHub. Version numbers and dates below follow the releases published on
 ```
 
 ```{card}
-:class-card: sd-bg-warning
+:class-card: sd-bg-warning sd-text-black
 
 **Bugs Fixed:**
 - Subplotting placement error
