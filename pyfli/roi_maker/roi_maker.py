@@ -1980,11 +1980,8 @@ class ImageCanvas(QWidget):  # noqa: F811
         self._pan_start_oy = None
 
         # base image
-        arr = np.asarray(rm.display_base, dtype=np.uint8)
-        h, w = arr.shape
-        self._pixmap = QPixmap.fromImage(
-            QImage(arr.tobytes(), w, h, w, QImage.Format_Grayscale8)
-        )
+        self._pixmap = None
+        self.refresh_base_pixmap()
 
         # intensity overlay: stored as a numpy RGBA array so paintEvent can
         # wrap it in a fresh QImage each frame without a copy or GC hazard.
@@ -2064,6 +2061,23 @@ class ImageCanvas(QWidget):  # noqa: F811
         self._pan_x = 0.0
         self._pan_y = 0.0
         self.update()
+
+    def refresh_base_pixmap(self) -> None:
+        """Rebuild the grayscale pixmap from ``rm.display_base``.
+
+        Called on construction and again whenever the histogram display-window
+        adjuster changes ``rm.display_low`` / ``rm.display_high``.
+
+        Returns
+        -------
+        None
+            No object is returned; the function refreshes ``self._pixmap``.
+        """
+        arr = np.asarray(self.rm.display_base, dtype=np.uint8)
+        h, w = arr.shape
+        self._pixmap = QPixmap.fromImage(
+            QImage(arr.tobytes(), w, h, w, QImage.Format_Grayscale8)
+        )
 
     def _w2i(self, wx: np.ndarray, wy: np.ndarray) -> tuple[Any, ...]:
         """
@@ -2712,6 +2726,375 @@ class ImageCanvas(QWidget):  # noqa: F811
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Intensity histogram + display-window adjuster
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class HistogramWidget(QWidget):
+    """
+    Pixel-intensity histogram shown above the canvas with a draggable display
+    window.  Dragging either handle (or the span between them) remaps the
+    grayscale image so faint structures become visible.  Raw pixel values, ROI
+    masks and the intensity filter are never affected — this is a view-only
+    contrast control.  Double-click resets the window to the full data range.
+
+    Parameters
+    ----------
+    rm : Any
+        ROI maker state object; supplies ``_raw_img``, ``img_min``/``img_max``
+        and ``display_low``/``display_high``.
+    parent : np.ndarray | None
+        Optional parent GUI widget.
+    """
+
+    window_changed = Signal(float, float)
+
+    _BINS = 256
+    _PAD_L = 10
+    _PAD_R = 10
+    _PAD_T = 13
+    _PAD_B = 16
+    _GRAB_PX = 9
+
+    _COL_BG = QColor(30, 30, 46)
+    _COL_SPAN = QColor(49, 50, 68)
+    _COL_BAR_OUT = QColor(88, 91, 112)
+    _COL_BAR_IN = QColor(137, 180, 250)
+    _COL_BASELINE = QColor(69, 71, 90)
+    _COL_HANDLE = QColor(203, 166, 247)
+    _COL_TEXT = QColor(205, 214, 244)
+
+    def __init__(self, rm: Any, parent: np.ndarray | None = None) -> None:
+        super().__init__(parent)
+        self.rm = rm
+        self._vmin = float(rm.img_min)
+        self._vmax = float(rm.img_max)
+        if self._vmax - self._vmin < 1e-9:
+            self._vmax = self._vmin + 1.0
+
+        counts, _ = np.histogram(
+            np.asarray(rm._raw_img, dtype=np.float64).ravel(),
+            bins=self._BINS,
+            range=(self._vmin, self._vmax),
+        )
+        counts = counts.astype(np.float64)
+        nz = counts[counts > 0]
+        ref = float(np.percentile(nz, 99.5)) if nz.size else 1.0
+        self._bars = np.clip(counts / max(ref, 1.0), 0.0, 1.0)
+
+        self._lo = float(getattr(rm, "display_low", self._vmin))
+        self._hi = float(getattr(rm, "display_high", self._vmax))
+        self._drag = None
+        self._anchor_x = 0.0
+        self._anchor_lo = self._lo
+        self._anchor_hi = self._hi
+
+        self.setMouseTracking(True)
+        self.setFixedHeight(104)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setToolTip(
+            "Pixel-intensity histogram.  Drag the two handles to set the "
+            "display window and enhance image visibility.\n"
+            "View only — ROI masks and the intensity filter are unchanged.  "
+            "Double-click to reset."
+        )
+
+    # ── coordinate mapping ────────────────────────────────────────────────────
+
+    def _plot_rect(self) -> QRectF:
+        """
+        Run the plot rect routine.
+
+        Returns
+        -------
+        QRectF
+            Drawing area rectangle inside the widget padding.
+        """
+        return QRectF(
+            float(self._PAD_L),
+            float(self._PAD_T),
+            max(self.width() - self._PAD_L - self._PAD_R, 1.0),
+            max(self.height() - self._PAD_T - self._PAD_B, 1.0),
+        )
+
+    def _v2x(self, v: float) -> float:
+        """
+        Run the v2x routine.
+
+        Parameters
+        ----------
+        v : float
+            Intensity value mapped to a widget x coordinate.
+
+        Returns
+        -------
+        float
+            Widget-space x coordinate.
+        """
+        r = self._plot_rect()
+        return r.left() + (v - self._vmin) / (self._vmax - self._vmin) * r.width()
+
+    def _x2v(self, x: float) -> float:
+        """
+        Run the x2v routine.
+
+        Parameters
+        ----------
+        x : float
+            Widget-space x coordinate mapped to an intensity value.
+
+        Returns
+        -------
+        float
+            Intensity value clamped to the histogram range.
+        """
+        r = self._plot_rect()
+        frac = (x - r.left()) / max(r.width(), 1e-9)
+        return self._vmin + min(max(frac, 0.0), 1.0) * (self._vmax - self._vmin)
+
+    def _hist_poly(self, r: QRectF) -> QPolygonF:
+        """
+        Run the hist poly routine.
+
+        Parameters
+        ----------
+        r : QRectF
+            Drawing area rectangle inside the widget padding.
+
+        Returns
+        -------
+        QPolygonF
+            Closed step outline of the histogram, filled down to the baseline.
+        """
+        n = len(self._bars)
+        bw = r.width() / n
+        poly = QPolygonF()
+        poly.append(QPointF(r.left(), r.bottom()))
+        for i, hfrac in enumerate(self._bars):
+            y = r.bottom() - hfrac * r.height()
+            poly.append(QPointF(r.left() + i * bw, y))
+            poly.append(QPointF(r.left() + (i + 1) * bw, y))
+        poly.append(QPointF(r.right(), r.bottom()))
+        return poly
+
+    # ── painting ──────────────────────────────────────────────────────────────
+
+    def paintEvent(self, _: Any) -> None:
+        """
+        Handle paint event callbacks.
+
+        Parameters
+        ----------
+        _ : Any
+            Callback value passed through by the framework.
+
+        Returns
+        -------
+        None
+            No object is returned; the function perform paintevent.
+        """
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.fillRect(self.rect(), self._COL_BG)
+        r = self._plot_rect()
+        xlo = self._v2x(self._lo)
+        xhi = self._v2x(self._hi)
+
+        p.setPen(Qt.NoPen)
+        p.setBrush(self._COL_SPAN)
+        p.drawRect(QRectF(xlo, r.top(), xhi - xlo, r.height()))
+
+        poly = self._hist_poly(r)
+        p.setBrush(self._COL_BAR_OUT)
+        p.drawPolygon(poly)
+        p.save()
+        p.setClipRect(QRectF(xlo, r.top(), xhi - xlo, r.height()))
+        p.setBrush(self._COL_BAR_IN)
+        p.drawPolygon(poly)
+        p.restore()
+
+        p.setPen(QPen(self._COL_BASELINE, 1))
+        p.drawLine(QPointF(r.left(), r.bottom()), QPointF(r.right(), r.bottom()))
+
+        for x in (xlo, xhi):
+            p.setPen(QPen(self._COL_HANDLE, 2))
+            p.drawLine(QPointF(x, r.top() - 4), QPointF(x, r.bottom() + 2))
+            p.setPen(Qt.NoPen)
+            p.setBrush(self._COL_HANDLE)
+            p.drawPolygon(
+                QPolygonF(
+                    [
+                        QPointF(x - 5, r.top() - 10),
+                        QPointF(x + 5, r.top() - 10),
+                        QPointF(x, r.top() - 2),
+                    ]
+                )
+            )
+
+        p.setPen(self._COL_TEXT)
+        p.setFont(QFont("Segoe UI", 8))
+        ly = r.bottom() + 3
+        lh = self.height() - ly
+        pad = 4.0
+        if xlo - r.left() > 36:
+            p.drawText(
+                QRectF(r.left(), ly, xlo - r.left() - pad, lh),
+                Qt.AlignRight | Qt.AlignVCenter,
+                f"{self._lo:,.0f}",
+            )
+        else:
+            p.drawText(
+                QRectF(xlo + pad, ly, r.right() - xlo - pad, lh),
+                Qt.AlignLeft | Qt.AlignVCenter,
+                f"{self._lo:,.0f}",
+            )
+        if r.right() - xhi > 36:
+            p.drawText(
+                QRectF(xhi + pad, ly, r.right() - xhi - pad, lh),
+                Qt.AlignLeft | Qt.AlignVCenter,
+                f"{self._hi:,.0f}",
+            )
+        else:
+            p.drawText(
+                QRectF(r.left(), ly, xhi - r.left() - pad, lh),
+                Qt.AlignRight | Qt.AlignVCenter,
+                f"{self._hi:,.0f}",
+            )
+        p.end()
+
+    # ── mouse ─────────────────────────────────────────────────────────────────
+
+    def _target(self, x: float) -> str:
+        """
+        Run the target routine.
+
+        Parameters
+        ----------
+        x : float
+            Widget-space x coordinate under the cursor.
+
+        Returns
+        -------
+        str
+            ``"lo"`` or ``"hi"`` when a handle is picked, else ``"band"``.
+        """
+        xlo, xhi = self._v2x(self._lo), self._v2x(self._hi)
+        nearer = "lo" if abs(x - xlo) <= abs(x - xhi) else "hi"
+        nearer_x = xlo if nearer == "lo" else xhi
+        if abs(x - nearer_x) <= self._GRAB_PX or not (xlo < x < xhi):
+            return nearer
+        return "band"
+
+    def _apply_drag(self, x: float) -> None:
+        """
+        Run the apply drag routine.
+
+        Parameters
+        ----------
+        x : float
+            Current widget-space x coordinate of the cursor.
+
+        Returns
+        -------
+        None
+            No object is returned; the function updates the window bounds.
+        """
+        span = self._vmax - self._vmin
+        min_gap = max(span * 0.02, 1e-9)
+        if self._drag == "lo":
+            self._lo = min(max(self._x2v(x), self._vmin), self._hi - min_gap)
+        elif self._drag == "hi":
+            self._hi = max(min(self._x2v(x), self._vmax), self._lo + min_gap)
+        else:
+            width = self._anchor_hi - self._anchor_lo
+            dv = self._x2v(x) - self._x2v(self._anchor_x)
+            nlo = min(max(self._anchor_lo + dv, self._vmin), self._vmax - width)
+            self._lo, self._hi = nlo, nlo + width
+        self.window_changed.emit(self._lo, self._hi)
+
+    def mousePressEvent(self, e: Any) -> None:
+        """
+        Handle mouse press event callbacks.
+
+        Parameters
+        ----------
+        e : Any
+            GUI event object supplied by the framework.
+
+        Returns
+        -------
+        None
+            No object is returned; the function perform mousepressevent.
+        """
+        if e.button() != Qt.LeftButton:
+            return
+        x = e.position().x()
+        self._drag = self._target(x)
+        self._anchor_x = x
+        self._anchor_lo = self._lo
+        self._anchor_hi = self._hi
+        if self._drag in ("lo", "hi"):
+            self._apply_drag(x)
+        self.update()
+
+    def mouseMoveEvent(self, e: Any) -> None:
+        """
+        Handle mouse move event callbacks.
+
+        Parameters
+        ----------
+        e : Any
+            GUI event object supplied by the framework.
+
+        Returns
+        -------
+        None
+            No object is returned; the function perform mousemoveevent.
+        """
+        x = e.position().x()
+        if self._drag is None:
+            hit = self._target(x)
+            self.setCursor(Qt.OpenHandCursor if hit == "band" else Qt.SizeHorCursor)
+            return
+        self._apply_drag(x)
+        self.update()
+
+    def mouseReleaseEvent(self, e: Any) -> None:
+        """
+        Handle mouse release event callbacks.
+
+        Parameters
+        ----------
+        e : Any
+            GUI event object supplied by the framework.
+
+        Returns
+        -------
+        None
+            No object is returned; the function perform mousereleaseevent.
+        """
+        self._drag = None
+
+    def mouseDoubleClickEvent(self, e: Any) -> None:
+        """
+        Handle mouse double-click event callbacks.
+
+        Parameters
+        ----------
+        e : Any
+            GUI event object supplied by the framework.
+
+        Returns
+        -------
+        None
+            No object is returned; the function resets the display window.
+        """
+        self._lo, self._hi = self._vmin, self._vmax
+        self.update()
+        self.window_changed.emit(self._lo, self._hi)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Main window
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -2745,9 +3128,19 @@ class ROIApp(QMainWindow):  # noqa: F811
         self.canvas.roi_changed.connect(self._refresh_status)
         self.canvas.update_intensity_overlay()
 
+        self.histogram = HistogramWidget(rm, self)
+        self.histogram.window_changed.connect(self._on_display_window_changed)
+
         sidebar = self._build_sidebar()
         root_layout.addWidget(sidebar)
-        root_layout.addWidget(self.canvas, stretch=1)
+
+        image_area = QWidget()
+        image_col = QVBoxLayout(image_area)
+        image_col.setContentsMargins(0, 0, 0, 0)
+        image_col.setSpacing(0)
+        image_col.addWidget(self.histogram)
+        image_col.addWidget(self.canvas, stretch=1)
+        root_layout.addWidget(image_area, stretch=1)
 
         self.setStatusBar(QStatusBar(self))
         self._refresh_status()
@@ -3511,6 +3904,26 @@ class ROIApp(QMainWindow):  # noqa: F811
         else:
             super().keyPressEvent(e)
 
+    def _on_display_window_changed(self, low: float, high: float) -> None:
+        """
+        Apply a new display window from the histogram adjuster.
+
+        Parameters
+        ----------
+        low : float
+            Lower intensity bound of the display window.
+        high : float
+            Upper intensity bound of the display window.
+
+        Returns
+        -------
+        None
+            No object is returned; the function remaps the on-screen image.
+        """
+        self.rm.set_display_window(low, high)
+        self.canvas.refresh_base_pixmap()
+        self.canvas.update()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Public ROIMaker
@@ -3536,6 +3949,8 @@ class ROIMaker:
         self._raw_img = arr  # original values for thresholding
         self.img_min = int(np.floor(arr.min()))
         self.img_max = int(np.ceil(arr.max()))
+        self.display_low = float(arr.min())
+        self.display_high = float(arr.max())
         self.display_base = cv2.normalize(arr, None, 0, 255, cv2.NORM_MINMAX).astype(
             np.uint8
         )
@@ -3557,6 +3972,35 @@ class ROIMaker:
 
         if os.path.exists(self.save_path):
             self.load_mask(self.save_path)
+
+    # ── display window ────────────────────────────────────────────────────────
+
+    def set_display_window(self, low: float, high: float) -> None:
+        """Remap the on-screen grayscale image to the intensity window [low, high].
+
+        Affects canvas visibility only — ``self._raw_img``, the saved masks and
+        the intensity filter are left untouched.
+
+        Parameters
+        ----------
+        low : float
+            Lower intensity bound of the display window.
+        high : float
+            Upper intensity bound of the display window.
+
+        Returns
+        -------
+        None
+            No object is returned; the function updates ``display_base``.
+        """
+        lo = float(min(low, high))
+        hi = float(max(low, high))
+        if hi - lo < 1e-9:
+            hi = lo + 1e-9
+        self.display_low = lo
+        self.display_high = hi
+        scaled = (self._raw_img - lo) / (hi - lo)
+        self.display_base = np.clip(scaled * 255.0, 0.0, 255.0).astype(np.uint8)
 
     # ── mask generators ───────────────────────────────────────────────────────
 
@@ -3715,7 +4159,7 @@ class ROIMaker:
         """Open the editor window (blocks). Returns the chosen mask type."""
         app = QApplication.instance() or QApplication(sys.argv)
         win = ROIApp(self)
-        win.resize(min(self.W + 210, 1440), min(self.H + 60, 920))
+        win.resize(min(self.W + 210, 1440), min(self.H + 160, 920))
         win.show()
         app.exec()
         return self.get_multi_cluster_mask()
