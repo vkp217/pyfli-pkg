@@ -529,6 +529,8 @@
 <span class="sd">:class:`pyfli.reconstruction.ParamToDecay`.</span>
 <span class="sd">"""</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.colors</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mcolors</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.patheffects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">patheffects</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
@@ -545,11 +547,9 @@
 <span class="c1">#: Valid values for the `center` argument.</span>
 <span class="n">CENTERS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"best"</span><span class="p">,</span> <span class="s2">"median"</span><span class="p">,</span> <span class="s2">"mean"</span><span class="p">)</span>
 
-<span class="c1"># House colors, matching pyfli.data_vnp.data_viewer.DataViewer._SERIES_COLORS</span>
-<span class="c1"># (slot 1 = decay, slot 3 = fit/model) so this plot reads consistently with</span>
-<span class="c1"># the rest of the package's decay-viewer figures.</span>
-<span class="n">_DECAY_COLOR</span> <span class="o">=</span> <span class="s2">"#2a78d6"</span>
-<span class="n">_FIT_COLOR</span> <span class="o">=</span> <span class="s2">"#1baf7a"</span>
+<span class="c1"># the whole model (central curve + credible bands).</span>
+<span class="n">_DECAY_COLOR</span> <span class="o">=</span> <span class="s2">"#d62a7a"</span>
+<span class="n">_FIT_COLOR</span> <span class="o">=</span> <span class="s2">"#1f3a6d"</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_reconstruct_sample_stack</span><span class="p">(</span>
@@ -616,7 +616,7 @@
     <span class="n">sub_irf</span> <span class="o">=</span> <span class="n">irf</span><span class="p">[</span><span class="n">x</span> <span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">y</span> <span class="p">:</span> <span class="n">y</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">ndim</span><span class="p">(</span><span class="n">irf</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span> <span class="k">else</span> <span class="n">irf</span>
 
     <span class="n">selector</span> <span class="o">=</span> <span class="n">ParamSelector</span><span class="p">(</span><span class="n">freq_acq</span><span class="p">,</span> <span class="n">sub_irf</span><span class="p">,</span> <span class="n">sub_decay</span><span class="p">,</span> <span class="n">model_type</span><span class="o">=</span><span class="n">model_type</span><span class="p">)</span>
-    <span class="n">stacks</span> <span class="o">=</span> <span class="n">selector</span><span class="o">.</span><span class="n">evaluate_all_samples</span><span class="p">(</span><span class="n">sub_combo</span><span class="p">)</span>
+    <span class="n">stacks</span> <span class="o">=</span> <span class="n">selector</span><span class="o">.</span><span class="n">evaluate_all_samples</span><span class="p">(</span><span class="n">sub_combo</span><span class="p">,</span> <span class="n">progress</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">selection</span> <span class="o">=</span> <span class="n">selector</span><span class="o">.</span><span class="n">select_best_combination</span><span class="p">(</span><span class="n">sub_combo</span><span class="p">,</span> <span class="n">stacks</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="n">metric</span><span class="p">)</span>
     <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">selection</span><span class="p">[</span><span class="s2">"best_sample_idx"</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
 
@@ -715,20 +715,43 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">fig</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">figure</span>
 
-    <span class="c1"># Nested washes of the same hue: widest interval lightest, narrowest</span>
-    <span class="c1"># darkest, so the bands read as one distribution rather than competing</span>
-    <span class="c1"># series -- narrowest drawn last so it sits on top.</span>
     <span class="n">band_handles</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">alphas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.12</span><span class="p">,</span> <span class="mf">0.30</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ci_levels</span><span class="p">))</span>
-    <span class="k">for</span> <span class="n">level</span><span class="p">,</span> <span class="n">alpha</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">ci_levels</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">alphas</span><span class="p">):</span>
+    <span class="n">levels_wide_to_narrow</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">ci_levels</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">n_bands</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">levels_wide_to_narrow</span><span class="p">)</span>
+    <span class="n">tints</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.80</span><span class="p">,</span> <span class="mf">0.42</span><span class="p">,</span> <span class="n">n_bands</span><span class="p">)</span> <span class="k">if</span> <span class="n">n_bands</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.55</span><span class="p">])</span>
+    <span class="n">fit_rgb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mcolors</span><span class="o">.</span><span class="n">to_rgb</span><span class="p">(</span><span class="n">_FIT_COLOR</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">level</span><span class="p">,</span> <span class="n">tint</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">levels_wide_to_narrow</span><span class="p">,</span> <span class="n">tints</span><span class="p">):</span>
         <span class="n">half_width</span> <span class="o">=</span> <span class="p">(</span><span class="mi">100</span> <span class="o">-</span> <span class="n">level</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
         <span class="n">lo</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">half_width</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="n">hi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="mi">100</span> <span class="o">-</span> <span class="n">half_width</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="n">band</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">_FIT_COLOR</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">band_rgb</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">((</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">tint</span><span class="p">)</span> <span class="o">*</span> <span class="n">fit_rgb</span> <span class="o">+</span> <span class="n">tint</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+        <span class="n">band</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span>
+            <span class="n">t</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="n">band_rgb</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">"none"</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.92</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mf">1.5</span>
+        <span class="p">)</span>
         <span class="n">band_handles</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">band</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">level</span><span class="si">}</span><span class="s2">% credible interval"</span><span class="p">))</span>
 
-    <span class="p">(</span><span class="n">center_line</span><span class="p">,)</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">center_curve</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">_FIT_COLOR</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="p">(</span><span class="n">decay_line</span><span class="p">,)</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">decay_px</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">_DECAY_COLOR</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">halo</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">patheffects</span><span class="o">.</span><span class="n">Stroke</span><span class="p">(</span><span class="n">linewidth</span><span class="o">=</span><span class="mf">3.6</span><span class="p">,</span> <span class="n">foreground</span><span class="o">=</span><span class="s2">"white"</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">),</span>
+        <span class="n">patheffects</span><span class="o">.</span><span class="n">Normal</span><span class="p">(),</span>
+    <span class="p">]</span>
+    <span class="p">(</span><span class="n">center_line</span><span class="p">,)</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">t</span><span class="p">,</span>
+        <span class="n">center_curve</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="n">_FIT_COLOR</span><span class="p">,</span>
+        <span class="n">lw</span><span class="o">=</span><span class="mf">2.2</span><span class="p">,</span>
+        <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">solid_capstyle</span><span class="o">=</span><span class="s2">"round"</span><span class="p">,</span>
+        <span class="n">path_effects</span><span class="o">=</span><span class="n">halo</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="p">(</span><span class="n">decay_line</span><span class="p">,)</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">t</span><span class="p">,</span>
+        <span class="n">decay_px</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="n">_DECAY_COLOR</span><span class="p">,</span>
+        <span class="n">lw</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">zorder</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">solid_capstyle</span><span class="o">=</span><span class="s2">"round"</span><span class="p">,</span>
+        <span class="n">path_effects</span><span class="o">=</span><span class="n">halo</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Time Bin"</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"Counts"</span><span class="p">)</span>

@@ -10,6 +10,7 @@ pyfli.phasor.phasorS
    :toctree:
    :recursive:
 
+   phasor_additional_plots
    phasor_locus
    phasor_simple
    phasor_simple_plots
