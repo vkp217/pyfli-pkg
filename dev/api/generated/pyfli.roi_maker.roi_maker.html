@@ -594,19 +594,22 @@ maker.get_binary_mask()</p>
 <p class="rubric">Classes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pyfli.roi_maker.roi_maker.IDAssignDialog" title="pyfli.roi_maker.roi_maker.IDAssignDialog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IDAssignDialog</span></code></a>(*args, **kwargs)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pyfli.roi_maker.roi_maker.HistogramWidget" title="pyfli.roi_maker.roi_maker.HistogramWidget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HistogramWidget</span></code></a>(*args, **kwargs)</p></td>
+<td><p>Pixel-intensity histogram shown above the canvas with a draggable display window.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#pyfli.roi_maker.roi_maker.IDAssignDialog" title="pyfli.roi_maker.roi_maker.IDAssignDialog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IDAssignDialog</span></code></a>(*args, **kwargs)</p></td>
 <td><p>Let users rename and reorder ROI IDs before masks are saved.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pyfli.roi_maker.roi_maker.ImageCanvas" title="pyfli.roi_maker.roi_maker.ImageCanvas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ImageCanvas</span></code></a>(*args, **kwargs)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pyfli.roi_maker.roi_maker.ImageCanvas" title="pyfli.roi_maker.roi_maker.ImageCanvas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ImageCanvas</span></code></a>(*args, **kwargs)</p></td>
 <td><p>Display images and handle interactive ROI drawing, editing, thresholding, and mask previews.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pyfli.roi_maker.roi_maker.ROIApp" title="pyfli.roi_maker.roi_maker.ROIApp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ROIApp</span></code></a>(*args, **kwargs)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pyfli.roi_maker.roi_maker.ROIApp" title="pyfli.roi_maker.roi_maker.ROIApp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ROIApp</span></code></a>(*args, **kwargs)</p></td>
 <td><p>Host the full interactive ROI maker interface.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pyfli.roi_maker.roi_maker.ROIMaker" title="pyfli.roi_maker.roi_maker.ROIMaker"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ROIMaker</span></code></a>(image_2d[, save_path])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pyfli.roi_maker.roi_maker.ROIMaker" title="pyfli.roi_maker.roi_maker.ROIMaker"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ROIMaker</span></code></a>(image_2d[, save_path])</p></td>
 <td><p>Provide a programmatic wrapper around the ROI application.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pyfli.roi_maker.roi_maker.ROIObject" title="pyfli.roi_maker.roi_maker.ROIObject"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ROIObject</span></code></a>(pts[, roi_id])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pyfli.roi_maker.roi_maker.ROIObject" title="pyfli.roi_maker.roi_maker.ROIObject"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ROIObject</span></code></a>(pts[, roi_id])</p></td>
 <td><p>Run the roiobject routine.</p></td>
 </tr>
 </tbody>
@@ -755,6 +758,22 @@ previews. It is the central canvas widget used by the ROI application.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.ImageCanvas.refresh_base_pixmap">
+<span class="sig-name descname"><span class="pre">refresh_base_pixmap</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/roi_maker/roi_maker.html#ImageCanvas.refresh_base_pixmap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.roi_maker.roi_maker.ImageCanvas.refresh_base_pixmap" title="Link to this definition">#</a></dt>
+<dd><p>Rebuild the grayscale pixmap from <code class="docutils literal notranslate"><span class="pre">rm.display_base</span></code>.</p>
+<p>Called on construction and again whenever the histogram display-window
+adjuster changes <code class="docutils literal notranslate"><span class="pre">rm.display_low</span></code> / <code class="docutils literal notranslate"><span class="pre">rm.display_high</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>No object is returned; the function refreshes <code class="docutils literal notranslate"><span class="pre">self._pixmap</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.ImageCanvas.update_intensity_overlay">
 <span class="sig-name descname"><span class="pre">update_intensity_overlay</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/roi_maker/roi_maker.html#ImageCanvas.update_intensity_overlay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.roi_maker.roi_maker.ImageCanvas.update_intensity_overlay" title="Link to this definition">#</a></dt>
 <dd><p>Recompute the RGBA overlay array for out-of-range pixels.</p>
@@ -856,6 +875,117 @@ that occurs when QPixmap.fromImage() is called on an inline QImage.</p>
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.HistogramWidget">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">HistogramWidget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/roi_maker/roi_maker.html#HistogramWidget"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.roi_maker.roi_maker.HistogramWidget" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QWidget</span></code></p>
+<p>Pixel-intensity histogram shown above the canvas with a draggable display
+window.  Dragging either handle (or the span between them) remaps the
+grayscale image so faint structures become visible.  Raw pixel values, ROI
+masks and the intensity filter are never affected — this is a view-only
+contrast control.  Double-click resets the window to the full data range.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rm</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code>) – ROI maker state object; supplies <code class="docutils literal notranslate"><span class="pre">_raw_img</span></code>, <code class="docutils literal notranslate"><span class="pre">img_min</span></code>/<code class="docutils literal notranslate"><span class="pre">img_max</span></code>
+and <code class="docutils literal notranslate"><span class="pre">display_low</span></code>/<code class="docutils literal notranslate"><span class="pre">display_high</span></code>.</p></li>
+<li><p><strong>parent</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Optional parent GUI widget.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.HistogramWidget.window_changed">
+<span class="sig-name descname"><span class="pre">window_changed</span></span><a class="headerlink" href="#pyfli.roi_maker.roi_maker.HistogramWidget.window_changed" title="Link to this definition">#</a></dt>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.HistogramWidget.paintEvent">
+<span class="sig-name descname"><span class="pre">paintEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/roi_maker/roi_maker.html#HistogramWidget.paintEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.roi_maker.roi_maker.HistogramWidget.paintEvent" title="Link to this definition">#</a></dt>
+<dd><p>Handle paint event callbacks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>_</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code>) – Callback value passed through by the framework.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>No object is returned; the function perform paintevent.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.HistogramWidget.mousePressEvent">
+<span class="sig-name descname"><span class="pre">mousePressEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/roi_maker/roi_maker.html#HistogramWidget.mousePressEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.roi_maker.roi_maker.HistogramWidget.mousePressEvent" title="Link to this definition">#</a></dt>
+<dd><p>Handle mouse press event callbacks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>e</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code>) – GUI event object supplied by the framework.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>No object is returned; the function perform mousepressevent.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.HistogramWidget.mouseMoveEvent">
+<span class="sig-name descname"><span class="pre">mouseMoveEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/roi_maker/roi_maker.html#HistogramWidget.mouseMoveEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.roi_maker.roi_maker.HistogramWidget.mouseMoveEvent" title="Link to this definition">#</a></dt>
+<dd><p>Handle mouse move event callbacks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>e</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code>) – GUI event object supplied by the framework.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>No object is returned; the function perform mousemoveevent.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.HistogramWidget.mouseReleaseEvent">
+<span class="sig-name descname"><span class="pre">mouseReleaseEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/roi_maker/roi_maker.html#HistogramWidget.mouseReleaseEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.roi_maker.roi_maker.HistogramWidget.mouseReleaseEvent" title="Link to this definition">#</a></dt>
+<dd><p>Handle mouse release event callbacks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>e</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code>) – GUI event object supplied by the framework.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>No object is returned; the function perform mousereleaseevent.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.HistogramWidget.mouseDoubleClickEvent">
+<span class="sig-name descname"><span class="pre">mouseDoubleClickEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/roi_maker/roi_maker.html#HistogramWidget.mouseDoubleClickEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.roi_maker.roi_maker.HistogramWidget.mouseDoubleClickEvent" title="Link to this definition">#</a></dt>
+<dd><p>Handle mouse double-click event callbacks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>e</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code>) – GUI event object supplied by the framework.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>No object is returned; the function resets the display window.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.ROIApp">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ROIApp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/roi_maker/roi_maker.html#ROIApp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.roi_maker.roi_maker.ROIApp" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QMainWindow</span></code></p>
@@ -901,6 +1031,28 @@ saves mask outputs.</p>
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.ROIMaker.set_display_window">
+<span class="sig-name descname"><span class="pre">set_display_window</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">low</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">high</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/roi_maker/roi_maker.html#ROIMaker.set_display_window"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.roi_maker.roi_maker.ROIMaker.set_display_window" title="Link to this definition">#</a></dt>
+<dd><p>Remap the on-screen grayscale image to the intensity window [low, high].</p>
+<p>Affects canvas visibility only — <code class="docutils literal notranslate"><span class="pre">self._raw_img</span></code>, the saved masks and
+the intensity filter are left untouched.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>low</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – Lower intensity bound of the display window.</p></li>
+<li><p><strong>high</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – Upper intensity bound of the display window.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>No object is returned; the function updates <code class="docutils literal notranslate"><span class="pre">display_base</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pyfli.roi_maker.roi_maker.ROIMaker.get_intensity_mask">
 <span class="sig-name descname"><span class="pre">get_intensity_mask</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/roi_maker/roi_maker.html#ROIMaker.get_intensity_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.roi_maker.roi_maker.ROIMaker.get_intensity_mask" title="Link to this definition">#</a></dt>
@@ -1065,6 +1217,7 @@ correctly — interior pixels that fall outside the range stay excluded.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ImageCanvas"><code class="docutils literal notranslate"><span class="pre">ImageCanvas</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ImageCanvas.wheelEvent"><code class="docutils literal notranslate"><span class="pre">ImageCanvas.wheelEvent()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ImageCanvas.reset_zoom"><code class="docutils literal notranslate"><span class="pre">ImageCanvas.reset_zoom()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ImageCanvas.refresh_base_pixmap"><code class="docutils literal notranslate"><span class="pre">ImageCanvas.refresh_base_pixmap()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ImageCanvas.update_intensity_overlay"><code class="docutils literal notranslate"><span class="pre">ImageCanvas.update_intensity_overlay()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ImageCanvas.paintEvent"><code class="docutils literal notranslate"><span class="pre">ImageCanvas.paintEvent()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ImageCanvas.mousePressEvent"><code class="docutils literal notranslate"><span class="pre">ImageCanvas.mousePressEvent()</span></code></a></li>
@@ -1073,11 +1226,21 @@ correctly — interior pixels that fall outside the range stay excluded.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ImageCanvas.keyPressEvent"><code class="docutils literal notranslate"><span class="pre">ImageCanvas.keyPressEvent()</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.HistogramWidget"><code class="docutils literal notranslate"><span class="pre">HistogramWidget</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.HistogramWidget.window_changed"><code class="docutils literal notranslate"><span class="pre">HistogramWidget.window_changed</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.HistogramWidget.paintEvent"><code class="docutils literal notranslate"><span class="pre">HistogramWidget.paintEvent()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.HistogramWidget.mousePressEvent"><code class="docutils literal notranslate"><span class="pre">HistogramWidget.mousePressEvent()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.HistogramWidget.mouseMoveEvent"><code class="docutils literal notranslate"><span class="pre">HistogramWidget.mouseMoveEvent()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.HistogramWidget.mouseReleaseEvent"><code class="docutils literal notranslate"><span class="pre">HistogramWidget.mouseReleaseEvent()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.HistogramWidget.mouseDoubleClickEvent"><code class="docutils literal notranslate"><span class="pre">HistogramWidget.mouseDoubleClickEvent()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ROIApp"><code class="docutils literal notranslate"><span class="pre">ROIApp</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ROIApp.keyPressEvent"><code class="docutils literal notranslate"><span class="pre">ROIApp.keyPressEvent()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ROIMaker"><code class="docutils literal notranslate"><span class="pre">ROIMaker</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ROIMaker.set_display_window"><code class="docutils literal notranslate"><span class="pre">ROIMaker.set_display_window()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ROIMaker.get_intensity_mask"><code class="docutils literal notranslate"><span class="pre">ROIMaker.get_intensity_mask()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ROIMaker.create_rois_from_threshold"><code class="docutils literal notranslate"><span class="pre">ROIMaker.create_rois_from_threshold()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyfli.roi_maker.roi_maker.ROIMaker.get_binary_mask"><code class="docutils literal notranslate"><span class="pre">ROIMaker.get_binary_mask()</span></code></a></li>

@@ -2520,11 +2520,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_pan_start_oy</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># base image</span>
-        <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rm</span><span class="o">.</span><span class="n">display_base</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
-        <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_pixmap</span> <span class="o">=</span> <span class="n">QPixmap</span><span class="o">.</span><span class="n">fromImage</span><span class="p">(</span>
-            <span class="n">QImage</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">tobytes</span><span class="p">(),</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">QImage</span><span class="o">.</span><span class="n">Format_Grayscale8</span><span class="p">)</span>
-        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pixmap</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">refresh_base_pixmap</span><span class="p">()</span>
 
         <span class="c1"># intensity overlay: stored as a numpy RGBA array so paintEvent can</span>
         <span class="c1"># wrap it in a fresh QImage each frame without a copy or GC hazard.</span>
@@ -2609,6 +2606,26 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_pan_x</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pan_y</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ImageCanvas.refresh_base_pixmap">
+<a class="viewcode-back" href="../../../api/generated/pyfli.roi_maker.roi_maker.html#pyfli.roi_maker.roi_maker.ImageCanvas.refresh_base_pixmap">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">refresh_base_pixmap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Rebuild the grayscale pixmap from ``rm.display_base``.</span>
+
+<span class="sd">        Called on construction and again whenever the histogram display-window</span>
+<span class="sd">        adjuster changes ``rm.display_low`` / ``rm.display_high``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            No object is returned; the function refreshes ``self._pixmap``.</span>
+<span class="sd">        """</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm</span><span class="o">.</span><span class="n">display_base</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pixmap</span> <span class="o">=</span> <span class="n">QPixmap</span><span class="o">.</span><span class="n">fromImage</span><span class="p">(</span>
+            <span class="n">QImage</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">tobytes</span><span class="p">(),</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">QImage</span><span class="o">.</span><span class="n">Format_Grayscale8</span><span class="p">)</span>
+        <span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_w2i</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wx</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">wy</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
@@ -3277,6 +3294,393 @@
 
 
 <span class="c1"># ─────────────────────────────────────────────────────────────────────────────</span>
+<span class="c1"># Intensity histogram + display-window adjuster</span>
+<span class="c1"># ─────────────────────────────────────────────────────────────────────────────</span>
+
+
+<div class="viewcode-block" id="HistogramWidget">
+<a class="viewcode-back" href="../../../api/generated/pyfli.roi_maker.roi_maker.html#pyfli.roi_maker.roi_maker.HistogramWidget">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HistogramWidget</span><span class="p">(</span><span class="n">QWidget</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Pixel-intensity histogram shown above the canvas with a draggable display</span>
+<span class="sd">    window.  Dragging either handle (or the span between them) remaps the</span>
+<span class="sd">    grayscale image so faint structures become visible.  Raw pixel values, ROI</span>
+<span class="sd">    masks and the intensity filter are never affected — this is a view-only</span>
+<span class="sd">    contrast control.  Double-click resets the window to the full data range.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    rm : Any</span>
+<span class="sd">        ROI maker state object; supplies ``_raw_img``, ``img_min``/``img_max``</span>
+<span class="sd">        and ``display_low``/``display_high``.</span>
+<span class="sd">    parent : np.ndarray | None</span>
+<span class="sd">        Optional parent GUI widget.</span>
+<span class="sd">    """</span>
+
+    <span class="n">window_changed</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+
+    <span class="n">_BINS</span> <span class="o">=</span> <span class="mi">256</span>
+    <span class="n">_PAD_L</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">_PAD_R</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">_PAD_T</span> <span class="o">=</span> <span class="mi">13</span>
+    <span class="n">_PAD_B</span> <span class="o">=</span> <span class="mi">16</span>
+    <span class="n">_GRAB_PX</span> <span class="o">=</span> <span class="mi">9</span>
+
+    <span class="n">_COL_BG</span> <span class="o">=</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">46</span><span class="p">)</span>
+    <span class="n">_COL_SPAN</span> <span class="o">=</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">49</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">68</span><span class="p">)</span>
+    <span class="n">_COL_BAR_OUT</span> <span class="o">=</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">88</span><span class="p">,</span> <span class="mi">91</span><span class="p">,</span> <span class="mi">112</span><span class="p">)</span>
+    <span class="n">_COL_BAR_IN</span> <span class="o">=</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">137</span><span class="p">,</span> <span class="mi">180</span><span class="p">,</span> <span class="mi">250</span><span class="p">)</span>
+    <span class="n">_COL_BASELINE</span> <span class="o">=</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">69</span><span class="p">,</span> <span class="mi">71</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span>
+    <span class="n">_COL_HANDLE</span> <span class="o">=</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">203</span><span class="p">,</span> <span class="mi">166</span><span class="p">,</span> <span class="mi">247</span><span class="p">)</span>
+    <span class="n">_COL_TEXT</span> <span class="o">=</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">205</span><span class="p">,</span> <span class="mi">214</span><span class="p">,</span> <span class="mi">244</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rm</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rm</span> <span class="o">=</span> <span class="n">rm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">rm</span><span class="o">.</span><span class="n">img_min</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vmax</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">rm</span><span class="o">.</span><span class="n">img_max</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmax</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span> <span class="o">&lt;</span> <span class="mf">1e-9</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_vmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span> <span class="o">+</span> <span class="mf">1.0</span>
+
+        <span class="n">counts</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rm</span><span class="o">.</span><span class="n">_raw_img</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span>
+            <span class="n">bins</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_BINS</span><span class="p">,</span>
+            <span class="nb">range</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmax</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">nz</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="n">counts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">ref</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="mf">99.5</span><span class="p">))</span> <span class="k">if</span> <span class="n">nz</span><span class="o">.</span><span class="n">size</span> <span class="k">else</span> <span class="mf">1.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bars</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">counts</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">rm</span><span class="p">,</span> <span class="s2">"display_low"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">rm</span><span class="p">,</span> <span class="s2">"display_high"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmax</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_drag</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_anchor_x</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_anchor_lo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_anchor_hi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setMouseTracking</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setFixedHeight</span><span class="p">(</span><span class="mi">104</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setSizePolicy</span><span class="p">(</span><span class="n">QSizePolicy</span><span class="o">.</span><span class="n">Expanding</span><span class="p">,</span> <span class="n">QSizePolicy</span><span class="o">.</span><span class="n">Fixed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span>
+            <span class="s2">"Pixel-intensity histogram.  Drag the two handles to set the "</span>
+            <span class="s2">"display window and enhance image visibility.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"View only — ROI masks and the intensity filter are unchanged.  "</span>
+            <span class="s2">"Double-click to reset."</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ── coordinate mapping ────────────────────────────────────────────────────</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_rect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QRectF</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Run the plot rect routine.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        QRectF</span>
+<span class="sd">            Drawing area rectangle inside the widget padding.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="n">QRectF</span><span class="p">(</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_PAD_L</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_PAD_T</span><span class="p">),</span>
+            <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_PAD_L</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_PAD_R</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+            <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_PAD_T</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_PAD_B</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_v2x</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Run the v2x routine.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        v : float</span>
+<span class="sd">            Intensity value mapped to a widget x coordinate.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Widget-space x coordinate.</span>
+<span class="sd">        """</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_rect</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">left</span><span class="p">()</span> <span class="o">+</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vmax</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span><span class="p">)</span> <span class="o">*</span> <span class="n">r</span><span class="o">.</span><span class="n">width</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_x2v</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Run the x2v routine.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : float</span>
+<span class="sd">            Widget-space x coordinate mapped to an intensity value.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Intensity value clamped to the histogram range.</span>
+<span class="sd">        """</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_rect</span><span class="p">()</span>
+        <span class="n">frac</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">r</span><span class="o">.</span><span class="n">left</span><span class="p">())</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="mf">1e-9</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span> <span class="o">+</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">frac</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vmax</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_hist_poly</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="n">QRectF</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QPolygonF</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Run the hist poly routine.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        r : QRectF</span>
+<span class="sd">            Drawing area rectangle inside the widget padding.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        QPolygonF</span>
+<span class="sd">            Closed step outline of the histogram, filled down to the baseline.</span>
+<span class="sd">        """</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bars</span><span class="p">)</span>
+        <span class="n">bw</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">width</span><span class="p">()</span> <span class="o">/</span> <span class="n">n</span>
+        <span class="n">poly</span> <span class="o">=</span> <span class="n">QPolygonF</span><span class="p">()</span>
+        <span class="n">poly</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">left</span><span class="p">(),</span> <span class="n">r</span><span class="o">.</span><span class="n">bottom</span><span class="p">()))</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">hfrac</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bars</span><span class="p">):</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">bottom</span><span class="p">()</span> <span class="o">-</span> <span class="n">hfrac</span> <span class="o">*</span> <span class="n">r</span><span class="o">.</span><span class="n">height</span><span class="p">()</span>
+            <span class="n">poly</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">left</span><span class="p">()</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="n">bw</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+            <span class="n">poly</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">left</span><span class="p">()</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">bw</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+        <span class="n">poly</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">right</span><span class="p">(),</span> <span class="n">r</span><span class="o">.</span><span class="n">bottom</span><span class="p">()))</span>
+        <span class="k">return</span> <span class="n">poly</span>
+
+    <span class="c1"># ── painting ──────────────────────────────────────────────────────────────</span>
+
+<div class="viewcode-block" id="HistogramWidget.paintEvent">
+<a class="viewcode-back" href="../../../api/generated/pyfli.roi_maker.roi_maker.html#pyfli.roi_maker.roi_maker.HistogramWidget.paintEvent">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">paintEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Handle paint event callbacks.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        _ : Any</span>
+<span class="sd">            Callback value passed through by the framework.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            No object is returned; the function perform paintevent.</span>
+<span class="sd">        """</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">QPainter</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">setRenderHint</span><span class="p">(</span><span class="n">QPainter</span><span class="o">.</span><span class="n">Antialiasing</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">fillRect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rect</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_COL_BG</span><span class="p">)</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_rect</span><span class="p">()</span>
+        <span class="n">xlo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v2x</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">)</span>
+        <span class="n">xhi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v2x</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="p">)</span>
+
+        <span class="n">p</span><span class="o">.</span><span class="n">setPen</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">NoPen</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">setBrush</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_COL_SPAN</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">drawRect</span><span class="p">(</span><span class="n">QRectF</span><span class="p">(</span><span class="n">xlo</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">top</span><span class="p">(),</span> <span class="n">xhi</span> <span class="o">-</span> <span class="n">xlo</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">height</span><span class="p">()))</span>
+
+        <span class="n">poly</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hist_poly</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">setBrush</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_COL_BAR_OUT</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">drawPolygon</span><span class="p">(</span><span class="n">poly</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">setClipRect</span><span class="p">(</span><span class="n">QRectF</span><span class="p">(</span><span class="n">xlo</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">top</span><span class="p">(),</span> <span class="n">xhi</span> <span class="o">-</span> <span class="n">xlo</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">height</span><span class="p">()))</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">setBrush</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_COL_BAR_IN</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">drawPolygon</span><span class="p">(</span><span class="n">poly</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">restore</span><span class="p">()</span>
+
+        <span class="n">p</span><span class="o">.</span><span class="n">setPen</span><span class="p">(</span><span class="n">QPen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_COL_BASELINE</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">drawLine</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">left</span><span class="p">(),</span> <span class="n">r</span><span class="o">.</span><span class="n">bottom</span><span class="p">()),</span> <span class="n">QPointF</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">right</span><span class="p">(),</span> <span class="n">r</span><span class="o">.</span><span class="n">bottom</span><span class="p">()))</span>
+
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">(</span><span class="n">xlo</span><span class="p">,</span> <span class="n">xhi</span><span class="p">):</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">setPen</span><span class="p">(</span><span class="n">QPen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_COL_HANDLE</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">drawLine</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">top</span><span class="p">()</span> <span class="o">-</span> <span class="mi">4</span><span class="p">),</span> <span class="n">QPointF</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">bottom</span><span class="p">()</span> <span class="o">+</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">setPen</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">NoPen</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">setBrush</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_COL_HANDLE</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">drawPolygon</span><span class="p">(</span>
+                <span class="n">QPolygonF</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">QPointF</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="mi">5</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">top</span><span class="p">()</span> <span class="o">-</span> <span class="mi">10</span><span class="p">),</span>
+                        <span class="n">QPointF</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">5</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">top</span><span class="p">()</span> <span class="o">-</span> <span class="mi">10</span><span class="p">),</span>
+                        <span class="n">QPointF</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">top</span><span class="p">()</span> <span class="o">-</span> <span class="mi">2</span><span class="p">),</span>
+                    <span class="p">]</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="n">p</span><span class="o">.</span><span class="n">setPen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_COL_TEXT</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">setFont</span><span class="p">(</span><span class="n">QFont</span><span class="p">(</span><span class="s2">"Segoe UI"</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+        <span class="n">ly</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">bottom</span><span class="p">()</span> <span class="o">+</span> <span class="mi">3</span>
+        <span class="n">lh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">()</span> <span class="o">-</span> <span class="n">ly</span>
+        <span class="n">pad</span> <span class="o">=</span> <span class="mf">4.0</span>
+        <span class="k">if</span> <span class="n">xlo</span> <span class="o">-</span> <span class="n">r</span><span class="o">.</span><span class="n">left</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">36</span><span class="p">:</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">drawText</span><span class="p">(</span>
+                <span class="n">QRectF</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">left</span><span class="p">(),</span> <span class="n">ly</span><span class="p">,</span> <span class="n">xlo</span> <span class="o">-</span> <span class="n">r</span><span class="o">.</span><span class="n">left</span><span class="p">()</span> <span class="o">-</span> <span class="n">pad</span><span class="p">,</span> <span class="n">lh</span><span class="p">),</span>
+                <span class="n">Qt</span><span class="o">.</span><span class="n">AlignRight</span> <span class="o">|</span> <span class="n">Qt</span><span class="o">.</span><span class="n">AlignVCenter</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">drawText</span><span class="p">(</span>
+                <span class="n">QRectF</span><span class="p">(</span><span class="n">xlo</span> <span class="o">+</span> <span class="n">pad</span><span class="p">,</span> <span class="n">ly</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">right</span><span class="p">()</span> <span class="o">-</span> <span class="n">xlo</span> <span class="o">-</span> <span class="n">pad</span><span class="p">,</span> <span class="n">lh</span><span class="p">),</span>
+                <span class="n">Qt</span><span class="o">.</span><span class="n">AlignLeft</span> <span class="o">|</span> <span class="n">Qt</span><span class="o">.</span><span class="n">AlignVCenter</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">right</span><span class="p">()</span> <span class="o">-</span> <span class="n">xhi</span> <span class="o">&gt;</span> <span class="mi">36</span><span class="p">:</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">drawText</span><span class="p">(</span>
+                <span class="n">QRectF</span><span class="p">(</span><span class="n">xhi</span> <span class="o">+</span> <span class="n">pad</span><span class="p">,</span> <span class="n">ly</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">right</span><span class="p">()</span> <span class="o">-</span> <span class="n">xhi</span> <span class="o">-</span> <span class="n">pad</span><span class="p">,</span> <span class="n">lh</span><span class="p">),</span>
+                <span class="n">Qt</span><span class="o">.</span><span class="n">AlignLeft</span> <span class="o">|</span> <span class="n">Qt</span><span class="o">.</span><span class="n">AlignVCenter</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">drawText</span><span class="p">(</span>
+                <span class="n">QRectF</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">left</span><span class="p">(),</span> <span class="n">ly</span><span class="p">,</span> <span class="n">xhi</span> <span class="o">-</span> <span class="n">r</span><span class="o">.</span><span class="n">left</span><span class="p">()</span> <span class="o">-</span> <span class="n">pad</span><span class="p">,</span> <span class="n">lh</span><span class="p">),</span>
+                <span class="n">Qt</span><span class="o">.</span><span class="n">AlignRight</span> <span class="o">|</span> <span class="n">Qt</span><span class="o">.</span><span class="n">AlignVCenter</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">end</span><span class="p">()</span></div>
+
+
+    <span class="c1"># ── mouse ─────────────────────────────────────────────────────────────────</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_target</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Run the target routine.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : float</span>
+<span class="sd">            Widget-space x coordinate under the cursor.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str</span>
+<span class="sd">            ``"lo"`` or ``"hi"`` when a handle is picked, else ``"band"``.</span>
+<span class="sd">        """</span>
+        <span class="n">xlo</span><span class="p">,</span> <span class="n">xhi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v2x</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v2x</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="p">)</span>
+        <span class="n">nearer</span> <span class="o">=</span> <span class="s2">"lo"</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">xlo</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">xhi</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"hi"</span>
+        <span class="n">nearer_x</span> <span class="o">=</span> <span class="n">xlo</span> <span class="k">if</span> <span class="n">nearer</span> <span class="o">==</span> <span class="s2">"lo"</span> <span class="k">else</span> <span class="n">xhi</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">nearer_x</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_GRAB_PX</span> <span class="ow">or</span> <span class="ow">not</span> <span class="p">(</span><span class="n">xlo</span> <span class="o">&lt;</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">xhi</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">nearer</span>
+        <span class="k">return</span> <span class="s2">"band"</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_drag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Run the apply drag routine.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : float</span>
+<span class="sd">            Current widget-space x coordinate of the cursor.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            No object is returned; the function updates the window bounds.</span>
+<span class="sd">        """</span>
+        <span class="n">span</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmax</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span>
+        <span class="n">min_gap</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">span</span> <span class="o">*</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">1e-9</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drag</span> <span class="o">==</span> <span class="s2">"lo"</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x2v</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span> <span class="o">-</span> <span class="n">min_gap</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drag</span> <span class="o">==</span> <span class="s2">"hi"</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x2v</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmax</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span> <span class="o">+</span> <span class="n">min_gap</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_anchor_hi</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_anchor_lo</span>
+            <span class="n">dv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x2v</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x2v</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_anchor_x</span><span class="p">)</span>
+            <span class="n">nlo</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_anchor_lo</span> <span class="o">+</span> <span class="n">dv</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmax</span> <span class="o">-</span> <span class="n">width</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span> <span class="o">=</span> <span class="n">nlo</span><span class="p">,</span> <span class="n">nlo</span> <span class="o">+</span> <span class="n">width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">window_changed</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="p">)</span>
+
+<div class="viewcode-block" id="HistogramWidget.mousePressEvent">
+<a class="viewcode-back" href="../../../api/generated/pyfli.roi_maker.roi_maker.html#pyfli.roi_maker.roi_maker.HistogramWidget.mousePressEvent">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mousePressEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Handle mouse press event callbacks.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        e : Any</span>
+<span class="sd">            GUI event object supplied by the framework.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            No object is returned; the function perform mousepressevent.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">button</span><span class="p">()</span> <span class="o">!=</span> <span class="n">Qt</span><span class="o">.</span><span class="n">LeftButton</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_drag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_anchor_x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_anchor_lo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_anchor_hi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drag</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"lo"</span><span class="p">,</span> <span class="s2">"hi"</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_apply_drag</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="HistogramWidget.mouseMoveEvent">
+<a class="viewcode-back" href="../../../api/generated/pyfli.roi_maker.roi_maker.html#pyfli.roi_maker.roi_maker.HistogramWidget.mouseMoveEvent">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mouseMoveEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Handle mouse move event callbacks.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        e : Any</span>
+<span class="sd">            GUI event object supplied by the framework.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            No object is returned; the function perform mousemoveevent.</span>
+<span class="sd">        """</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setCursor</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">OpenHandCursor</span> <span class="k">if</span> <span class="n">hit</span> <span class="o">==</span> <span class="s2">"band"</span> <span class="k">else</span> <span class="n">Qt</span><span class="o">.</span><span class="n">SizeHorCursor</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_apply_drag</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="HistogramWidget.mouseReleaseEvent">
+<a class="viewcode-back" href="../../../api/generated/pyfli.roi_maker.roi_maker.html#pyfli.roi_maker.roi_maker.HistogramWidget.mouseReleaseEvent">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mouseReleaseEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Handle mouse release event callbacks.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        e : Any</span>
+<span class="sd">            GUI event object supplied by the framework.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            No object is returned; the function perform mousereleaseevent.</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_drag</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="HistogramWidget.mouseDoubleClickEvent">
+<a class="viewcode-back" href="../../../api/generated/pyfli.roi_maker.roi_maker.html#pyfli.roi_maker.roi_maker.HistogramWidget.mouseDoubleClickEvent">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mouseDoubleClickEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Handle mouse double-click event callbacks.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        e : Any</span>
+<span class="sd">            GUI event object supplied by the framework.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            No object is returned; the function resets the display window.</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmax</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">window_changed</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ─────────────────────────────────────────────────────────────────────────────</span>
 <span class="c1"># Main window</span>
 <span class="c1"># ─────────────────────────────────────────────────────────────────────────────</span>
 
@@ -3312,9 +3716,19 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">roi_changed</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_refresh_status</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">update_intensity_overlay</span><span class="p">()</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">histogram</span> <span class="o">=</span> <span class="n">HistogramWidget</span><span class="p">(</span><span class="n">rm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">histogram</span><span class="o">.</span><span class="n">window_changed</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_display_window_changed</span><span class="p">)</span>
+
         <span class="n">sidebar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_sidebar</span><span class="p">()</span>
         <span class="n">root_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">sidebar</span><span class="p">)</span>
-        <span class="n">root_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">image_area</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+        <span class="n">image_col</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="n">image_area</span><span class="p">)</span>
+        <span class="n">image_col</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">image_col</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">image_col</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">histogram</span><span class="p">)</span>
+        <span class="n">image_col</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">root_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">image_area</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">setStatusBar</span><span class="p">(</span><span class="n">QStatusBar</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_refresh_status</span><span class="p">()</span>
@@ -4079,7 +4493,27 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">reset_zoom</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">keyPressEvent</span><span class="p">(</span><span class="n">e</span><span class="p">)</span></div>
-</div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_display_window_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">low</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">high</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Apply a new display window from the histogram adjuster.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        low : float</span>
+<span class="sd">            Lower intensity bound of the display window.</span>
+<span class="sd">        high : float</span>
+<span class="sd">            Upper intensity bound of the display window.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            No object is returned; the function remaps the on-screen image.</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rm</span><span class="o">.</span><span class="n">set_display_window</span><span class="p">(</span><span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">refresh_base_pixmap</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
 
 
 
@@ -4109,6 +4543,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_raw_img</span> <span class="o">=</span> <span class="n">arr</span>  <span class="c1"># original values for thresholding</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">img_min</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">min</span><span class="p">()))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">img_max</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">max</span><span class="p">()))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_low</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_high</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">display_base</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">NORM_MINMAX</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
             <span class="n">np</span><span class="o">.</span><span class="n">uint8</span>
         <span class="p">)</span>
@@ -4130,6 +4566,38 @@
 
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_path</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">load_mask</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_path</span><span class="p">)</span>
+
+    <span class="c1"># ── display window ────────────────────────────────────────────────────────</span>
+
+<div class="viewcode-block" id="ROIMaker.set_display_window">
+<a class="viewcode-back" href="../../../api/generated/pyfli.roi_maker.roi_maker.html#pyfli.roi_maker.roi_maker.ROIMaker.set_display_window">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_display_window</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">low</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">high</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Remap the on-screen grayscale image to the intensity window [low, high].</span>
+
+<span class="sd">        Affects canvas visibility only — ``self._raw_img``, the saved masks and</span>
+<span class="sd">        the intensity filter are left untouched.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        low : float</span>
+<span class="sd">            Lower intensity bound of the display window.</span>
+<span class="sd">        high : float</span>
+<span class="sd">            Upper intensity bound of the display window.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            No object is returned; the function updates ``display_base``.</span>
+<span class="sd">        """</span>
+        <span class="n">lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="p">))</span>
+        <span class="n">hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span> <span class="o">&lt;</span> <span class="mf">1e-9</span><span class="p">:</span>
+            <span class="n">hi</span> <span class="o">=</span> <span class="n">lo</span> <span class="o">+</span> <span class="mf">1e-9</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_low</span> <span class="o">=</span> <span class="n">lo</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_high</span> <span class="o">=</span> <span class="n">hi</span>
+        <span class="n">scaled</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_raw_img</span> <span class="o">-</span> <span class="n">lo</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_base</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">scaled</span> <span class="o">*</span> <span class="mf">255.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">255.0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span></div>
+
 
     <span class="c1"># ── mask generators ───────────────────────────────────────────────────────</span>
 
@@ -4314,7 +4782,7 @@
 <span class="w">        </span><span class="sd">"""Open the editor window (blocks). Returns the chosen mask type."""</span>
         <span class="n">app</span> <span class="o">=</span> <span class="n">QApplication</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span> <span class="ow">or</span> <span class="n">QApplication</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span>
         <span class="n">win</span> <span class="o">=</span> <span class="n">ROIApp</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="n">win</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">+</span> <span class="mi">210</span><span class="p">,</span> <span class="mi">1440</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H</span> <span class="o">+</span> <span class="mi">60</span><span class="p">,</span> <span class="mi">920</span><span class="p">))</span>
+        <span class="n">win</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">+</span> <span class="mi">210</span><span class="p">,</span> <span class="mi">1440</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H</span> <span class="o">+</span> <span class="mi">160</span><span class="p">,</span> <span class="mi">920</span><span class="p">))</span>
         <span class="n">win</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
         <span class="n">app</span><span class="o">.</span><span class="n">exec</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_multi_cluster_mask</span><span class="p">()</span></div>

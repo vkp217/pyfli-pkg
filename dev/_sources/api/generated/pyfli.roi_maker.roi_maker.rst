@@ -14,6 +14,7 @@ pyfli.roi\_maker.roi\_maker
 
    .. autosummary::
    
+      HistogramWidget
       IDAssignDialog
       ImageCanvas
       ROIApp
