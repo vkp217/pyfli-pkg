@@ -197,6 +197,65 @@ def test_compute_best_model_fit_result_structure(irf, decay, output_combination)
     }
 
 
+def test_compute_best_model_fit_result_precomputed_stacks_matches_internal(
+    irf, decay, output_combination
+):
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
+    stacks = selector.evaluate_all_samples(output_combination)
+
+    via_internal = selector.compute_best_model_fit_result(
+        output_combination, metric="reduced_chi2"
+    )
+    via_stacks = selector.compute_best_model_fit_result(
+        output_combination, metric="reduced_chi2", stacks=stacks
+    )
+
+    for key in via_internal["results"]["maps"]:
+        np.testing.assert_array_equal(
+            via_internal["results"]["maps"][key],
+            via_stacks["results"]["maps"][key],
+        )
+    np.testing.assert_array_equal(
+        via_internal["results"]["TR_maps"]["fit_map"],
+        via_stacks["results"]["TR_maps"]["fit_map"],
+    )
+
+
+def test_compute_best_model_fit_result_precomputed_stacks_skips_evaluation(
+    irf, decay, output_combination, monkeypatch
+):
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
+    stacks = selector.evaluate_all_samples(output_combination)
+
+    def _boom(*_args, **_kwargs):
+        raise AssertionError("evaluate_all_samples should not be re-run")
+
+    monkeypatch.setattr(selector, "evaluate_all_samples", _boom)
+    result = selector.compute_best_model_fit_result(
+        output_combination, metric="RMSE", stacks=stacks
+    )
+    assert result["sample_selection"]["stacks"] is stacks
+
+
+def test_compute_aggregate_model_fit_result_best_forwards_stacks(
+    irf, decay, output_combination, monkeypatch
+):
+    selector = ParamSelector(_FREQ_ACQ, irf, decay)
+    stacks = selector.evaluate_all_samples(output_combination)
+
+    monkeypatch.setattr(
+        selector,
+        "evaluate_all_samples",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("stacks not forwarded through compute_aggregate")
+        ),
+    )
+    result = selector.compute_aggregate_model_fit_result(
+        output_combination, method="best", metric="RMSE", stacks=stacks
+    )
+    assert result["sample_selection"]["stacks"] is stacks
+
+
 def test_compute_best_model_fit_result_no_mask_introduces_no_nans(
     irf, decay, output_combination
 ):

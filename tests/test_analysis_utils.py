@@ -1,5 +1,7 @@
 """Tests for pyfli.reconstruction.DetailedRecon."""
 
+import logging
+
 import numpy as np
 import pytest
 
@@ -63,6 +65,37 @@ def test_mono_branch_uses_tau_map_directly(irf_delta):
         np.sqrt(np.mean(tr_maps["residual_map"] ** 2, axis=-1)),
         rtol=1e-4,
     )
+
+
+def test_log_summary_true_emits_multi_stat_line(irf_delta, caplog):
+    H, W = 2, 2
+    tau = np.full((H, W), 0.8, dtype=np.float32)
+    decay = np.ones((H, W, irf_delta.shape[-1]), dtype=np.float32)
+    dr = make_reconstructor(irf_delta, decay)
+
+    with caplog.at_level(logging.INFO, logger="pyfli"):
+        dr.reconstruct({"tau_map": tau}, "mono-exponential")
+
+    msgs = [r.message for r in caplog.records]
+    assert any(
+        "mean reduced chi2" in m
+        and "mean R2" in m
+        and "mean RMSE" in m
+        and "mean chi2" in m
+        for m in msgs
+    )
+
+
+def test_log_summary_false_is_silent(irf_delta, caplog):
+    H, W = 2, 2
+    tau = np.full((H, W), 0.8, dtype=np.float32)
+    decay = np.ones((H, W, irf_delta.shape[-1]), dtype=np.float32)
+    dr = make_reconstructor(irf_delta, decay)
+
+    with caplog.at_level(logging.INFO, logger="pyfli"):
+        dr.reconstruct({"tau_map": tau}, "mono-exponential", log_summary=False)
+
+    assert not any("reduced chi2" in r.message for r in caplog.records)
 
 
 def test_biexponential_sdf_uses_per_tau_normalization(irf_delta):
