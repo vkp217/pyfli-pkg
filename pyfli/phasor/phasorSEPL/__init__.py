@@ -19,27 +19,27 @@ Public surface
 # ruff: noqa: F401
 
 from .config import AcquisitionConfig, AcquisitionMode
+from .lifetimes import (
+    fractional_components,
+    lifetime_from_phasor,
+    modulus_lifetime,
+    phase_lifetime,
+    phase_lifetime_gated,
+)
+from .locus import (
+    build_loci,
+    build_locus,
+    sepl_center_radius_discrete,
+    tau_grid,
+    universal_semicircle,
+)
 from .phasors import (
     phasor_continuous,
     phasor_discrete,
-    phasor_gated_single,
-    phasor_gated_N,
-    phasor_truncated,
-    phasor_offset,
     phasor_from_config,
+    phasor_gated_N,
+    phasor_gated_single,
+    phasor_offset,
+    phasor_truncated,
 )
-from .locus import (
-    build_locus,
-    build_loci,
-    tau_grid,
-    universal_semicircle,
-    sepl_center_radius_discrete,
-)
-from .lifetimes import (
-    phase_lifetime,
-    modulus_lifetime,
-    lifetime_from_phasor,
-    phase_lifetime_gated,
-    fractional_components,
-)
-from .plot import plot_phasor, plot_locus_comparison, plot_discrete_N_sweep
+from .plot import plot_discrete_N_sweep, plot_locus_comparison, plot_phasor

@@ -10,6 +10,11 @@ from typing import Any
 
 import numpy as np
 
+from pyfli.reconstruction.common_reconstruct import (
+    bi_reconstruction,
+    mono_reconstruction,
+)
+
 _EPS = 1e-8
 
 
@@ -28,15 +33,12 @@ def decay_kernel(
     if model_type == "mono-exponential":
         S, tau, v_shift = params
         tau_safe = np.clip(tau, _EPS, None)
-        kernel = (S / tau_safe) * np.exp(-t_eff / tau_safe)
+        kernel = mono_reconstruction(t_eff, tau_safe, S)
     else:
         S, a1, tau1, tau2, v_shift = params
         t1_safe = np.clip(tau1, _EPS, None)
         t2_safe = np.clip(tau2, _EPS, None)
-        kernel = S * (
-            (a1 / t1_safe) * np.exp(-t_eff / t1_safe)
-            + ((1.0 - a1) / t2_safe) * np.exp(-t_eff / t2_safe)
-        )
+        kernel = bi_reconstruction(t_eff, t1_safe, t2_safe, S * a1, S * (1.0 - a1))
     return kernel, float(v_shift)
 
 

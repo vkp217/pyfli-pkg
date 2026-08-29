@@ -9,17 +9,17 @@ aware IRF deconvolution and joint FLI fitting utilities. Public API includes fun
 
 from typing import Any
 
-from pyfli import logging
-
 import numpy as np
 from detector_weights import ICCDParams, SPADParams, TCSPCParams
 from fli_solver import (
     SolverConfig,
-    solve_flim,
     build_gate_matrix,
-    decay_basis,
     cyclic_conv,
+    decay_basis,
+    solve_flim,
 )
+
+from pyfli import logging
 
 rng = np.random.default_rng(7)
 T, N = 12.5, 256

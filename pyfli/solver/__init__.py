@@ -11,18 +11,18 @@ exports package symbols or constants for downstream imports.
 """
 
 from .base_fitter import BaseFLIFitter
+from .binned_fitter import BinnedFLIFitter, FLIBinner
+from .comparison import FittingComparator
 from .cpu_processor import FLICPUProcessor
+from .forward_model import decay_kernel, model_numpy
+from .global_fitter import GlobalFLIFitter
 from .gpu_processor import FLIGPUProcessor
 from .mle_fitter import MLEFLIFitter
-from .global_fitter import GlobalFLIFitter
-from .comparison import FittingComparator
-from .binned_fitter import BinnedFLIFitter, FLIBinner
-from .forward_model import decay_kernel, model_numpy
 from .shared_metrics import (
-    enforce_tau_ordering,
-    compute_fli_stats,
     compute_average_lifetime,
+    compute_fli_stats,
     compute_fret_efficiency,
+    enforce_tau_ordering,
 )
 
 # [BaseFLIFitter, FLICPUProcessor, FLIGPUProcessor, MLEFLIFitter, GlobalFLIFitter, FittingComparator,

@@ -6,18 +6,18 @@ data generation, hardware noise modeling, calibration, and validation tools. Pub
 includes classes :class:`FLICalibrator`.
 """
 
+import json
+import os
 from typing import Any
 
-from pyfli import logging
+import matplotlib.pyplot as plt
 
 # simulator/calibration_engine.py
 import numpy as np
-import json
-import os
-
 from scipy import stats
 from scipy.optimize import minimize
-import matplotlib.pyplot as plt
+
+from pyfli import logging
 
 from .combined.sim_image_generator import FLIImageGenerator
 from .sim_calibrator import FLIValidator
@@ -347,7 +347,7 @@ class FLICalibrator:
         """
         if not os.path.exists(filename):
             return None
-        with open(filename, "r") as f:
+        with open(filename) as f:
             return json.load(f)
 
     def plot_noise_sensitivity(

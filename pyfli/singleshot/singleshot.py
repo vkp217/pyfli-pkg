@@ -8,9 +8,9 @@ convenience entry points. Public API includes classes :class:`SingleShotFLI`.
 
 from typing import Any
 
-import numpy as np
 import h5py
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy.interpolate import interp1d
 
 

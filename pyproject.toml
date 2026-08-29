@@ -97,3 +97,20 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::RuntimeWarning",
 ]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+# Pinned explicitly so the enabled rules don't drift when the installed ruff
+# version's *default* rule set changes between releases (only the version
+# pinned in .pre-commit-config.yaml is authoritative for what actually gates
+# commits/CI).
+select = ["F", "E4", "E7", "E9", "W", "I", "UP", "PIE", "RUF"]
+ignore = [
+    "RUF001", "RUF002", "RUF003",  # ambiguous-unicode-character: false positives on
+                                     # scientific notation (τ, α, ±, ×, — etc.) used
+                                     # throughout this codebase's comments/docstrings
+    "RUF059",  # unused-unpacked-variable: no auto-fix; excluded until a dedicated
+               # cleanup pass reviews the existing hits
+]

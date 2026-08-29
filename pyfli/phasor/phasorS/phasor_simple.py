@@ -8,12 +8,13 @@ phasor analyzer for CPU and optional GPU FLI workflows. Public API includes clas
 
 from typing import Any
 
-from pyfli import logging
-
+import h5py
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
-import h5py
+
+from pyfli import logging
+from pyfli.reconstruction.common_reconstruct import bi_reconstruction_torch
 
 from .phasor_simple_plots import PhasorPlotsMixin
 
@@ -611,7 +612,7 @@ class PhasorAnalyzer(PhasorPlotsMixin):
         a2 = torch.tensor(
             A2.ravel(), dtype=torch.float32, device=self.device
         ).unsqueeze(1)
-        return a1 * torch.exp(-t_ns / tau1_ns) + a2 * torch.exp(-t_ns / tau2_ns)
+        return bi_reconstruction_torch(t_ns, tau1_ns, tau2_ns, a1, a2)
 
     def _normalize_irf(self, irf: np.ndarray) -> Any:
         """

@@ -11,8 +11,8 @@ Public API includes classes :class:`BasisPatterns`.
 from typing import Any
 
 import numpy as np
-from scipy.linalg import hadamard
 from scipy.fftpack import dct
+from scipy.linalg import hadamard
 
 
 class BasisPatterns:

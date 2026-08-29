@@ -6,16 +6,15 @@ likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includ
 classes :class:`FLICPUProcessor`.
 """
 
+import os
 from typing import Any
 
-from pyfli import logging
-
-import numpy as np
 import h5py
-import os
-
+import numpy as np
 from joblib import Parallel, delayed
 from tqdm import tqdm
+
+from pyfli import logging
 
 try:
     from .global_fitter import GlobalFLIFitter as _GlobalFLIFitter
@@ -49,6 +48,7 @@ class FLICPUProcessor:
         estimator: np.ndarray,
         p0: Any,
         bounds: np.ndarray,
+        fit_indices: tuple[int, int] | None,
         kwargs: np.ndarray,
     ) -> tuple[Any, ...]:
         """
@@ -70,6 +70,8 @@ class FLICPUProcessor:
             Initial parameter vector supplied to the optimizer.
         bounds : np.ndarray
             Lower and upper parameter bounds supplied to the optimizer.
+        fit_indices : tuple[int, int] | None
+            Optional (gate_num_start, gate_num_end) gate range to fit over.
         kwargs : np.ndarray
             Additional keyword options forwarded to the underlying implementation.
 
@@ -86,7 +88,11 @@ class FLICPUProcessor:
             fit_kwargs = {k: v for k, v in kwargs.items() if k != "shift_method"}
 
             fitter = self.fitter_class(
-                self.freq, y_data, irf_p, shift_method=shift_method
+                self.freq,
+                y_data,
+                irf_p,
+                shift_method=shift_method,
+                fit_indices=fit_indices,
             )
 
             res = fitter.fit_with_estimator(
@@ -135,6 +141,7 @@ class FLICPUProcessor:
         bounds: np.ndarray | None = None,
         n_jobs: int = -1,
         backend: str = "loky",
+        fit_indices: tuple[int, int] | None = None,
         **kwargs: Any,
     ) -> Any:
         """
@@ -162,6 +169,9 @@ class FLICPUProcessor:
             Number of parallel jobs used for CPU fitting.
         backend : str
             Joblib execution backend used for parallel CPU fitting.
+        fit_indices : tuple[int, int] | None
+            Optional (gate_num_start, gate_num_end) gate range to fit over, e.g. to
+            focus on the tail of the decay. ``None`` fits the full trace.
         **kwargs : Any
             Additional keyword options forwarded to the underlying implementation.
 
@@ -190,6 +200,7 @@ class FLICPUProcessor:
                 mask,
                 estimator=estimator,
                 model_type=model_type,
+                fit_indices=fit_indices,
                 **kwargs,
             )
 
@@ -213,6 +224,7 @@ class FLICPUProcessor:
                 estimator,
                 p0,
                 bounds,
+                fit_indices,
                 kwargs,
             )
             for r, c in final_coords

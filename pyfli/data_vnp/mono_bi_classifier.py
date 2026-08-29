@@ -6,16 +6,17 @@ normalization, plotting, and mono-versus-bi-exponential comparison tools. Public
 includes classes :class:`MonoBiClassifier` and :class:`ParamCorrelationMatrix`.
 """
 
-from typing import Any
+import math
+from typing import Any, ClassVar
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 from pyfli import logging
+
 from .color_processor import ColorProcessor
 from .data_viewer import DataViewer
-
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-import math
 
 
 class MonoBiClassifier:
@@ -43,7 +44,7 @@ class MonoBiClassifier:
     """
 
     CMAP_NAMES = ("jet", "Spectral", "Spectral_r")
-    PALETTE = [
+    PALETTE: ClassVar[list[str]] = [
         "#5DADE2",
         "#EC7063",
         "#58D68D",
@@ -430,7 +431,7 @@ class ParamCorrelationMatrix:
         Names used to label datasets, classes, or plotted groups.
     """
 
-    PALETTE = [
+    PALETTE: ClassVar[list[str]] = [
         "#5DADE2",
         "#EC7063",
         "#58D68D",

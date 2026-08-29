@@ -21,7 +21,6 @@ from numpy.typing import ArrayLike, NDArray
 
 from .config import AcquisitionConfig
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Standard estimators
 # ──────────────────────────────────────────────────────────────────────────────

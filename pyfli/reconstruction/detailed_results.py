@@ -14,9 +14,9 @@ straight into Plotter / DataViewer. Public API includes class
 
 from typing import Any
 
-from pyfli import logging
-
 import numpy as np
+
+from pyfli import logging
 
 from ..data_vnp.mono_bi_classifier import MonoBiClassifier
 from .decay_reconstruction import ParamToDecay
@@ -200,6 +200,7 @@ class DetailedRecon:
         data_name: str = "F-BI",
         n_params: int | None = None,
         binned_decay: np.ndarray | None = None,
+        log_summary: bool = True,
     ) -> dict[Any, Any]:
         """
         Reconstruct fit curves + goodness-of-fit maps from pre-estimated
@@ -395,13 +396,19 @@ class DetailedRecon:
             "convolved_map": convolved_fit.astype(np.float32),
         }
 
-        mask = photon_count > 0
-        mean_reduced_chi2 = (
-            float(np.mean(reduced_chi2_map[mask])) if np.any(mask) else np.nan
-        )
-        logging.info(
-            f"Mean Reduced Chi-Squared (Active Pixels): {mean_reduced_chi2:.4f}"
-        )
+        if log_summary:
+            mask = photon_count > 0
+            n_active = int(np.count_nonzero(mask))
+            if n_active:
+                logging.info(
+                    f"{data_name} ({model_type}) fit over {n_active} active pixel(s):\n"
+                    f"  mean reduced chi2 = {float(np.mean(reduced_chi2_map[mask])):.4f}\n"
+                    f"  mean R2           = {float(np.mean(r2_map[mask])):.4f}\n"
+                    f"  mean RMSE         = {float(np.mean(rmse_map[mask])):.4f}\n"
+                    f"  mean chi2         = {float(np.mean(chi_sq_raw[mask])):.2f}"
+                )
+            else:
+                logging.info(f"{data_name} ({model_type}): no active pixels to score")
 
         return {
             "name": data_name,

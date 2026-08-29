@@ -6,7 +6,6 @@ import numpy as np
 
 from pyfli.simulator.distributions import ParameterSampler
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Quantum efficiency sampling
 # ─────────────────────────────────────────────────────────────────────────────

@@ -49,15 +49,13 @@ Usage
     plot_decay_cube(cube, flim_img)
 """
 
-from typing import Any
-
-from pyfli import logging
-
 import struct
 import zlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+from pyfli import logging
 
 if TYPE_CHECKING:
     import liffile as lf
@@ -666,8 +664,8 @@ def plot_xyt(
     np.ndarray
         Matplotlib figure or axes containing the XYT decay visualization.
     """
-    import matplotlib.pyplot as plt
     import matplotlib.gridspec as gridspec
+    import matplotlib.pyplot as plt
 
     n_y, n_x, n_h = xyt.shape
     t_ns = np.arange(n_h) * tcspc_resolution_s * 1e9  # time axis in ns
@@ -838,8 +836,8 @@ def plot_xyt(  # noqa: F811
     None
         No object is returned; the function plot xyt.
     """
-    import matplotlib.pyplot as plt
     import matplotlib.gridspec as gridspec
+    import matplotlib.pyplot as plt
 
     n_y, n_x, n_h = xyt.shape
     t_ns = np.arange(n_h) * tcspc_resolution_s * 1e9  # time axis in ns

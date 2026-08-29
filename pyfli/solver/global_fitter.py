@@ -7,13 +7,12 @@ likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includ
 classes :class:`GlobalFLIFitter`.
 """
 
+import time
 from typing import Any
 
 import numpy as np
-import time
-
-from tqdm import tqdm
 from tabulate import tabulate
+from tqdm import tqdm
 
 from pyfli import logging
 
@@ -90,6 +89,7 @@ class GlobalFLIFitter:
         model_type: str = "bi-exponential",
         p0: Any | None = None,
         bounds: np.ndarray | None = None,
+        fit_indices: tuple[int, int] | None = None,
     ) -> tuple[Any, ...]:
         """Performs high-SNR super-pixel fitting and triggers comparison plots."""
         super_pixel_data = {}
@@ -127,6 +127,7 @@ class GlobalFLIFitter:
                 bounds=bounds,
                 yscale="log",
                 plot=True,
+                fit_indices=fit_indices,
             )
 
             f_class = (
@@ -134,7 +135,7 @@ class GlobalFLIFitter:
                 if any(m in estimator.lower() for m in ["poisson", "mle", "pearson"])
                 else self.BaseClass
             )
-            fitter_inst = f_class(self.freq, sp_y, sp_irf)
+            fitter_inst = f_class(self.freq, sp_y, sp_irf, fit_indices=fit_indices)
 
             start_t = time.time()
             res = fitter_inst.fit_with_estimator(
@@ -191,6 +192,7 @@ class GlobalFLIFitter:
         estimator = kwargs.get("estimator", "least_squares")
         global_inf = kwargs.get("global_inference", True)
         data_name = kwargs.get("data_name", "Global_Cluster")
+        fit_indices = kwargs.get("fit_indices", None)
 
         passed_p0 = kwargs.pop("p0", None)
         passed_bounds = kwargs.pop("bounds", None)
@@ -200,6 +202,7 @@ class GlobalFLIFitter:
             model_type=model_type,
             p0=passed_p0,
             bounds=passed_bounds,
+            fit_indices=fit_indices,
             cluster_strategy=kwargs.get("cluster_strategy", "snr_weighted"),
         )
 

@@ -2,19 +2,17 @@ import asyncio
 import json
 import logging
 import os
-from pathlib import Path
-from packaging.version import Version
 import shutil
+import tempfile
+from collections.abc import Iterator
+from pathlib import Path
 from subprocess import PIPE, CalledProcessError
 
+from packaging.version import Version
 from sphinx_polyversion.builder import BuildError
 from sphinx_polyversion.driver import DefaultDriver
-from sphinx_polyversion.pyvenv import Pip
 from sphinx_polyversion.json import JSONable
-
-from typing import Iterator
-
-import tempfile
+from sphinx_polyversion.pyvenv import Pip
 
 logging.basicConfig()
 logger = logging.getLogger("poly.py")

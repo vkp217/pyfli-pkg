@@ -47,19 +47,21 @@ Usage
 """
 
 import os
-import numpy as np
+from typing import ClassVar
+
 import keras
+import numpy as np
 from scipy.stats import median_abs_deviation
 
-from pyfli.reconstruction import DetailedRecon
 from pyfli.data_vnp import ColorProcessor, DataViewer
+from pyfli.reconstruction import DetailedRecon
 
 
 class BiPipeline:
     """Encapsulates the Bi direct-inference pipeline for FLI decay maps."""
 
     #: keys produced per model type
-    MODEL_KEYS = {
+    MODEL_KEYS: ClassVar[dict[str, list[str]]] = {
         "bi-exponential": ["tau1", "tau2", "alpha1"],
         "mono-exponential": ["tau"],
     }

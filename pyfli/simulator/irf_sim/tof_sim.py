@@ -62,5 +62,5 @@ class ToFSim:
         """
         height_mm = np.random.uniform(*height_range_mm)
         time_diff_ns = self.height_to_time(height_mm)
-        roll_bins = int(round(time_diff_ns / self.gate_delay))
+        roll_bins = round(time_diff_ns / self.gate_delay)
         return roll_bins, height_mm, time_diff_ns

@@ -1,8 +1,8 @@
 """Small logging helpers for PyFLI."""
 
-from typing import Any
 import logging as _logging
 from functools import lru_cache
+from typing import Any
 
 LOGGER_NAME = "pyfli"
 

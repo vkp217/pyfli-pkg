@@ -98,7 +98,7 @@ class IRFGenerator:
         """
         gate_delay = T / num_bins
         delta = np.zeros(num_bins)
-        delta[int(round(mu))] = 1.0
+        delta[round(mu)] = 1.0
         kernel = np.exp(-np.arange(num_bins) * gate_delay / tau)
         irf_1d = np.convolve(delta, kernel)[:num_bins]
         irf_1d = irf_1d / irf_1d.max()

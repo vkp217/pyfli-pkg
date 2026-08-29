@@ -9,14 +9,15 @@ includes classes :class:`FLIValidator`.
 
 from typing import Any
 
-from pyfli import logging
+import matplotlib.pyplot as plt
 
 # simulator/sim_calibrator.py
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.spatial.distance import cosine
 from scipy.special import rel_entr
+
+from pyfli import logging
 
 
 class FLIValidator:

@@ -6,12 +6,11 @@ normalization, plotting, and mono-versus-bi-exponential comparison tools. Public
 includes classes :class:`DataViewer`.
 """
 
+import os
 from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-
 from matplotlib import gridspec
 
 

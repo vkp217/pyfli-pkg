@@ -13,32 +13,32 @@ Reference:
 from __future__ import annotations
 
 import math
+from dataclasses import replace
+
 import numpy as np
 import pytest
-from dataclasses import replace
 
 from pyfli.phasor import (
     AcquisitionConfig,
     AcquisitionMode,
+    build_locus,
+    lifetime_from_phasor,
+    modulus_lifetime,
+    phase_lifetime,
     phasor_continuous,
     phasor_discrete,
-    phasor_gated_single,
-    phasor_gated_N,
-    phasor_truncated,
-    phasor_offset,
     phasor_from_config,
-    build_locus,
+    phasor_gated_N,
+    phasor_gated_single,
+    phasor_offset,
+    phasor_truncated,
     tau_grid,
-    phase_lifetime,
-    modulus_lifetime,
-    lifetime_from_phasor,
-)
-from pyfli.phasor.phasorSEPL.locus import (
-    universal_semicircle,
-    sepl_center_radius_discrete,
 )
 from pyfli.phasor.phasorSEPL.lifetimes import fractional_components
-
+from pyfli.phasor.phasorSEPL.locus import (
+    sepl_center_radius_discrete,
+    universal_semicircle,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures

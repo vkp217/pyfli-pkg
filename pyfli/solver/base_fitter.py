@@ -8,20 +8,20 @@ likelihood, CPU, GPU, binned, and global FLI fitting routines. Public API includ
 classes :class:`BaseFLIFitter`.
 """
 
-from typing import Any
 import warnings
+from typing import Any
 
 import numpy as np
-from scipy.optimize import curve_fit, least_squares, OptimizeWarning
+from scipy.optimize import OptimizeWarning, curve_fit, least_squares
 from scipy.stats import f
 
 from .base_static import moment_based_guess, resolve_params_and_bounds
 from .forward_model import model_numpy
 from .shared_metrics import (
-    enforce_tau_ordering,
-    compute_fli_stats,
     compute_average_lifetime,
+    compute_fli_stats,
     compute_fret_efficiency,
+    enforce_tau_ordering,
 )
 
 
@@ -47,6 +47,9 @@ class BaseFLIFitter:
         Optional custom model functions used by the fitter.
     shift_method : str
         Method used to align the IRF and decay traces.
+    fit_indices : tuple[int, int] | None
+        Optional (gate_num_start, gate_num_end) gate range to fit over, e.g. to focus on
+        the tail of the decay. ``None`` fits the full trace.
     """
 
     def __init__(
@@ -58,6 +61,7 @@ class BaseFLIFitter:
         guess_plugin: np.ndarray = moment_based_guess,
         custom_funcs: np.ndarray | None = None,
         shift_method: str = "zero_pad",
+        fit_indices: tuple[int, int] | None = None,
     ) -> None:
         self.decay = np.asarray(decay_px)
         self.irf = np.asarray(irf_px)
@@ -70,7 +74,11 @@ class BaseFLIFitter:
         self.T_acq = 1000.0 / freq[1]
         self.N = len(self.irf) if self.irf.ndim == 1 else self.irf.shape[2]
         self.t = np.linspace(0, self.T_acq, self.N, endpoint=False)
-        self.fit_indices = np.arange(self.N)
+        if fit_indices is not None:
+            gate_start, gate_end = fit_indices
+            self.fit_indices = np.arange(max(gate_start, 0), min(gate_end, self.N))
+        else:
+            self.fit_indices = np.arange(self.N)
 
         # Central Solver Registry
         self.funcs = {
@@ -171,7 +179,7 @@ class BaseFLIFitter:
             xtol=kwargs.get("xtol", 1e-7),
             max_nfev=max_nfev,
         )
-        return self._post_process(res.x, res.jac, res.status, model_type)
+        return self._post_process(res.x, res.jac, res.status, model_type, bounds=bounds)
 
     def trust_region(
         self, p0: Any, bounds: np.ndarray, model_type: str, **kwargs: Any
@@ -228,7 +236,9 @@ class BaseFLIFitter:
             status = 1
         except Exception:
             popt, pcov, status = p0, None, 0
-        return self._post_process(popt, None, status, model_type, pcov=pcov)
+        return self._post_process(
+            popt, None, status, model_type, pcov=pcov, bounds=bounds
+        )
 
     def unconstrained(
         self, p0: Any, bounds: np.ndarray, model_type: str, **kwargs: Any
@@ -286,9 +296,14 @@ class BaseFLIFitter:
             status = 1
         except Exception:
             return self.fit_with_estimator(
-                estimator_type="trust_region", model_type=model_type, p0=p0
+                estimator_type="trust_region",
+                model_type=model_type,
+                p0=p0,
+                bounds=bounds,
             )
-        return self._post_process(popt, None, status, model_type, pcov=pcov)
+        return self._post_process(
+            popt, None, status, model_type, pcov=pcov, bounds=bounds
+        )
 
     def model_fit(
         self, t: np.ndarray, params: Any, model_type: str = "mono-exponential"
@@ -319,6 +334,7 @@ class BaseFLIFitter:
         status: np.ndarray,
         model_type: str,
         pcov: np.ndarray | None = None,
+        bounds: np.ndarray | None = None,
     ) -> tuple[Any, ...]:
         """
         Run the post process routine.
@@ -335,6 +351,8 @@ class BaseFLIFitter:
             FLI model family, such as mono- or bi-exponential.
         pcov : np.ndarray | None
             Parameter covariance matrix.
+        bounds : np.ndarray | None
+            Lower and upper parameter bounds supplied to the optimizer.
 
         Returns
         -------
@@ -342,7 +360,7 @@ class BaseFLIFitter:
             Tuple containing fitted parameters, errors, covariance, and quality metrics.
         """
         if model_type == "bi-exponential":
-            popt, _, pcov = enforce_tau_ordering(popt, pcov=pcov)
+            popt, _, pcov = enforce_tau_ordering(popt, pcov=pcov, bounds=bounds)
 
         d_fit = self.decay[self.fit_indices]
         final_model = self.model_fit(self.t, popt, model_type=model_type)[

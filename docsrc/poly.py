@@ -1,21 +1,21 @@
-from pathlib import Path
 import logging
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+from datetime import datetime
+
 from polyversion_patches import (
-    DynamicPip,
     CustomDriver,
+    DynamicPip,
     PyDataVersionEncoder,
     version_key,
     visible_versions,
 )
-
 from sphinx_polyversion.api import apply_overrides
 from sphinx_polyversion.git import Git, GitRef, GitRefType, file_predicate
 from sphinx_polyversion.pyvenv import Environment, VenvWrapper
-from sphinx_polyversion.sphinx import SphinxBuilder, Placeholder
-from datetime import datetime
+from sphinx_polyversion.sphinx import Placeholder, SphinxBuilder
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ shared_env_kwargs = dict(
     temporary=SEQUENTIAL, creator=creator, venv=Path(VENV_DIR_NAME)
 )
 ENVIRONMENT = {
-    None: DynamicPip.factory(**shared_env_kwargs, args=["-e", "."] + SPHINX_DEPS),
+    None: DynamicPip.factory(**shared_env_kwargs, args=["-e", ".", *SPHINX_DEPS]),
     "local": Environment.factory(),
 }
 

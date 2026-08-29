@@ -9,7 +9,7 @@ cubes. Public API includes class :class:`ParamToDecay`.
 """
 
 import itertools
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 from scipy.signal import fftconvolve
@@ -17,6 +17,8 @@ from tqdm import tqdm
 
 from pyfli.solver.forward_model import decay_kernel, model_numpy
 from pyfli.solver.shared_metrics import compute_fli_stats
+
+from .common_reconstruct import bi_reconstruction, mono_reconstruction
 
 # Matches forward_model._EPS — kept as a local literal since that name is
 # module-private in forward_model.
@@ -85,7 +87,7 @@ class ParamToDecay:
     #: is always the temporal shift consumed as ``h_shift``. Extend this (plus a
     #: matching kernel branch in ``forward_model.decay_kernel``) to support new
     #: model families.
-    PARAM_MAP_KEYS: dict[str, tuple[str, ...]] = {
+    PARAM_MAP_KEYS: ClassVar[dict[str, tuple[str, ...]]] = {
         "mono-exponential": (
             "photon_count_map",
             "tau_map",
@@ -104,7 +106,7 @@ class ParamToDecay:
 
     #: Default value used for a parameter map when it's omitted from ``params``.
     #: Keys absent from this dict are required (no sensible physical default).
-    PARAM_MAP_DEFAULTS: dict[str, float] = {
+    PARAM_MAP_DEFAULTS: ClassVar[dict[str, float]] = {
         "photon_count_map": 1.0,
         "v_shift_map": 0.0,
         "h_shift_map": 0.0,
@@ -363,7 +365,7 @@ class ParamToDecay:
         if self.model_type == "mono-exponential":
             tau = self._get_map(params, "tau_map")
             tau_safe = np.clip(tau, _EPS, None)[..., None]
-            return (S[..., None] / tau_safe) * np.exp(-t_eff / tau_safe)
+            return mono_reconstruction(t_eff, tau_safe, S[..., None])
 
         alpha1 = self._get_map(params, "alpha1_map")
         tau1 = self._get_map(params, "tau1_map")
@@ -371,10 +373,8 @@ class ParamToDecay:
         t1_safe = np.clip(tau1, _EPS, None)[..., None]
         t2_safe = np.clip(tau2, _EPS, None)[..., None]
         a1 = alpha1[..., None]
-        return S[..., None] * (
-            (a1 / t1_safe) * np.exp(-t_eff / t1_safe)
-            + ((1.0 - a1) / t2_safe) * np.exp(-t_eff / t2_safe)
-        )
+        s = S[..., None]
+        return bi_reconstruction(t_eff, t1_safe, t2_safe, s * a1, s * (1.0 - a1))
 
     def _convolve_with_irf_vectorized(self, kernel: np.ndarray) -> np.ndarray:
         """Batch-convolve ``kernel`` with the (per-pixel-normalized) IRF."""
