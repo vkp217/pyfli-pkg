@@ -9,6 +9,8 @@ Belongs to :mod:`pyfli.bayes_utils`, downstream of
 :class:`pyfli.reconstruction.ParamToDecay`.
 """
 
+import matplotlib.colors as mcolors
+import matplotlib.patheffects as patheffects
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -25,11 +27,9 @@ _MODEL_PARAM_KEYS: dict[str, tuple[str, ...]] = {
 #: Valid values for the `center` argument.
 CENTERS: tuple[str, ...] = ("best", "median", "mean")
 
-# House colors, matching pyfli.data_vnp.data_viewer.DataViewer._SERIES_COLORS
-# (slot 1 = decay, slot 3 = fit/model) so this plot reads consistently with
-# the rest of the package's decay-viewer figures.
-_DECAY_COLOR = "#2a78d6"
-_FIT_COLOR = "#1baf7a"
+# the whole model (central curve + credible bands).
+_DECAY_COLOR = "#d62a7a"
+_FIT_COLOR = "#1f3a6d"
 
 
 def _reconstruct_sample_stack(
@@ -96,7 +96,7 @@ def _select_best_sample_idx(
     sub_irf = irf[x : x + 1, y : y + 1, :] if np.ndim(irf) == 3 else irf
 
     selector = ParamSelector(freq_acq, sub_irf, sub_decay, model_type=model_type)
-    stacks = selector.evaluate_all_samples(sub_combo)
+    stacks = selector.evaluate_all_samples(sub_combo, progress=False)
     selection = selector.select_best_combination(sub_combo, stacks, metric=metric)
     return int(selection["best_sample_idx"][0, 0])
 
@@ -193,20 +193,43 @@ def plot_pixel_posterior_fit(
     else:
         fig = ax.figure
 
-    # Nested washes of the same hue: widest interval lightest, narrowest
-    # darkest, so the bands read as one distribution rather than competing
-    # series -- narrowest drawn last so it sits on top.
     band_handles = []
-    alphas = np.linspace(0.12, 0.30, len(ci_levels))
-    for level, alpha in zip(sorted(ci_levels, reverse=True), alphas):
+    levels_wide_to_narrow = sorted(ci_levels, reverse=True)
+    n_bands = len(levels_wide_to_narrow)
+    tints = np.linspace(0.80, 0.42, n_bands) if n_bands > 1 else np.array([0.55])
+    fit_rgb = np.array(mcolors.to_rgb(_FIT_COLOR))
+    for level, tint in zip(levels_wide_to_narrow, tints):
         half_width = (100 - level) / 2.0
         lo = np.percentile(stack, half_width, axis=0)
         hi = np.percentile(stack, 100 - half_width, axis=0)
-        band = ax.fill_between(t, lo, hi, color=_FIT_COLOR, alpha=alpha, linewidth=0)
+        band_rgb = tuple((1.0 - tint) * fit_rgb + tint * np.ones(3))
+        band = ax.fill_between(
+            t, lo, hi, facecolor=band_rgb, edgecolor="none", alpha=0.92, zorder=1.5
+        )
         band_handles.append((band, f"{level}% credible interval"))
 
-    (center_line,) = ax.plot(t, center_curve, color=_FIT_COLOR, lw=2)
-    (decay_line,) = ax.plot(t, decay_px, color=_DECAY_COLOR, lw=2)
+    halo = [
+        patheffects.Stroke(linewidth=3.6, foreground="white", alpha=0.8),
+        patheffects.Normal(),
+    ]
+    (center_line,) = ax.plot(
+        t,
+        center_curve,
+        color=_FIT_COLOR,
+        lw=2.2,
+        zorder=3,
+        solid_capstyle="round",
+        path_effects=halo,
+    )
+    (decay_line,) = ax.plot(
+        t,
+        decay_px,
+        color=_DECAY_COLOR,
+        lw=2.0,
+        zorder=4,
+        solid_capstyle="round",
+        path_effects=halo,
+    )
 
     ax.set_xlabel("Time Bin")
     ax.set_ylabel("Counts")

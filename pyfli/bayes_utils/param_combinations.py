@@ -2,6 +2,7 @@ from collections.abc import Callable
 from typing import ClassVar
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from pyfli.reconstruction import DetailedRecon, ParamToDecay
 
@@ -123,15 +124,23 @@ class ParamSelector:
             error_maps[~bool_mask] = np.nan
             results["error_maps"] = error_maps
 
-    def _run_compute_detailed_results(self, params, data_name):
+    def _run_compute_detailed_results(self, params, data_name, log_summary=True):
         """Reconstruct one parameter combination's fit/residual/goodness-of-fit
         maps via the configured ``backend``, using the shared
-        freq_acq/irf/decay/model_type stored on this instance."""
+        freq_acq/irf/decay/model_type stored on this instance.
+
+        ``log_summary`` is forwarded to the ``"compute_detailed_results"``
+        backend to suppress its per-call goodness-of-fit summary log line;
+        set False when calling in a loop (e.g. evaluate_all_samples) so the
+        progress bar isn't drowned out. The ``"reconstructor"`` backend emits
+        no such line and ignores this flag."""
         if self.backend == "reconstructor":
             return self._run_via_reconstructor(params, data_name)
-        return self._run_via_compute_detailed_results(params, data_name)
+        return self._run_via_compute_detailed_results(
+            params, data_name, log_summary=log_summary
+        )
 
-    def _run_via_compute_detailed_results(self, params, data_name):
+    def _run_via_compute_detailed_results(self, params, data_name, log_summary=True):
         if self._detailed_reconstructor is None:
             self._detailed_reconstructor = DetailedRecon(
                 self.freq_acq, self.irf, binned_decay=self.decay
@@ -146,7 +155,7 @@ class ParamSelector:
         else:
             cdr_params = {"tau_map": params["tau"]}
         return self._detailed_reconstructor.reconstruct(
-            cdr_params, self.model_type, data_name=data_name
+            cdr_params, self.model_type, data_name=data_name, log_summary=log_summary
         )
 
     def _run_via_reconstructor(self, params, data_name):
@@ -187,7 +196,9 @@ class ParamSelector:
             },
         }
 
-    def evaluate_all_samples(self, output_combination, keep_per_sample_results=False):
+    def evaluate_all_samples(
+        self, output_combination, keep_per_sample_results=False, progress=True
+    ):
         """
         Run compute_detailed_results once per posterior sample.
 
@@ -200,6 +211,11 @@ class ParamSelector:
             If True, also returns the full compute_detailed_results() dict for
             every sample (memory-heavy for large images/NUM_SAMPLES). Default
             False -- only the scalar metric stacks are kept.
+        progress : bool
+            Show a tqdm progress bar over the NUM_SAMPLES loop. Default True;
+            pass False for quiet use (e.g. a 1x1-pixel crop). The per-sample
+            backend log line is suppressed regardless, so it never competes
+            with the bar.
 
         Returns
         -------
@@ -233,33 +249,39 @@ class ParamSelector:
 
         per_sample_results = [] if keep_per_sample_results else None
 
-        print(f"Evaluating {num_samples} sample(s)...")
+        with tqdm(
+            total=num_samples,
+            desc="Evaluating posterior samples",
+            disable=not progress,
+            leave=False,
+        ) as pbar:
+            for s in range(num_samples):
+                if self.model_type == "bi-exponential":
+                    params_s = {
+                        "tau1": output_combination["tau1"][..., s],
+                        "tau2": output_combination["tau2"][..., s],
+                        "alpha1": output_combination["alpha1"][..., s],
+                    }
+                else:
+                    params_s = {"tau": output_combination["tau"][..., s]}
 
-        for s in range(num_samples):
-            if self.model_type == "bi-exponential":
-                params_s = {
-                    "tau1": output_combination["tau1"][..., s],
-                    "tau2": output_combination["tau2"][..., s],
-                    "alpha1": output_combination["alpha1"][..., s],
-                }
-            else:
-                params_s = {"tau": output_combination["tau"][..., s]}
+                result_s = self._run_compute_detailed_results(
+                    params_s,
+                    data_name=f"BI_MODEL_{self.model_type}_sample{s}",
+                    log_summary=False,
+                )
 
-            result_s = self._run_compute_detailed_results(
-                params_s, data_name=f"BI_MODEL_{self.model_type}_sample{s}"
-            )
+                maps = result_s["results"]["maps"]
 
-            maps = result_s["results"]["maps"]
+                chi2_stack[..., s] = maps["chi2_map"]
+                reduced_chi2_stack[..., s] = maps["reduced_chi2_map"]
+                r2_stack[..., s] = maps["R2_map"]
+                rmse_stack[..., s] = maps["rmse_map"]
 
-            chi2_stack[..., s] = maps["chi2_map"]
-            reduced_chi2_stack[..., s] = maps["reduced_chi2_map"]
-            r2_stack[..., s] = maps["R2_map"]
-            rmse_stack[..., s] = maps["rmse_map"]
+                if keep_per_sample_results:
+                    per_sample_results.append(result_s)
 
-            if keep_per_sample_results:
-                per_sample_results.append(result_s)
-
-        print(f"Evaluated {num_samples} sample(s).")
+                pbar.update(1)
 
         return {
             "chi2_stack": chi2_stack,
@@ -324,6 +346,7 @@ class ParamSelector:
         metric="RMSE",
         data_name="BI_MODEL_bi_best",
         bool_mask=None,
+        stacks=None,
     ):
         """
         Full pipeline: evaluate every sample, pick the best per-pixel combination
@@ -338,6 +361,15 @@ class ParamSelector:
             One of "chi2", "reduced_chi2", "RMSE", "R2".
         data_name : str
             Dataset name recorded in the returned result dict.
+        stacks : dict | None
+            Precomputed :meth:`evaluate_all_samples` output for this exact
+            ``output_combination``. When given, the per-sample evaluation loop
+            (NUM_SAMPLES reconstructions) is skipped and these stacks are used
+            directly -- so a caller that already ran ``evaluate_all_samples``
+            (e.g. to inspect the raw stacks or try several metrics) doesn't pay
+            for it twice. When None (default) it is computed internally. The
+            stacks must come from the same ``output_combination``; passing
+            mismatched stacks yields wrong selections.
         bool_mask : np.ndarray | None
             Optional (H, W) boolean mask; defaults to ``self.bool_mask`` (set at
             construction) when not given. Pixels where the mask is False are
@@ -376,7 +408,8 @@ class ParamSelector:
             top-level ``sample_selection`` key holding the raw per-sample
             stacks and best_params used to produce the final maps.
         """
-        stacks = self.evaluate_all_samples(output_combination)
+        if stacks is None:
+            stacks = self.evaluate_all_samples(output_combination)
         selection = self.select_best_combination(
             output_combination, stacks, metric=metric
         )
@@ -423,6 +456,7 @@ class ParamSelector:
         metric="RMSE",
         data_name="BI_MODEL_bi_aggregate",
         bool_mask=None,
+        stacks=None,
     ):
         """
         Collapse the stack of posterior-sample parameter combinations down to
@@ -455,6 +489,11 @@ class ParamSelector:
             compute_best_model_fit_result for method="best"; for the reducer
             methods, applied the same way directly here -- see
             compute_best_model_fit_result's bool_mask parameter for what it does.
+        stacks : dict | None
+            Only used when method="best"; forwarded to
+            compute_best_model_fit_result to skip the per-sample evaluation loop
+            when the caller already has its output. Ignored by the reducer
+            methods, which never score individual samples.
 
         Returns
         -------
@@ -471,6 +510,7 @@ class ParamSelector:
                 metric=metric,
                 data_name=data_name,
                 bool_mask=bool_mask,
+                stacks=stacks,
             )
 
         reducer = self.REDUCERS.get(method)
