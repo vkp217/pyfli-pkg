@@ -28,7 +28,7 @@ import pyfli
 # -- Project information ------------------------------------------------------
 project = "PyFli"
 author = "Vikas Pandey"
-copyright = f"2025-{datetime.now().year}, PyFli authors (lead maintainer: {author})"
+copyright = f"2025-{datetime.now().year}, PyFli developer and maintainer: {author}"
 release = current if USE_POLYVERSION and current != "local" else pyfli.__version__
 version = release
 
