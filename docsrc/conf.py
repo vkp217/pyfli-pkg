@@ -29,11 +29,7 @@ import pyfli
 project = "PyFli"
 author = "Vikas Pandey"
 copyright = f"2025-{datetime.now().year}, PyFli authors (lead maintainer: {author})"
-release = (
-    current
-    if USE_POLYVERSION and current != "local"
-    else getattr(pyfli, "__version__", "0.1.19")
-)
+release = current if USE_POLYVERSION and current != "local" else pyfli.__version__
 version = release
 
 # -- General configuration ----------------------------------------------------
