@@ -4,8 +4,13 @@ import pyfli
 import pyfli.io
 
 
-def test_no_manual_version_or_all_exports():
-    assert not hasattr(pyfli, "__version__")
+def test_version_matches_distribution_metadata():
+    from importlib.metadata import version
+
+    assert pyfli.__version__ == version("pyfli-lib")
+
+
+def test_no_all_export():
     assert not hasattr(pyfli, "__all__")
 
 
