@@ -60,9 +60,7 @@ GitHub. Version numbers and dates below follow the releases published on
 
 ## Release history
 
-### 0.1.19 — 2026-08-31
-
-*(not yet published to PyPI)*
+### [0.1.19](https://pypi.org/project/pyfli-lib/0.1.19/) — 2026-08-31
 
 ```{card}
 :class-card: sd-bg-info sd-font-weight-bold
