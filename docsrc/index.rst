@@ -121,13 +121,6 @@ Where to go next
 
 .. toctree::
    :maxdepth: 1
-   :caption: User Guide
-   :hidden:
-
-   user_guide/index
-
-.. toctree::
-   :maxdepth: 1
    :caption: Examples
    :hidden:
 
@@ -148,4 +141,17 @@ Where to go next
    :hidden:
 
    contributing
+
+.. toctree::
+   :maxdepth: 1
+   :caption: User Guide
+   :hidden:
+
+   user_guide/index
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Help
+   :hidden:
+
    faq

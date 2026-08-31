@@ -5,6 +5,16 @@
 # afterward (e.g. sp_analysis.simulator.reconstructor) can do `from pyfli import
 # logging`. Do not let an isort/ruff auto-fix alphabetize this block.
 
+from importlib.metadata import PackageNotFoundError, version as _version
+
+# Version comes from the installed distribution metadata (built from pyproject.toml).
+try:
+    __version__ = _version("pyfli-lib")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
+
+del _version, PackageNotFoundError
+
 
 def setup() -> None:
     """
