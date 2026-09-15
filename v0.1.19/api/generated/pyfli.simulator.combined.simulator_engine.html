@@ -621,16 +621,16 @@ analytical decays, and simulates TCSPC counts from a shared IRF and configuratio
 <li><p><strong>efficiency</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">tuple[int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">]</span></code>) – FRET transfer efficiency used to derive simulated lifetime components.</p></li>
 <li><p><strong>A1_fraction</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">tuple[int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">]</span></code>) – Amplitude fraction assigned to the first exponential component.</p></li>
 <li><p><strong>photo_count</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">tuple[float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">int]</span></code>) – Expected photon count used to scale the simulated decay.</p></li>
-<li><p><strong>mono_fraction</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – Fraction of pixels or events assigned to the mono-exponential component.</p></li>
-<li><p><strong>bit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Bit depth or quantization setting for simulated detector output.</p></li>
+<li><p><strong>mono_fraction</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – Fraction of pixels or events assigned to the mono-exponential component.</p></li>
+<li><p><strong>bit</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Bit depth or quantization setting for simulated detector output.</p></li>
 <li><p><strong>n_cycles</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">tuple[int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">int]</span></code>) – Number of excitation cycles used when constructing the simulated decay.
 A bare int is the upper bound (lower bound fixed at 1000); a
 <code class="docutils literal notranslate"><span class="pre">(low,</span> <span class="pre">high)</span></code> tuple sets both bounds, and both must be &gt;= 1000.
 The per-call cycle count is drawn from a Beta distribution (shaped
 by <code class="docutils literal notranslate"><span class="pre">photo_count</span></code>) over that range.</p></li>
-<li><p><strong>dcr</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – Detector dark-count rate used by the noise model.</p></li>
-<li><p><strong>laser_feq</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Laser repetition frequency used by the simulation.</p></li>
-<li><p><strong>pileup_mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – ‘wrap’ (default) folds photons back via modulo; ‘truncate’ drops them.</p></li>
+<li><p><strong>dcr</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – Detector dark-count rate used by the noise model.</p></li>
+<li><p><strong>laser_feq</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Laser repetition frequency used by the simulation.</p></li>
+<li><p><strong>pileup_mode</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – ‘wrap’ (default) folds photons back via modulo; ‘truncate’ drops them.</p></li>
 <li><p><strong>seed</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span></code>) – Seed for reproducible random sampling.</p></li>
 <li><p><strong>**kwargs</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Any</span></code>) – Additional keyword arguments forwarded to the underlying implementation.</p></li>
 </ul>
@@ -642,7 +642,7 @@ by <code class="docutils literal notranslate"><span class="pre">photo_count</spa
 <dd><p>Samples lifetime and fraction parameters for a single pixel.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>]</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -672,7 +672,7 @@ by <code class="docutils literal notranslate"><span class="pre">photo_count</spa
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>p</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p></li>
-<li><p><strong>n_cycles</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>n_cycles</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 <li><p><strong>mu_per_cycle</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a>)</p></li>
 </ul>
 </dd>

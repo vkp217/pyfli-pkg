@@ -627,7 +627,7 @@ Assumes all datasets share identical keys and per-sample shapes.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="pyfli.simulator.sim_workflow.SimOutput">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">SimOutput</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulator</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/simulator/sim_workflow.html#SimOutput"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.simulator.sim_workflow.SimOutput" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="pyfli.simulator.sim_workflow.SimOutput.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/simulator/sim_workflow.html#SimOutput.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.simulator.sim_workflow.SimOutput.run" title="Link to this definition">#</a></dt>
@@ -649,7 +649,7 @@ Assumes all datasets share identical keys and per-sample shapes.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="pyfli.simulator.sim_workflow.SimGenerator">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">SimGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">irf_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(-20,</span> <span class="pre">100)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">10)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">family</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'separate'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sensor_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'discrete'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/simulator/sim_workflow.html#SimGenerator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.simulator.sim_workflow.SimGenerator" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Wraps IRF shifting + a MacroSimulator/ContinuousSimulator/TCSPCSimulator/
 PhotonCountSimulator engine + SimOutputWithIRFOffset for a single config.
 Only accepts one config dict — raises if given a list/tuple of configs.</p>
@@ -666,9 +666,9 @@ from a photon-by-photon TCSPC engine.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>family</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Which implementation family to sample from — “separate” (default)
+<li><p><strong>family</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Which implementation family to sample from — “separate” (default)
 or “combined”. See <code class="xref py py-data docutils literal notranslate"><span class="pre">SIMULATOR_TYPES</span></code>.</p></li>
-<li><p><strong>sensor_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Fallback “continuous”/”discrete” engine choice used only when
+<li><p><strong>sensor_type</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Fallback “continuous”/”discrete” engine choice used only when
 <code class="docutils literal notranslate"><span class="pre">config</span></code> doesn’t already set <code class="docutils literal notranslate"><span class="pre">sensor_type</span></code>. Defaults to
 “discrete”.</p></li>
 </ul>
@@ -684,7 +684,7 @@ or “combined”. See <code class="xref py py-data docutils literal notranslate
 <dl class="py class">
 <dt class="sig sig-object py" id="pyfli.simulator.sim_workflow.WeightedConfigSimGenerator">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">WeightedConfigSimGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">irf_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">configs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">probs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(-20,</span> <span class="pre">100)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">10)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">family</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'separate'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sensor_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'discrete'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pyfli/simulator/sim_workflow.html#WeightedConfigSimGenerator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.simulator.sim_workflow.WeightedConfigSimGenerator" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Wraps one <a class="reference internal" href="#pyfli.simulator.sim_workflow.SimGenerator" title="pyfli.simulator.sim_workflow.SimGenerator"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimGenerator</span></code></a> per config combination and, on every
 <code class="docutils literal notranslate"><span class="pre">simulate_once()</span></code> call, draws a fresh combination according to
 <code class="docutils literal notranslate"><span class="pre">probs</span></code> before delegating to it.</p>
@@ -729,7 +729,7 @@ same length). Renormalized if it doesn’t already sum to 1.</p></li>
 <dl class="py class">
 <dt class="sig sig-object py" id="pyfli.simulator.sim_workflow.BatchSimulator">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">BatchSimulator</span></span><a class="reference internal" href="../../_modules/pyfli/simulator/sim_workflow.html#BatchSimulator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyfli.simulator.sim_workflow.BatchSimulator" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Run repeated FLI/FLIM simulations across parameter sets. The class is a convenience
 layer for generating batches of synthetic datasets for validation or model training.</p>
 <p>Unlike <a class="reference internal" href="#pyfli.simulator.sim_workflow.make_simulator" title="pyfli.simulator.sim_workflow.make_simulator"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_simulator()</span></code></a>/<a class="reference internal" href="#pyfli.simulator.sim_workflow.concat_sim_data" title="pyfli.simulator.sim_workflow.concat_sim_data"><code class="xref py py-func docutils literal notranslate"><span class="pre">concat_sim_data()</span></code></a> (which batch the flattened
@@ -746,7 +746,7 @@ Returns data as a dictionary of NumPy arrays.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>sim_funcs</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a>)</p></li>
-<li><p><strong>num_list</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>num_list</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -763,7 +763,7 @@ Returns data as a dictionary of NumPy arrays.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>sim_func_list</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code>) – Simulator functions used to generate a batch.</p></li>
-<li><p><strong>num_list</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Number of samples generated for each simulator function.</p></li>
+<li><p><strong>num_list</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Number of samples generated for each simulator function.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -783,7 +783,7 @@ Returns data as a dictionary of NumPy arrays.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>sim_funcs</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code>) – Simulator functions used to generate a two-dimensional batch.</p></li>
-<li><p><strong>num_list</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Number of samples generated for each simulator function.</p></li>
+<li><p><strong>num_list</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Number of samples generated for each simulator function.</p></li>
 <li><p><strong>shape</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">tuple[int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">]</span></code>) – Output shape requested for generated simulation batches.</p></li>
 </ul>
 </dd>
