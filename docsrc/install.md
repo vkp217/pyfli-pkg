@@ -40,6 +40,14 @@ Then set up the pre-commit hooks (ruff lint + format on every commit):
 pre-commit install
 ```
 
+## From GitHub (dev branch, no clone)
+
+Install the latest `dev` branch directly with `pip`, without cloning the repository:
+
+```bash
+pip install "git+https://github.com/vkp217/pyfli-pkg.git@dev"
+```
+
 ## Requirements
 
 `pyfli` requires **Python 3.11+**. Core dependencies (NumPy, SciPy, scikit-image, OpenCV, PyTorch, PySide6, and others) are installed automatically — see `pyproject.toml` for the full list.
