@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from ..plot_style import dark_palette, legend_outside
+
 
 class CVPlot:
     """
@@ -411,7 +413,7 @@ class CVPlot:
 
         if not has_cluster:
             fig, ax = plt.subplots(figsize=figsize or (6, 4.5))
-            colors = sns.color_palette("colorblind", n_colors=len(target_keys))
+            colors = dark_palette(len(target_keys))
             for key, color in zip(target_keys, colors):
                 sub = df[df["parameter"] == key].sort_values("bin_center")
                 if sub.empty:
@@ -438,14 +440,14 @@ class CVPlot:
             ax.set_title("Precision vs. photon count", fontweight="bold")
             if logx:
                 ax.set_xscale("log")
-            ax.legend(fontsize=9, frameon=False)
+            legend_outside(ax, fontsize=9)
             sns.despine(ax=ax)
             fig.tight_layout()
             axes_out = np.array([ax])
         else:
             clusters = [c for c in df["cluster"].unique() if c is not None]
             if palette is None:
-                colors = sns.color_palette("husl", n_colors=len(clusters))
+                colors = dark_palette(len(clusters), base="husl")
                 palette = dict(zip(clusters, colors))
             n = len(target_keys)
             ncols_eff = min(ncols, n)
@@ -485,7 +487,7 @@ class CVPlot:
                 ax.set_ylabel(r"$\sigma / \mathrm{mean}$")
                 if logx:
                     ax.set_xscale("log")
-                ax.legend(fontsize=8, frameon=False, title="cluster")
+                legend_outside(ax, fontsize=8, title="cluster")
                 sns.despine(ax=ax)
             for ax in axes_flat[n:]:
                 ax.axis("off")

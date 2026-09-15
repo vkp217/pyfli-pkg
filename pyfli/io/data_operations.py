@@ -57,6 +57,7 @@ class DataOperations:
         self.loader_registry = {
             ".mat": ds.load_mat_file,
             ".sdt": ds.load_sdt_file,
+            ".ptu": ds.load_ptu_file,
             ".tif": ds.load_tiff_file,
             ".tiff": ds.load_tiff_file,
             ".npy": ds.load_npy_file,

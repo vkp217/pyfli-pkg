@@ -12,6 +12,7 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import tifffile
+from ptufile import PtuFile
 from scipy.io import loadmat
 from sdtfile import SdtFile
 
@@ -21,8 +22,8 @@ from pyfli import logging
 class StaticDataOps:
     """
     Group static low-level readers and correction routines for detector files. The
-    methods cover pile-up correction, hot-pixel interpolation, and MAT, SDT, TIFF,
-    NumPy, text, ASC, and SPAD HDF5 loading.
+    methods cover pile-up correction, hot-pixel interpolation, and MAT, SDT, PTU,
+    TIFF, NumPy, text, ASC, and SPAD HDF5 loading.
     """
 
     @staticmethod
@@ -200,6 +201,37 @@ class StaticDataOps:
             Data array loaded from a Becker-Hickl SDT file.
         """
         return np.asarray(SdtFile(path).data[0])
+
+    @staticmethod
+    def load_ptu_file(path: str, channel: int = 0) -> np.ndarray:
+        """
+        Load ptu file.
+
+        Parameters
+        ----------
+        path : str
+            Filesystem path loaded or saved by the routine.
+        channel : int
+            Detector channel index to read or decode.
+
+        Returns
+        -------
+        np.ndarray
+            Data array loaded from a PicoQuant PTU file. Image-mode (FLIM) files
+            are decoded to a (H, W, T) decay cube: repeated frames are integrated
+            and ``channel`` selects one detector channel. Point/non-imaging PTU
+            files fall back to a single decay trace tiled across a 512 x 512
+            spatial grid, matching :meth:`load_txt_file`/:meth:`load_asc_file`.
+        """
+        with PtuFile(path) as ptu:
+            if ptu.is_image:
+                return np.asarray(
+                    ptu.decode_image(
+                        frame=-1, channel=channel, keepdims=False, dtype="uint32"
+                    )
+                )
+            trace = np.asarray(ptu.decode_histogram(dtype="uint32")[channel])
+            return np.tile(trace.reshape(1, 1, -1), (512, 512, 1))
 
     @staticmethod
     def load_tiff_file(path: str) -> np.ndarray:

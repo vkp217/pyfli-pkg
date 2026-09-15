@@ -199,7 +199,7 @@ class WeightedConfigSimGenerator:
         irf_data,
         configs,
         probs,
-        a_range=(-20, 100),
+        a_range=(-20, 20),
         b_range=(0, 10),
         pixel=(0, 0),
         family="separate",

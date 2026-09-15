@@ -22,6 +22,7 @@ from scipy.integrate import quad
 from scipy.stats import pearsonr
 
 from pyfli import logging
+from pyfli.plot_style import dark_palette, legend_outside
 
 from ..data_vnp.color_processor import ColorProcessor
 
@@ -421,7 +422,7 @@ def recovery_plot(
 
         # 2. Scatter Plot
         # Using the style from your reference image
-        ax.scatter(x, y, color="#2042a8", alpha=0.5, s=15, edgecolors="none")
+        ax.scatter(x, y, color="#1c3f73", alpha=0.5, s=15, edgecolors="none")
 
         # 3. Identity Line (y = x) - UPDATED TO RED DASH
         all_vals = np.concatenate([x, y])
@@ -436,7 +437,7 @@ def recovery_plot(
         ax.plot(
             [plot_min, plot_max],
             [plot_min, plot_max],
-            color="red",
+            color="#8c2e24",
             linestyle="--",
             linewidth=1.5,
             zorder=5,
@@ -788,8 +789,7 @@ def plot_pixel_diagnostic(
         xs = np.arange(bins)
         xlabel = "Gate #"
     if colors is None:
-        cmap = plt.get_cmap("tab10")
-        colors = [cmap(i % 10) for i in range(len(all_fitset))]
+        colors = dark_palette(len(all_fitset))
     fig = plt.figure(figsize=figsize)
     gs = fig.add_gridspec(2, 2, width_ratios=[1.1, 2], height_ratios=[3, 1])
     ax_map = fig.add_subplot(gs[:, 0])  # full-height left panel
@@ -839,7 +839,7 @@ def plot_pixel_diagnostic(
     ax_top.set_yscale(yscale)  # log / linear switch
     ax_top.set_ylabel("Photon Counts")
     ax_top.set_title(f"Fit Diagnostics ({model_type})  [pixel {x}, {y}]")
-    ax_top.legend(ncol=2, fontsize=8, framealpha=0.9)
+    legend_outside(ax_top, ncol=2, fontsize=8, framealpha=0.9)
     if yscale == "log":
         pos = raw[raw > 0]
         if pos.size:
