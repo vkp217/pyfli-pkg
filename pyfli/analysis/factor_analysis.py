@@ -21,6 +21,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from ..plot_style import dark_palette, legend_outside
+
 
 class FactorAnalysis:
     """
@@ -139,7 +141,7 @@ class FactorAnalysis:
         self._register_default_fitset_targets()
 
         sns.set_theme(style=sns_style)
-        colors = sns.color_palette(sns_palette, n_colors=len(self.method_names))
+        colors = dark_palette(len(self.method_names), base=sns_palette)
         self.palette = {m: c for m, c in zip(self.method_names, colors)}
 
         self.cluster_mask = None
@@ -172,8 +174,8 @@ class FactorAnalysis:
                 self.cluster_names = {
                     cid: str(cluster_names[cid]) for cid in self.cluster_ids
                 }
-            cluster_colors = sns.color_palette(
-                sns_cluster_palette, n_colors=len(self.cluster_ids)
+            cluster_colors = dark_palette(
+                len(self.cluster_ids), base=sns_cluster_palette
             )
             self.cluster_palette = {
                 self.cluster_names[cid]: c
@@ -1291,7 +1293,7 @@ class FactorAnalysis:
                         self._apply_compact_ticks(ax, axis="x")
                 self._apply_compact_ticks(ax, axis="y")
                 if plotted:
-                    ax.legend(fontsize=8, frameon=False)
+                    legend_outside(ax, fontsize=8)
                 else:
                     ax.text(
                         0.5,
@@ -1346,7 +1348,7 @@ class FactorAnalysis:
                 ax.set_ylabel(param)
                 self._apply_compact_ticks(ax, axis="y")
                 plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
-                ax.legend(fontsize=8, frameon=False)
+                legend_outside(ax, fontsize=8)
                 sns.despine(ax=ax)
 
         elif kind == "scatter":
@@ -1379,7 +1381,7 @@ class FactorAnalysis:
                     self._apply_compact_ticks(ax, axis="x")
                 self._apply_compact_ticks(ax, axis="y")
                 if plotted:
-                    ax.legend(fontsize=8, frameon=False)
+                    legend_outside(ax, fontsize=8)
                 else:
                     ax.text(
                         0.5,
@@ -1464,7 +1466,7 @@ class FactorAnalysis:
                     self._apply_compact_ticks(ax, axis="x")
             self._apply_compact_ticks(ax, axis="y")
             if plotted:
-                ax.legend(fontsize=8, frameon=False, title="cluster")
+                legend_outside(ax, fontsize=8, title="cluster")
             else:
                 ax.text(
                     0.5,
@@ -1546,7 +1548,7 @@ class FactorAnalysis:
         if target_keys is None:
             target_keys = sorted(combined["parameter"].unique())
         if palette is None:
-            colors = sns.color_palette("tab10", n_colors=len(labels))
+            colors = dark_palette(len(labels))
             palette = dict(zip(labels, colors))
 
         n = len(target_keys)
@@ -1571,7 +1573,7 @@ class FactorAnalysis:
                 FactorAnalysis._apply_compact_ticks(ax, axis="x")
             FactorAnalysis._apply_compact_ticks(ax, axis="y")
             if plotted:
-                ax.legend(fontsize=8, frameon=False, title="dataset")
+                legend_outside(ax, fontsize=8, title="dataset")
             else:
                 ax.text(
                     0.5,
@@ -1715,7 +1717,7 @@ class FactorAnalysis:
         kwargs = dict(inner="quartile", cut=0) if kind == "violin" else {}
         if color_by == "bin":
             hue = "bin_label"
-            palette = dict(zip(order, sns.color_palette("husl", n_colors=len(order))))
+            palette = dict(zip(order, dark_palette(len(order), base="husl")))
             kwargs["legend"] = False
         else:
             hue = "method"

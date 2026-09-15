@@ -33,6 +33,7 @@ from scipy.stats import (
 )
 
 from pyfli import logging
+from pyfli.plot_style import legend_outside
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PlotConfig  –  single source of truth for every default
@@ -84,12 +85,12 @@ class PlotConfig:
     bins: int = 100
     colors: list[str] = field(
         default_factory=lambda: [
-            "#3498db",
-            "#e74c3c",
-            "#2ecc71",
-            "#f1c40f",
-            "#9b59b6",
-            "#2433bb",
+            "#21618c",
+            "#8c2e24",
+            "#208c4e",
+            "#8c7209",
+            "#763f8c",
+            "#1b268c",
         ]
     )
     imshow_source: str = "processed"  # "raw" | "processed"
@@ -786,7 +787,7 @@ class PlotKit:
             ha="right",
             fontsize=8,
         )
-        ax.legend(frameon=False)
+        legend_outside(ax)
         ax.set_title(title)
 
     # ── name → method dispatcher ──────────────────────────────────────────────
@@ -1136,7 +1137,7 @@ class Plotter:
                 if isinstance(style_config, dict)
                 else style_config
                 if isinstance(style_config, list)
-                else ["#3498db", "#e74c3c", "#2ecc71", "#f1c40f", "#9b59b6"]
+                else ["#21618c", "#8c2e24", "#208c4e", "#8c7209", "#763f8c"]
             )
             self.config = PlotConfig(colors=colors)
 
@@ -1324,7 +1325,7 @@ class Plotter:
                         alpha=0.35,
                     )
             ax.set_title(key)
-            ax.legend(frameon=False, fontsize=8)
+            legend_outside(ax, fontsize=8)
         plt.suptitle(title)
         plt.tight_layout()
         plt.subplots_adjust(right=0.82)
@@ -1366,7 +1367,7 @@ class Plotter:
                         label=self.source_names[i],
                         title=key,
                     )
-            ax.legend(frameon=False, fontsize=8)
+            legend_outside(ax, fontsize=8)
         plt.suptitle(title)
         plt.tight_layout()
         self.current_fig = fig

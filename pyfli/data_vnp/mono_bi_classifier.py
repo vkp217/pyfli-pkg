@@ -45,19 +45,19 @@ class MonoBiClassifier:
 
     CMAP_NAMES = ("jet", "Spectral", "Spectral_r")
     PALETTE: ClassVar[list[str]] = [
-        "#5DADE2",
-        "#EC7063",
-        "#58D68D",
-        "#F4D03F",
-        "#AF7AC5",
-        "#EB984E",
-        "#48C9B0",
-        "#52BE80",
-        "#AAB7B8",
-        "#F1948A",
-        "#BB8FCE",
-        "#7FB3D5",
-        "#76D7C4",
+        "#3a6b8c",
+        "#8c433b",
+        "#3a8c5c",
+        "#8c7824",
+        "#763f8c",
+        "#8c5b2f",
+        "#328c7b",
+        "#3d8c5e",
+        "#3f878c",
+        "#8c473f",
+        "#753f8c",
+        "#3f6e8c",
+        "#3f8c7d",
     ]
 
     def __init__(
@@ -345,7 +345,7 @@ class MonoBiClassifier:
                             ys,
                             s=4,
                             alpha=0.25,
-                            color="steelblue",
+                            color="#37658c",
                             edgecolors="none",
                         )
                         lo = float(min(xv.min(), yv.min()))
@@ -432,19 +432,19 @@ class ParamCorrelationMatrix:
     """
 
     PALETTE: ClassVar[list[str]] = [
-        "#5DADE2",
-        "#EC7063",
-        "#58D68D",
-        "#F4D03F",
-        "#AF7AC5",
-        "#EB984E",
-        "#48C9B0",
-        "#52BE80",
-        "#AAB7B8",
-        "#F1948A",
-        "#BB8FCE",
-        "#7FB3D5",
-        "#76D7C4",
+        "#3a6b8c",
+        "#8c433b",
+        "#3a8c5c",
+        "#8c7824",
+        "#763f8c",
+        "#8c5b2f",
+        "#328c7b",
+        "#3d8c5e",
+        "#3f878c",
+        "#8c473f",
+        "#753f8c",
+        "#3f6e8c",
+        "#3f8c7d",
     ]
 
     def __init__(
