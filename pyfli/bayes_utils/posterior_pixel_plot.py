@@ -10,7 +10,6 @@ Belongs to :mod:`pyfli.bayes_utils`, downstream of
 """
 
 import matplotlib.colors as mcolors
-import matplotlib.patheffects as patheffects
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -28,8 +27,8 @@ _MODEL_PARAM_KEYS: dict[str, tuple[str, ...]] = {
 CENTERS: tuple[str, ...] = ("best", "median", "mean")
 
 # the whole model (central curve + credible bands).
-_DECAY_COLOR = "#d62a7a"
-_FIT_COLOR = "#1f3a6d"
+_DECAY_COLOR = "#0D0D0D"
+_FIT_COLOR = "#d62a7a"
 
 
 def _reconstruct_sample_stack(
@@ -111,6 +110,11 @@ def plot_pixel_posterior_fit(
     center: str = "median",
     metric: str = "reduced_chi2",
     ci_levels: tuple[int, ...] = (92, 68),
+    decay_color: str = _DECAY_COLOR,
+    fit_color: str = _FIT_COLOR,
+    band_alpha: "float | tuple[float, ...]" = 0.88,
+    fit_alpha: float = 1.0,
+    decay_alpha: float = 0.8,
     title: str | None = None,
     ax: "plt.Axes | None" = None,
 ):
@@ -148,6 +152,18 @@ def plot_pixel_posterior_fit(
         Nested credible-interval widths to shade, e.g. ``(92, 68)`` shades a
         92% and a 68% band (percentiles ``(4, 96)`` and ``(16, 84)`` of the
         per-bin sample distribution).
+    decay_color : str
+        Colour of the measured-decay line (defaults to ``_DECAY_COLOR``).
+    fit_color : str
+        Colour of the central fit curve and the credible bands (which are
+        tinted-toward-white shades of it); defaults to ``_FIT_COLOR``.
+    band_alpha : float or tuple[float, ...]
+        Opacity of the credible bands. A scalar applies to every band; a
+        sequence sets them per band, matched positionally to ``ci_levels``.
+    fit_alpha : float
+        Opacity of the central fit curve.
+    decay_alpha : float
+        Opacity of the measured-decay line.
     title : str | None
         Axes title; defaults to ``f"Pixel ({x}, {y})"``.
     ax : matplotlib.axes.Axes | None
@@ -164,6 +180,17 @@ def plot_pixel_posterior_fit(
         )
     if center not in CENTERS:
         raise ValueError(f"Unknown center: {center!r}; expected one of {CENTERS}")
+
+    if np.ndim(band_alpha) == 0:
+        band_alpha_by_level = {level: float(band_alpha) for level in ci_levels}
+    else:
+        band_alpha = tuple(band_alpha)
+        if len(band_alpha) != len(ci_levels):
+            raise ValueError(
+                f"band_alpha must be a scalar or a sequence matching ci_levels "
+                f"(len {len(ci_levels)}); got {len(band_alpha)} values"
+            )
+        band_alpha_by_level = dict(zip(ci_levels, band_alpha))
 
     x, y = pixel
     decay_px = np.asarray(decay)[x, y, :].astype(np.float64)
@@ -193,42 +220,49 @@ def plot_pixel_posterior_fit(
     else:
         fig = ax.figure
 
+    # Layering (back to front): measured decay, then the credible bands, then
+    # the central fit curve.
+    _Z_DECAY, _Z_BANDS, _Z_FIT = 1, 2, 3
+
     band_handles = []
     levels_wide_to_narrow = sorted(ci_levels, reverse=True)
     n_bands = len(levels_wide_to_narrow)
     tints = np.linspace(0.80, 0.42, n_bands) if n_bands > 1 else np.array([0.55])
-    fit_rgb = np.array(mcolors.to_rgb(_FIT_COLOR))
+    fit_rgb = np.array(mcolors.to_rgb(fit_color))
     for level, tint in zip(levels_wide_to_narrow, tints):
         half_width = (100 - level) / 2.0
         lo = np.percentile(stack, half_width, axis=0)
         hi = np.percentile(stack, 100 - half_width, axis=0)
         band_rgb = tuple((1.0 - tint) * fit_rgb + tint * np.ones(3))
         band = ax.fill_between(
-            t, lo, hi, facecolor=band_rgb, edgecolor="none", alpha=0.92, zorder=1.5
+            t,
+            lo,
+            hi,
+            facecolor=band_rgb,
+            edgecolor="none",
+            alpha=band_alpha_by_level[level],
+            zorder=_Z_BANDS,
         )
         band_handles.append((band, f"{level}% credible interval"))
 
-    halo = [
-        patheffects.Stroke(linewidth=3.6, foreground="white", alpha=0.8),
-        patheffects.Normal(),
-    ]
+    # Central fit curve on top, semi-transparent so the band reads through it.
     (center_line,) = ax.plot(
         t,
         center_curve,
-        color=_FIT_COLOR,
+        color=fit_color,
         lw=2.2,
-        zorder=3,
+        alpha=fit_alpha,
+        zorder=_Z_FIT,
         solid_capstyle="round",
-        path_effects=halo,
     )
     (decay_line,) = ax.plot(
         t,
         decay_px,
-        color=_DECAY_COLOR,
+        color=decay_color,
         lw=2.0,
-        zorder=4,
+        alpha=decay_alpha,
+        zorder=_Z_DECAY,
         solid_capstyle="round",
-        path_effects=halo,
     )
 
     ax.set_xlabel("Time Bin")

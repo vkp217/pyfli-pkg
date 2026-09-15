@@ -313,7 +313,7 @@ class Detector:
         """
         Time-Correlated Single Photon Counting detectors.
 
-        Supported formats: .sdt (Becker & Hickl / PicoQuant), .asc, .mat, .npy, .tif
+        Supported formats: .sdt (Becker & Hickl), .ptu (PicoQuant), .asc, .mat, .npy, .tif
 
         Pile-up correction is NOT applied.  TCSPC pile-up follows a dead-time
         model  C_true = C_meas / (1 − C_meas · τ_dead · f_rep)  that is
@@ -807,6 +807,7 @@ class Detector:
             ".hdf5",
             ".h5",
             ".sdt",
+            ".ptu",
             ".mat",
             ".npy",
             ".txt",
@@ -840,6 +841,7 @@ class Detector:
             ".hdf5",
             ".h5",
             ".sdt",
+            ".ptu",
             ".mat",
             ".npy",
             ".txt",
@@ -999,6 +1001,9 @@ class Detector:
                     dtype=np.float32,
                 )
 
+            if ext == ".ptu":
+                return ds.load_ptu_file(file_path, channel=channel).astype(np.float32)
+
             if ext == ".asc":
                 return ds.load_asc_file(file_path).astype(np.float32)
 
@@ -1136,6 +1141,7 @@ class Detector:
             ".hdf5",
             ".h5",
             ".sdt",
+            ".ptu",
             ".mat",
             ".npy",
             ".txt",

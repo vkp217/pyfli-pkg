@@ -45,6 +45,7 @@ htmlcov/
 
 # Stray files
 pip
+LICENSE_old
 
 # Private / proprietary modules not included in the public release
 pyfli/analysis/fbi_analysis.py

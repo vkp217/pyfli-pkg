@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Colormap, Normalize, to_rgb
+from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from scipy import ndimage
 from scipy.stats import gaussian_kde
@@ -566,6 +567,144 @@ class PhasorAdditionalPlots(PhasorAnalyzer):
                 bbox_to_anchor=(1.01, 0.5),
                 frameon=False,
             )
+
+        if created_fig:
+            plt.tight_layout()
+        return fig
+
+    def multidata_phasor_plot(
+        self,
+        gs_list: list[tuple[np.ndarray, np.ndarray]],
+        labels: list[str] | None = None,
+        colors: Any | None = None,
+        harmonic: int = 0,
+        region_cmap: str = "tab10",
+        ax: Any | None = None,
+        figsize: tuple[float, float] = (8, 6),
+        half_circle: bool = True,
+        xlim: tuple[float, float] = (-0.1, 1.1),
+        ylim: tuple[float, float] = (0.0, 0.6),
+        title: str = "Multi-dataset Phasor",
+        legend: bool = True,
+    ) -> Any:
+        """
+        Scatter several phasor clouds on one shared phasor diagram.
+
+        Each ``(G, S)`` pair in ``gs_list`` is raveled to points and drawn on a
+        single diagram produced by
+        :meth:`PhasorPlotsMixin.plot_phasor_diagram` (universal semicircle,
+        lifetime ticks, frequency label, axis styling). Every dataset is handed
+        to that one call as a concatenated point cloud together with a matching
+        per-point RGB array, so each dataset keeps its own distinct color; a
+        legend then maps the colors back to ``labels``.
+
+        Parameters
+        ----------
+        gs_list : list[tuple[np.ndarray, np.ndarray]]
+            One ``(G, S)`` pair per dataset. Each array is either a ``(H, W)``
+            map or a ``(n_harmonics, H, W)`` stack (the ``harmonic`` slice is
+            used); the datasets need not share a shape.
+        labels : list[str] | None
+            Legend label for each dataset. Defaults to ``["dataset 1", ...]``.
+        colors : Any | None
+            Explicit color per dataset (anything :func:`matplotlib.colors.to_rgb`
+            accepts). When ``None``, visually distinct colors are taken from
+            ``region_cmap`` via :meth:`_distinct_colors`.
+        harmonic : int
+            Harmonic slice used for any 3-D ``G``/``S`` stack (``0`` is the
+            first harmonic).
+        region_cmap : str
+            Qualitative colormap the automatic per-dataset colors come from.
+        ax : Any | None
+            Axes to draw into. A new figure/axes is created when ``None``.
+        figsize : tuple[float, float]
+            Figure size used when a new figure is created.
+        half_circle : bool
+            Whether to draw only the upper half of the universal phasor circle.
+        xlim, ylim : tuple[float, float]
+            Axis limits for the phasor panel.
+        title : str
+            Title for the phasor diagram.
+        legend : bool
+            Whether to draw the color-to-label legend.
+
+        Returns
+        -------
+        Any
+            The Matplotlib figure containing the phasor diagram.
+        """
+        if len(gs_list) == 0:
+            raise ValueError("gs_list must contain at least one (G, S) pair")
+
+        n_sets = len(gs_list)
+        if labels is None:
+            labels = [f"dataset {i + 1}" for i in range(n_sets)]
+        elif len(labels) != n_sets:
+            raise ValueError("labels must have one entry per (G, S) pair")
+
+        if colors is None:
+            rgb_colors = self._distinct_colors(n_sets, region_cmap)
+        elif len(colors) != n_sets:
+            raise ValueError("colors must have one entry per (G, S) pair")
+        else:
+            rgb_colors = [to_rgb(c) for c in colors]
+
+        created_fig = ax is None
+        if created_fig:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
+
+        # Concatenate every dataset into one point cloud plus a matching
+        # per-point RGB array, then let plot_phasor_diagram render it all in a
+        # single call (framing + colored scatter).
+        g_parts: list[np.ndarray] = []
+        s_parts: list[np.ndarray] = []
+        c_parts: list[np.ndarray] = []
+        for (g, s), color in zip(gs_list, rgb_colors):
+            g_arr = np.asarray(g, dtype=float)
+            s_arr = np.asarray(s, dtype=float)
+            g_2d = g_arr[harmonic] if g_arr.ndim == 3 else g_arr
+            s_2d = s_arr[harmonic] if s_arr.ndim == 3 else s_arr
+            g_flat = np.ravel(g_2d)
+            s_flat = np.ravel(s_2d)
+            g_parts.append(g_flat)
+            s_parts.append(s_flat)
+            c_parts.append(
+                np.broadcast_to(np.asarray(color, dtype=float), (g_flat.size, 3))
+            )
+
+        g_all = np.concatenate(g_parts)
+        s_all = np.concatenate(s_parts)
+        c_all = np.concatenate(c_parts, axis=0)
+
+        self.plot_phasor_diagram(
+            g_all,
+            s_all,
+            colors=c_all,
+            ax=ax,
+            half_circle=half_circle,
+            title=title,
+            xlim=xlim,
+            ylim=ylim,
+            kdeplot=False,
+        )
+
+        if legend:
+            handles = [
+                Line2D(
+                    [],
+                    [],
+                    marker="o",
+                    linestyle="none",
+                    markerfacecolor=color,
+                    markeredgecolor="none",
+                    markersize=6,
+                    label=label,
+                )
+                for color, label in zip(rgb_colors, labels)
+            ]
+            ax.legend(handles=handles, loc="best", fontsize=8, frameon=False)
 
         if created_fig:
             plt.tight_layout()

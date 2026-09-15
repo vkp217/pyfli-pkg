@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 from matplotlib.cm import ScalarMappable
-from matplotlib.colors import Normalize
+from matplotlib.colors import Normalize, to_rgb
 
 from pyfli.phasor.phasorS import PhasorAdditionalPlots, PhasorAnalyzer
 
@@ -396,3 +396,74 @@ class TestPhasorKdeToPx:
             max_centers=1,
         )
         assert _center_indices(fig) <= {1}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# multidata_phasor_plot
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestMultidataPhasorPlot:
+    def _sets(self, data):
+        """Three (Gc, Sc) datasets carved out of one cube by masking."""
+        blob_a, blob_b = data.blob_a, data.blob_b
+        gc, sc = data.Gc[0], data.Sc[0]
+        return [
+            (np.where(blob_a, gc, np.nan), np.where(blob_a, sc, np.nan)),
+            (np.where(blob_b, gc, np.nan), np.where(blob_b, sc, np.nan)),
+            (gc, sc),
+        ]
+
+    def test_returns_figure_with_single_scatter(self, bimodal):
+        fig = bimodal.analyzer.multidata_phasor_plot(self._sets(bimodal))
+        assert isinstance(fig, plt.Figure)
+        ax = fig.axes[0]
+        # one plot_phasor_diagram scatter call carries every dataset
+        assert len(ax.collections) == 1
+
+    def test_each_dataset_gets_its_own_color(self, bimodal):
+        sets = self._sets(bimodal)
+        fig = bimodal.analyzer.multidata_phasor_plot(sets)
+        face = fig.axes[0].collections[0].get_facecolors()
+        assert len({tuple(np.round(row, 5)) for row in face}) == len(sets)
+
+    def test_legend_labels_follow_the_argument(self, bimodal):
+        fig = bimodal.analyzer.multidata_phasor_plot(
+            self._sets(bimodal), labels=["a-blob", "b-blob", "all"]
+        )
+        got = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+        assert got == ["a-blob", "b-blob", "all"]
+
+    def test_explicit_colors_are_used(self, bimodal):
+        names = ["red", "green", "blue"]
+        fig = bimodal.analyzer.multidata_phasor_plot(self._sets(bimodal), colors=names)
+        face = fig.axes[0].collections[0].get_facecolors()
+        present = {tuple(np.round(row[:3], 5)) for row in face}
+        expected = {tuple(np.round(to_rgb(name), 5)) for name in names}
+        assert present == expected
+
+    def test_accepts_external_axes_and_can_suppress_legend(self, bimodal):
+        _, ax = plt.subplots()
+        out = bimodal.analyzer.multidata_phasor_plot(
+            self._sets(bimodal), ax=ax, legend=False
+        )
+        assert out is ax.get_figure()
+        assert ax.get_legend() is None
+
+    def test_harmonic_stack_input_is_accepted(self, bimodal):
+        fig = bimodal.analyzer.multidata_phasor_plot(
+            [(bimodal.Gc, bimodal.Sc)], harmonic=1
+        )
+        assert isinstance(fig, plt.Figure)
+
+    def test_empty_list_raises(self, bimodal):
+        with pytest.raises(ValueError, match="at least one"):
+            bimodal.analyzer.multidata_phasor_plot([])
+
+    def test_mismatched_labels_raise(self, bimodal):
+        with pytest.raises(ValueError, match="labels"):
+            bimodal.analyzer.multidata_phasor_plot(self._sets(bimodal), labels=["only"])
+
+    def test_mismatched_colors_raise(self, bimodal):
+        with pytest.raises(ValueError, match="colors"):
+            bimodal.analyzer.multidata_phasor_plot(self._sets(bimodal), colors=["red"])

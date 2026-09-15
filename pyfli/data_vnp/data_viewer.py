@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import gridspec
 
+from ..plot_style import legend_outside
+
 
 class DataViewer:
     """
@@ -154,7 +156,7 @@ class DataViewer:
                 # xlabel="Time Bin",
                 # ylabel="Counts"
             )
-            ax_decay.legend(fontsize="small", loc="upper right")
+            legend_outside(ax_decay, fontsize="small")
             ax_decay.grid(True, which="both", alpha=0.3)
             cax_dummy.axis("off")
 
@@ -286,11 +288,16 @@ class DataViewer:
                 label="Decay (scatter)",
             )
             ax1.plot(
-                x_axis, decay_log, color="blue", lw=1.2, alpha=0.6, label="Decay (line)"
+                x_axis,
+                decay_log,
+                color="#1c4f8c",
+                lw=1.2,
+                alpha=0.6,
+                label="Decay (line)",
             )
         if "irf" in mode:
             ax1.plot(
-                x_axis, irf_log, linestyle="--", color="orange", lw=1.5, label="IRF"
+                x_axis, irf_log, linestyle="--", color="#8c5f00", lw=1.5, label="IRF"
             )
         if "fit" in mode:
             ax1.plot(x_axis, fit_log, color="green", lw=1.5, label="Fit")
@@ -298,7 +305,7 @@ class DataViewer:
             ax1.plot(
                 x_axis,
                 np.clip(residuals_1d, eps, None),
-                color="red",
+                color="#8c2e24",
                 lw=1.2,
                 label="Residuals",
             )
@@ -308,7 +315,7 @@ class DataViewer:
         ax1.set_xlabel("Time/Bins")
         ax1.set_ylabel("Intensity")
         ax1.grid(True, alpha=0.3)
-        ax1.legend(fontsize=8)
+        legend_outside(ax1, fontsize=8)
 
         #  (1,2) LINEAR --------
         if "decay" in mode:
@@ -322,21 +329,26 @@ class DataViewer:
                 label="Decay (scatter)",
             )
             ax2.plot(
-                x_axis, decay_1d, color="blue", lw=1.2, alpha=0.6, label="Decay (line)"
+                x_axis,
+                decay_1d,
+                color="#1c4f8c",
+                lw=1.2,
+                alpha=0.6,
+                label="Decay (line)",
             )
         if "irf" in mode:
             ax2.plot(
-                x_axis, irf_scaled, linestyle="--", color="orange", lw=1.5, label="IRF"
+                x_axis, irf_scaled, linestyle="--", color="#8c5f00", lw=1.5, label="IRF"
             )
         if "fit" in mode:
             ax2.plot(x_axis, fit_1d, color="green", lw=1.5, label="Fit")
         if "residuals" in mode:
-            ax2.plot(x_axis, residuals_1d, color="red", lw=1.2, label="Residuals")
+            ax2.plot(x_axis, residuals_1d, color="#8c2e24", lw=1.2, label="Residuals")
         ax2.set_title("Linear Scale")
         ax2.set_xlabel("Time/Bins")
         ax2.set_ylabel("Intensity")
         ax2.grid(True, alpha=0.3)
-        ax2.legend(fontsize=8)
+        legend_outside(ax2, fontsize=8)
 
         # -------- TEXT PANEL --------
         ax_text.axis("off")
@@ -357,7 +369,7 @@ class DataViewer:
 
     # Fixed, CVD-validated categorical order — assigned by series identity
     # (never cycled/re-ranked), so "decay" is always the same hue across calls.
-    _SERIES_COLORS = ("#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#4a3aa7")
+    _SERIES_COLORS = ("#1c4f8c", "#8c3e1f", "#168c62", "#8c5f00", "#3e318c")
     _INK = "#0b0b0b"
     _MUTED = "#898781"
     _AXIS = "#c3c2b7"
@@ -476,7 +488,7 @@ class DataViewer:
                 ax_log.set_ylabel("Counts (log)")
                 ax_lin.set_ylabel("Counts")
                 if len(selected_plot) > 1:
-                    ax_lin.legend(loc="best")
+                    legend_outside(ax_lin)
 
             for i, data in enumerate(selected_img):
                 label = labels_img[i]
