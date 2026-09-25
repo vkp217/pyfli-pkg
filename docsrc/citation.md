@@ -2,17 +2,18 @@
 
 If you use `pyfli` in your research, please cite this package:
 
-> Pandey V. *pyfli: A Unified Platform for Fluorescence Lifetime Imaging Data Processing.*
-> <https://github.com/vkp217/pyfli-pkg/tree/joss-submission>
+> Pandey V., Erbas I., Barroso M., Radev S., Intes X. *PyFLI: A Python Library for Simulation, Parameter Estimation, and Benchmarking in Fluorescence Lifetime Imaging.*
+> <https://arxiv.org/abs/2609.11994>
 
 ```bibtex
-@article{pandey2025pyfli,
-  author  = {Pandey, Vikas},
-  title   = {{pyfli}: A Unified Platform for Fluorescence Lifetime Imaging Data Processing},
-  journal = {},
-  year    = {2025},
-  note    = {},
-  url     = {https://github.com/vkp217/pyfli-pkg/tree/joss-submission}
+@misc{pandey2026pyflipythonlibrarysimulation,
+      title={PyFLI: A Python Library for Simulation, Parameter Estimation, and Benchmarking in Fluorescence Lifetime Imaging},
+      author={Vikas Pandey and Ismail Erbas and Margarida Barroso and Stefan Radev and Xavier Intes},
+      year={2026},
+      eprint={2609.11994},
+      archivePrefix={arXiv},
+      primaryClass={q-bio.QM},
+      url={https://arxiv.org/abs/2609.11994},
 }
 ```
 
