@@ -79,7 +79,8 @@ Where to go next
       :link: install
       :link-type: doc
 
-      Get ``pyfli`` from PyPI, with optional GPU support.
+      Get ``pyfli`` from PyPI, with optional GPU support — or install the
+      latest dev build directly from GitHub.
 
    .. grid-item-card:: :octicon:`play` Quickstart
       :link: quickstart
