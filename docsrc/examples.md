@@ -38,12 +38,13 @@ examples/Phasor_analysis_mono
 examples/Phasor_analysis_bi
 ```
 
-## Analysis and Plotting
+## NLSF & MLE Fitting
 
 ```{toctree}
 :maxdepth: 1
 :titlesonly:
 :numbered:
 
-examples/factor_analysis
+examples/Monoexponential_fitting
+examples/Biexponential_fitting
 ```

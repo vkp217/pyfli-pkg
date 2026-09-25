@@ -74,24 +74,35 @@ class DynamicPip(Pip):
         return self
 
 
-#: Max entries shown in the version switcher dropdown and on the root
-#: versions page. Every matching branch/tag is still built and hosted at
-#: its own URL; this only trims what's *listed* in those two places.
-MAX_VISIBLE_VERSIONS = 2
+#: Branches listed first in the version switcher and on the root versions
+#: page, in this order. The first one present is the default version the
+#: site root redirects to.
+BRANCH_ORDER = ("main", "dev")
+
+#: Max release tags shown (newest first) after the branches. Every matching
+#: branch/tag is still built and hosted at its own URL; this only trims
+#: what's *listed* in the switcher and on the root versions page.
+MAX_VISIBLE_TAGS = 3
 
 
 def visible_versions(refs):
-    """Return the MAX_VISIBLE_VERSIONS most recent refs, deduped, most-recent-first."""
-    output = []
-    seen = set()
-    for ref in sorted(refs, key=version_key, reverse=True):
-        if ref.name in seen:
-            continue
-        if len(output) >= MAX_VISIBLE_VERSIONS:
-            break
-        output.append(ref)
-        seen.add(ref.name)
-    return output
+    """Return BRANCH_ORDER branches, then the MAX_VISIBLE_TAGS newest tags, deduped."""
+    unique = list({ref.name: ref for ref in refs}.values())
+    branches = sorted(
+        (ref for ref in unique if ref.name in BRANCH_ORDER),
+        key=lambda ref: BRANCH_ORDER.index(ref.name),
+    )
+    tags = sorted(
+        (ref for ref in unique if ref.name not in BRANCH_ORDER),
+        key=version_key,
+        reverse=True,
+    )
+    return branches + tags[:MAX_VISIBLE_TAGS]
+
+
+def default_version(refs):
+    """Return the ref the site root redirects to: the first of BRANCH_ORDER present, else the newest."""
+    return visible_versions(refs)[0]
 
 
 class PyDataVersionEncoder(json.JSONEncoder):

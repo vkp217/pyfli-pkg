@@ -13,8 +13,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.font_manager import FontProperties
+from matplotlib.textpath import TextPath
 
-from ..plot_style import dark_palette, legend_outside
+from ..plot_style import dark_palette
 
 
 class CVPlot:
@@ -92,24 +94,54 @@ class CVPlot:
 
     @staticmethod
     def _ideal_trend_fit(
-        x: np.ndarray, y: np.ndarray
+        x: np.ndarray,
+        y: np.ndarray,
+        space: str = "linear",
+        weights: np.ndarray | None = None,
     ) -> tuple[float | None, np.ndarray | None]:
         """
         Least-squares amplitude `C` for the fixed-slope shot-noise model
-        ``cv = C / sqrt(N)`` (i.e. a linear fit of `y` against ``x ** -0.5`` through
-        the origin). Returns ``(C, y_pred)``, or ``(None, None)`` if there are no valid
-        points to fit.
+        ``cv = C / sqrt(N)``.
+
+        With ``space="linear"`` (default), `C` minimizes
+        ``sum(w * (y - C * x ** -0.5) ** 2)`` -- a linear fit of `y` against
+        ``x ** -0.5`` through the origin, solved in closed form as
+        ``C = sum(w * b * y) / sum(w * b ** 2)`` with ``b = x ** -0.5``. Low-photon
+        bins have the largest `cv`, so they dominate this fit.
+
+        With ``space="log"``, `C` minimizes
+        ``sum(w * (log(y) - log(C) + 0.5 * log(x)) ** 2)``, so ``log(C)`` is the
+        weighted mean of ``log(y) + 0.5 * log(x)``. Each bin then counts by its
+        relative error, matching how the trend reads on a log-log plot. Points with
+        ``y <= 0`` are dropped.
+
+        `weights` (e.g. the per-bin pixel ``count``) scales each point's squared
+        residual, so sparsely populated, noisy bins pull `C` less; ``None`` weights
+        all points equally. Points with non-finite or non-positive weight are dropped.
+
+        Returns ``(C, y_pred)``, or ``(None, None)`` if there are no valid points to
+        fit.
         """
+        if space not in ("linear", "log"):
+            raise ValueError(f"space must be 'linear' or 'log', got {space!r}")
         x = np.asarray(x, dtype=float)
         y = np.asarray(y, dtype=float)
-        valid = np.isfinite(x) & np.isfinite(y) & (x > 0)
+        w = np.ones_like(x) if weights is None else np.asarray(weights, dtype=float)
+        valid = np.isfinite(x) & np.isfinite(y) & np.isfinite(w) & (x > 0) & (w > 0)
+        if space == "log":
+            valid &= y > 0
         if not np.any(valid):
             return None, None
-        basis = x[valid] ** -0.5
-        denom = np.sum(basis**2)
-        if denom == 0:
-            return None, None
-        c = float(np.sum(basis * y[valid]) / denom)
+        xv, yv, wv = x[valid], y[valid], w[valid]
+        if space == "log":
+            log_c = np.sum(wv * (np.log(yv) + 0.5 * np.log(xv))) / np.sum(wv)
+            c = float(np.exp(log_c))
+        else:
+            basis = xv**-0.5
+            denom = np.sum(wv * basis**2)
+            if denom == 0:
+                return None, None
+            c = float(np.sum(wv * basis * yv) / denom)
         return c, c * x**-0.5
 
     @staticmethod
@@ -145,9 +177,12 @@ class CVPlot:
         color: Any,
         show_ideal_trend: bool,
         show_powerlaw_fit: bool,
+        ideal_fit_space: str = "linear",
+        ideal_fit_weights: np.ndarray | None = None,
     ) -> None:
         """Overlay the ideal 1/sqrt(N) trend and/or the fitted a*N**b power law for one
-        data series (`x`, `y`), in the same color as that series' data line."""
+        data series (`x`, `y`), in the same color as that series' data line.
+        `ideal_fit_space` and `ideal_fit_weights` are passed to `_ideal_trend_fit`."""
         if not (show_ideal_trend or show_powerlaw_fit):
             return
         x = np.asarray(x, dtype=float)
@@ -155,7 +190,9 @@ class CVPlot:
         x_sorted = x[order]
 
         if show_ideal_trend:
-            c, _ = self._ideal_trend_fit(x, y)
+            c, _ = self._ideal_trend_fit(
+                x, y, space=ideal_fit_space, weights=ideal_fit_weights
+            )
             if c is not None:
                 ax.plot(
                     x_sorted,
@@ -179,6 +216,100 @@ class CVPlot:
                     alpha=0.85,
                     label=rf"fit: {a:.3g}$\cdot N^{{{b:.2f}}}$ ($R^2$={r2:.3f})",
                 )
+
+    @staticmethod
+    def _axes_with_legend_panels(
+        nrows: int, ncols: int, figsize: tuple[float, float]
+    ) -> tuple[Any, np.ndarray, np.ndarray]:
+        """
+        Create an ``(nrows, ncols)`` grid of plot axes, each paired with a legend panel
+        to its right. Within each pair the plot axes take 80% of the width and the
+        legend panel 20%, so long legend labels never shrink the plot area.
+        Returns ``(fig, axes, legend_axes)``; the legend panels have their axis off.
+        """
+        fig = plt.figure(figsize=figsize)
+        gs = fig.add_gridspec(nrows, 2 * ncols, width_ratios=[4, 1] * ncols)
+        axes = np.empty((nrows, ncols), dtype=object)
+        legend_axes = np.empty((nrows, ncols), dtype=object)
+        for r in range(nrows):
+            for c in range(ncols):
+                axes[r, c] = fig.add_subplot(gs[r, 2 * c])
+                legend_axes[r, c] = fig.add_subplot(gs[r, 2 * c + 1])
+                legend_axes[r, c].axis("off")
+        return fig, axes, legend_axes
+
+    @staticmethod
+    def _text_width(text: str, fontsize: float) -> float:
+        """Rendered width of `text` (mathtext allowed) in points at `fontsize`."""
+        try:
+            path = TextPath((0, 0), text, prop=FontProperties(size=fontsize))
+            return float(path.get_extents().width)
+        except ValueError:
+            return 0.6 * fontsize * len(text)
+
+    @staticmethod
+    def _split_label_words(label: str) -> list[str]:
+        """Split `label` on spaces outside ``$...$`` math, so mathtext stays intact."""
+        words, current, in_math = [], "", False
+        for i, ch in enumerate(label):
+            if ch == "$" and (i == 0 or label[i - 1] != "\\"):
+                in_math = not in_math
+            if ch == " " and not in_math:
+                if current:
+                    words.append(current)
+                current = ""
+            else:
+                current += ch
+        if current:
+            words.append(current)
+        return words
+
+    @classmethod
+    def _wrap_label(cls, label: str, max_width: float, fontsize: float) -> str:
+        """
+        Wrap `label` at word boundaries so each line renders at most `max_width`
+        points wide at `fontsize`. A single word wider than `max_width` gets a line of
+        its own; words are never split, and ``$...$`` math is never broken.
+        """
+        lines = []
+        for part in label.split("\n"):
+            line = ""
+            for word in cls._split_label_words(part):
+                candidate = f"{line} {word}" if line else word
+                if line and cls._text_width(candidate, fontsize) > max_width:
+                    lines.append(line)
+                    line = word
+                else:
+                    line = candidate
+            lines.append(line)
+        return "\n".join(lines)
+
+    @classmethod
+    def _draw_legend(
+        cls, ax: Any, legend_ax: Any, fontsize: float, title: str | None = None
+    ) -> None:
+        """
+        Draw `ax`'s legend inside its dedicated `legend_ax` panel. The legend is kept
+        as narrow as its first entry: every other label is wrapped onto extra lines
+        to fit the rendered width of the first label, instead of widening the box.
+        """
+        handles, labels = ax.get_legend_handles_labels()
+        if not handles:
+            return
+        max_width = cls._text_width(labels[0], fontsize)
+        labels = [labels[0]] + [
+            cls._wrap_label(label, max_width, fontsize) for label in labels[1:]
+        ]
+        legend_ax.legend(
+            handles,
+            labels,
+            loc="upper left",
+            borderaxespad=0.0,
+            frameon=False,
+            fontsize=fontsize,
+            title=title,
+            title_fontsize=fontsize,
+        )
 
     def compute(
         self,
@@ -363,6 +494,8 @@ class CVPlot:
         palette: dict[str, Any] | None = None,
         show_ideal_trend: bool = False,
         show_powerlaw_fit: bool = False,
+        ideal_fit_space: str = "linear",
+        ideal_fit_weighted: bool = False,
     ) -> tuple[Any, Any]:
         """
         Plot `cv` (from `compute`) against the photon-count bin.
@@ -397,6 +530,14 @@ class CVPlot:
             log ordinary least squares, the closed-form fit that maximizes R^2 for this
             model) as a dashed line, labeled with the fitted equation and R^2. Off by
             default.
+        ideal_fit_space : str
+            Residual space for fitting ``C`` of the ideal trend: ``"linear"`` (default;
+            low-photon bins dominate) or ``"log"`` (every bin counts by its relative
+            error). Only used when `show_ideal_trend` is True.
+        ideal_fit_weighted : bool
+            Weight each bin by its pixel ``count`` when fitting ``C`` of the ideal
+            trend, so sparsely populated bins pull it less. Only used when
+            `show_ideal_trend` is True. Off by default.
 
         Returns
         -------
@@ -412,7 +553,10 @@ class CVPlot:
         has_cluster = bool(df.attrs.get("has_cluster", df["cluster"].notna().any()))
 
         if not has_cluster:
-            fig, ax = plt.subplots(figsize=figsize or (6, 4.5))
+            fig, axes_grid, legend_grid = self._axes_with_legend_panels(
+                1, 1, figsize or (7.5, 4.5)
+            )
+            ax = axes_grid[0, 0]
             colors = dark_palette(len(target_keys))
             for key, color in zip(target_keys, colors):
                 sub = df[df["parameter"] == key].sort_values("bin_center")
@@ -434,13 +578,17 @@ class CVPlot:
                     color,
                     show_ideal_trend,
                     show_powerlaw_fit,
+                    ideal_fit_space=ideal_fit_space,
+                    ideal_fit_weights=(
+                        sub["count"].to_numpy() if ideal_fit_weighted else None
+                    ),
                 )
             ax.set_xlabel(photon_label)
             ax.set_ylabel(r"coefficient of variation  $\sigma / \mathrm{mean}$")
             ax.set_title("Precision vs. photon count", fontweight="bold")
             if logx:
                 ax.set_xscale("log")
-            legend_outside(ax, fontsize=9)
+            self._draw_legend(ax, legend_grid[0, 0], fontsize=9)
             sns.despine(ax=ax)
             fig.tight_layout()
             axes_out = np.array([ax])
@@ -452,14 +600,12 @@ class CVPlot:
             n = len(target_keys)
             ncols_eff = min(ncols, n)
             nrows = int(np.ceil(n / ncols_eff))
-            fig, axes = plt.subplots(
-                nrows,
-                ncols_eff,
-                figsize=figsize or (5 * ncols_eff, 4 * nrows),
-                squeeze=False,
+            fig, axes, legend_axes = self._axes_with_legend_panels(
+                nrows, ncols_eff, figsize or (6.25 * ncols_eff, 4 * nrows)
             )
             axes_flat = axes.ravel()
-            for ax, key in zip(axes_flat, target_keys):
+            legend_flat = legend_axes.ravel()
+            for ax, legend_ax, key in zip(axes_flat, legend_flat, target_keys):
                 sub_p = df[df["parameter"] == key]
                 for c in clusters:
                     sub = sub_p[sub_p["cluster"] == c].sort_values("bin_center")
@@ -481,13 +627,17 @@ class CVPlot:
                         palette[c],
                         show_ideal_trend,
                         show_powerlaw_fit,
+                        ideal_fit_space=ideal_fit_space,
+                        ideal_fit_weights=(
+                            sub["count"].to_numpy() if ideal_fit_weighted else None
+                        ),
                     )
                 ax.set_title(key, fontweight="bold")
                 ax.set_xlabel(photon_label)
                 ax.set_ylabel(r"$\sigma / \mathrm{mean}$")
                 if logx:
                     ax.set_xscale("log")
-                legend_outside(ax, fontsize=8, title="cluster")
+                self._draw_legend(ax, legend_ax, fontsize=8, title="cluster")
                 sns.despine(ax=ax)
             for ax in axes_flat[n:]:
                 ax.axis("off")
@@ -522,9 +672,12 @@ class CVPlot:
         palette: dict[str, Any] | None = None,
         show_ideal_trend: bool = False,
         show_powerlaw_fit: bool = False,
+        ideal_fit_space: str = "linear",
+        ideal_fit_weighted: bool = False,
     ) -> tuple[pd.DataFrame, Any, Any]:
-        """Convenience wrapper: `compute` then `plot` in one call. `show_ideal_trend`
-        and `show_powerlaw_fit` are passed straight through to `plot` -- see there."""
+        """Convenience wrapper: `compute` then `plot` in one call. `show_ideal_trend`,
+        `show_powerlaw_fit`, `ideal_fit_space` and `ideal_fit_weighted` are passed
+        straight through to `plot` -- see there."""
         df = self.compute(
             maps,
             tau_keys,
@@ -546,5 +699,7 @@ class CVPlot:
             palette=palette,
             show_ideal_trend=show_ideal_trend,
             show_powerlaw_fit=show_powerlaw_fit,
+            ideal_fit_space=ideal_fit_space,
+            ideal_fit_weighted=ideal_fit_weighted,
         )
         return df, fig, axes
