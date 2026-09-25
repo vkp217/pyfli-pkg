@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import os
-import re
 import sys
 from datetime import datetime
-from pathlib import Path
 
 # -- Path setup --------------------------------------------------------------
 # docsrc/ lives at the repo root, next to the ``pyfli`` package itself, so
@@ -61,18 +59,6 @@ exclude_patterns = [
 source_suffix = {
     ".rst": "restructuredtext",
 }
-
-API_ONLY = USE_POLYVERSION and re.fullmatch(r"v\d+\.\d+\.\d+", current) is not None
-if API_ONLY:
-    root_doc = "api/index"
-    exclude_patterns += [
-        "*.md",
-        "index.rst",
-        "examples",
-        "examples/**",
-        "user_guide",
-        "user_guide/**",
-    ]
 
 # Modules that are heavy, optional, or hardware/GUI dependent. They are
 # mocked so the docs can be built in environments where these extras
@@ -222,18 +208,5 @@ def _skip_proprietary_members(app, what, name, obj, skip, options):
     return skip
 
 
-def _write_api_redirect(app, exception):
-    """In API-only builds, make the version root (index.html) redirect to the API index."""
-    if exception is not None or not API_ONLY or app.builder.format != "html":
-        return
-    Path(app.outdir, "index.html").write_text(
-        "<!doctype html>\n"
-        '<meta http-equiv="refresh" content="0; url=api/index.html" />\n'
-        '<link rel="canonical" href="api/index.html" />\n'
-        '<p>Redirecting to the <a href="api/index.html">API reference</a>&hellip;</p>\n'
-    )
-
-
 def setup(app):
     app.connect("autodoc-skip-member", _skip_proprietary_members)
-    app.connect("build-finished", _write_api_redirect)
