@@ -230,6 +230,59 @@ def test_ideal_trend_fit_too_few_points_returns_none():
     assert y_pred is None
 
 
+@pytest.mark.parametrize("space", ["linear", "log"])
+@pytest.mark.parametrize("weighted", [False, True])
+def test_ideal_trend_fit_options_recover_known_amplitude(space, weighted):
+    x = np.array([100.0, 400.0, 900.0, 1600.0, 2500.0])
+    y = 2.0 / np.sqrt(x)
+    weights = np.array([5.0, 50.0, 200.0, 80.0, 10.0]) if weighted else None
+    c, y_pred = CVPlot._ideal_trend_fit(x, y, space=space, weights=weights)
+    assert c == pytest.approx(2.0, rel=1e-9)
+    np.testing.assert_allclose(y_pred, y, rtol=1e-9)
+
+
+def test_ideal_trend_fit_log_space_is_weighted_geometric_mean():
+    x = np.array([100.0, 400.0, 900.0])
+    y = np.array([0.3, 0.1, 0.05])
+    w = np.array([1.0, 2.0, 3.0])
+    expected = np.exp(np.sum(w * np.log(y * np.sqrt(x))) / np.sum(w))
+    c, _ = CVPlot._ideal_trend_fit(x, y, space="log", weights=w)
+    assert c == pytest.approx(expected, rel=1e-12)
+
+
+def test_ideal_trend_fit_linear_weighted_matches_closed_form():
+    x = np.array([100.0, 400.0, 900.0])
+    y = np.array([0.3, 0.1, 0.05])
+    w = np.array([1.0, 2.0, 3.0])
+    b = x**-0.5
+    expected = np.sum(w * b * y) / np.sum(w * b**2)
+    c, _ = CVPlot._ideal_trend_fit(x, y, weights=w)
+    assert c == pytest.approx(expected, rel=1e-12)
+
+
+def test_ideal_trend_fit_weights_pull_toward_heavy_bins():
+    x = np.array([100.0, 400.0, 900.0, 1600.0])
+    y = np.array([4.0, 2.0, 2.0, 2.0]) / np.sqrt(x)
+    c_heavy_low, _ = CVPlot._ideal_trend_fit(x, y, weights=np.array([1e6, 1, 1, 1]))
+    c_light_low, _ = CVPlot._ideal_trend_fit(x, y, weights=np.array([1e-6, 1, 1, 1]))
+    assert c_heavy_low == pytest.approx(4.0, rel=1e-3)
+    assert c_light_low == pytest.approx(2.0, rel=1e-3)
+
+
+def test_ideal_trend_fit_log_space_drops_nonpositive_y():
+    x = np.array([100.0, 400.0, 900.0])
+    y = np.array([0.0, 0.1, 2.0 / 30.0])
+    c, _ = CVPlot._ideal_trend_fit(x, np.where(y == 0, -1.0, y), space="log")
+    assert np.isfinite(c)
+    c_all_bad, y_pred = CVPlot._ideal_trend_fit(x, -np.ones(3), space="log")
+    assert c_all_bad is None and y_pred is None
+
+
+def test_ideal_trend_fit_invalid_space_raises():
+    with pytest.raises(ValueError):
+        CVPlot._ideal_trend_fit(np.array([1.0]), np.array([1.0]), space="sqrt")
+
+
 def test_power_law_fit_recovers_known_parameters():
     x = np.array([100.0, 400.0, 900.0, 1600.0, 2500.0, 4000.0])
     a_true, b_true = 3.0, -0.5
@@ -252,6 +305,70 @@ def test_plot_show_ideal_trend_adds_dotted_reference_line(shot_noise_maps):
     fig, axes = CVPlot().plot(df, show_ideal_trend=True)
     labels = [line.get_label() for line in axes[0].get_lines()]
     assert any("ideal" in lbl and "sqrt" in lbl for lbl in labels)
+    plt.close(fig)
+
+
+@pytest.mark.parametrize("space", ["linear", "log"])
+def test_plot_ideal_trend_space_and_weighting_change_c(shot_noise_maps, space):
+    maps, mask, _ = shot_noise_maps
+    df = CVPlot().compute(maps, tau_keys="tau_map", mask=mask, n_bins=8)
+    sub = df.sort_values("bin_center")
+    expected, _ = CVPlot._ideal_trend_fit(
+        sub["bin_center"].to_numpy(),
+        sub["cv"].to_numpy(),
+        space=space,
+        weights=sub["count"].to_numpy(),
+    )
+    fig, axes = CVPlot().plot(
+        df, show_ideal_trend=True, ideal_fit_space=space, ideal_fit_weighted=True
+    )
+    labels = [line.get_label() for line in axes[0].get_lines()]
+    assert any(f"C={expected:.3g}" in lbl for lbl in labels)
+    plt.close(fig)
+
+
+def test_split_label_words_keeps_mathtext_intact():
+    label = r"fit: 3.18$\cdot N^{-0.59}$ ($R^2$=0.746)"
+    assert CVPlot._split_label_words(label) == [
+        "fit:",
+        r"3.18$\cdot N^{-0.59}$",
+        r"($R^2$=0.746)",
+    ]
+
+
+def test_wrap_label_fits_width_and_never_splits_words():
+    label = r"ideal $1/\sqrt{N}$ (C=1.4)"
+    max_width = CVPlot._text_width("well", 9)
+    wrapped = CVPlot._wrap_label(label, max_width, 9)
+    lines = wrapped.split("\n")
+    assert len(lines) > 1
+    assert " ".join(lines) == label
+    for line in lines:
+        if " " in line:
+            assert CVPlot._text_width(line, 9) <= max_width
+
+
+def test_wrap_label_keeps_short_label_on_one_line():
+    assert CVPlot._wrap_label("A", CVPlot._text_width("well", 9), 9) == "A"
+
+
+def test_plot_legend_wraps_to_first_label_width(shot_noise_maps):
+    maps, mask, cluster_mask = shot_noise_maps
+    df = CVPlot().compute(
+        maps,
+        tau_keys="tau_map",
+        mask=mask,
+        cluster_mask=cluster_mask,
+        cluster_names={1: "well", 2: "B"},
+        n_bins=8,
+    )
+    fig, axes = CVPlot().plot(df, show_ideal_trend=True, show_powerlaw_fit=True)
+    legend = next(a.get_legend() for a in fig.axes if a.get_legend() is not None)
+    texts = [t.get_text() for t in legend.get_texts()]
+    assert texts[0] == "well"
+    assert all("\n" in t for t in texts if "ideal" in t or "fit:" in t)
+    line_labels = [line.get_label() for line in axes[0, 0].get_lines()]
+    assert any("ideal" in lbl and "\n" not in lbl for lbl in line_labels)
     plt.close(fig)
 
 

@@ -9,7 +9,7 @@ from polyversion_patches import (
     CustomDriver,
     DynamicPip,
     PyDataVersionEncoder,
-    version_key,
+    default_version,
     visible_versions,
 )
 from sphinx_polyversion.api import apply_overrides
@@ -58,16 +58,16 @@ def data(driver, rev, env):
     return {
         "current": rev,
         "revisions": revisions,
-        "latest": max(revisions, key=version_key),
+        "latest": default_version(revisions),
     }
 
 
 def root_data(driver):
     all_revisions = driver.builds
-    latest = max(all_revisions, key=version_key)
-    # Root page only lists the same capped set as the version switcher;
-    # `latest` stays uncapped so the redirect always targets the true latest.
-    return {"revisions": visible_versions(all_revisions), "latest": latest}
+    return {
+        "revisions": visible_versions(all_revisions),
+        "latest": default_version(all_revisions),
+    }
 
 
 apply_overrides(globals())
